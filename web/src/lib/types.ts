@@ -97,6 +97,49 @@ export function addDays(d: string, n: number): string {
   x.setDate(x.getDate() + n)
   return x.toLocaleDateString('en-CA')
 }
+export type Nivel = 'basico' | 'intermediario' | 'avancado'
+export type SituacaoHabilidade = 'valida' | 'vencendo' | 'vencida' | 'sem_validade'
+
+export interface Habilidade {
+  id: string; nome: string; categoria: 'tecnica' | 'seguranca' | 'habilitacao' | 'outra'
+  exige_validade: boolean; descricao: string | null; ativo: boolean
+}
+export interface TecnicoHabilidade {
+  tecnico_id: string; tecnico: string; tecnico_ativo: boolean; funcao: string
+  habilidade_id: string; habilidade: string; categoria: string; exige_validade: boolean
+  nivel: Nivel; nivel_valor: number; validade: string | null; observacao: string | null
+  atualizado_em: string; situacao: SituacaoHabilidade
+}
+export interface RequisitoTipo { habilidade_id: string; habilidade: string; nivel_minimo: Nivel }
+export interface TipoAtividade {
+  id: string; nome: string; descricao: string | null; ativo: boolean; requisitos: RequisitoTipo[]
+}
+export interface Aptidao { tecnico_id: string; nome: string; apto: boolean; faltando: string[] }
+
+export interface TecnicoNoLocal {
+  escala_id: string; tecnico: string; telefone: string; hora: string; fim: string | null
+  status: StatusEscala; status_envio: string | null; tarefa: string; tipo: string | null
+}
+export interface PainelLocal {
+  local_id: string | null; local: string; endereco: string | null; link_maps: string | null
+  primeira_hora: string | null; total: number; confirmadas: number; aguardando: number
+  recusadas: number; em_execucao: number; concluidas: number; criticas: number
+  pct_aceite: number; pct_conclusao: number; tecnicos: TecnicoNoLocal[]
+}
+
+export const NIVEL_LABEL: Record<Nivel, string> = {
+  basico: 'Básico', intermediario: 'Intermediário', avancado: 'Avançado',
+}
+export const CATEGORIA_LABEL: Record<string, string> = {
+  tecnica: 'Técnica', seguranca: 'Segurança', habilitacao: 'Habilitação', outra: 'Outra',
+}
+export const SITUACAO_HAB: Record<SituacaoHabilidade, { label: string; classe: string }> = {
+  valida:       { label: 'Válida',        classe: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
+  vencendo:     { label: 'Vence em breve', classe: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' },
+  vencida:      { label: 'Vencida',        classe: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
+  sem_validade: { label: 'Sem validade',   classe: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' },
+}
+
 export function fmtDuracao(min: number | null | undefined): string {
   if (!min || min <= 0) return '—'
   const h = Math.floor(min / 60), m = min % 60

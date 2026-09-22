@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada,
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal,
 } from './types'
 
 function traduzir(msg: string): string {
@@ -28,10 +28,11 @@ export const api = {
 
   criarEscalas: (p: {
     tecnicos: string[]; local: string | null; data: string; hora: string
-    tarefa: string; duracao: number; prioridade: string; enviar: boolean
+    tarefa: string; duracao: number; prioridade: string; enviar: boolean; tipo?: string | null
   }) => rpc<ResultadoLote[]>('app_criar_escalas', {
     p_tecnicos: p.tecnicos, p_local: p.local, p_data: p.data, p_hora: p.hora,
     p_tarefa: p.tarefa, p_duracao: p.duracao, p_prioridade: p.prioridade, p_enviar: p.enviar,
+    p_tipo: p.tipo ?? null,
   }),
   mudarStatus: (escalaId: string, status: string) =>
     rpc<string>('app_mudar_status', { p_escala: escalaId, p_status: status }),
@@ -50,6 +51,20 @@ export const api = {
 
   pendencias: (data: string) => rpc<Pendencias>('app_pendencias', { p_data: data }),
   simularJornada: (hora: string) => rpc<Jornada>('app_simular_jornada', { p_inicio: hora }),
+
+  painelLocais: (data: string) => rpc<PainelLocal[]>('app_painel_locais', { p_data: data }),
+
+  habilidades: () => rpc<Habilidade[]>('app_habilidades'),
+  salvarHabilidade: (h: Partial<Habilidade>) => rpc<string>('app_salvar_habilidade', { p: h }),
+  tecnicoHabilidades: () => rpc<TecnicoHabilidade[]>('app_tecnico_habilidades'),
+  salvarTecnicoHabilidade: (p: { tecnico_id: string; habilidade_id: string; nivel: string; validade: string | null; observacao?: string | null }) =>
+    rpc<void>('app_salvar_tecnico_habilidade', { p }),
+  removerTecnicoHabilidade: (tecnico: string, habilidade: string) =>
+    rpc<void>('app_remover_tecnico_habilidade', { p_tecnico: tecnico, p_habilidade: habilidade }),
+  tiposAtividade: () => rpc<TipoAtividade[]>('app_tipos_atividade'),
+  salvarTipoAtividade: (t: { id?: string; nome: string; descricao?: string | null; ativo?: boolean; requisitos: { habilidade_id: string; nivel_minimo: string }[] }) =>
+    rpc<string>('app_salvar_tipo_atividade', { p: t }),
+  aptidao: (tipoId: string) => rpc<Aptidao[]>('app_aptidao', { p_tipo: tipoId }),
 
   usuarios: () => rpc<UsuarioPainel[]>('app_usuarios'),
   salvarUsuario: (u: { email: string; nome: string; papel: Papel; ativo: boolean }) =>

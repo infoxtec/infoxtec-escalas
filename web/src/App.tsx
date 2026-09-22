@@ -1,19 +1,21 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { CalendarDays, Loader2, LogOut, MapPin, ShieldCheck, Users } from 'lucide-react'
+import { Award, CalendarDays, LayoutGrid, Loader2, LogOut, MapPin, ShieldCheck, Users } from 'lucide-react'
 import { Button, ErrorBox } from './components/ui'
 import { configurado, supabase, tipoDoLink } from './lib/supabase'
 import { api, erroMsg } from './lib/api'
 import { PAPEL_LABEL } from './lib/types'
-import type { Acesso, Local, Tecnico } from './lib/types'
+import type { Acesso, Local, Tecnico, TipoAtividade } from './lib/types'
 import { DefinirSenha, Login } from './pages/Login'
 import AgendaPage from './pages/AgendaPage'
 import TecnicosPage from './pages/TecnicosPage'
 import LocaisPage from './pages/LocaisPage'
 import UsuariosPage from './pages/UsuariosPage'
+import OperacaoPage from './pages/OperacaoPage'
+import HabilidadesPage from './pages/HabilidadesPage'
 
-type Aba = 'agenda' | 'tecnicos' | 'locais' | 'usuarios'
+type Aba = 'agenda' | 'operacao' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios'
 
 function Centro({ children }: { children: ReactNode }) {
   return <div className="flex min-h-screen items-center justify-center p-6 text-sm text-muted-foreground">{children}</div>
@@ -45,13 +47,14 @@ function Painel({ email }: { email: string }) {
   const [aba, setAba] = useState<Aba>('agenda')
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([])
   const [locais, setLocais] = useState<Local[]>([])
+  const [tipos, setTipos] = useState<TipoAtividade[]>([])
 
   const sair = () => { void supabase.auth.signOut() }
 
   const recarregarCadastros = useCallback(async () => {
     try {
-      const [t, l] = await Promise.all([api.tecnicos(), api.locais()])
-      setTecnicos(t); setLocais(l)
+      const [t, l, ta] = await Promise.all([api.tecnicos(), api.locais(), api.tiposAtividade()])
+      setTecnicos(t); setLocais(l); setTipos(ta)
     } catch (e) { setErro(erroMsg(e)) }
   }, [])
 
@@ -80,8 +83,10 @@ function Painel({ email }: { email: string }) {
   const podeEditar = papel === 'admin' || papel === 'gestor'
   const abas: { id: Aba; label: string; icone: ReactNode }[] = [
     { id: 'agenda', label: 'Agenda', icone: <CalendarDays className="h-4 w-4" /> },
+    { id: 'operacao', label: 'Operação', icone: <LayoutGrid className="h-4 w-4" /> },
     { id: 'tecnicos', label: 'Técnicos', icone: <Users className="h-4 w-4" /> },
     { id: 'locais', label: 'Locais', icone: <MapPin className="h-4 w-4" /> },
+    { id: 'habilidades', label: 'Habilidades', icone: <Award className="h-4 w-4" /> },
     ...(papel === 'admin' ? [{ id: 'usuarios' as Aba, label: 'Usuários', icone: <ShieldCheck className="h-4 w-4" /> }] : []),
   ]
 
@@ -92,6 +97,9 @@ function Painel({ email }: { email: string }) {
           <div className="flex shrink-0 items-center gap-2">
             <CalendarDays className="h-5 w-5 text-primary" />
             <span className="hidden text-sm font-semibold sm:inline">Infoxtec Escalas</span>
+            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground" title={`Build de ${__APP_BUILD__}`}>
+              v{__APP_VERSION__} · {__APP_BUILD__}
+            </span>
           </div>
           <div className="h-5 w-px bg-border" />
           <nav className="flex gap-1 overflow-x-auto">
@@ -112,7 +120,9 @@ function Painel({ email }: { email: string }) {
       </header>
       <main className="mx-auto w-full max-w-screen-2xl flex-1 px-4 py-5">
         {erro && <div className="mb-4"><ErrorBox>{erro}</ErrorBox></div>}
-        {aba === 'agenda' && <AgendaPage tecnicos={tecnicos} locais={locais} podeEditar={podeEditar} />}
+        {aba === 'agenda' && <AgendaPage tecnicos={tecnicos} locais={locais} tipos={tipos} podeEditar={podeEditar} />}
+        {aba === 'operacao' && <OperacaoPage />}
+        {aba === 'habilidades' && <HabilidadesPage tecnicos={tecnicos} podeEditar={podeEditar} />}
         {aba === 'tecnicos' && <TecnicosPage tecnicos={tecnicos} recarregar={recarregarCadastros} podeEditar={podeEditar} podeExcluir={papel === 'admin'} />}
         {aba === 'locais' && <LocaisPage locais={locais} recarregar={recarregarCadastros} podeEditar={podeEditar} />}
         {aba === 'usuarios' && papel === 'admin' && <UsuariosPage />}

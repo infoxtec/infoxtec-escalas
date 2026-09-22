@@ -11,7 +11,7 @@ import {
   addDays, descricaoJornada, ENVIO_LABEL, formatDate, formatDateTime, formatTime, hojeBahia,
   SEMAFORO_CLASSES, SEMAFORO_DOT, STATUS_LABEL,
 } from '../lib/types'
-import type { EscalaPainel, Local, Resumo, StatusEscala, Tecnico } from '../lib/types'
+import type { EscalaPainel, Local, Resumo, StatusEscala, Tecnico, TipoAtividade } from '../lib/types'
 
 // Carregado sob demanda: a biblioteca de planilhas e grande
 const ImportarEscalas = lazy(() => import('../components/ImportarEscalas'))
@@ -22,7 +22,7 @@ const RESPOSTA_LABEL: Record<string, string> = {
 
 const LARGURAS = { data: 100, hora: 125, tecnico: 190, local: 170, tarefa: 260, status: 140, envio: 120, resposta: 140 }
 
-export default function AgendaPage({ tecnicos, locais, podeEditar }: { tecnicos: Tecnico[]; locais: Local[]; podeEditar: boolean }) {
+export default function AgendaPage({ tecnicos, locais, tipos, podeEditar }: { tecnicos: Tecnico[]; locais: Local[]; tipos: TipoAtividade[]; podeEditar: boolean }) {
   const hoje = hojeBahia()
   const [inicio, setInicio] = useState(hoje)
   const [fim, setFim] = useState(addDays(hoje, 7))
@@ -169,7 +169,7 @@ export default function AgendaPage({ tecnicos, locais, podeEditar }: { tecnicos:
 
       <EscalaDrawer escala={selecionada} open={!!selecionada} onClose={() => setSelecionada(null)} onRefresh={() => void carregar()} podeEditar={podeEditar} />
       <NovaEscalaModal open={!!nova} onClose={() => setNova(null)} onSuccess={() => void carregar()}
-        tecnicos={tecnicos} locais={locais} inicialIds={nova?.ids} inicialData={nova?.data} />
+        tecnicos={tecnicos} locais={locais} tipos={tipos} inicialIds={nova?.ids} inicialData={nova?.data} />
       {importarAberto && (
         <Suspense fallback={null}>
           <ImportarEscalas open={importarAberto} onClose={() => setImportarAberto(false)} onSuccess={() => void carregar()} tecnicos={tecnicos} locais={locais} />

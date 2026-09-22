@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, CheckCircle2, Clock, Moon, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clock, Moon, ShieldAlert, XCircle } from 'lucide-react'
 import MultiSelect from './MultiSelect'
 import { Button, ErrorBox, Field, Input, Modal, Select, Textarea, useToast } from './ui'
 import { api, erroMsg } from '../lib/api'
 import { descricaoJornada, formatTime, hojeBahia } from '../lib/types'
-import type { Jornada, Local, ResultadoLote, Tecnico } from '../lib/types'
+import type { Aptidao, Jornada, Local, ResultadoLote, Tecnico, TipoAtividade } from '../lib/types'
 
-export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, locais, inicialIds, inicialData }: {
+export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, locais, tipos, inicialIds, inicialData }: {
   open: boolean; onClose: () => void; onSuccess: () => void; tecnicos: Tecnico[]; locais: Local[]
-  inicialIds?: string[]; inicialData?: string
+  tipos: TipoAtividade[]; inicialIds?: string[]; inicialData?: string
 }) {
   const toast = useToast()
   const [ids, setIds] = useState<string[]>([])
@@ -22,11 +22,14 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
   const [erro, setErro] = useState<string | null>(null)
   const [resultado, setResultado] = useState<ResultadoLote[] | null>(null)
   const [jornada, setJornada] = useState<Jornada | null>(null)
+  const [tipo, setTipo] = useState('')
+  const [aptidao, setAptidao] = useState<Aptidao[] | null>(null)
 
   useEffect(() => {
     if (open) {
       setIds(inicialIds ?? []); setLocal(''); setData(inicialData ?? hojeBahia()); setHora('08:00')
       setPrioridade('normal'); setTarefa(''); setEnviar(true); setErro(null); setResultado(null)
+      setTipo(''); setAptidao(null)
     }
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -37,7 +40,14 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
     return () => clearTimeout(t)
   }, [hora, open])
 
+  // Aptidão: quem não tem a habilidade exigida pelo tipo de atividade
+  useEffect(() => {
+    if (!open || !tipo) { setAptidao(null); return }
+    api.aptidao(tipo).then(setAptidao).catch(() => setAptidao(null))
+  }, [tipo, open])
+
   const ativos = useMemo(() => tecnicos.filter(t => t.ativo), [tecnicos])
+  const semHabilidade = (aptidao ?? []).filter(a => ids.includes(a.tecnico_id) && !a.apto)
   const semAutorizacao = ativos.filter(t => ids.includes(t.id) && !t.opt_in)
 
   const salvar = async () => {
@@ -97,6 +107,24 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
             <div className="flex items-start gap-2 rounded-md bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>Sem autorização para mensagens: <strong>{semAutorizacao.map(t => t.nome).join(', ')}</strong>. As escalas serão salvas, mas nenhuma mensagem será enviada para eles.</span>
+            </div>
+          )}
+          <Field label="Tipo de atividade" hint="Define as habilidades exigidas do técnico.">
+            <Select value={tipo} onChange={e => setTipo(e.target.value)} disabled={salvando} className="w-full">
+              <option value="">— não informado —</option>
+              {tipos.filter(t => t.ativo).map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+            </Select>
+          </Field>
+          {semHabilidade.length > 0 && (
+            <div className="flex items-start gap-2 rounded-md bg-red-50 p-3 text-xs text-red-800 dark:bg-red-900/20 dark:text-red-300">
+              <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-medium">Habilidade exigida em falta</p>
+                <ul className="mt-0.5 space-y-0.5">
+                  {semHabilidade.map(a => <li key={a.tecnico_id}>{a.nome}: {a.faltando.join(', ')}</li>)}
+                </ul>
+                <p className="mt-1">A escala pode ser criada assim mesmo — o aviso fica registrado para o supervisor decidir.</p>
+              </div>
             </div>
           )}
           <Field label="Local">

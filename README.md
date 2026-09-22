@@ -1,117 +1,74 @@
 # Infoxtec Escalas
 
-Gestao de escalas da equipe tecnica de campo com notificacao e confirmacao via WhatsApp.
+Gestão de escalas da equipe técnica de campo, com envio e confirmação pelo WhatsApp.
 
-O gestor cadastra a escala no painel (um ou varios tecnicos de uma vez). Em ate um minuto o
-tecnico recebe no WhatsApp a escala completa com dois botoes — "Ciente, confirmado" e
-"Tenho um problema" — ou pode responder 1 ou 2. A resposta volta sozinha para o painel.
-Sem resposta, o sistema manda lembrete a cada 30 minutos (ate 3 envios) e aciona os supervisores.
+O gestor cadastra a escala no painel, para um ou vários técnicos. Em até um minuto o técnico
+recebe no WhatsApp a escala completa — data, horário com término pela jornada CLT, local,
+endereço, mapa e tarefa — com dois botões, "Ciente, confirmado" e "Tenho um problema", e a
+alternativa de responder 1 ou 2. A resposta volta sozinha para o painel. Sem resposta, o sistema
+reenvia a cada 30 minutos, até 3 vezes, e aciona os supervisores. Todo dia às 16h os supervisores
+são lembrados da escala do dia seguinte, com prazo às 18h.
+
+## Documentação
+
+| Documento | Para quê |
+|---|---|
+| [Arquitetura](docs/arquitetura.md) | Como as peças se encaixam e por que o banco é o centro |
+| [Banco de dados](docs/banco-de-dados.md) | Tabelas, views, funções, gatilhos e parâmetros |
+| [Operação](docs/operacao.md) | Diagnóstico do dia a dia: o que consultar quando algo falha |
+| [Segurança](docs/seguranca.md) | Login, papéis, segredos, LGPD e riscos conhecidos |
+| [Decisões](docs/decisoes.md) | O que foi decidido, o que foi descartado e por quê |
+| [Backlog](docs/backlog.md) | As 9 funcionalidades dos próximos 60 dias |
+| [Publicar no Vercel](docs/deploy-vercel.md) | Passo a passo do deploy e da liberação de usuários |
+| [Retool (legado)](docs/retool.md) | Painel antigo, a ser desligado |
 
 ## Stack
 
-| Camada | Ferramenta | Custo |
+| Camada | Tecnologia | Custo |
 |---|---|---|
-| Painel | App React proprio (pasta `web/`), hospedado no Vercel | R$ 0 |
+| Painel | React 18 + TypeScript + Vite + Tailwind, na Vercel | R$ 0 |
 | Login | Supabase Auth (e-mail e senha) | R$ 0 |
-| Banco, regras, agendamento, segredos | Supabase free: Postgres, pg_cron, pg_net, Vault | R$ 0 |
-| Webhook | Supabase Edge Function `webhook-evolution` | R$ 0 |
-| WhatsApp | Evolution API 2.4.0 em VPS propria (instancia `infoxtec`) | VPS |
+| Banco, regras, agendamento, segredos | Supabase: PostgreSQL, pg_cron, pg_net, Vault | R$ 0 |
+| Webhook | Supabase Edge Function (Deno) | R$ 0 |
+| WhatsApp | Evolution API 2.4 em VPS própria | custo da VPS |
 
-Projeto Supabase: `infoxtec-escalas` (ref `zpckrxydqqmmcrphrkxz`, sa-east-1).
-Painel: app React em `web/` publicado no Vercel (o Retool fica como legado ate ser desligado).
-
-## Fluxo
-
-```
-Painel web --(app_criar_escalas, com o login do usuario)--> escalas [agendada]
-pg_cron (1/min) --> fn_dispatcher_whatsapp
-    FASE 1  confere resposta da Evolution -> enviada + ID real, ou falha
-    FASE 2  envia o que vw_acoes_pendentes mandar (botoes; reenvio de falha em texto)
-    FASE 3  alerta supervisores (escalonar)
-Evolution --webhook--> Edge Function --> fn_webhook_evolution
-    messages.update  -> entregue / lida
-    messages.upsert  -> botao ou 1/2 -> confirmada / recusada, respostas automaticas
-```
-
-Toda regra de negocio mora em SQL. A view `vw_acoes_pendentes` decide o que fazer; o
-dispatcher so executa. Parametros ficam na tabela `config`:
-
-| Chave | Padrao | Efeito |
-|---|---|---|
-| `intervalo_reenvio_min` | 30 | Minutos entre lembretes |
-| `max_tentativas` | 3 | Envios por escala antes de escalonar |
-| `avisar_supervisor_na` | 2 | Tentativa que aciona o supervisor |
-| `janela_envio_inicio` / `_fim` | 06:00 / 21:00 | Nada e enviado fora da janela |
-| `usar_botoes` | true | false = so texto com opcoes 1/2 |
-| `webhook_ativo` | true | false = sem lembretes por falta de resposta |
-| `envios_por_execucao` | 3 | Espacamento entre envios |
-| `jornada_min` | 480 | Jornada diaria sem hora extra (min legais). 8h48 = 528 |
-| `intervalo_min` | 60 | Intervalo intrajornada (CLT art. 71) |
-| `noturno_inicio` / `_fim` | 22:00 / 05:00 | Horario noturno urbano (CLT art. 73) |
-| `hora_noturna_min` | 52.5 | Hora noturna reduzida |
-| `alerta_escala_aviso` | 16:00 | Lembrete aos supervisores sobre a escala de amanha |
-| `alerta_escala_prazo` | 18:00 | Prazo de envio da escala de amanha |
-| `alerta_dias_semana` | 1,2,3,4,5 | Dias que exigem escala (ISO). Com sabado: 1,2,3,4,5,6 |
-| `sem_escala_incluir_supervisores` | false | Supervisores contam como tecnicos sem escala |
-
-### Jornada CLT
-
-O termino da escala e calculado pelo banco a partir da hora de inicio (`fn_calcular_jornada`):
-8h legais + 1h de intervalo. Minutos entre 22h e 5h contam como hora noturna reduzida (52min30s);
-jornada iniciada entre 22h e meia-noite segue reduzida apos as 5h (Sumula 60 TST).
-Ex.: 08:00 -> 17:00; 22:00 -> 06:00 (7h de relogio = 8h legais). Validar a regra com o RH.
-
-## Controle de acesso
-
-- **Autenticacao**: Supabase Auth, e-mail e senha. Cadastro publico desligado: so entra quem
-  for convidado em Authentication > Users > Invite user.
-- **Autorizacao**: tabela `painel_usuarios` com papeis `admin`, `gestor` e `leitura`.
-- O app web so chama funcoes `app_*` (migration 16). Cada uma identifica o usuario pelo token
-  de login (`auth.jwt()`), confere o papel e so entao executa. Nenhum parametro da tela diz
-  quem e o usuario.
-- Sem login, nenhuma funcao responde; tabelas tem RLS sem politicas; views fechadas para anon.
-- A chave publicavel do Supabase fica no navegador por design; a seguranca esta no banco.
-
-## Segredos
-
-Nada sensivel neste repositorio. Ver `supabase/setup/segredos.md`.
+Painel em produção: **https://infoxtec-escalas.vercel.app**
+Projeto Supabase: `infoxtec-escalas` (ref `zpckrxydqqmmcrphrkxz`, região sa-east-1).
 
 ## Estrutura
 
 ```
+web/                          painel React (o que vai para a Vercel, Root Directory = web)
 supabase/
-  migrations/                 espelho exato do banco (01 a 14)
-  functions/webhook-evolution Edge Function do webhook
+  migrations/                 01 a 18 — espelho exato do banco
+  functions/webhook-evolution Edge Function que recebe os eventos da Evolution
   setup/                      config por ambiente, cron e segredos (rodar uma vez)
-  seed.sql                    dados ficticios
-web/                          painel React (Vite + TypeScript + Tailwind)
-docs/
-  deploy-vercel.md            publicar o painel e liberar usuarios
-  retool.md                   painel antigo (legado)
+  seed.sql                    dados fictícios para desenvolvimento
+docs/                         a documentação da tabela acima
 ```
-
 
 ## Montar em um projeto novo
 
-1. `supabase link --project-ref <ref>` e `supabase db push`
-2. `supabase functions deploy webhook-evolution --no-verify-jwt`
-3. Rodar `supabase/setup/config.sql` (ajustando a URL) e criar os segredos
-4. Configurar o webhook na Evolution (comando em `segredos.md`)
-5. Rodar `supabase/setup/cron.sql`
+```bash
+supabase link --project-ref <ref>
+supabase db push
+supabase functions deploy webhook-evolution --no-verify-jwt
+```
 
-## Observacao sobre a importacao de planilhas
+Depois: rodar `supabase/setup/config.sql`, criar os segredos conforme
+`supabase/setup/segredos.md`, apontar o webhook na Evolution e rodar `supabase/setup/cron.sql`.
+O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis de ambiente.
 
-A importacao usa `xlsx` 0.18.5 (ultima versao publicada no npm), que tem alertas conhecidos para
-arquivos maliciosos. Como so gestores logados importam planilhas proprias, o risco e baixo.
+## Histórico
 
-## Historico
-
-- [x] Banco, painel, envio pela Evolution com botoes
-- [x] Webhook: entrega, leitura, confirmacao, recusa e detalhe do problema
+- [x] Banco, painel, envio pela Evolution com botões
+- [x] Webhook: entrega, leitura, confirmação, recusa e detalhe do problema
 - [x] Lembretes de 30 em 30 minutos e alerta aos supervisores
-- [x] Exclusao definitiva de tecnico e escala para varios tecnicos
-- [x] Controle de acesso por papel no banco
-- [x] Painel proprio no Vercel com login, papeis, aba Usuarios, ordenacao, remover e reenviar escala
-- [x] Jornada CLT automatica, painel de tecnicos sem escala, alerta de prazo das 18h, colunas ajustaveis
-- [ ] Desligar o painel Retool
-- [ ] Piloto com a equipe
+- [x] Exclusão definitiva de técnico e escala para vários técnicos
+- [x] Painel próprio na Vercel com login, papéis e aba Usuários
+- [x] Jornada CLT automática, painel de técnicos sem escala, alerta das 18h, colunas ajustáveis
+- [x] Escala cancelada libera o horário
+- [x] Item 5 do backlog: habilidades, certificações com validade e requisitos por tipo de atividade
+- [x] Item 3 do backlog (parcial): painel de acompanhamento por local
+- [ ] Desligar o painel Retool e remover as funções da bancada de teste
+- [ ] Backlog de 60 dias (ver [docs/backlog.md](docs/backlog.md))
