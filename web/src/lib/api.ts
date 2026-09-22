@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel,
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada,
 } from './types'
 
 function traduzir(msg: string): string {
@@ -47,6 +47,9 @@ export const api = {
 
   locais: () => rpc<Local[]>('app_locais'),
   salvarLocal: (l: Partial<Local>) => rpc<string>('app_salvar_local', { p: l }),
+
+  pendencias: (data: string) => rpc<Pendencias>('app_pendencias', { p_data: data }),
+  simularJornada: (hora: string) => rpc<Jornada>('app_simular_jornada', { p_inicio: hora }),
 
   usuarios: () => rpc<UsuarioPainel[]>('app_usuarios'),
   salvarUsuario: (u: { email: string; nome: string; papel: Papel; ativo: boolean }) =>

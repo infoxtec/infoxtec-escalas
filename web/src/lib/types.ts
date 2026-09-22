@@ -30,6 +30,26 @@ export interface EscalaPainel {
   supervisor_avisado_em: string | null
   semaforo: Semaforo
   pode_remover: boolean
+  turno: Turno | null
+  hora_fim_prevista: string | null
+  duracao_prevista_min: number | null
+  intervalo_min: number | null
+  minutos_noturnos: number | null
+}
+
+export type Turno = 'diurno' | 'noturno' | 'misto'
+
+export interface Jornada {
+  turno: Turno; trabalho_min: number; intervalo_min: number; minutos_noturnos: number; hora_fim: string
+}
+
+export interface Pendencias {
+  data: string
+  total_tecnicos: number
+  sem_escala: { id: string; nome: string; funcao: string }[]
+  rascunhos: number
+  prazo: string
+  exige_escala: boolean
 }
 
 export interface Resumo {
@@ -77,6 +97,18 @@ export function addDays(d: string, n: number): string {
   x.setDate(x.getDate() + n)
   return x.toLocaleDateString('en-CA')
 }
+export function fmtDuracao(min: number | null | undefined): string {
+  if (!min || min <= 0) return '—'
+  const h = Math.floor(min / 60), m = min % 60
+  return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`
+}
+export const TURNO_LABEL: Record<Turno, string> = { diurno: 'Diurna', noturno: 'Noturna', misto: 'Mista' }
+export function descricaoJornada(turno: Turno | null, trabalho: number | null, intervalo: number | null): string {
+  if (!turno || !trabalho) return '—'
+  const base = turno === 'diurno' ? `${fmtDuracao(trabalho)} de trabalho` : `8h CLT (${fmtDuracao(trabalho)} de relógio)`
+  return `${TURNO_LABEL[turno]} · ${base}${intervalo ? ` + ${fmtDuracao(intervalo)} de intervalo` : ''}`
+}
+
 export function telefoneValido(t: string): boolean { return /^[1-9]\d{9,14}$/.test(t.replace(/\D/g, '')) }
 
 export const SEMAFORO_CLASSES: Record<Semaforo, string> = {

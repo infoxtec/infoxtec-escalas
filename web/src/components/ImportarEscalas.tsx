@@ -14,7 +14,7 @@ interface Linha {
   status: 'pendente' | 'ok' | 'erro'; erro?: string
 }
 
-const COLUNAS = ['tecnico_nome', 'local_nome', 'data', 'hora', 'tarefa', 'duracao_min', 'prioridade', 'enviar']
+const COLUNAS = ['tecnico_nome', 'local_nome', 'data', 'hora', 'tarefa', 'prioridade', 'enviar']
 const semAcento = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
 
 /** Exato primeiro; depois "contem", mas so se houver um unico candidato (evita "Ana" casar com "Mariana"). */
@@ -49,7 +49,7 @@ function normHora(raw: unknown): string {
 }
 
 function baixarModelo() {
-  const ws = XLSX.utils.aoa_to_sheet([COLUNAS, ['David Cerqueira', 'Cond. Vila Real - Torre B', hojeBahia().split('-').reverse().join('/'), '08:00', 'Manutenção preventiva do CFTV', 240, 'normal', 'sim']])
+  const ws = XLSX.utils.aoa_to_sheet([COLUNAS, ['David Cerqueira', 'Cond. Vila Real - Torre B', hojeBahia().split('-').reverse().join('/'), '08:00', 'Manutenção preventiva do CFTV', 'normal', 'sim']])
   ws['!cols'] = COLUNAS.map(c => ({ wch: c === 'tarefa' ? 40 : 20 }))
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Escalas')
@@ -121,7 +121,7 @@ export default function ImportarEscalas({ open, onClose, onSuccess, tecnicos, lo
           if (!tarefa) erros.push('Tarefa em branco')
           return {
             n: i + 2, tecnico_nome, local_nome, data, hora, tarefa,
-            duracao: Number(g('duracao_min', 'duracao')) || 240,
+            duracao: 480, // jornada CLT calculada pelo banco a partir da hora
             prioridade: ['baixa', 'normal', 'urgente'].includes(prio) ? prio : 'normal',
             enviar: ['sim', 's', 'true', '1', 'yes'].includes(env),
             tecnico_id: t.item?.id, local_id: l.item?.id,
@@ -175,6 +175,7 @@ export default function ImportarEscalas({ open, onClose, onSuccess, tecnicos, lo
             <li>Baixe o modelo e preencha uma linha por escala.</li>
             <li>Nomes de técnicos e locais devem ser os cadastrados (acentos e maiúsculas não importam).</li>
             <li>A coluna <strong>enviar</strong> aceita sim ou não. Local pode ficar em branco.</li>
+            <li>O término é calculado sozinho pela jornada CLT a partir da hora de início.</li>
             <li>Revise a prévia; só as linhas sem erro são importadas.</li>
           </ol>
         </div>

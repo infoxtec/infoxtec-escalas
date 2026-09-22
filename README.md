@@ -45,6 +45,21 @@ dispatcher so executa. Parametros ficam na tabela `config`:
 | `usar_botoes` | true | false = so texto com opcoes 1/2 |
 | `webhook_ativo` | true | false = sem lembretes por falta de resposta |
 | `envios_por_execucao` | 3 | Espacamento entre envios |
+| `jornada_min` | 480 | Jornada diaria sem hora extra (min legais). 8h48 = 528 |
+| `intervalo_min` | 60 | Intervalo intrajornada (CLT art. 71) |
+| `noturno_inicio` / `_fim` | 22:00 / 05:00 | Horario noturno urbano (CLT art. 73) |
+| `hora_noturna_min` | 52.5 | Hora noturna reduzida |
+| `alerta_escala_aviso` | 16:00 | Lembrete aos supervisores sobre a escala de amanha |
+| `alerta_escala_prazo` | 18:00 | Prazo de envio da escala de amanha |
+| `alerta_dias_semana` | 1,2,3,4,5 | Dias que exigem escala (ISO). Com sabado: 1,2,3,4,5,6 |
+| `sem_escala_incluir_supervisores` | false | Supervisores contam como tecnicos sem escala |
+
+### Jornada CLT
+
+O termino da escala e calculado pelo banco a partir da hora de inicio (`fn_calcular_jornada`):
+8h legais + 1h de intervalo. Minutos entre 22h e 5h contam como hora noturna reduzida (52min30s);
+jornada iniciada entre 22h e meia-noite segue reduzida apos as 5h (Sumula 60 TST).
+Ex.: 08:00 -> 17:00; 22:00 -> 06:00 (7h de relogio = 8h legais). Validar a regra com o RH.
 
 ## Controle de acesso
 
@@ -97,5 +112,6 @@ arquivos maliciosos. Como so gestores logados importam planilhas proprias, o ris
 - [x] Exclusao definitiva de tecnico e escala para varios tecnicos
 - [x] Controle de acesso por papel no banco
 - [x] Painel proprio no Vercel com login, papeis, aba Usuarios, ordenacao, remover e reenviar escala
+- [x] Jornada CLT automatica, painel de tecnicos sem escala, alerta de prazo das 18h, colunas ajustaveis
 - [ ] Desligar o painel Retool
 - [ ] Piloto com a equipe

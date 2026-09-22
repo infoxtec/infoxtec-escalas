@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { AlertTriangle, Edit2, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { AlertTriangle, Columns3, Edit2, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { Button, Confirm, ErrorBox, Field, Input, Sheet, SuccessBox, ToggleRow, useToast } from '../components/ui'
-import { SortableTh, useSortable } from '../components/SortableTh'
+import { PlainTh, SortableTh, useColumnWidths, useSortable } from '../components/SortableTh'
 import { api, erroMsg } from '../lib/api'
 import { telefoneValido } from '../lib/types'
 import type { Tecnico } from '../lib/types'
@@ -27,6 +27,7 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
     nome: t => t.nome, telefone: t => t.telefone_e164, funcao: t => t.funcao, equipe: t => t.equipe,
     supervisor: t => t.is_supervisor, whatsapp: t => t.opt_in, ativo: t => t.ativo,
   }, { key: 'nome' })
+  const { col, total, restaurarTudo } = useColumnWidths('tecnicos', { nome: 260, telefone: 150, funcao: 150, equipe: 140, supervisor: 115, whatsapp: 115, ativo: 90, acoes: 90 })
 
   const atualizar = async () => { setAtualizando(true); await recarregar(); setAtualizando(false) }
 
@@ -62,6 +63,7 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold">Técnicos</h2>
         <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={restaurarTudo} title="Voltar todas as colunas à largura padrão"><Columns3 className="h-3.5 w-3.5" /> Larguras padrão</Button>
           <Button variant="outline" size="sm" onClick={() => void atualizar()} disabled={atualizando}>
             <RefreshCw className={`h-3.5 w-3.5 ${atualizando ? 'animate-spin' : ''}`} /> Atualizar
           </Button>
@@ -71,17 +73,17 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
 
       <div className="overflow-hidden rounded-md border">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="table-fixed text-sm" style={{ width: total, minWidth: '100%' }}>
             <thead>
               <tr className="border-b bg-muted/50">
-                <SortableTh {...thProps('nome')}>Nome</SortableTh>
-                <SortableTh {...thProps('telefone')}>Telefone</SortableTh>
-                <SortableTh {...thProps('funcao')}>Função</SortableTh>
-                <SortableTh {...thProps('equipe')}>Equipe</SortableTh>
-                <SortableTh {...thProps('supervisor')} align="center">Supervisor</SortableTh>
-                <SortableTh {...thProps('whatsapp')} align="center">WhatsApp</SortableTh>
-                <SortableTh {...thProps('ativo')} align="center">Ativo</SortableTh>
-                <th className="w-20 px-3 py-2.5" />
+                <SortableTh {...thProps('nome')} {...col('nome')}>Nome</SortableTh>
+                <SortableTh {...thProps('telefone')} {...col('telefone')}>Telefone</SortableTh>
+                <SortableTh {...thProps('funcao')} {...col('funcao')}>Função</SortableTh>
+                <SortableTh {...thProps('equipe')} {...col('equipe')}>Equipe</SortableTh>
+                <SortableTh {...thProps('supervisor')} {...col('supervisor')} align="center">Supervisor</SortableTh>
+                <SortableTh {...thProps('whatsapp')} {...col('whatsapp')} align="center">WhatsApp</SortableTh>
+                <SortableTh {...thProps('ativo')} {...col('ativo')} align="center">Ativo</SortableTh>
+                <PlainTh {...col('acoes')} />
               </tr>
             </thead>
             <tbody>
@@ -90,15 +92,15 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
               ) : sorted.map(t => (
                 <tr key={t.id} className={`border-b last:border-0 hover:bg-muted/30 ${!t.ativo ? 'opacity-50' : ''}`}>
                   <td className="px-3 py-2.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium">{t.nome}</span>
-                      {!t.opt_in && t.ativo && <span className="inline-flex items-center gap-0.5 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"><AlertTriangle className="h-3 w-3" /> Sem autorização</span>}
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="truncate font-medium" title={t.nome}>{t.nome}</span>
+                      {!t.opt_in && t.ativo && <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"><AlertTriangle className="h-3 w-3" /> Sem autorização</span>}
                       {!t.ativo && <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500 dark:bg-gray-800">Inativo</span>}
                     </div>
                   </td>
-                  <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground">{t.telefone_e164}</td>
-                  <td className="px-3 py-2.5 text-xs">{t.funcao}</td>
-                  <td className="px-3 py-2.5 text-xs text-muted-foreground">{t.equipe ?? '—'}</td>
+                  <td className="truncate px-3 py-2.5 font-mono text-xs text-muted-foreground">{t.telefone_e164}</td>
+                  <td className="truncate px-3 py-2.5 text-xs" title={t.funcao}>{t.funcao}</td>
+                  <td className="truncate px-3 py-2.5 text-xs text-muted-foreground" title={t.equipe ?? ''}>{t.equipe ?? '—'}</td>
                   <td className="px-3 py-2.5 text-center text-xs">{t.is_supervisor ? <span className="font-medium text-primary">Sim</span> : <span className="text-muted-foreground">Não</span>}</td>
                   <td className="px-3 py-2.5 text-center"><span className={`inline-block h-2 w-2 rounded-full ${t.opt_in ? 'bg-green-500' : 'bg-gray-400'}`} /></td>
                   <td className="px-3 py-2.5 text-center"><span className={`inline-block h-2 w-2 rounded-full ${t.ativo ? 'bg-green-500' : 'bg-gray-400'}`} /></td>

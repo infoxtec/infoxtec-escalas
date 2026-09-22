@@ -1,33 +1,41 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, CheckCircle2, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clock, Moon, XCircle } from 'lucide-react'
 import MultiSelect from './MultiSelect'
 import { Button, ErrorBox, Field, Input, Modal, Select, Textarea, useToast } from './ui'
 import { api, erroMsg } from '../lib/api'
-import { hojeBahia } from '../lib/types'
-import type { Local, ResultadoLote, Tecnico } from '../lib/types'
+import { descricaoJornada, formatTime, hojeBahia } from '../lib/types'
+import type { Jornada, Local, ResultadoLote, Tecnico } from '../lib/types'
 
-export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, locais }: {
+export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, locais, inicialIds, inicialData }: {
   open: boolean; onClose: () => void; onSuccess: () => void; tecnicos: Tecnico[]; locais: Local[]
+  inicialIds?: string[]; inicialData?: string
 }) {
   const toast = useToast()
   const [ids, setIds] = useState<string[]>([])
   const [local, setLocal] = useState('')
   const [data, setData] = useState(hojeBahia())
   const [hora, setHora] = useState('08:00')
-  const [duracao, setDuracao] = useState(240)
   const [prioridade, setPrioridade] = useState('normal')
   const [tarefa, setTarefa] = useState('')
   const [enviar, setEnviar] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [resultado, setResultado] = useState<ResultadoLote[] | null>(null)
+  const [jornada, setJornada] = useState<Jornada | null>(null)
 
   useEffect(() => {
     if (open) {
-      setIds([]); setLocal(''); setData(hojeBahia()); setHora('08:00'); setDuracao(240)
+      setIds(inicialIds ?? []); setLocal(''); setData(inicialData ?? hojeBahia()); setHora('08:00')
       setPrioridade('normal'); setTarefa(''); setEnviar(true); setErro(null); setResultado(null)
     }
-  }, [open])
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Jornada calculada pelo banco (mesma regra que vai na mensagem do WhatsApp)
+  useEffect(() => {
+    if (!open || !/^\d{2}:\d{2}$/.test(hora)) return
+    const t = setTimeout(() => { api.simularJornada(hora).then(setJornada).catch(() => setJornada(null)) }, 250)
+    return () => clearTimeout(t)
+  }, [hora, open])
 
   const ativos = useMemo(() => tecnicos.filter(t => t.ativo), [tecnicos])
   const semAutorizacao = ativos.filter(t => ids.includes(t.id) && !t.opt_in)
@@ -35,21 +43,19 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
   const salvar = async () => {
     setErro(null)
     if (ids.length === 0) return setErro('Selecione pelo menos um técnico.')
-    if (!data || !hora) return setErro('Informe data e hora.')
+    if (!data || !hora) return setErro('Informe data e hora de início.')
     if (!tarefa.trim()) return setErro('Descreva a tarefa.')
     setSalvando(true)
     try {
       const r = await api.criarEscalas({
         tecnicos: ids, local: local || null, data, hora, tarefa: tarefa.trim(),
-        duracao: Number(duracao) || 240, prioridade, enviar,
+        duracao: 480, prioridade, enviar, // duracao e recalculada pelo banco (jornada CLT)
       })
       onSuccess()
       if (r.every(x => x.resultado === 'criada')) {
         toast(r.length === 1 ? 'Escala criada.' : `${r.length} escalas criadas.`)
         onClose()
-      } else {
-        setResultado(r)
-      }
+      } else setResultado(r)
     } catch (e) { setErro(erroMsg(e)) }
     finally { setSalvando(false) }
   }
@@ -84,8 +90,7 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
       ) : (
         <div className="space-y-3">
           <Field label="Técnicos *">
-            <MultiSelect
-              opcoes={ativos.map(t => ({ value: t.id, label: t.nome, detalhe: t.funcao }))}
+            <MultiSelect opcoes={ativos.map(t => ({ value: t.id, label: t.nome, detalhe: t.funcao }))}
               valores={ids} onChange={setIds} placeholder="Selecione um ou mais técnicos" disabled={salvando} />
           </Field>
           {semAutorizacao.length > 0 && (
@@ -100,10 +105,18 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
               {locais.filter(l => l.ativo).map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
             </Select>
           </Field>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <Field label="Data *"><Input type="date" value={data} onChange={e => setData(e.target.value)} disabled={salvando} /></Field>
-            <Field label="Hora *"><Input type="time" value={hora} onChange={e => setHora(e.target.value)} disabled={salvando} /></Field>
-            <Field label="Duração (min)"><Input type="number" min={15} step={15} value={duracao} onChange={e => setDuracao(Number(e.target.value))} disabled={salvando} /></Field>
+            <Field label="Hora de início *"><Input type="time" value={hora} onChange={e => setHora(e.target.value)} disabled={salvando} /></Field>
+          </div>
+          <div className="flex items-start gap-2 rounded-md border bg-muted/40 p-3 text-xs">
+            {jornada?.turno === 'diurno' || !jornada ? <Clock className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> : <Moon className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />}
+            {jornada ? (
+              <div>
+                <p className="font-medium text-foreground">Término previsto: {formatTime(jornada.hora_fim)}</p>
+                <p className="text-muted-foreground">{descricaoJornada(jornada.turno, jornada.trabalho_min, jornada.intervalo_min)} · jornada normal CLT, sem hora extra</p>
+              </div>
+            ) : <p className="text-muted-foreground">Calculando a jornada…</p>}
           </div>
           <Field label="Prioridade">
             <Select value={prioridade} onChange={e => setPrioridade(e.target.value)} disabled={salvando} className="w-full">

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Calendar, Clock, ExternalLink, FileText, MapPin, SendHorizonal, Trash2, User } from 'lucide-react'
+import { Calendar, Clock, ExternalLink, FileText, MapPin, Moon, SendHorizonal, Trash2, User } from 'lucide-react'
 import { Button, Confirm, ErrorBox, Sheet, SuccessBox, useToast } from './ui'
 import { api, erroMsg } from '../lib/api'
 import {
-  ENVIO_LABEL, formatDate, formatDateTime, formatTime, PRIORIDADE_LABEL, SEMAFORO_CLASSES, STATUS_LABEL,
+  descricaoJornada, ENVIO_LABEL, formatDate, formatDateTime, formatTime, PRIORIDADE_LABEL, SEMAFORO_CLASSES, STATUS_LABEL,
 } from '../lib/types'
 import type { EscalaPainel, LinhaTempo, StatusEscala } from '../lib/types'
 
@@ -92,10 +92,13 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
 
           <div className="grid grid-cols-2 gap-3 text-sm">
             <Info icone={<Calendar className="h-4 w-4" />} label="Data" valor={formatDate(escala.data_servico)} />
-            <Info icone={<Clock className="h-4 w-4" />} label="Hora" valor={formatTime(escala.hora_inicio)} />
+            <Info icone={escala.turno && escala.turno !== 'diurno' ? <Moon className="h-4 w-4" /> : <Clock className="h-4 w-4" />} label="Horário"
+              valor={`${formatTime(escala.hora_inicio)}${escala.hora_fim_prevista ? ` → ${formatTime(escala.hora_fim_prevista)}` : ''}`} />
             <Info icone={<User className="h-4 w-4" />} label="Técnico" valor={escala.tecnico} />
             <Info icone={<MapPin className="h-4 w-4" />} label="Local" valor={escala.local} />
           </div>
+
+          <p className="-mt-1 text-xs text-muted-foreground">Jornada: {descricaoJornada(escala.turno, escala.duracao_prevista_min, escala.intervalo_min)}</p>
 
           {escala.endereco && (
             <div className="text-sm">

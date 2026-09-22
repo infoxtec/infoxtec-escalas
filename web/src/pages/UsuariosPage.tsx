@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Edit2, Info, Plus, RefreshCw } from 'lucide-react'
+import { Columns3, Edit2, Info, Plus, RefreshCw } from 'lucide-react'
 import { Button, ErrorBox, Field, Input, Modal, Select, ToggleRow, useToast } from '../components/ui'
-import { SortableTh, useSortable } from '../components/SortableTh'
+import { PlainTh, SortableTh, useColumnWidths, useSortable } from '../components/SortableTh'
 import { api, erroMsg } from '../lib/api'
 import { formatDateTime, PAPEL_LABEL } from '../lib/types'
 import type { Papel, UsuarioPainel } from '../lib/types'
@@ -31,6 +31,7 @@ export default function UsuariosPage() {
   const { sorted, thProps } = useSortable(lista, {
     nome: u => u.nome ?? u.email, email: u => u.email, papel: u => PAPEL_LABEL[u.papel], ativo: u => u.ativo,
   }, { key: 'nome' })
+  const { col, total, restaurarTudo } = useColumnWidths('usuarios', { nome: 200, email: 260, papel: 150, ativo: 90, criado: 260, acoes: 70 })
 
   const salvar = async () => {
     if (!edit) return
@@ -50,6 +51,7 @@ export default function UsuariosPage() {
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold">Usuários do painel</h2>
         <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={restaurarTudo} title="Voltar todas as colunas à largura padrão"><Columns3 className="h-3.5 w-3.5" /> Larguras padrão</Button>
           <Button variant="outline" size="sm" onClick={() => void carregar()} disabled={carregando}><RefreshCw className={`h-3.5 w-3.5 ${carregando ? 'animate-spin' : ''}`} /> Atualizar</Button>
           <Button size="sm" onClick={() => { setEdit({ email: '', nome: '', papel: 'gestor', ativo: true, novo: true }); setErroForm(null) }}><Plus className="h-4 w-4" /> Adicionar usuário</Button>
         </div>
@@ -63,25 +65,25 @@ export default function UsuariosPage() {
       {erro && <ErrorBox>{erro}</ErrorBox>}
 
       <div className="overflow-hidden rounded-md border">
-        <table className="w-full text-sm">
+        <table className="table-fixed text-sm" style={{ width: total, minWidth: '100%' }}>
           <thead>
             <tr className="border-b bg-muted/50">
-              <SortableTh {...thProps('nome')}>Nome</SortableTh>
-              <SortableTh {...thProps('email')}>E-mail</SortableTh>
-              <SortableTh {...thProps('papel')}>Papel</SortableTh>
-              <SortableTh {...thProps('ativo')} align="center">Ativo</SortableTh>
-              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground">Criado por</th>
-              <th className="px-3 py-2.5" />
+              <SortableTh {...thProps('nome')} {...col('nome')}>Nome</SortableTh>
+              <SortableTh {...thProps('email')} {...col('email')}>E-mail</SortableTh>
+              <SortableTh {...thProps('papel')} {...col('papel')}>Papel</SortableTh>
+              <SortableTh {...thProps('ativo')} {...col('ativo')} align="center">Ativo</SortableTh>
+              <PlainTh {...col('criado')}>Criado por</PlainTh>
+              <PlainTh {...col('acoes')} />
             </tr>
           </thead>
           <tbody>
             {sorted.map(u => (
               <tr key={u.email} className={`border-b last:border-0 ${!u.ativo ? 'opacity-50' : ''}`}>
-                <td className="px-3 py-2.5 font-medium">{u.nome ?? '—'}</td>
-                <td className="px-3 py-2.5 text-xs">{u.email}</td>
+                <td className="truncate px-3 py-2.5 font-medium" title={u.nome ?? ''}>{u.nome ?? '—'}</td>
+                <td className="truncate px-3 py-2.5 text-xs" title={u.email}>{u.email}</td>
                 <td className="px-3 py-2.5 text-xs">{PAPEL_LABEL[u.papel]}</td>
                 <td className="px-3 py-2.5 text-center"><span className={`inline-block h-2 w-2 rounded-full ${u.ativo ? 'bg-green-500' : 'bg-gray-400'}`} /></td>
-                <td className="px-3 py-2.5 text-xs text-muted-foreground">{u.criado_por ?? '—'} · {formatDateTime(u.created_at)}</td>
+                <td className="truncate px-3 py-2.5 text-xs text-muted-foreground">{u.criado_por ?? '—'} · {formatDateTime(u.created_at)}</td>
                 <td className="px-3 py-2.5 text-right">
                   <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => { setEdit({ email: u.email, nome: u.nome ?? '', papel: u.papel, ativo: u.ativo, novo: false }); setErroForm(null) }}><Edit2 className="h-3.5 w-3.5" /></Button>
                 </td>
