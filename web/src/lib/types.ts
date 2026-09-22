@@ -133,12 +133,6 @@ export const NIVEL_LABEL: Record<Nivel, string> = {
 export const CATEGORIA_LABEL: Record<string, string> = {
   tecnica: 'Técnica', seguranca: 'Segurança', habilitacao: 'Habilitação', outra: 'Outra',
 }
-export const SITUACAO_HAB: Record<SituacaoHabilidade, { label: string; classe: string }> = {
-  valida:       { label: 'Válida',        classe: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
-  vencendo:     { label: 'Vence em breve', classe: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' },
-  vencida:      { label: 'Vencida',        classe: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
-  sem_validade: { label: 'Sem validade',   classe: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' },
-}
 
 export function fmtDuracao(min: number | null | undefined): string {
   if (!min || min <= 0) return '—'

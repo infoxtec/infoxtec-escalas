@@ -32,8 +32,8 @@ erDiagram
 | `webhook_eventos` | Log bruto dos eventos da Evolution | A `apikey` é removida antes de gravar |
 | `alertas_enviados` | Controle do alerta de prazo | Evita alerta duplicado no mesmo dia |
 | `log_exclusoes` | Registro de exclusões definitivas | Não guarda nome nem telefone |
-| `habilidades` | Catálogo de habilidades e certificações | `exige_validade` liga o controle de vencimento |
-| `tecnico_habilidades` | Quem tem o quê, em que nível e até quando | Alimenta a aptidão e o alerta de vencimento |
+| `habilidades` | Catálogo de habilidades | `exige_validade` existe mas está desligado (migration 21) |
+| `tecnico_habilidades` | Quem tem o quê e em que nível | Alimenta a aptidão. A coluna `validade` está dormente |
 | `tipos_atividade` | Tipos de serviço (CFTV, fibra, link...) | Ligado à escala por `escalas.tipo_atividade_id` |
 | `tipo_atividade_requisitos` | Habilidades exigidas por tipo | Define quem é apto |
 
@@ -54,7 +54,7 @@ erDiagram
 | `vw_acoes_pendentes` | O motor: o que fazer agora e com qual diagnóstico |
 | `vw_resumo_dia` | Indicadores por dia |
 | `vw_linha_do_tempo` | Auditoria + eventos do WhatsApp em ordem |
-| `vw_tecnico_habilidades` | Habilidades por técnico com situação: válida, vencendo, vencida |
+| `vw_tecnico_habilidades` | Habilidades por técnico (a coluna `situacao` sempre traz `valida` enquanto o controle de validade estiver desligado) |
 
 ## Funções por família
 
@@ -103,7 +103,7 @@ Jornada: `jornada_min` (480), `intervalo_min` (60), `intervalo_apos_min` (240),
 `noturno_inicio` (22:00), `noturno_fim` (05:00), `hora_noturna_min` (52.5).
 
 Habilidades: `certificacao_aviso_dias` (30), `alerta_certificacoes_hora` (08:00),
-`alerta_certificacoes_dow` (1 = segunda).
+`alerta_certificacoes_dow` (**0 = desligado**; 1 a 7 religa o alerta de validade).
 
 Prazo: `alerta_escala_aviso` (16:00), `alerta_escala_prazo` (18:00),
 `alerta_dias_semana` (1,2,3,4,5), `sem_escala_incluir_supervisores` (false).

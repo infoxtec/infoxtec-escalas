@@ -9,7 +9,7 @@ const build = new Date().toLocaleString('pt-BR', {
 export default defineConfig({
   plugins: [react()],
   define: {
-    __APP_VERSION__: JSON.stringify('1.2'),
+    __APP_VERSION__: JSON.stringify('1.3'),
     __APP_BUILD__: JSON.stringify(build),
   },
 })

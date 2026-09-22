@@ -57,8 +57,8 @@ export const api = {
   habilidades: () => rpc<Habilidade[]>('app_habilidades'),
   salvarHabilidade: (h: Partial<Habilidade>) => rpc<string>('app_salvar_habilidade', { p: h }),
   tecnicoHabilidades: () => rpc<TecnicoHabilidade[]>('app_tecnico_habilidades'),
-  salvarTecnicoHabilidade: (p: { tecnico_id: string; habilidade_id: string; nivel: string; validade: string | null; observacao?: string | null }) =>
-    rpc<void>('app_salvar_tecnico_habilidade', { p }),
+  definirHabilidades: (tecnicoId: string, habilidades: { habilidade_id: string; nivel: string }[]) =>
+    rpc<number>('app_definir_habilidades', { p_tecnico: tecnicoId, p_habilidades: habilidades }),
   removerTecnicoHabilidade: (tecnico: string, habilidade: string) =>
     rpc<void>('app_remover_tecnico_habilidade', { p_tecnico: tecnico, p_habilidade: habilidade }),
   tiposAtividade: () => rpc<TipoAtividade[]>('app_tipos_atividade'),

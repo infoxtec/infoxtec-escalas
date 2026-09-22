@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Edit2, ListChecks, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { Edit2, ListChecks, Plus, RefreshCw, Trash2, Users } from 'lucide-react'
 import { Button, Confirm, ErrorBox, Field, Input, Modal, Select, Textarea, ToggleRow, useToast } from '../components/ui'
 import { SortableTh, useSortable } from '../components/SortableTh'
 import { api, erroMsg } from '../lib/api'
-import { CATEGORIA_LABEL, NIVEL_LABEL, SITUACAO_HAB, formatDate } from '../lib/types'
+import { CATEGORIA_LABEL, NIVEL_LABEL } from '../lib/types'
 import type { Habilidade, Nivel, TecnicoHabilidade, Tecnico, TipoAtividade } from '../lib/types'
 
 type Secao = 'tecnicos' | 'catalogo' | 'tipos'
 
 export default function HabilidadesPage({ tecnicos, podeEditar }: { tecnicos: Tecnico[]; podeEditar: boolean }) {
-  const toast = useToast()
   const [secao, setSecao] = useState<Secao>('tecnicos')
   const [lista, setLista] = useState<TecnicoHabilidade[]>([])
   const [catalogo, setCatalogo] = useState<Habilidade[]>([])
@@ -26,8 +25,6 @@ export default function HabilidadesPage({ tecnicos, podeEditar }: { tecnicos: Te
     finally { setCarregando(false) }
   }, [])
   useEffect(() => { void carregar() }, [carregar])
-
-  const alertas = lista.filter(h => h.tecnico_ativo && (h.situacao === 'vencida' || h.situacao === 'vencendo'))
 
   const aba = (s: Secao, rotulo: string) => (
     <button type="button" onClick={() => setSecao(s)}
@@ -51,17 +48,7 @@ export default function HabilidadesPage({ tecnicos, podeEditar }: { tecnicos: Te
 
       {erro && <ErrorBox>{erro}</ErrorBox>}
 
-      {alertas.length > 0 && (
-        <div className="flex items-start gap-2 rounded-md bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <div>
-            <p className="font-medium">{alertas.length} certificação(ões) vencida(s) ou vencendo</p>
-            <p className="text-xs">{alertas.slice(0, 6).map(a => `${a.tecnico} — ${a.habilidade}`).join(' · ')}{alertas.length > 6 ? ` · e mais ${alertas.length - 6}` : ''}</p>
-          </div>
-        </div>
-      )}
-
-      {secao === 'tecnicos' && <PorTecnico lista={lista} catalogo={catalogo} tecnicos={tecnicos} podeEditar={podeEditar} recarregar={carregar} toast={toast} />}
+      {secao === 'tecnicos' && <PorTecnico lista={lista} catalogo={catalogo} tecnicos={tecnicos} podeEditar={podeEditar} recarregar={carregar} />}
       {secao === 'catalogo' && <Catalogo catalogo={catalogo} podeEditar={podeEditar} recarregar={carregar} />}
       {secao === 'tipos' && <Tipos tipos={tipos} catalogo={catalogo} podeEditar={podeEditar} recarregar={carregar} />}
     </div>
@@ -69,12 +56,15 @@ export default function HabilidadesPage({ tecnicos, podeEditar }: { tecnicos: Te
 }
 
 // ------------------------------------------------------------------ por técnico
-function PorTecnico({ lista, catalogo, tecnicos, podeEditar, recarregar, toast }: {
+interface Selecao { habilidade_id: string; nivel: Nivel }
+
+function PorTecnico({ lista, catalogo, tecnicos, podeEditar, recarregar }: {
   lista: TecnicoHabilidade[]; catalogo: Habilidade[]; tecnicos: Tecnico[]
-  podeEditar: boolean; recarregar: () => Promise<void>; toast: (m: string) => void
+  podeEditar: boolean; recarregar: () => Promise<void>
 }) {
+  const toast = useToast()
   const [filtro, setFiltro] = useState('')
-  const [edit, setEdit] = useState<{ tecnico_id: string; habilidade_id: string; nivel: Nivel; validade: string; observacao: string; novo: boolean } | null>(null)
+  const [edit, setEdit] = useState<{ tecnico_id: string; travado: boolean; itens: Selecao[] } | null>(null)
   const [alvo, setAlvo] = useState<TecnicoHabilidade | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -86,23 +76,39 @@ function PorTecnico({ lista, catalogo, tecnicos, podeEditar, recarregar, toast }
   }, [lista, filtro])
 
   const { sorted, thProps } = useSortable(filtrada, {
-    tecnico: h => h.tecnico, habilidade: h => h.habilidade, categoria: h => h.categoria,
-    nivel: h => h.nivel_valor, validade: h => h.validade, situacao: h => h.situacao,
+    tecnico: h => h.tecnico, habilidade: h => h.habilidade,
+    categoria: h => h.categoria, nivel: h => h.nivel_valor,
   }, { key: 'tecnico' })
+
+  const abrir = (tecnico_id: string, travado: boolean) => {
+    setErro(null)
+    setEdit({
+      tecnico_id, travado,
+      itens: lista.filter(h => h.tecnico_id === tecnico_id).map(h => ({ habilidade_id: h.habilidade_id, nivel: h.nivel })),
+    })
+  }
+
+  const alternar = (habilidade_id: string) => setEdit(e => {
+    if (!e) return e
+    const tem = e.itens.some(i => i.habilidade_id === habilidade_id)
+    return { ...e, itens: tem ? e.itens.filter(i => i.habilidade_id !== habilidade_id) : [...e.itens, { habilidade_id, nivel: 'basico' }] }
+  })
+
+  const nivelDe = (habilidade_id: string, nivel: Nivel) => setEdit(e =>
+    e ? { ...e, itens: e.itens.map(i => i.habilidade_id === habilidade_id ? { ...i, nivel } : i) } : e)
+
+  const marcarTodas = (marcar: boolean) => setEdit(e =>
+    e ? { ...e, itens: marcar ? catalogo.filter(h => h.ativo).map(h => ({ habilidade_id: h.id, nivel: (e.itens.find(i => i.habilidade_id === h.id)?.nivel ?? 'basico') as Nivel })) : [] } : e)
 
   const salvar = async () => {
     if (!edit) return
     setErro(null)
-    if (!edit.tecnico_id || !edit.habilidade_id) return setErro('Escolha o técnico e a habilidade.')
-    const hab = catalogo.find(h => h.id === edit.habilidade_id)
-    if (hab?.exige_validade && !edit.validade) return setErro(`${hab.nome} exige data de validade da certificação.`)
+    if (!edit.tecnico_id) return setErro('Escolha o técnico.')
     setSalvando(true)
     try {
-      await api.salvarTecnicoHabilidade({
-        tecnico_id: edit.tecnico_id, habilidade_id: edit.habilidade_id, nivel: edit.nivel,
-        validade: edit.validade || null, observacao: edit.observacao || null,
-      })
-      toast('Habilidade salva.'); setEdit(null); await recarregar()
+      const n = await api.definirHabilidades(edit.tecnico_id, edit.itens)
+      toast(n === 0 ? 'Habilidades removidas.' : `${n} habilidade(s) salvas.`)
+      setEdit(null); await recarregar()
     } catch (e) { setErro(erroMsg(e)) }
     finally { setSalvando(false) }
   }
@@ -115,14 +121,16 @@ function PorTecnico({ lista, catalogo, tecnicos, podeEditar, recarregar, toast }
     finally { setSalvando(false) }
   }
 
+  const tecnicoEditado = tecnicos.find(t => t.id === edit?.tecnico_id)
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <Input placeholder="Buscar por técnico ou habilidade..." value={filtro} onChange={e => setFiltro(e.target.value)} className="w-72" />
         <div className="flex-1" />
         {podeEditar && (
-          <Button size="sm" onClick={() => { setEdit({ tecnico_id: '', habilidade_id: '', nivel: 'basico', validade: '', observacao: '', novo: true }); setErro(null) }}>
-            <Plus className="h-4 w-4" /> Atribuir habilidade
+          <Button size="sm" onClick={() => abrir('', false)}>
+            <Plus className="h-4 w-4" /> Atribuir habilidades
           </Button>
         )}
       </div>
@@ -136,29 +144,23 @@ function PorTecnico({ lista, catalogo, tecnicos, podeEditar, recarregar, toast }
                 <SortableTh {...thProps('habilidade')}>Habilidade</SortableTh>
                 <SortableTh {...thProps('categoria')}>Categoria</SortableTh>
                 <SortableTh {...thProps('nivel')}>Nível</SortableTh>
-                <SortableTh {...thProps('validade')}>Validade</SortableTh>
-                <SortableTh {...thProps('situacao')}>Situação</SortableTh>
-                <th className="w-20 px-3 py-2.5" />
+                <th className="w-24 px-3 py-2.5" />
               </tr>
             </thead>
             <tbody>
               {sorted.length === 0 ? (
-                <tr><td colSpan={7} className="py-12 text-center text-muted-foreground">Nenhuma habilidade atribuída ainda</td></tr>
+                <tr><td colSpan={5} className="py-12 text-center text-muted-foreground">Nenhuma habilidade atribuída ainda</td></tr>
               ) : sorted.map(h => (
                 <tr key={`${h.tecnico_id}-${h.habilidade_id}`} className={`border-b last:border-0 ${!h.tecnico_ativo ? 'opacity-50' : ''}`}>
                   <td className="px-3 py-2.5 font-medium">{h.tecnico}</td>
                   <td className="px-3 py-2.5">{h.habilidade}</td>
                   <td className="px-3 py-2.5 text-xs text-muted-foreground">{CATEGORIA_LABEL[h.categoria] ?? h.categoria}</td>
                   <td className="px-3 py-2.5 text-xs">{NIVEL_LABEL[h.nivel]}</td>
-                  <td className="px-3 py-2.5 font-mono text-xs">{h.validade ? formatDate(h.validade) : '—'}</td>
-                  <td className="px-3 py-2.5">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${SITUACAO_HAB[h.situacao].classe}`}>{SITUACAO_HAB[h.situacao].label}</span>
-                  </td>
                   <td className="px-3 py-2.5 text-right">
                     {podeEditar && (
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" aria-label="Editar"
-                          onClick={() => { setEdit({ tecnico_id: h.tecnico_id, habilidade_id: h.habilidade_id, nivel: h.nivel, validade: h.validade ?? '', observacao: h.observacao ?? '', novo: false }); setErro(null) }}>
+                        <Button variant="ghost" size="icon" aria-label="Editar habilidades deste técnico" title="Editar todas as habilidades deste técnico"
+                          onClick={() => abrir(h.tecnico_id, true)}>
                           <Edit2 className="h-3.5 w-3.5" />
                         </Button>
                         <Button variant="ghost" size="icon" aria-label="Remover" className="text-destructive hover:bg-destructive/10" onClick={() => setAlvo(h)}>
@@ -174,36 +176,59 @@ function PorTecnico({ lista, catalogo, tecnicos, podeEditar, recarregar, toast }
         </div>
       </div>
 
-      <Modal open={!!edit} onClose={() => { if (!salvando) setEdit(null) }} title={edit?.novo ? 'Atribuir habilidade' : 'Editar habilidade'} width="max-w-md"
+      <Modal open={!!edit} onClose={() => { if (!salvando) setEdit(null) }} width="max-w-lg"
+        title={<span className="flex items-center gap-2"><Users className="h-4 w-4" />{tecnicoEditado ? `Habilidades de ${tecnicoEditado.nome}` : 'Atribuir habilidades'}</span>}
         footer={<>
           <Button variant="outline" onClick={() => setEdit(null)} disabled={salvando}>Cancelar</Button>
-          <Button onClick={() => void salvar()} disabled={salvando}>{salvando ? 'Salvando...' : 'Salvar'}</Button>
+          <Button onClick={() => void salvar()} disabled={salvando || !edit?.tecnico_id}>
+            {salvando ? 'Salvando...' : `Salvar ${edit?.itens.length ?? 0} habilidade(s)`}
+          </Button>
         </>}>
         {edit && (
           <div className="space-y-3">
             <Field label="Técnico *">
-              <Select className="w-full" value={edit.tecnico_id} disabled={!edit.novo || salvando}
-                onChange={e => setEdit({ ...edit, tecnico_id: e.target.value })}>
+              <Select className="w-full" value={edit.tecnico_id} disabled={edit.travado || salvando}
+                onChange={e => { const id = e.target.value; setEdit({ tecnico_id: id, travado: false, itens: lista.filter(h => h.tecnico_id === id).map(h => ({ habilidade_id: h.habilidade_id, nivel: h.nivel })) }) }}>
                 <option value="">Selecione...</option>
-                {tecnicos.filter(t => t.ativo).map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                {tecnicos.filter(t => t.ativo).map(t => <option key={t.id} value={t.id}>{t.nome} — {t.funcao}</option>)}
               </Select>
             </Field>
-            <Field label="Habilidade *">
-              <Select className="w-full" value={edit.habilidade_id} disabled={!edit.novo || salvando}
-                onChange={e => setEdit({ ...edit, habilidade_id: e.target.value })}>
-                <option value="">Selecione...</option>
-                {catalogo.filter(h => h.ativo).map(h => <option key={h.id} value={h.id}>{h.nome}</option>)}
-              </Select>
-            </Field>
-            <Field label="Nível">
-              <Select className="w-full" value={edit.nivel} disabled={salvando} onChange={e => setEdit({ ...edit, nivel: e.target.value as Nivel })}>
-                <option value="basico">Básico</option><option value="intermediario">Intermediário</option><option value="avancado">Avançado</option>
-              </Select>
-            </Field>
-            <Field label="Validade da certificação" hint="Obrigatória para NRs e habilitações. Deixe vazio quando não expira.">
-              <Input type="date" value={edit.validade} disabled={salvando} onChange={e => setEdit({ ...edit, validade: e.target.value })} />
-            </Field>
-            <Field label="Observação"><Textarea rows={2} value={edit.observacao} disabled={salvando} onChange={e => setEdit({ ...edit, observacao: e.target.value })} /></Field>
+
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-muted-foreground">Marque todas as habilidades que ele tem</p>
+              <div className="flex gap-1">
+                <button type="button" className="text-xs text-primary" onClick={() => marcarTodas(true)} disabled={salvando}>Marcar todas</button>
+                <span className="text-xs text-muted-foreground">·</span>
+                <button type="button" className="text-xs text-primary" onClick={() => marcarTodas(false)} disabled={salvando}>Limpar</button>
+              </div>
+            </div>
+
+            <div className="max-h-80 space-y-1 overflow-y-auto rounded-md border p-2">
+              {catalogo.filter(h => h.ativo).map(h => {
+                const sel = edit.itens.find(i => i.habilidade_id === h.id)
+                return (
+                  <div key={h.id} className={`flex items-center gap-2 rounded px-1.5 py-1 text-sm ${sel ? 'bg-muted/60' : ''}`}>
+                    <input type="checkbox" checked={!!sel} disabled={!edit.tecnico_id || salvando} onChange={() => alternar(h.id)} />
+                    <span className="flex-1">
+                      {h.nome}
+                      <span className="ml-1 text-xs text-muted-foreground">{CATEGORIA_LABEL[h.categoria]}</span>
+                    </span>
+                    {sel && (
+                      <Select className="h-7 text-xs" value={sel.nivel} disabled={salvando}
+                        onChange={e => nivelDe(h.id, e.target.value as Nivel)}>
+                        <option value="basico">Básico</option>
+                        <option value="intermediario">Intermediário</option>
+                        <option value="avancado">Avançado</option>
+                      </Select>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              O que ficar desmarcado é removido do técnico ao salvar.
+            </p>
             {erro && <ErrorBox>{erro}</ErrorBox>}
           </div>
         )}
@@ -226,7 +251,7 @@ function Catalogo({ catalogo, podeEditar, recarregar }: { catalogo: Habilidade[]
   const salvar = async () => {
     if (!edit) return
     setErro(null); setSalvando(true)
-    try { await api.salvarHabilidade(edit); setEdit(null); await recarregar() }
+    try { await api.salvarHabilidade({ ...edit, exige_validade: false }); setEdit(null); await recarregar() }
     catch (e) { setErro(erroMsg(e)) }
     finally { setSalvando(false) }
   }
@@ -234,14 +259,14 @@ function Catalogo({ catalogo, podeEditar, recarregar }: { catalogo: Habilidade[]
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
-        {podeEditar && <Button size="sm" onClick={() => { setEdit({ nome: '', categoria: 'tecnica', exige_validade: false, ativo: true }); setErro(null) }}><Plus className="h-4 w-4" /> Nova habilidade</Button>}
+        {podeEditar && <Button size="sm" onClick={() => { setEdit({ nome: '', categoria: 'tecnica', ativo: true }); setErro(null) }}><Plus className="h-4 w-4" /> Nova habilidade</Button>}
       </div>
       <div className="overflow-hidden rounded-md border">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50 text-left text-xs font-semibold text-muted-foreground">
               <th className="px-3 py-2.5">Habilidade</th><th className="px-3 py-2.5">Categoria</th>
-              <th className="px-3 py-2.5">Exige validade</th><th className="px-3 py-2.5">Descrição</th>
+              <th className="px-3 py-2.5">Descrição</th>
               <th className="px-3 py-2.5 text-center">Ativa</th><th className="w-12 px-3 py-2.5" />
             </tr>
           </thead>
@@ -250,7 +275,6 @@ function Catalogo({ catalogo, podeEditar, recarregar }: { catalogo: Habilidade[]
               <tr key={h.id} className={`border-b last:border-0 ${!h.ativo ? 'opacity-50' : ''}`}>
                 <td className="px-3 py-2.5 font-medium">{h.nome}</td>
                 <td className="px-3 py-2.5 text-xs">{CATEGORIA_LABEL[h.categoria]}</td>
-                <td className="px-3 py-2.5 text-xs">{h.exige_validade ? 'Sim' : 'Não'}</td>
                 <td className="px-3 py-2.5 text-xs text-muted-foreground">{h.descricao ?? '—'}</td>
                 <td className="px-3 py-2.5 text-center"><span className={`inline-block h-2 w-2 rounded-full ${h.ativo ? 'bg-green-500' : 'bg-gray-400'}`} /></td>
                 <td className="px-3 py-2.5 text-right">
@@ -278,9 +302,8 @@ function Catalogo({ catalogo, podeEditar, recarregar }: { catalogo: Habilidade[]
               </Select>
             </Field>
             <Field label="Descrição"><Textarea rows={2} value={edit.descricao ?? ''} disabled={salvando} onChange={e => setEdit({ ...edit, descricao: e.target.value })} /></Field>
-            <ToggleRow label="Exige validade" description="Certificações como NR e CNH vencem e geram alerta."
-              checked={!!edit.exige_validade} onChange={v => setEdit({ ...edit, exige_validade: v })} disabled={salvando} />
-            <ToggleRow label="Ativa" checked={edit.ativo !== false} onChange={v => setEdit({ ...edit, ativo: v })} disabled={salvando} />
+            <ToggleRow label="Ativa" description="Habilidade inativa não aparece para atribuição nem nos requisitos."
+              checked={edit.ativo !== false} onChange={v => setEdit({ ...edit, ativo: v })} disabled={salvando} />
             {erro && <ErrorBox>{erro}</ErrorBox>}
           </div>
         )}
@@ -313,7 +336,7 @@ function Tipos({ tipos, catalogo, podeEditar, recarregar }: {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">O tipo de atividade define quais habilidades o técnico precisa ter. Ao montar a escala, quem não atende aparece com aviso.</p>
         {podeEditar && <Button size="sm" onClick={() => { setEdit({ nome: '', descricao: '', ativo: true, requisitos: [] }); setErro(null) }}><Plus className="h-4 w-4" /> Novo tipo</Button>}
       </div>

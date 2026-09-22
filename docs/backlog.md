@@ -145,10 +145,13 @@ aviso, e as certificações vencendo nos próximos 30 dias viram alerta.
 **Por que fazer primeiro:** é o item mais barato da lista e é **pré-requisito dos itens 6 e 7** —
 sem saber quem faz o quê, nenhuma IA sugere escala com sentido.
 
-**Entregue:** aba **Habilidades** com três seções — por técnico, catálogo de habilidades e tipos
-de atividade com requisitos. Situação de cada certificação (válida, vencendo, vencida), alerta no
-topo da tela, aviso de habilidade em falta ao montar a escala, e mensagem semanal aos supervisores
-toda segunda às 8h com as certificações vencidas ou a vencer em 30 dias.
+**Entregue:** aba **Habilidades** com três seções — por técnico, catálogo e tipos de atividade com
+requisitos. A atribuição é feita de uma vez: escolhe o técnico e marca todas as habilidades dele,
+com o nível de cada uma. Ao montar a escala, quem não atende o tipo de atividade aparece com aviso.
+
+**Controle de validade desligado a pedido** (migration 21): não há data de vencimento nem alerta
+semanal de certificação. As colunas continuam no banco e o alerta volta mudando
+`alerta_certificacoes_dow` de `0` para `1`.
 
 Já vêm cadastradas 10 habilidades (CFTV, fibra, cabeamento, controle de acesso, link, alarme,
 NR-10, NR-35, NR-33, CNH B) e 6 tipos de atividade com os requisitos iniciais.

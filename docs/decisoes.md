@@ -65,3 +65,11 @@ nome para confirmar; registra em `log_exclusoes`.
 **Decisão:** índice único parcial ignorando `cancelada`.
 **Por quê:** escala cancelada não ocupa mais o horário do técnico.
 **Em aberto:** escalas `recusadas` ainda bloqueiam o horário.
+
+## 10. Habilidades sem controle de validade
+
+**Decisão:** o cadastro de habilidades não guarda data de vencimento de certificação.
+**Por quê:** pedido do cliente — o controle de validade de NR e CNH é feito fora do sistema.
+**Consequência:** o alerta semanal de certificações vencidas não roda. As colunas `validade` e
+`exige_validade` seguem no banco, dormentes; religar é mudar `alerta_certificacoes_dow` de `0`
+para o dia da semana desejado e voltar os campos na tela.
