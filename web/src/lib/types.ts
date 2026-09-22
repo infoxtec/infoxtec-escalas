@@ -1,0 +1,100 @@
+export type Semaforo = 'verde' | 'ambar' | 'vermelho' | 'cinza'
+export type Prioridade = 'baixa' | 'normal' | 'urgente'
+export type Papel = 'admin' | 'gestor' | 'leitura'
+export type StatusEscala =
+  | 'rascunho' | 'agendada' | 'notificada' | 'confirmada' | 'recusada'
+  | 'reagendada' | 'em_execucao' | 'concluida' | 'cancelada'
+
+export interface Acesso { email: string | null; papel: Papel | null; nome: string | null }
+
+export interface EscalaPainel {
+  id: string
+  data_servico: string
+  hora_inicio: string
+  tecnico: string
+  telefone: string
+  local: string
+  endereco: string
+  link_maps: string | null
+  descricao_tarefa: string
+  status: StatusEscala
+  prioridade: Prioridade
+  ultimo_envio_tipo: string | null
+  tentativa: number | null
+  status_envio: string | null
+  enviada_em: string | null
+  entregue_em: string | null
+  lida_em: string | null
+  resposta: string | null
+  respondida_em: string | null
+  supervisor_avisado_em: string | null
+  semaforo: Semaforo
+  pode_remover: boolean
+}
+
+export interface Resumo {
+  total: number; confirmadas: number; recusadas: number; aguardando: number
+  nao_enviadas: number; criticas: number; pct_confirmacao: number
+}
+
+export interface LinhaTempo {
+  escala_id: string; created_at: string; evento: string
+  status_anterior: string | null; status_novo: string | null; ator: string | null
+}
+
+export interface Tecnico {
+  id: string; nome: string; telefone_e164: string; funcao: string; equipe: string | null
+  is_supervisor: boolean; opt_in: boolean; opt_in_em: string | null; ativo: boolean; created_at: string
+}
+
+export interface Local {
+  id: string; nome: string; cliente: string | null; endereco: string | null; cidade: string | null
+  referencia: string | null; link_maps: string | null; contato_local: string | null
+  telefone_contato: string | null; ativo: boolean; created_at: string
+}
+
+export interface UsuarioPainel {
+  email: string; nome: string | null; papel: Papel; ativo: boolean
+  criado_por: string | null; created_at: string
+}
+
+export interface ResultadoLote { tecnico_id: string; tecnico: string | null; escala_id: string | null; resultado: string }
+
+export function formatDate(d: string): string {
+  const [y, m, dd] = d.split('-')
+  return `${dd}/${m}/${y}`
+}
+export function formatTime(t: string): string { return t?.slice(0, 5) ?? '' }
+export function formatDateTime(iso: string | null): string {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('pt-BR', {
+    timeZone: 'America/Bahia', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+  })
+}
+export function hojeBahia(): string { return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bahia' }) }
+export function addDays(d: string, n: number): string {
+  const x = new Date(d + 'T12:00:00')
+  x.setDate(x.getDate() + n)
+  return x.toLocaleDateString('en-CA')
+}
+export function telefoneValido(t: string): boolean { return /^[1-9]\d{9,14}$/.test(t.replace(/\D/g, '')) }
+
+export const SEMAFORO_CLASSES: Record<Semaforo, string> = {
+  verde: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+  ambar: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+  vermelho: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+  cinza: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+}
+export const SEMAFORO_DOT: Record<Semaforo, string> = {
+  verde: 'bg-green-500', ambar: 'bg-amber-500', vermelho: 'bg-red-500', cinza: 'bg-gray-400',
+}
+export const STATUS_LABEL: Record<StatusEscala, string> = {
+  rascunho: 'Rascunho', agendada: 'Agendada', notificada: 'Notificada', confirmada: 'Confirmada',
+  recusada: 'Recusada', reagendada: 'Reagendada', em_execucao: 'Em execução',
+  concluida: 'Concluída', cancelada: 'Cancelada',
+}
+export const PRIORIDADE_LABEL: Record<Prioridade, string> = { baixa: 'Baixa', normal: 'Normal', urgente: 'Urgente' }
+export const PAPEL_LABEL: Record<Papel, string> = { admin: 'Administrador', gestor: 'Gestor', leitura: 'Somente leitura' }
+export const ENVIO_LABEL: Record<string, string> = {
+  enfileirada: 'enviando', enviada: 'enviada', entregue: 'entregue', lida: 'lida', falha: 'falha',
+}
