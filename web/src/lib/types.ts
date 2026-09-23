@@ -130,6 +130,29 @@ export interface PainelLocal {
 export const NIVEL_LABEL: Record<Nivel, string> = {
   basico: 'Básico', intermediario: 'Intermediário', avancado: 'Avançado',
 }
+export interface HabilidadeDoTecnico {
+  habilidade_id: string; habilidade: string; categoria: string; exige_validade: boolean
+  nivel: Nivel; validade: string | null; situacao: SituacaoHabilidade; observacao: string | null
+}
+export interface TecnicoAgrupado {
+  tecnico_id: string; tecnico: string; funcao: string; equipe: string | null; ativo: boolean
+  total: number; vencidos: number; vencendo: number; sem_data: number
+  habilidades: HabilidadeDoTecnico[]
+}
+
+export const SITUACAO_HAB: Record<SituacaoHabilidade, { label: string; classe: string }> = {
+  valida:       { label: 'Válido',        classe: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
+  vencendo:     { label: 'Vence em breve', classe: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' },
+  vencida:      { label: 'Vencido',        classe: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
+  sem_validade: { label: 'Sem data',       classe: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
+}
+export function diasAte(data: string | null): number | null {
+  if (!data) return null
+  const hoje = new Date(new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bahia' }) + 'T12:00:00')
+  const alvo = new Date(data + 'T12:00:00')
+  return Math.round((alvo.getTime() - hoje.getTime()) / 86400000)
+}
+
 export const CATEGORIA_LABEL: Record<string, string> = {
   tecnica: 'Técnica', seguranca: 'Segurança', habilitacao: 'Habilitação', outra: 'Outra',
 }

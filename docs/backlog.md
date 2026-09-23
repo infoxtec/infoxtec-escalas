@@ -149,9 +149,12 @@ sem saber quem faz o quê, nenhuma IA sugere escala com sentido.
 requisitos. A atribuição é feita de uma vez: escolhe o técnico e marca todas as habilidades dele,
 com o nível de cada uma. Ao montar a escala, quem não atende o tipo de atividade aparece com aviso.
 
-**Controle de validade desligado a pedido** (migration 21): não há data de vencimento nem alerta
-semanal de certificação. As colunas continuam no banco e o alerta volta mudando
-`alerta_certificacoes_dow` de `0` para `1`.
+**Gestão de documentos (migration 22):** NRs (1, 6, 10, 11, 12, 18, 33, 35), CNH e ASO exigem data
+de validade. A aba **Documentos** mostra vencidos, sem data, vencendo em 30 dias e em dia, e os
+supervisores recebem a lista toda segunda às 8h pelo WhatsApp.
+
+**Lista agrupada:** um técnico por linha, com contagem de habilidades e situação dos documentos;
+o submenu abre a lista completa com nível e validade de cada item.
 
 Já vêm cadastradas 10 habilidades (CFTV, fibra, cabeamento, controle de acesso, link, alarme,
 NR-10, NR-35, NR-33, CNH B) e 6 tipos de atividade com os requisitos iniciais.

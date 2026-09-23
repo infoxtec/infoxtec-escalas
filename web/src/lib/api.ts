@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal,
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, TecnicoAgrupado,
 } from './types'
 
 function traduzir(msg: string): string {
@@ -57,8 +57,12 @@ export const api = {
   habilidades: () => rpc<Habilidade[]>('app_habilidades'),
   salvarHabilidade: (h: Partial<Habilidade>) => rpc<string>('app_salvar_habilidade', { p: h }),
   tecnicoHabilidades: () => rpc<TecnicoHabilidade[]>('app_tecnico_habilidades'),
-  definirHabilidades: (tecnicoId: string, habilidades: { habilidade_id: string; nivel: string }[]) =>
+  definirHabilidades: (tecnicoId: string, habilidades: { habilidade_id: string; nivel: string; validade?: string | null }[]) =>
     rpc<number>('app_definir_habilidades', { p_tecnico: tecnicoId, p_habilidades: habilidades }),
+  habilidadesPorTecnico: () => rpc<TecnicoAgrupado[]>('app_habilidades_por_tecnico'),
+  excluirHabilidade: (id: string, forcar = false) =>
+    rpc<{ excluida: boolean; nome: string; tecnicos_afetados: number; tipos_afetados: number }>(
+      'app_excluir_habilidade', { p_id: id, p_forcar: forcar }),
   removerTecnicoHabilidade: (tecnico: string, habilidade: string) =>
     rpc<void>('app_remover_tecnico_habilidade', { p_tecnico: tecnico, p_habilidade: habilidade }),
   tiposAtividade: () => rpc<TipoAtividade[]>('app_tipos_atividade'),
