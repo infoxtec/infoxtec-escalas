@@ -13,12 +13,14 @@ são lembrados da escala do dia seguinte, com prazo às 18h.
 
 | Documento | Para quê |
 |---|---|
+| [**Manual de uso**](docs/manual.md) | **Tela a tela: o que cada botão faz e o que o técnico recebe** |
 | [Arquitetura](docs/arquitetura.md) | Como as peças se encaixam e por que o banco é o centro |
 | [Banco de dados](docs/banco-de-dados.md) | Tabelas, views, funções, gatilhos e parâmetros |
 | [Operação](docs/operacao.md) | Diagnóstico do dia a dia: o que consultar quando algo falha |
 | [Segurança](docs/seguranca.md) | Login, papéis, segredos, LGPD e riscos conhecidos |
 | [Decisões](docs/decisoes.md) | O que foi decidido, o que foi descartado e por quê |
 | [Backlog](docs/backlog.md) | As 9 funcionalidades dos próximos 60 dias |
+| [Telefonia (item 2)](docs/telefonia.md) | Roteiro da ligação automática: fornecedor, custos e script |
 | [Publicar no Vercel](docs/deploy-vercel.md) | Passo a passo do deploy e da liberação de usuários |
 | [Retool (legado)](docs/retool.md) | Painel antigo, a ser desligado |
 

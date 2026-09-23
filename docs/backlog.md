@@ -77,6 +77,10 @@ WhatsApp.
 **Recomendação:** começar pela URA. Ela resolve 90% do problema com 20% do esforço, e a IA
 conversacional entra depois sem refazer a base.
 
+**Roteiro detalhado, custos e script:** [docs/telefonia.md](telefonia.md). Resumo: Twilio com
+US$ 15 de crédito no trial (~340 ligações), R$ 0,24 por ligação de 40s em produção, menos de
+R$ 20/mês para a equipe atual.
+
 **Aceite:** escala sem confirmação gera ligação; digitar 1 muda o status no painel.
 
 ---
