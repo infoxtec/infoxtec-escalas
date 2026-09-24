@@ -32,6 +32,7 @@ erDiagram
 | `webhook_eventos` | Log bruto dos eventos da Evolution | A `apikey` é removida antes de gravar |
 | `alertas_enviados` | Controle do alerta de prazo | Evita alerta duplicado no mesmo dia |
 | `log_exclusoes` | Registro de exclusões definitivas | Não guarda nome nem telefone |
+| `ligacoes` | Uma linha por ligação da URA | `call_sid` da Twilio, tecla digitada, duração e custo |
 | `habilidades` | Catálogo de habilidades e documentos | `exige_validade` ligado em NRs, CNH e ASO (migration 22) |
 | `tecnico_habilidades` | Quem tem o quê, em que nível e com qual validade | Alimenta a aptidão e a gestão de documentos |
 | `tipos_atividade` | Tipos de serviço (CFTV, fibra, link...) | Ligado à escala por `escalas.tipo_atividade_id` |
@@ -54,6 +55,7 @@ erDiagram
 | `vw_acoes_pendentes` | O motor: o que fazer agora e com qual diagnóstico |
 | `vw_resumo_dia` | Indicadores por dia |
 | `vw_linha_do_tempo` | Auditoria + eventos do WhatsApp em ordem |
+| `vw_ligacoes_pendentes` | Quem deve receber ligação agora: já recebeu WhatsApp N vezes, não respondeu, dentro da janela |
 | `vw_tecnico_habilidades` | Habilidades por técnico com situação: válido, vence em breve, vencido, sem data |
 
 ## Funções por família
@@ -107,6 +109,10 @@ Habilidades: `certificacao_aviso_dias` (30), `alerta_certificacoes_hora` (08:00)
 
 Prazo: `alerta_escala_aviso` (16:00), `alerta_escala_prazo` (18:00),
 `alerta_dias_semana` (1,2,3,4,5), `sem_escala_incluir_supervisores` (false).
+
+Voz (URA): `ligacao_ativa` (false), `ligacao_apos_tentativas` (2), `ligacao_janela_inicio`/`_fim`
+(08:00/20:00), `ligacao_max_por_escala` (2), `ligacao_intervalo_min` (45), `ligacao_por_execucao` (2),
+`twilio_caller_id`, `voz_url`, `voz_voice`, `voz_timeout_dtmf`. Ver `supabase/setup/twilio.md`.
 
 Ambiente: `evolution_url`, `evolution_instancia`, `evolution_versao`, `webhook_url`, `fuso`.
 

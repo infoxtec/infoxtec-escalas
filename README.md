@@ -20,7 +20,7 @@ são lembrados da escala do dia seguinte, com prazo às 18h.
 | [Segurança](docs/seguranca.md) | Login, papéis, segredos, LGPD e riscos conhecidos |
 | [Decisões](docs/decisoes.md) | O que foi decidido, o que foi descartado e por quê |
 | [Backlog](docs/backlog.md) | As 9 funcionalidades dos próximos 60 dias |
-| [Telefonia (item 2)](docs/telefonia.md) | Roteiro da ligação automática: fornecedor, custos e script |
+| [Telefonia (item 2)](docs/telefonia.md) | URA de voz: fornecedor, custos, script e resultado do piloto |
 | [Publicar no Vercel](docs/deploy-vercel.md) | Passo a passo do deploy e da liberação de usuários |
 | [Retool (legado)](docs/retool.md) | Painel antigo, a ser desligado |
 
@@ -31,7 +31,8 @@ são lembrados da escala do dia seguinte, com prazo às 18h.
 | Painel | React 18 + TypeScript + Vite + Tailwind, na Vercel | R$ 0 |
 | Login | Supabase Auth (e-mail e senha) | R$ 0 |
 | Banco, regras, agendamento, segredos | Supabase: PostgreSQL, pg_cron, pg_net, Vault | R$ 0 |
-| Webhook | Supabase Edge Function (Deno) | R$ 0 |
+| Webhooks | Supabase Edge Functions (Deno): `webhook-evolution` e `voz-escala` | R$ 0 |
+| Ligação de voz | Twilio (URA) | ~R$ 0,24 por ligação |
 | WhatsApp | Evolution API 2.4 em VPS própria | custo da VPS |
 
 Painel em produção: **https://infoxtec-escalas.vercel.app**
@@ -70,6 +71,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Painel próprio na Vercel com login, papéis e aba Usuários
 - [x] Jornada CLT automática, painel de técnicos sem escala, alerta das 18h, colunas ajustáveis
 - [x] Escala cancelada libera o horário
+- [x] Item 2 do backlog: URA de voz pela Twilio, testada em produção (1 aprova, 2 nega)
 - [x] Item 5 do backlog: habilidades, requisitos por tipo de atividade e gestão de documentos (NRs, CNH, ASO)
 - [x] Item 3 do backlog (parcial): painel de acompanhamento por local
 - [ ] Desligar o painel Retool e remover as funções da bancada de teste

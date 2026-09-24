@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, TecnicoAgrupado,
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, TecnicoAgrupado, Ligacao,
 } from './types'
 
 function traduzir(msg: string): string {
@@ -38,6 +38,10 @@ export const api = {
     rpc<string>('app_mudar_status', { p_escala: escalaId, p_status: status }),
   removerEscala: (escalaId: string) =>
     rpc<{ removida: boolean; aviso_enviado: boolean }>('app_remover_escala', { p_escala: escalaId }),
+  ligarEscala: (escalaId: string) =>
+    rpc<{ ligacao_id: string; enfileirada: boolean }>('app_ligar_escala', { p_escala: escalaId }),
+  ligacoes: (escalaId: string) => rpc<Ligacao[]>('app_ligacoes', { p_escala: escalaId }),
+
   reenviarEscala: (escalaId: string) =>
     rpc<{ reenviada: boolean; tentativa: number }>('app_reenviar_escala', { p_escala: escalaId }),
 

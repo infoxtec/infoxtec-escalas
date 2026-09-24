@@ -1,5 +1,9 @@
 # Item 2 — Ligação automática para quem não responde
 
+> **Status: implantado e testado em produção em 23/09/2026.**
+> Ligação atendida, técnico digitou 2, escala mudou para recusada e os supervisores foram
+> avisados — ciclo completo validado. Configuração e diagnóstico: `supabase/setup/twilio.md`.
+
 Roteiro de implantação, do trial ao piloto.
 
 ## A decisão que mais importa: URA antes de IA conversacional
@@ -34,6 +38,22 @@ sem pagar nada.
 
 10 técnicos, supondo 3 ligações por dia útil: ~66 ligações/mês × R$ 0,24 = **menos de R$ 20/mês**.
 Some ao WhatsApp e a operação inteira continua abaixo de R$ 30 mensais.
+
+## Aprendizados do piloto
+
+- **Não foi preciso comprar número.** O Verified Caller ID da Twilio funciona para ligar a
+  celulares no Brasil. O identificador usado é o número institucional da Infoxtec.
+- **Trust Hub é obrigatório mesmo em conta paga.** Sem o Primary Customer Profile aprovado, a
+  Twilio recusa com "compliance profile is not approved".
+- **Duas primeiras tentativas encerraram em 3 segundos com duração zero.** Não era bloqueio de
+  operadora: o aparelho simplesmente não atendeu. Só a consulta ao registro da chamada na API
+  (status `in-progress` versus `no-answer`) distingue os dois casos — vale checar antes de
+  concluir que há bloqueio.
+- **Ligação só é cobrada quando atendida.** Chamadas não atendidas vieram com preço nulo.
+- **O identificador precisa receber o código de verificação.** Linhas virtuais ou dedicadas ao
+  WhatsApp podem não concluir a verificação; um celular comum da empresa é o caminho seguro.
+- **Origem e destino não podem ser o mesmo número.** Como o identificador em uso é o celular do
+  supervisor, os testes precisam ter outro técnico como destino.
 
 ## Antes de começar: duas restrições do trial
 

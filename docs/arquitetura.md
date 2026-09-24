@@ -20,6 +20,7 @@ envio, liberação de horário após cancelamento) entram em produção **sem de
 | Chamadas HTTP de saída | pg_net | Supabase | R$ 0 |
 | Segredos | Supabase Vault | Supabase | R$ 0 |
 | Webhook de entrada | Edge Function `webhook-evolution` (Deno) | Supabase | R$ 0 |
+| URA de voz | Edge Function `voz-escala` + Twilio | Supabase / Twilio | ~R$ 0,24 por ligação |
 | WhatsApp | Evolution API 2.4 (instância `infoxtec`) | VPS própria | custo da VPS |
 
 Projeto Supabase: `infoxtec-escalas` — ref `zpckrxydqqmmcrphrkxz`, região `sa-east-1`.

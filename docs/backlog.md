@@ -11,7 +11,7 @@ Nove funcionalidades pedidas, analisadas por viabilidade, dependência e esforç
 | 5 | Painel de skills dos técnicos | P/M | — | **Entregue** |
 | 1 | Checklist e laudo pelo WhatsApp | M/G | — | Sim (em 2 fases) |
 | 3 | Painel por local e % de conclusão | M | #1 | **Entregue em versão parcial** |
-| 2 | Ligação de voz com IA | M | fornecedor de telefonia | Sim (como URA; IA depois) |
+| 2 | Ligação de voz com IA | M | fornecedor de telefonia | **Entregue como URA** |
 | 8 | Integração com chamados Infoxtec | ? | API do sistema atual | Depende do levantamento |
 | 9 | Integração com almoxarifado Infoxtec | ? | API do sistema atual | Depende do levantamento |
 | 4 | Integração com ponto VRmais | M/G | API VRmais + parecer jurídico | Parcial (sem bloqueio) |
@@ -52,7 +52,7 @@ laudo baixa pelo painel.
 
 ---
 
-## 2. Ligação de voz com IA para aceite da escala
+## 2. Ligação de voz para aceite da escala — ENTREGUE (URA)
 
 **Problema:** quem não responde o WhatsApp hoje depende de o supervisor ligar na mão.
 
@@ -81,7 +81,13 @@ conversacional entra depois sem refazer a base.
 US$ 15 de crédito no trial (~340 ligações), R$ 0,24 por ligação de 40s em produção, menos de
 R$ 20/mês para a equipe atual.
 
-**Aceite:** escala sem confirmação gera ligação; digitar 1 muda o status no painel.
+**Entregue em 23/09/2026:** URA na Twilio. Quem não respondeu duas mensagens recebe ligação
+automática entre 08h e 20h (máximo 2 por escala); a voz lê a escala e pede 1 para aprovar ou 2
+para negar. A resposta usa o mesmo caminho do WhatsApp. Botão **Ligar agora** no painel para
+disparo manual. Custo ~R$ 0,24 por ligação atendida.
+
+**Falta para a v2 (IA conversacional):** colher o motivo da recusa por voz, em vez de pedir o
+detalhe por mensagem.
 
 ---
 

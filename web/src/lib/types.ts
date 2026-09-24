@@ -153,6 +153,16 @@ export function diasAte(data: string | null): number | null {
   return Math.round((alvo.getTime() - hoje.getTime()) / 86400000)
 }
 
+export interface Ligacao {
+  id: string; tentativa: number; digito: string | null; duracao_seg: number | null
+  criada_em: string; erro: string | null
+  status: 'criada' | 'discando' | 'atendida' | 'sem_resposta' | 'ocupado' | 'falha' | 'encerrada'
+}
+export const LIGACAO_LABEL: Record<Ligacao['status'], string> = {
+  criada: 'preparando', discando: 'discando', atendida: 'atendida',
+  sem_resposta: 'não atendeu', ocupado: 'ocupado', falha: 'falhou', encerrada: 'encerrada',
+}
+
 export const CATEGORIA_LABEL: Record<string, string> = {
   tecnica: 'Técnica', seguranca: 'Segurança', habilitacao: 'Habilitação', outra: 'Outra',
 }

@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Calendar, Clock, ExternalLink, FileText, MapPin, Moon, SendHorizonal, Trash2, User } from 'lucide-react'
+import { Calendar, Clock, ExternalLink, FileText, MapPin, Moon, Phone, SendHorizonal, Trash2, User } from 'lucide-react'
 import { Button, Confirm, ErrorBox, Sheet, SuccessBox, useToast } from './ui'
 import { api, erroMsg } from '../lib/api'
 import {
-  descricaoJornada, ENVIO_LABEL, formatDate, formatDateTime, formatTime, PRIORIDADE_LABEL, SEMAFORO_CLASSES, STATUS_LABEL,
+  descricaoJornada, ENVIO_LABEL, formatDate, formatDateTime, formatTime, LIGACAO_LABEL, PRIORIDADE_LABEL, SEMAFORO_CLASSES, STATUS_LABEL,
 } from '../lib/types'
-import type { EscalaPainel, LinhaTempo, StatusEscala } from '../lib/types'
+import type { EscalaPainel, Ligacao, LinhaTempo, StatusEscala } from '../lib/types'
 
 const PRIORIDADE_BADGE: Record<string, string> = {
   baixa: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
@@ -23,13 +23,14 @@ const EVENTO_LABEL: Record<string, string> = {
 
 type Acao =
   | { tipo: 'status'; status: StatusEscala; label: string; destrutiva?: boolean; texto: string }
-  | { tipo: 'reenviar' } | { tipo: 'remover' }
+  | { tipo: 'reenviar' } | { tipo: 'remover' } | { tipo: 'ligar' }
 
 export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEditar }: {
   escala: EscalaPainel | null; open: boolean; onClose: () => void; onRefresh: () => void; podeEditar: boolean
 }) {
   const toast = useToast()
   const [timeline, setTimeline] = useState<LinhaTempo[] | null>(null)
+  const [ligacoes, setLigacoes] = useState<Ligacao[]>([])
   const [acao, setAcao] = useState<Acao | null>(null)
   const [busy, setBusy] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -37,7 +38,10 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
 
   const carregarTimeline = useCallback(async (id: string) => {
     setTimeline(null)
-    try { setTimeline(await api.linhaDoTempo(id)) } catch (e) { setErro(erroMsg(e)); setTimeline([]) }
+    try {
+      const [tl, lg] = await Promise.all([api.linhaDoTempo(id), api.ligacoes(id)])
+      setTimeline(tl); setLigacoes(lg)
+    } catch (e) { setErro(erroMsg(e)); setTimeline([]) }
   }, [])
 
   useEffect(() => {
@@ -53,6 +57,10 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
       if (acao.tipo === 'status') {
         await api.mudarStatus(escala.id, acao.status)
         setSucesso('Status atualizado.')
+        onRefresh(); void carregarTimeline(escala.id)
+      } else if (acao.tipo === 'ligar') {
+        await api.ligarEscala(escala.id)
+        setSucesso('Ligação disparada. O técnico deve receber a chamada em alguns segundos.')
         onRefresh(); void carregarTimeline(escala.id)
       } else if (acao.tipo === 'reenviar') {
         const r = await api.reenviarEscala(escala.id)
@@ -141,6 +149,8 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
                   onClick={() => setAcao({ tipo: 'status', status: 'agendada', label: 'Liberar envio', texto: 'A escala sai pelo WhatsApp em até 1 minuto.' })}>Liberar envio</Button>}
                 {podeReenviar && <Button size="sm" variant="outline" disabled={busy} onClick={() => setAcao({ tipo: 'reenviar' })}>
                   <SendHorizonal className="h-3.5 w-3.5" /> Reenviar WhatsApp</Button>}
+                {podeReenviar && <Button size="sm" variant="outline" disabled={busy} onClick={() => setAcao({ tipo: 'ligar' })}>
+                  <Phone className="h-3.5 w-3.5" /> Ligar agora</Button>}
                 {podeExecucao && <Button size="sm" variant="outline" disabled={busy}
                   onClick={() => setAcao({ tipo: 'status', status: 'em_execucao', label: 'Marcar em execução', texto: 'O técnico está no local executando o serviço.' })}>Marcar em execução</Button>}
                 {podeConcluir && <Button size="sm" variant="outline" disabled={busy}
@@ -150,6 +160,23 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
                 {escala.pode_remover && <Button size="sm" variant="destructive-outline" disabled={busy} onClick={() => setAcao({ tipo: 'remover' })}>
                   <Trash2 className="h-3.5 w-3.5" /> Remover escala</Button>}
               </div>
+            </div>
+          )}
+
+          {ligacoes.length > 0 && (
+            <div className="space-y-1.5 rounded-md border bg-muted/30 p-3 text-xs">
+              <p className="mb-2 text-sm font-semibold">Ligações</p>
+              {ligacoes.map(l => (
+                <div key={l.id} className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">{formatDateTime(l.criada_em)} · tentativa {l.tentativa}</span>
+                  <span className="text-right font-medium">
+                    {LIGACAO_LABEL[l.status]}
+                    {l.digito ? ` · digitou ${l.digito}` : ''}
+                    {l.duracao_seg ? ` · ${l.duracao_seg}s` : ''}
+                    {l.erro ? ` · ${l.erro}` : ''}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
 
@@ -191,14 +218,21 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
         onConfirm={() => void executar()}
         destructive={acao?.tipo === 'remover' || (acao?.tipo === 'status' && acao.destrutiva)}
         title={acao?.tipo === 'remover' ? 'Remover escala definitivamente'
-          : acao?.tipo === 'reenviar' ? 'Reenviar pelo WhatsApp' : (acao?.tipo === 'status' ? acao.label : '')}
-        confirmLabel={acao?.tipo === 'remover' ? 'Remover' : acao?.tipo === 'reenviar' ? 'Reenviar agora' : 'Confirmar'}
+          : acao?.tipo === 'reenviar' ? 'Reenviar pelo WhatsApp'
+          : acao?.tipo === 'ligar' ? 'Ligar para o técnico'
+          : (acao?.tipo === 'status' ? acao.label : '')}
+        confirmLabel={acao?.tipo === 'remover' ? 'Remover' : acao?.tipo === 'reenviar' ? 'Reenviar agora'
+          : acao?.tipo === 'ligar' ? 'Ligar agora' : 'Confirmar'}
       >
         {acao?.tipo === 'remover' && <>
           <p>O técnico ainda não recebeu esta escala, então ela pode ser apagada sem deixar histórico.</p>
           {envioSaiu && <p className="font-medium text-foreground">A mensagem já saiu: o técnico vai receber um aviso de cancelamento logo em seguida.</p>}
         </>}
         {acao?.tipo === 'reenviar' && <p>A mensagem sai agora de novo, com os botões, e conta como uma nova tentativa.</p>}
+        {acao?.tipo === 'ligar' && <>
+          <p>O sistema liga para o técnico agora. Uma voz lê a escala e pede para digitar <strong className="text-foreground">1 para aprovar</strong> ou <strong className="text-foreground">2 para negar</strong>.</p>
+          <p>A resposta cai no mesmo lugar da resposta do WhatsApp e o status muda na hora.</p>
+        </>}
         {acao?.tipo === 'status' && <p>{acao.texto}</p>}
       </Confirm>
     </>

@@ -92,6 +92,7 @@ Ações disponíveis (gestor e administrador):
 |---|---|---|
 | **Liberar envio** | Escala em rascunho | Marca como agendada; o WhatsApp sai em até 1 minuto |
 | **Reenviar WhatsApp** | Agendada ou notificada | Dispara a mensagem de novo, agora, como nova tentativa |
+| **Ligar agora** | Agendada ou notificada | Liga para o técnico: uma voz lê a escala e ele digita 1 para aprovar ou 2 para negar |
 | **Marcar em execução** | Escala aceita ou aguardando | Registra que o técnico está no local |
 | **Concluir** | Escala em execução | Fecha a escala; entra no % de conclusão da tela Operação |
 | **Cancelar** | Qualquer uma não concluída | Mantém o histórico e libera o horário do técnico |
@@ -240,6 +241,16 @@ hora. O sistema impede deixar o painel sem administrador ativo.
 Chega pelo WhatsApp com data, técnico, início e término previsto, tipo de jornada, local,
 endereço, link do mapa e tarefa. Traz dois botões — **Ciente, confirmado** e **Tenho um
 problema** — e também aceita responder **1** ou **2**.
+
+### Ligação de voz (URA)
+
+Quem recebeu a escala duas vezes no WhatsApp e não respondeu recebe uma ligação automática,
+entre 08h e 20h, no máximo duas por escala. Uma voz em português lê a escala e pede:
+**digite 1 para aprovar, 2 para negar**. A resposta cai no mesmo lugar da resposta do WhatsApp:
+o status muda na hora, o técnico recebe a confirmação por mensagem, e na recusa os supervisores
+são avisados. O painel lateral mostra cada ligação com status, tecla digitada e duração.
+
+O supervisor também pode forçar a ligação pelo botão **Ligar agora**.
 
 ### Respostas aceitas
 
