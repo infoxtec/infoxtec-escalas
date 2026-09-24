@@ -234,6 +234,14 @@ hora. O sistema impede deixar o painel sem administrador ativo.
 
 ---
 
+## 9b. Roadmap (só administrador)
+
+Backlog do produto dentro do sistema. Mostra o progresso das 9 funcionalidades planejadas, o que
+já foi implantado e as dívidas técnicas em aberto. Cada item traz status, esforço, dependências e
+observações; o lápis edita qualquer campo, e o botão **Novo item** acrescenta.
+
+O percentual no topo conta item concluído como inteiro e parcial como meio.
+
 ## 10. O que o técnico recebe
 
 ### Mensagem da escala

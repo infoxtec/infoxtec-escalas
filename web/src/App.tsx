@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { Award, CalendarDays, LayoutGrid, Loader2, LogOut, MapPin, ShieldCheck, Users } from 'lucide-react'
+import { Award, CalendarDays, LayoutGrid, Loader2, LogOut, MapPin, Rocket, ShieldCheck, Users } from 'lucide-react'
 import { Button, ErrorBox } from './components/ui'
 import { configurado, supabase, tipoDoLink } from './lib/supabase'
 import { api, erroMsg } from './lib/api'
@@ -14,8 +14,9 @@ import LocaisPage from './pages/LocaisPage'
 import UsuariosPage from './pages/UsuariosPage'
 import OperacaoPage from './pages/OperacaoPage'
 import HabilidadesPage from './pages/HabilidadesPage'
+import RoadmapPage from './pages/RoadmapPage'
 
-type Aba = 'agenda' | 'operacao' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios'
+type Aba = 'agenda' | 'operacao' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios' | 'roadmap'
 
 function Centro({ children }: { children: ReactNode }) {
   return <div className="flex min-h-screen items-center justify-center p-6 text-sm text-muted-foreground">{children}</div>
@@ -87,7 +88,10 @@ function Painel({ email }: { email: string }) {
     { id: 'tecnicos', label: 'Técnicos', icone: <Users className="h-4 w-4" /> },
     { id: 'locais', label: 'Locais', icone: <MapPin className="h-4 w-4" /> },
     { id: 'habilidades', label: 'Habilidades', icone: <Award className="h-4 w-4" /> },
-    ...(papel === 'admin' ? [{ id: 'usuarios' as Aba, label: 'Usuários', icone: <ShieldCheck className="h-4 w-4" /> }] : []),
+    ...(papel === 'admin' ? [
+      { id: 'usuarios' as Aba, label: 'Usuários', icone: <ShieldCheck className="h-4 w-4" /> },
+      { id: 'roadmap' as Aba, label: 'Roadmap', icone: <Rocket className="h-4 w-4" /> },
+    ] : []),
   ]
 
   return (
@@ -126,6 +130,7 @@ function Painel({ email }: { email: string }) {
         {aba === 'tecnicos' && <TecnicosPage tecnicos={tecnicos} recarregar={recarregarCadastros} podeEditar={podeEditar} podeExcluir={papel === 'admin'} />}
         {aba === 'locais' && <LocaisPage locais={locais} recarregar={recarregarCadastros} podeEditar={podeEditar} />}
         {aba === 'usuarios' && papel === 'admin' && <UsuariosPage />}
+        {aba === 'roadmap' && papel === 'admin' && <RoadmapPage podeEditar />}
       </main>
     </div>
   )

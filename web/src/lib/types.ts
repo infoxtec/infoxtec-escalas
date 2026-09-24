@@ -163,6 +163,22 @@ export const LIGACAO_LABEL: Record<Ligacao['status'], string> = {
   sem_resposta: 'não atendeu', ocupado: 'ocupado', falha: 'falhou', encerrada: 'encerrada',
 }
 
+export type StatusBacklog = 'concluido' | 'parcial' | 'em_andamento' | 'bloqueado' | 'planejado'
+export interface ItemBacklog {
+  id: string; numero: number | null; tipo: 'backlog' | 'entrega' | 'divida'
+  titulo: string; descricao: string | null; status: StatusBacklog
+  esforco: 'P' | 'M' | 'G' | null; depende_de: string | null; observacao: string | null
+  entregue_em: string | null; ordem: number; updated_at: string
+}
+export const STATUS_BACKLOG: Record<StatusBacklog, { label: string; classe: string; barra: string }> = {
+  concluido:    { label: 'Concluído',   classe: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300', barra: 'bg-green-500' },
+  parcial:      { label: 'Parcial',     classe: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',    barra: 'bg-blue-500' },
+  em_andamento: { label: 'Em andamento', classe: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', barra: 'bg-amber-500' },
+  bloqueado:    { label: 'Bloqueado',   classe: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',        barra: 'bg-red-500' },
+  planejado:    { label: 'Planejado',   classe: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',       barra: 'bg-gray-400' },
+}
+export const ESFORCO_LABEL: Record<string, string> = { P: 'até 3 dias', M: '1 a 2 semanas', G: '3 semanas ou mais' }
+
 export const CATEGORIA_LABEL: Record<string, string> = {
   tecnica: 'Técnica', seguranca: 'Segurança', habilitacao: 'Habilitação', outra: 'Outra',
 }

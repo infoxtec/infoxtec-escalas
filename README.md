@@ -72,6 +72,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Jornada CLT automática, painel de técnicos sem escala, alerta das 18h, colunas ajustáveis
 - [x] Escala cancelada libera o horário
 - [x] Item 2 do backlog: URA de voz pela Twilio, testada em produção (1 aprova, 2 nega)
+- [x] Aba Roadmap: backlog, entregas e dívidas técnicas dentro do painel
 - [x] Item 5 do backlog: habilidades, requisitos por tipo de atividade e gestão de documentos (NRs, CNH, ASO)
 - [x] Item 3 do backlog (parcial): painel de acompanhamento por local
 - [ ] Desligar o painel Retool e remover as funções da bancada de teste

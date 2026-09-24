@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, TecnicoAgrupado, Ligacao,
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, TecnicoAgrupado, Ligacao, ItemBacklog,
 } from './types'
 
 function traduzir(msg: string): string {
@@ -73,6 +73,9 @@ export const api = {
   salvarTipoAtividade: (t: { id?: string; nome: string; descricao?: string | null; ativo?: boolean; requisitos: { habilidade_id: string; nivel_minimo: string }[] }) =>
     rpc<string>('app_salvar_tipo_atividade', { p: t }),
   aptidao: (tipoId: string) => rpc<Aptidao[]>('app_aptidao', { p_tipo: tipoId }),
+
+  backlog: () => rpc<ItemBacklog[]>('app_backlog'),
+  salvarBacklogItem: (i: Partial<ItemBacklog>) => rpc<string>('app_salvar_backlog_item', { p: i }),
 
   usuarios: () => rpc<UsuarioPainel[]>('app_usuarios'),
   salvarUsuario: (u: { email: string; nome: string; papel: Papel; ativo: boolean }) =>

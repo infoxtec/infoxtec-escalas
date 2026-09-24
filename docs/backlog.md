@@ -1,5 +1,9 @@
 # Backlog — próximos 60 dias
 
+> **O backlog agora vive dentro do sistema**, na aba **Roadmap** (administradores), com status
+> editável por quem toca o projeto. Este documento guarda a análise de viabilidade de cada item,
+> que não cabe numa tela. Carga inicial: `supabase/setup/backlog_seed.sql`.
+
 Nove funcionalidades pedidas, analisadas por viabilidade, dependência e esforço.
 
 **Escala de esforço:** P = até 3 dias · M = 1 a 2 semanas · G = 3 semanas ou mais.
