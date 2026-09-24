@@ -21,6 +21,10 @@ Nove funcionalidades pedidas, analisadas por viabilidade, dependência e esforç
 | 4 | Integração com ponto VRmais | M/G | API VRmais + parecer jurídico | Parcial (sem bloqueio) |
 | 6 | IA que sugere a escala | G | #5, #3, geolocalização | Protótipo só |
 | 7 | Predição e pré-programação | G | #6, #8 | Não |
+| 10 | Upload de documentos com OCR | M | Storage + OCR | Sim |
+| 11 | Perfil de teste para técnicos | P | — | Sim |
+| 12 | Indicadores clicáveis na Agenda | P | — | Sim |
+| 13 | Submenu da Agenda | P | — | Sim |
 
 **Semana 0 é levantamento.** Sem a documentação das APIs do VRmais, do sistema de chamados e do
 almoxarifado, três itens não podem nem ser estimados. Pedir isso agora é o que destrava o resto.
@@ -259,3 +263,77 @@ que precisa retirar.
 1. **Desligar o painel Retool.** Enquanto existir, quem tem acesso de edição lá executa SQL no banco.
 2. **Remover as funções da bancada de teste** (`fn_teste_wa_*`) da migration 07.
 3. **Arrumar o repositório do Vercel** para que só exista uma fonte de verdade.
+
+
+---
+
+## 10. Upload de documentos com leitura automática da validade
+
+**Problema:** hoje a validade de NR, CNH e ASO é digitada à mão e o documento em si fica fora do
+sistema. Numa fiscalização ou auditoria, ninguém encontra o arquivo.
+
+**Escopo:** anexar PDF ou JPG na habilidade do técnico, com visualização e download pelo painel.
+Com OCR ligado, o sistema lê o documento e **sugere** a data de validade, já preenchida no campo,
+para a pessoa conferir e confirmar.
+
+**Como fazer:** arquivos no Supabase Storage (1 GB no plano gratuito, suficiente para centenas de
+documentos comprimidos), com acesso apenas por link assinado e temporário. Para o OCR, três
+caminhos: **Google Vision** (1.000 páginas grátis por mês, melhor precisão em documento
+fotografado), **Tesseract no próprio navegador** (grátis e sem enviar o documento para fora, mas
+erra mais em foto torta) ou **modelo de visão via API** (bom em documento bagunçado, custa
+centavos por página).
+
+**Regra que não deve ser flexibilizada:** o OCR **sugere, nunca grava sozinho**. Uma data errada
+lida de um ASO vencido é pior que campo em branco, porque cria uma falsa sensação de conformidade.
+
+**Riscos:** são documentos pessoais — controle de acesso restrito, link temporário e prazo de
+retenção definido. Vale alinhar com o RH quanto tempo guardar após o desligamento.
+
+**Aceite:** anexar um ASO em JPG, o sistema sugerir a validade, a pessoa confirmar, e o arquivo
+abrir pelo painel depois.
+
+---
+
+## 11. Perfil de teste para técnicos
+
+**Problema:** técnicos criados para homologação entram nas contagens, aparecem no painel de
+técnicos sem escala e disparam o alerta das 18h como se fossem equipe real.
+
+**Escopo:** marcação "perfil de teste" no cadastro. Quem tiver a marca fica fora da seleção de
+escalas de produção, do painel de pendências, dos indicadores e dos alertas — mas continua
+recebendo mensagens e ligações, que é justamente para o que serve.
+
+**Como fazer:** coluna na tabela de técnicos e um filtro a mais nas views que já existem
+(`vw_acoes_pendentes`, `fn_pendencias_escala`, `app_resumo`, `vw_ligacoes_pendentes`).
+
+**Aceite:** técnico de teste recebe mensagem normalmente e não aparece em nenhuma contagem.
+
+---
+
+## 12. Indicadores clicáveis na Agenda
+
+**Problema:** o gestor vê "3 críticas" e precisa montar o filtro na mão para descobrir quais são.
+
+**Escopo:** clicar no indicador aplica o filtro correspondente na tabela; clicar de novo remove.
+O indicador ativo fica destacado.
+
+**Como fazer:** só tela. Os filtros já existem na Agenda.
+
+**Aceite:** clicar em Confirmadas deixa a tabela só com escalas confirmadas.
+
+---
+
+## 13. Submenu da Agenda
+
+**Problema:** Nova Escala e Importar são janelas sobre a Agenda, e Técnicos sem Escala é um painel
+embutido que divide espaço com a tabela.
+
+**Escopo:** dividir a Agenda em quatro telas, na ordem: **Escala**, **Nova Escala**, **Técnicos sem
+Escala**, **Importar Escala** — no mesmo formato de submenu usado no Roadmap.
+
+**Ponto de atenção:** hoje o painel de pendências cria escala com o técnico já preenchido. Ao virar
+telas separadas, esse atalho precisa continuar funcionando, senão a mudança custa um clique a mais
+no fluxo mais usado do dia.
+
+**Aceite:** as quatro telas na ordem pedida, e criar escala a partir de um técnico pendente
+continua levando o técnico preenchido.

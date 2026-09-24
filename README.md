@@ -19,7 +19,7 @@ são lembrados da escala do dia seguinte, com prazo às 18h.
 | [Operação](docs/operacao.md) | Diagnóstico do dia a dia: o que consultar quando algo falha |
 | [Segurança](docs/seguranca.md) | Login, papéis, segredos, LGPD e riscos conhecidos |
 | [Decisões](docs/decisoes.md) | O que foi decidido, o que foi descartado e por quê |
-| [Backlog](docs/backlog.md) | As 9 funcionalidades dos próximos 60 dias (o quadro vive na aba Roadmap) |
+| [Backlog](docs/backlog.md) | Análise de viabilidade dos 13 itens planejados (o quadro vive na aba Roadmap) |
 | [Agente de IA](docs/agente-ia.md) | Roteiro para predições: instrumentar, consultar, prever, sugerir |
 | [Telefonia (item 2)](docs/telefonia.md) | URA de voz: fornecedor, custos, script e resultado do piloto |
 | [Publicar no Vercel](docs/deploy-vercel.md) | Passo a passo do deploy e da liberação de usuários |

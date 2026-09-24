@@ -242,6 +242,9 @@ observações; o lápis edita qualquer campo, e o botão **Novo item** acrescent
 
 O percentual no topo conta item concluído como inteiro e parcial como meio.
 
+O Roadmap é a fonte oficial do que está planejado: pedidos novos entram aqui como cartão, e
+`docs/backlog.md` guarda a análise de viabilidade de cada um.
+
 Duas visões: **Kanban** (padrão) e **Visão geral**. No Kanban, arraste o cartão entre Backlog,
 A fazer, Fazendo, Revisão e Feito. Ao cair em Feito, o item vira concluído e ganha a data de
 entrega; em Fazendo, vira em andamento. Clique no cartão para editar qualquer campo.

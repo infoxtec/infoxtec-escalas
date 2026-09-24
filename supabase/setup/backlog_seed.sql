@@ -57,3 +57,18 @@ insert into backlog_itens (tipo, titulo, descricao, status, observacao, ordem) v
   'Sem uso desde que o dispatcher entrou.', 310),
  ('divida', 'Consolidar o repositorio do Vercel', 'Confirmar se o deploy vem do repositorio infoxtec-escalas.', 'planejado',
   'Enquanto houver dois repositorios, o deploy pode publicar codigo antigo.', 320);
+
+insert into backlog_itens (numero, tipo, titulo, descricao, status, esforco, depende_de, observacao, ordem, coluna, posicao) values
+ (10, 'backlog', 'Upload de documentos com leitura automatica da validade',
+  'Anexar PDF ou JPG de NR, CNH e ASO no painel de habilidades, com OCR opcional sugerindo a data.',
+  'planejado', 'M', 'Supabase Storage + servico de OCR',
+  'OCR sugere, nunca decide. Documentos pessoais exigem acesso restrito e prazo de retencao.', 100, 'backlog', 10),
+ (11, 'backlog', 'Perfil de teste para tecnicos',
+  'Tecnico de teste fora das escalas de producao, dos indicadores e dos alertas.',
+  'planejado', 'P', null, 'Continua recebendo mensagens e ligacoes de homologacao.', 110, 'backlog', 11),
+ (12, 'backlog', 'Indicadores clicaveis na Agenda',
+  'Clicar no indicador aplica o filtro correspondente na tabela.',
+  'planejado', 'P', null, 'Somente tela; os filtros ja existem.', 120, 'backlog', 12),
+ (13, 'backlog', 'Submenu da Agenda',
+  'Escala, Nova Escala, Tecnicos sem Escala e Importar Escala como telas proprias.',
+  'planejado', 'P', null, 'Manter o atalho de criar escala a partir do tecnico pendente.', 130, 'backlog', 13);
