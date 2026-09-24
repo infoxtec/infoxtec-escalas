@@ -110,6 +110,16 @@ export async function enviarDocumento(p: {
   }
 }
 
+/** Documento que fica no Google Drive: guardamos o vinculo, nao o arquivo. */
+export async function vincularDocumentoDrive(p: {
+  tecnicoId: string; habilidadeId: string | null; url: string; nome: string; validade: string | null
+}): Promise<string> {
+  return api.registrarDocumento({
+    tecnico_id: p.tecnicoId, habilidade_id: p.habilidadeId, origem: 'drive',
+    url: p.url.trim(), nome_arquivo: p.nome.trim() || 'Documento no Drive', validade: p.validade,
+  })
+}
+
 export async function abrirDocumento(caminho: string): Promise<string> {
   const { data, error } = await supabase.storage.from('documentos').createSignedUrl(caminho, 120)
   if (error || !data) throw new Error('Não foi possível abrir o documento.')
@@ -118,10 +128,11 @@ export async function abrirDocumento(caminho: string): Promise<string> {
 
 export async function removerDocumento(id: string): Promise<void> {
   const caminho = await api.excluirDocumento(id)
-  await supabase.storage.from('documentos').remove([caminho])
+  // documento do Drive nao tem arquivo nosso para apagar
+  if (caminho) await supabase.storage.from('documentos').remove([caminho])
 }
 
-/** OCR: manda o arquivo para a Edge Function e recebe a data sugerida. */
+/** OCR na nuvem (modo preciso, opcional): so usado se GOOGLE_VISION_KEY estiver cadastrada. */
 export async function lerValidadePorOCR(arquivo: File): Promise<{ sugestao: string | null; erro?: string }> {
   const base64 = await new Promise<string>((ok, falha) => {
     const r = new FileReader()

@@ -22,10 +22,33 @@ select * from vw_documentos_expirados;
 O expurgo e feito pelo painel (apaga o arquivo no Storage e o registro), para que a exclusao
 fique registrada por quem a executou.
 
+## Duas formas de guardar
+
+| Modo | Onde fica | Quem controla o acesso | Retencao |
+|---|---|---|---|
+| **Enviar arquivo** | bucket privado do Supabase | papel no painel (admin/gestor), link de 2 min | automatica: 5 anos apos o desligamento |
+| **Vincular do Drive** | Google Drive da Infoxtec | permissao do proprio Drive | manual |
+
+O modo Drive e util quando a documentacao ja esta organizada la. A contrapartida e que o painel
+deixa de controlar quem abre: se o arquivo estiver como "qualquer pessoa com o link", ele e
+acessivel fora do sistema. Para documento pessoal, o modo bucket e o mais seguro.
+
 ## OCR (opcional)
 
-Edge Function `documento-ocr`. Le **imagens** (JPG/PNG) e sugere a data de validade; PDF nao e
-lido automaticamente. A sugestao **nunca grava sozinha**: aparece no campo para conferencia.
+### Padrao: leitura no navegador (tesseract.js)
+
+Nao precisa de chave, conta nem cartao, e **o documento nao sai da maquina de quem cadastra** —
+nada e enviado ao nosso servidor nem a terceiros. Na primeira leitura o navegador baixa o motor e
+o idioma (~12 MB), que ficam em cache; cada leitura leva de 2 a 8 segundos.
+
+Le **imagens** (JPG/PNG). PDF nao e lido: informe a validade ou envie uma foto da pagina.
+A sugestao **nunca grava sozinha**: aparece no campo para conferencia.
+
+### Opcional: leitura na nuvem (modo preciso)
+
+Edge Function `documento-ocr`, com Google Cloud Vision. Mais rapida e mais precisa em foto ruim,
+porem envia o documento ao Google e exige conta de faturamento mesmo na cota gratuita.
+Fica disponivel como botao extra quando a chave estiver cadastrada.
 
 Para ligar, cadastre a chave do Google Cloud Vision:
 

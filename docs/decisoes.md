@@ -108,3 +108,17 @@ perfil de teste já nasce marcada.
 confirmação humana.
 **Por quê:** uma data errada lida de um ASO vencido cria falsa conformidade — pior que campo
 vazio. Também por isso PDF não é lido automaticamente em vez de arriscar leitura ruim.
+
+## 16. OCR roda no navegador, não na nuvem
+
+**Decisão:** o padrão é tesseract.js no navegador; o Google Vision fica como botão opcional.
+**Por quê:** documento pessoal (ASO, CNH) não sai da máquina de quem cadastra, o custo é zero de
+verdade e não exige conta de faturamento — o Google pede cartão mesmo na cota gratuita.
+**Custo:** primeira leitura baixa ~12 MB de motor e idioma, e cada leitura leva de 2 a 8 segundos
+contra menos de 1 na nuvem. Para ler datas, a precisão se mostrou suficiente.
+
+## 17. Documento no Drive é vínculo, não cópia
+
+**Decisão:** o modo Drive guarda só o link; o arquivo permanece no Google Drive da empresa.
+**Consequência registrada:** o controle de acesso passa a ser do Drive e a retenção de 5 anos vira
+manual. Para documento pessoal, o modo bucket continua sendo o recomendado.

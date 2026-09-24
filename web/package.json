@@ -1,7 +1,7 @@
 {
   "name": "infoxtec-escalas-web",
   "private": true,
-  "version": "1.9.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,6 +13,7 @@
     "lucide-react": "^0.400.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "tesseract.js": "^7.0.0",
     "xlsx": "0.18.5"
   },
   "devDependencies": {

@@ -194,7 +194,8 @@ export const ESFORCO_LABEL: Record<string, string> = { P: 'até 3 dias', M: '1 a
 export interface Documento {
   id: string; tecnico_id: string; tecnico: string
   habilidade_id: string | null; habilidade: string | null
-  caminho: string; nome_arquivo: string; mime: string; tamanho_bytes: number | null
+  origem: 'storage' | 'drive'; url: string | null
+  caminho: string | null; nome_arquivo: string; mime: string | null; tamanho_bytes: number | null
   validade: string | null; ocr_em: string | null; enviado_por: string; created_at: string
 }
 

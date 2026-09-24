@@ -225,15 +225,19 @@ Toda segunda às 8h os supervisores recebem essa lista pelo WhatsApp.
 
 ### Arquivos dos documentos
 
-Na mesma aba Documentos, abaixo da lista de validades. **Enviar documento** pede o técnico, o
-documento (NR, CNH, ASO), o arquivo em PDF ou imagem até 8 MB e a validade.
+Na mesma aba Documentos, abaixo da lista de validades, com duas formas de registrar:
 
-Em **imagens**, o sistema lê o documento e **sugere** a data — confira sempre antes de salvar,
-porque a leitura erra em foto torta ou com pouca luz. PDF não é lido automaticamente. Ao informar
-a validade com um documento vinculado, a habilidade do técnico é atualizada junto.
+**Enviar arquivo** guarda o documento em armazenamento privado e criptografado: abre por link
+temporário de 2 minutos, sem endereço público, e só administrador e gestor acessam.
 
-Os arquivos ficam em armazenamento privado, criptografados, e abrem por link temporário de 2
-minutos — não existe endereço público. Só administrador e gestor enxergam ou enviam.
+**Vincular do Drive** guarda apenas o link: o arquivo continua no Google Drive da empresa. Útil
+quando a documentação já está organizada lá, mas atenção — **quem controla o acesso passa a ser a
+permissão do Drive**, e a guarda de 5 anos vira manual.
+
+Em **imagens**, o sistema lê a validade **dentro do seu navegador**: o documento não é enviado a
+servidor nenhum. Na primeira vez o leitor é baixado (uns segundos a mais) e depois fica em cache.
+Confira sempre antes de salvar — a leitura erra em foto torta ou com pouca luz. PDF não é lido.
+Ao informar a validade com um documento vinculado, a habilidade do técnico é atualizada junto.
 
 A guarda é de **5 anos após o desligamento**: informe a data de desligamento no cadastro do
 técnico para a contagem começar.
