@@ -74,6 +74,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Escala cancelada libera o horário
 - [x] Item 2 do backlog: URA de voz pela Twilio, testada em produção (1 aprova, 2 nega)
 - [x] Aba Roadmap: backlog, entregas e dívidas técnicas dentro do painel, com Kanban
+- [x] Itens 11, 12 e 13: perfil de teste, indicadores clicáveis e submenu da Agenda
 - [x] Item 5 do backlog: habilidades, requisitos por tipo de atividade e gestão de documentos (NRs, CNH, ASO)
 - [x] Item 3 do backlog (parcial): painel de acompanhamento por local
 - [ ] Desligar o painel Retool e remover as funções da bancada de teste

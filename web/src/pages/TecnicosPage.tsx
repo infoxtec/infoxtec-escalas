@@ -6,7 +6,7 @@ import { api, erroMsg } from '../lib/api'
 import { telefoneValido } from '../lib/types'
 import type { Tecnico } from '../lib/types'
 
-const NOVO: Partial<Tecnico> = { nome: '', telefone_e164: '', funcao: '', equipe: '', is_supervisor: false, opt_in: false, ativo: true }
+const NOVO: Partial<Tecnico> = { nome: '', telefone_e164: '', funcao: '', equipe: '', is_supervisor: false, opt_in: false, ativo: true, perfil_teste: false }
 
 export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExcluir }: {
   tecnicos: Tecnico[]; recarregar: () => Promise<void>; podeEditar: boolean; podeExcluir: boolean
@@ -95,6 +95,7 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
                     <div className="flex min-w-0 items-center gap-2">
                       <span className="truncate font-medium" title={t.nome}>{t.nome}</span>
                       {!t.opt_in && t.ativo && <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"><AlertTriangle className="h-3 w-3" /> Sem autorização</span>}
+                      {t.perfil_teste && <span className="shrink-0 rounded bg-purple-100 px-1.5 py-0.5 text-xs font-medium text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">Teste</span>}
                       {!t.ativo && <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500 dark:bg-gray-800">Inativo</span>}
                     </div>
                   </td>
@@ -137,6 +138,8 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
               checked={!!edit.is_supervisor} onChange={v => setEdit(p => ({ ...p, is_supervisor: v }))} disabled={salvando} />
             <ToggleRow label="Autorização WhatsApp" description="Sem autorização, o sistema não envia nenhuma mensagem para este técnico."
               checked={!!edit.opt_in} onChange={v => setEdit(p => ({ ...p, opt_in: v }))} disabled={salvando} />
+            <ToggleRow label="Perfil de teste" description="Para homologação: recebe mensagens e ligações manuais, mas fica fora dos indicadores, do painel de pendências, dos alertas e das ligações automáticas."
+              checked={!!edit.perfil_teste} onChange={v => setEdit(p => ({ ...p, perfil_teste: v }))} disabled={salvando} />
             {edit.id && <ToggleRow label="Ativo" description={edit.ativo ? 'Aparece na seleção de novas escalas.' : 'Inativo: não aparece em novas escalas; o histórico fica preservado.'}
               checked={!!edit.ativo} onChange={v => setEdit(p => ({ ...p, ativo: v }))} disabled={salvando} />}
             {erro && <ErrorBox>{erro}</ErrorBox>}

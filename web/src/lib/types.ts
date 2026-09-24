@@ -64,7 +64,8 @@ export interface LinhaTempo {
 
 export interface Tecnico {
   id: string; nome: string; telefone_e164: string; funcao: string; equipe: string | null
-  is_supervisor: boolean; opt_in: boolean; opt_in_em: string | null; ativo: boolean; created_at: string
+  is_supervisor: boolean; opt_in: boolean; opt_in_em: string | null; ativo: boolean
+  perfil_teste: boolean; created_at: string
 }
 
 export interface Local {

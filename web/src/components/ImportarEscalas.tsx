@@ -67,8 +67,8 @@ function baixarReferencia(tecnicos: Tecnico[], locais: Local[]) {
   XLSX.writeFile(wb, 'referencia_tecnicos_locais.xlsx')
 }
 
-export default function ImportarEscalas({ open, onClose, onSuccess, tecnicos, locais }: {
-  open: boolean; onClose: () => void; onSuccess: () => void; tecnicos: Tecnico[]; locais: Local[]
+export default function ImportarEscalas({ open, onClose, onSuccess, tecnicos, locais, embutido }: {
+  open: boolean; onClose: () => void; onSuccess: () => void; tecnicos: Tecnico[]; locais: Local[]; embutido?: boolean
 }) {
   const arquivo = useRef<HTMLInputElement>(null)
   const [linhas, setLinhas] = useState<Linha[]>([])
@@ -160,10 +160,10 @@ export default function ImportarEscalas({ open, onClose, onSuccess, tecnicos, lo
   const oks = linhas.filter(l => l.status === 'ok').length
 
   return (
-    <Sheet open={open} onClose={fechar} width="sm:max-w-2xl"
+    <Sheet open={open} embutido={embutido} onClose={fechar} width="sm:max-w-2xl"
       title={<span className="flex items-center gap-2"><FileSpreadsheet className="h-5 w-5 text-primary" /> Importar escalas</span>}
       footer={<>
-        <Button variant="outline" onClick={fechar} disabled={importando}>Fechar</Button>
+        <Button variant="outline" onClick={fechar} disabled={importando}>{embutido ? 'Limpar' : 'Fechar'}</Button>
         <Button onClick={() => void importar()} disabled={importando || pend === 0}>
           {importando ? <><Loader2 className="h-4 w-4 animate-spin" /> Importando...</> : `Importar ${pend} escala${pend !== 1 ? 's' : ''}`}
         </Button>

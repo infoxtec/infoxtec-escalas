@@ -6,9 +6,9 @@ import { api, erroMsg } from '../lib/api'
 import { descricaoJornada, formatTime, hojeBahia } from '../lib/types'
 import type { Aptidao, Jornada, Local, ResultadoLote, Tecnico, TipoAtividade } from '../lib/types'
 
-export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, locais, tipos, inicialIds, inicialData }: {
+export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, locais, tipos, inicialIds, inicialData, embutido }: {
   open: boolean; onClose: () => void; onSuccess: () => void; tecnicos: Tecnico[]; locais: Local[]
-  tipos: TipoAtividade[]; inicialIds?: string[]; inicialData?: string
+  tipos: TipoAtividade[]; inicialIds?: string[]; inicialData?: string; embutido?: boolean
 }) {
   const toast = useToast()
   const [ids, setIds] = useState<string[]>([])
@@ -72,11 +72,11 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
 
   const n = ids.length
   return (
-    <Modal open={open} onClose={() => { if (!salvando) onClose() }} title="Nova escala" width="max-w-xl"
+    <Modal open={open} embutido={embutido} onClose={() => { if (!salvando) onClose() }} title="Nova escala" width="max-w-xl"
       footer={resultado
         ? <Button onClick={onClose}>Fechar</Button>
         : <>
-          <Button variant="outline" onClick={onClose} disabled={salvando}>Cancelar</Button>
+          <Button variant="outline" onClick={onClose} disabled={salvando}>{embutido ? 'Limpar e voltar' : 'Cancelar'}</Button>
           <Button onClick={() => void salvar()} disabled={salvando}>
             {salvando ? 'Salvando...' : n > 1 ? `Criar ${n} escalas` : 'Criar escala'}
           </Button>
@@ -100,7 +100,7 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
       ) : (
         <div className="space-y-3">
           <Field label="Técnicos *">
-            <MultiSelect opcoes={ativos.map(t => ({ value: t.id, label: t.nome, detalhe: t.funcao }))}
+            <MultiSelect opcoes={ativos.map(t => ({ value: t.id, label: t.nome, detalhe: t.perfil_teste ? `${t.funcao} · teste` : t.funcao }))}
               valores={ids} onChange={setIds} placeholder="Selecione um ou mais técnicos" disabled={salvando} />
           </Field>
           {semAutorizacao.length > 0 && (

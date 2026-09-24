@@ -32,23 +32,35 @@ diz qual versão do painel está no ar — útil quando algo parece não ter atu
 
 ## 2. Agenda
 
-É a tela principal: todas as escalas de um período.
+É a tela principal, dividida em quatro telas pelo submenu do topo:
 
-### Barra superior
+| Tela | Para quê |
+|---|---|
+| **Escala** | Indicadores, filtros e a tabela de escalas do período |
+| **Nova Escala** | Criar escala para um ou vários técnicos |
+| **Técnicos sem Escala** | Quem está sem escala no dia, com o prazo das 18h |
+| **Importar Escala** | Carga em lote por planilha |
+
+Nova Escala e Importar Escala aparecem só para gestor e administrador.
+
+### Barra superior (tela Escala)
 
 - **De / Até** — período exibido. Abre em hoje até daqui a 7 dias.
 - **Atualizar** — recarrega na hora. A tela também se atualiza sozinha a cada minuto.
-- **Importar** — sobe uma planilha com várias escalas de uma vez (seção 4).
-- **Nova escala** — abre o formulário (seção 3).
+- **Nova escala** — leva para a tela de criação (seção 3).
 
 ### Indicadores
 
 Total de escalas no período, Confirmadas, Aguardando resposta, Críticas (escalas em que o
 supervisor já foi acionado por falta de resposta) e % de confirmação.
 
+**Os quatro primeiros são clicáveis e funcionam como filtro.** Clicar em Críticas deixa na tabela
+só as escalas críticas; clicar de novo remove. O indicador ativo fica destacado, e Total limpa
+os filtros. As contagens **não incluem técnicos de perfil de teste**.
+
 ### Técnicos sem escala
 
-Painel logo abaixo dos indicadores. Mostra quem está **ativo e sem nenhuma escala** no dia
+Tela própria no submenu. Mostra quem está **ativo e sem nenhuma escala** no dia
 escolhido — Hoje, Amanhã ou outra data. Depois do meio-dia ele abre já em "Amanhã".
 
 - Um selo indica o prazo: **amarelo** antes das 18h, **vermelho** depois, **verde** quando a
@@ -161,9 +173,10 @@ Cadastro da equipe.
 | Equipe | Opcional, para organização |
 | **Supervisor** | Recebe os alertas: recusa, falta de resposta, prazo das 18h e documentos vencidos |
 | **Autorização WhatsApp** | **Sem isso o sistema não envia nada para ele.** Registre o aceite antes de ligar |
+| **Perfil de teste** | Para homologação: recebe mensagens e ligações manuais normalmente, mas fica fora dos indicadores, do painel de pendências, dos alertas e das ligações automáticas |
 | Ativo | Inativo não aparece em novas escalas; o histórico é preservado |
 
-Técnico sem autorização aparece com o selo "Sem autorização".
+Técnico sem autorização aparece com o selo "Sem autorização"; o de homologação, com o selo "Teste".
 
 **Excluir definitivamente** (só administrador) apaga o técnico e todo o histórico dele — escalas,
 mensagens e auditoria. Exige digitar o nome para confirmar, e é recusado se ele tiver escala em

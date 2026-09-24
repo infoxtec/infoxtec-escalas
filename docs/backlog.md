@@ -22,9 +22,9 @@ Nove funcionalidades pedidas, analisadas por viabilidade, dependência e esforç
 | 6 | IA que sugere a escala | G | #5, #3, geolocalização | Protótipo só |
 | 7 | Predição e pré-programação | G | #6, #8 | Não |
 | 10 | Upload de documentos com OCR | M | Storage + OCR | Sim |
-| 11 | Perfil de teste para técnicos | P | — | Sim |
-| 12 | Indicadores clicáveis na Agenda | P | — | Sim |
-| 13 | Submenu da Agenda | P | — | Sim |
+| 11 | Perfil de teste para técnicos | P | — | **Entregue** |
+| 12 | Indicadores clicáveis na Agenda | P | — | **Entregue** |
+| 13 | Submenu da Agenda | P | — | **Entregue** |
 
 **Semana 0 é levantamento.** Sem a documentação das APIs do VRmais, do sistema de chamados e do
 almoxarifado, três itens não podem nem ser estimados. Pedir isso agora é o que destrava o resto.
@@ -294,7 +294,7 @@ abrir pelo painel depois.
 
 ---
 
-## 11. Perfil de teste para técnicos
+## 11. Perfil de teste para técnicos — ENTREGUE (24/09/2026)
 
 **Problema:** técnicos criados para homologação entram nas contagens, aparecem no painel de
 técnicos sem escala e disparam o alerta das 18h como se fossem equipe real.
@@ -310,7 +310,7 @@ recebendo mensagens e ligações, que é justamente para o que serve.
 
 ---
 
-## 12. Indicadores clicáveis na Agenda
+## 12. Indicadores clicáveis na Agenda — ENTREGUE (24/09/2026)
 
 **Problema:** o gestor vê "3 críticas" e precisa montar o filtro na mão para descobrir quais são.
 
@@ -323,7 +323,7 @@ O indicador ativo fica destacado.
 
 ---
 
-## 13. Submenu da Agenda
+## 13. Submenu da Agenda — ENTREGUE (24/09/2026)
 
 **Problema:** Nova Escala e Importar são janelas sobre a Agenda, e Técnicos sem Escala é um painel
 embutido que divide espaço com a tabela.

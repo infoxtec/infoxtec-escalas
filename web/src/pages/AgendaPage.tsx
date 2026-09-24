@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertCircle, CheckCircle, Clock, Columns3, Flame, Moon, Percent, Plus, RefreshCw, Upload } from 'lucide-react'
+import { AlertCircle, CalendarDays, CheckCircle, Clock, Columns3, Flame, Moon, Percent, Plus, RefreshCw, Upload, UserX } from 'lucide-react'
 import { Button, ErrorBox, Input, Select } from '../components/ui'
 import { SortableTh, useColumnWidths, useSortable } from '../components/SortableTh'
 import EscalaDrawer from '../components/EscalaDrawer'
@@ -34,8 +34,9 @@ export default function AgendaPage({ tecnicos, locais, tipos, podeEditar }: { te
   const [filtroStatus, setFiltroStatus] = useState('')
   const [selecionada, setSelecionada] = useState<EscalaPainel | null>(null)
   const [nova, setNova] = useState<{ ids?: string[]; data?: string } | null>(null)
-  const [importarAberto, setImportarAberto] = useState(false)
   const [versao, setVersao] = useState(0)
+  const [subtela, setSubtela] = useState<'escala' | 'nova' | 'pendentes' | 'importar'>('escala')
+  const [filtroCritica, setFiltroCritica] = useState(false)
 
   const carregar = useCallback(async () => {
     setCarregando(true); setErro(null)
@@ -54,7 +55,18 @@ export default function AgendaPage({ tecnicos, locais, tipos, podeEditar }: { te
   const tecnicosNaLista = useMemo(() => Array.from(new Set(escalas.map(e => e.tecnico))).sort((a, b) => a.localeCompare(b, 'pt-BR')), [escalas])
   const statusNaLista = useMemo(() => Array.from(new Set(escalas.map(e => e.status))), [escalas])
   const filtradas = useMemo(() => escalas.filter(e =>
-    (!filtroTecnico || e.tecnico === filtroTecnico) && (!filtroStatus || e.status === filtroStatus)), [escalas, filtroTecnico, filtroStatus])
+    (!filtroTecnico || e.tecnico === filtroTecnico)
+    && (!filtroStatus || e.status === filtroStatus)
+    && (!filtroCritica || e.supervisor_avisado_em !== null)), [escalas, filtroTecnico, filtroStatus, filtroCritica])
+
+  // Indicador clicavel: aplica o filtro; clicar de novo remove
+  const alternarFiltro = (f: { status?: string; critica?: boolean; limpar?: boolean }) => {
+    if (f.limpar) { setFiltroStatus(''); setFiltroCritica(false); return }
+    if (f.critica) { setFiltroCritica(c => !c); setFiltroStatus(''); return }
+    setFiltroCritica(false)
+    setFiltroStatus(s => (s === f.status ? '' : (f.status ?? '')))
+  }
+  const semFiltro = !filtroStatus && !filtroCritica
 
   const { sorted, thProps } = useSortable(filtradas, {
     data: e => `${e.data_servico} ${e.hora_inicio}`,
@@ -69,8 +81,41 @@ export default function AgendaPage({ tecnicos, locais, tipos, podeEditar }: { te
   const { col, total, restaurarTudo } = useColumnWidths('agenda', LARGURAS)
   const th = (k: keyof typeof LARGURAS) => ({ ...thProps(k), ...col(k) })
 
+  const aba = (id: typeof subtela, rotulo: string, icone: ReactNode) => (
+    <button type="button" onClick={() => setSubtela(id)}
+      className={`flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium ${subtela === id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
+      {icone}<span className="hidden sm:inline">{rotulo}</span>
+    </button>
+  )
+
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-1 rounded-md border p-0.5 lg:w-fit">
+        {aba('escala', 'Escala', <CalendarDays className="h-4 w-4" />)}
+        {podeEditar && aba('nova', 'Nova Escala', <Plus className="h-4 w-4" />)}
+        {aba('pendentes', 'Técnicos sem Escala', <UserX className="h-4 w-4" />)}
+        {podeEditar && aba('importar', 'Importar Escala', <Upload className="h-4 w-4" />)}
+      </div>
+
+      {subtela === 'nova' && podeEditar && (
+        <NovaEscalaModal open embutido onClose={() => { setNova(null); setSubtela('escala') }}
+          onSuccess={() => void carregar()} tecnicos={tecnicos} locais={locais} tipos={tipos}
+          inicialIds={nova?.ids} inicialData={nova?.data} />
+      )}
+
+      {subtela === 'pendentes' && (
+        <SemEscalaPanel podeEditar={podeEditar} atualizarEm={versao}
+          onCriar={(ids, data) => { setNova({ ids, data }); setSubtela('nova') }} />
+      )}
+
+      {subtela === 'importar' && podeEditar && (
+        <Suspense fallback={<p className="text-sm text-muted-foreground">Carregando...</p>}>
+          <ImportarEscalas open embutido onClose={() => setSubtela('escala')}
+            onSuccess={() => void carregar()} tecnicos={tecnicos} locais={locais} />
+        </Suspense>
+      )}
+
+      {subtela !== 'escala' ? null : (<>
       <div className="flex flex-wrap items-end gap-3">
         <div><label className="mb-1 block text-xs text-muted-foreground">De</label>
           <Input type="date" value={inicio} className="w-40" onChange={e => setInicio(e.target.value)} /></div>
@@ -80,23 +125,22 @@ export default function AgendaPage({ tecnicos, locais, tipos, podeEditar }: { te
           <RefreshCw className={`h-3.5 w-3.5 ${carregando ? 'animate-spin' : ''}`} /> Atualizar
         </Button>
         <div className="flex-1" />
-        {podeEditar && <>
-          <Button variant="outline" size="sm" onClick={() => setImportarAberto(true)}><Upload className="h-4 w-4" /> Importar</Button>
-          <Button size="sm" onClick={() => setNova({})}><Plus className="h-4 w-4" /> Nova escala</Button>
-        </>}
+        {podeEditar && <Button size="sm" onClick={() => { setNova({}); setSubtela('nova') }}><Plus className="h-4 w-4" /> Nova escala</Button>}
       </div>
 
       {erro && <ErrorBox>{erro}</ErrorBox>}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <Kpi icone={<AlertCircle className="h-5 w-5 text-muted-foreground" />} label="Total" valor={resumo?.total} />
-        <Kpi icone={<CheckCircle className="h-5 w-5 text-green-600" />} label="Confirmadas" valor={resumo?.confirmadas} cor="text-green-700 dark:text-green-400" />
-        <Kpi icone={<Clock className="h-5 w-5 text-amber-600" />} label="Aguardando" valor={resumo?.aguardando} cor="text-amber-700 dark:text-amber-400" />
-        <Kpi icone={<Flame className="h-5 w-5 text-red-600" />} label="Críticas" valor={resumo?.criticas} cor="text-red-700 dark:text-red-400" />
+        <Kpi icone={<AlertCircle className="h-5 w-5 text-muted-foreground" />} label="Total" valor={resumo?.total}
+          ativo={semFiltro} onClick={() => alternarFiltro({ limpar: true })} />
+        <Kpi icone={<CheckCircle className="h-5 w-5 text-green-600" />} label="Confirmadas" valor={resumo?.confirmadas} cor="text-green-700 dark:text-green-400"
+          ativo={filtroStatus === 'confirmada'} onClick={() => alternarFiltro({ status: 'confirmada' })} />
+        <Kpi icone={<Clock className="h-5 w-5 text-amber-600" />} label="Aguardando" valor={resumo?.aguardando} cor="text-amber-700 dark:text-amber-400"
+          ativo={filtroStatus === 'notificada'} onClick={() => alternarFiltro({ status: 'notificada' })} />
+        <Kpi icone={<Flame className="h-5 w-5 text-red-600" />} label="Críticas" valor={resumo?.criticas} cor="text-red-700 dark:text-red-400"
+          ativo={filtroCritica} onClick={() => alternarFiltro({ critica: true })} />
         <Kpi icone={<Percent className="h-5 w-5 text-primary" />} label="% Confirmação" valor={resumo ? `${resumo.pct_confirmacao}%` : undefined} cor="text-primary" />
       </div>
-
-      <SemEscalaPanel podeEditar={podeEditar} atualizarEm={versao} onCriar={(ids, data) => setNova({ ids, data })} />
 
       <div className="flex flex-wrap items-end gap-3">
         <div><label className="mb-1 block text-xs text-muted-foreground">Técnico</label>
@@ -107,7 +151,7 @@ export default function AgendaPage({ tecnicos, locais, tipos, podeEditar }: { te
           <Select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}>
             <option value="">Todos</option>{statusNaLista.map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
           </Select></div>
-        {(filtroTecnico || filtroStatus) && <Button variant="ghost" size="sm" onClick={() => { setFiltroTecnico(''); setFiltroStatus('') }}>Limpar filtros</Button>}
+        {(filtroTecnico || filtroStatus || filtroCritica) && <Button variant="ghost" size="sm" onClick={() => { setFiltroTecnico(''); setFiltroStatus(''); setFiltroCritica(false) }}>Limpar filtros</Button>}
         <div className="flex-1" />
         <Button variant="ghost" size="sm" onClick={restaurarTudo} title="Voltar todas as colunas à largura padrão">
           <Columns3 className="h-3.5 w-3.5" /> Larguras padrão
@@ -167,23 +211,30 @@ export default function AgendaPage({ tecnicos, locais, tipos, podeEditar }: { te
       </div>
       {sorted.length > 0 && <p className="text-right text-xs text-muted-foreground">{sorted.length} escala{sorted.length !== 1 ? 's' : ''} · arraste a borda dos títulos para alargar as colunas · atualiza sozinho a cada minuto</p>}
 
+      </>)}
+
       <EscalaDrawer escala={selecionada} open={!!selecionada} onClose={() => setSelecionada(null)} onRefresh={() => void carregar()} podeEditar={podeEditar} />
-      <NovaEscalaModal open={!!nova} onClose={() => setNova(null)} onSuccess={() => void carregar()}
-        tecnicos={tecnicos} locais={locais} tipos={tipos} inicialIds={nova?.ids} inicialData={nova?.data} />
-      {importarAberto && (
-        <Suspense fallback={null}>
-          <ImportarEscalas open={importarAberto} onClose={() => setImportarAberto(false)} onSuccess={() => void carregar()} tecnicos={tecnicos} locais={locais} />
-        </Suspense>
-      )}
     </div>
   )
 }
 
-function Kpi({ icone, label, valor, cor = 'text-foreground' }: { icone: ReactNode; label: string; valor?: number | string; cor?: string }) {
-  return (
-    <div className="flex items-start gap-3 rounded-lg border bg-card p-3">
+function Kpi({ icone, label, valor, cor = 'text-foreground', onClick, ativo }: {
+  icone: ReactNode; label: string; valor?: number | string; cor?: string; onClick?: () => void; ativo?: boolean
+}) {
+  const conteudo = (
+    <>
       <div className="mt-0.5 shrink-0">{icone}</div>
-      <div><p className="text-xs text-muted-foreground">{label}</p><p className={`mt-0.5 text-2xl font-bold ${cor}`}>{valor ?? '…'}</p></div>
-    </div>
+      <div className="text-left">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className={`mt-0.5 text-2xl font-bold ${cor}`}>{valor ?? '…'}</p>
+      </div>
+    </>
+  )
+  if (!onClick) return <div className="flex items-start gap-3 rounded-lg border bg-card p-3">{conteudo}</div>
+  return (
+    <button type="button" onClick={onClick} title="Clique para filtrar"
+      className={`flex w-full items-start gap-3 rounded-lg border bg-card p-3 text-left transition-colors hover:border-primary/50 hover:bg-muted/40 ${ativo ? 'border-primary ring-1 ring-primary/30' : ''}`}>
+      {conteudo}
+    </button>
   )
 }

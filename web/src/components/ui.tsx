@@ -105,11 +105,13 @@ function useEsc(open: boolean, onClose: () => void) {
   }, [open, onClose])
 }
 
-export function Modal({ open, onClose, title, children, footer, width = 'max-w-lg' }: {
-  open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; footer?: ReactNode; width?: string
+export function Modal({ open, onClose, title, children, footer, width = 'max-w-lg', embutido }: {
+  open: boolean; onClose: () => void; title: ReactNode; children: ReactNode
+  footer?: ReactNode; width?: string; embutido?: boolean
 }) {
-  useEsc(open, onClose)
+  useEsc(open && !embutido, onClose)
   if (!open) return null
+  if (embutido) return <Cartao title={title} footer={footer} width={width}>{children}</Cartao>
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
@@ -125,11 +127,13 @@ export function Modal({ open, onClose, title, children, footer, width = 'max-w-l
   )
 }
 
-export function Sheet({ open, onClose, title, children, footer, width = 'sm:max-w-xl' }: {
-  open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; footer?: ReactNode; width?: string
+export function Sheet({ open, onClose, title, children, footer, width = 'sm:max-w-xl', embutido }: {
+  open: boolean; onClose: () => void; title: ReactNode; children: ReactNode
+  footer?: ReactNode; width?: string; embutido?: boolean
 }) {
-  useEsc(open, onClose)
+  useEsc(open && !embutido, onClose)
   if (!open) return null
+  if (embutido) return <Cartao title={title} footer={footer} width="max-w-3xl">{children}</Cartao>
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
@@ -141,6 +145,17 @@ export function Sheet({ open, onClose, title, children, footer, width = 'sm:max-
         <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
         {footer && <div className="flex justify-end gap-2 border-t px-5 py-3">{footer}</div>}
       </aside>
+    </div>
+  )
+}
+
+/** Mesmo conteudo de Modal/Sheet, porem como cartao dentro da pagina (submenus). */
+function Cartao({ title, children, footer, width }: { title: ReactNode; children: ReactNode; footer?: ReactNode; width?: string }) {
+  return (
+    <div className={cx('rounded-lg border bg-card', width)}>
+      <div className="border-b px-5 py-3.5"><h2 className="text-base font-semibold">{title}</h2></div>
+      <div className="px-5 py-4">{children}</div>
+      {footer && <div className="flex justify-end gap-2 border-t px-5 py-3">{footer}</div>}
     </div>
   )
 }
