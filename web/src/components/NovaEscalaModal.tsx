@@ -3,7 +3,7 @@ import { AlertTriangle, CheckCircle2, Clock, Moon, ShieldAlert, XCircle } from '
 import MultiSelect from './MultiSelect'
 import { Button, ErrorBox, Field, Input, Modal, Select, Textarea, useToast } from './ui'
 import { api, erroMsg } from '../lib/api'
-import { descricaoJornada, formatTime, hojeBahia } from '../lib/types'
+import { addDays, descricaoJornada, formatTime, hojeBahia } from '../lib/types'
 import type { Aptidao, Jornada, Local, ResultadoLote, Tecnico, TipoAtividade } from '../lib/types'
 
 export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, locais, tipos, inicialIds, inicialData, embutido }: {
@@ -23,13 +23,14 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
   const [resultado, setResultado] = useState<ResultadoLote[] | null>(null)
   const [jornada, setJornada] = useState<Jornada | null>(null)
   const [tipo, setTipo] = useState('')
+  const [teste, setTeste] = useState(false)
   const [aptidao, setAptidao] = useState<Aptidao[] | null>(null)
 
   useEffect(() => {
     if (open) {
       setIds(inicialIds ?? []); setLocal(''); setData(inicialData ?? hojeBahia()); setHora('08:00')
       setPrioridade('normal'); setTarefa(''); setEnviar(true); setErro(null); setResultado(null)
-      setTipo(''); setAptidao(null)
+      setTipo(''); setAptidao(null); setTeste(false)
     }
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -49,11 +50,23 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
   const ativos = useMemo(() => tecnicos.filter(t => t.ativo), [tecnicos])
   const semHabilidade = (aptidao ?? []).filter(a => ids.includes(a.tecnico_id) && !a.apto)
   const semAutorizacao = ativos.filter(t => ids.includes(t.id) && !t.opt_in)
+  const soTeste = ids.length > 0 && ativos.filter(t => ids.includes(t.id)).every(t => t.perfil_teste)
+  const testeEfetivo = teste || soTeste
+
+  // A escala nunca pode comecar no passado: minimo de 5 minutos a frente
+  const agora = new Date()
+  const horaMinima = new Date(agora.getTime() + 5 * 60000)
+    .toLocaleTimeString('en-GB', { timeZone: 'America/Bahia', hour: '2-digit', minute: '2-digit' })
+  const ehHoje = data === hojeBahia()
+  const horaNoPassado = ehHoje && hora < horaMinima
+  const dataNoPassado = data < hojeBahia()
 
   const salvar = async () => {
     setErro(null)
     if (ids.length === 0) return setErro('Selecione pelo menos um técnico.')
     if (!data || !hora) return setErro('Informe data e hora de início.')
+    if (dataNoPassado) return setErro('A data não pode ser anterior a hoje.')
+    if (horaNoPassado) return setErro(`A escala precisa começar pelo menos 5 minutos à frente. O mais cedo hoje é ${horaMinima}.`)
     if (!tarefa.trim()) return setErro('Descreva a tarefa.')
     setSalvando(true)
     try {
@@ -78,7 +91,7 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
         : <>
           <Button variant="outline" onClick={onClose} disabled={salvando}>{embutido ? 'Limpar e voltar' : 'Cancelar'}</Button>
           <Button onClick={() => void salvar()} disabled={salvando}>
-            {salvando ? 'Salvando...' : n > 1 ? `Criar ${n} escalas` : 'Criar escala'}
+            {salvando ? 'Salvando...' : `${testeEfetivo ? 'Criar teste' : 'Criar'}${n > 1 ? ` (${n})` : n === 1 ? ' escala' : ' escala'}`}
           </Button>
         </>}>
       {resultado ? (
@@ -134,8 +147,12 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
             </Select>
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Data *"><Input type="date" value={data} onChange={e => setData(e.target.value)} disabled={salvando} /></Field>
-            <Field label="Hora de início *"><Input type="time" value={hora} onChange={e => setHora(e.target.value)} disabled={salvando} /></Field>
+            <Field label="Data *"><Input type="date" min={hojeBahia()} max={addDays(hojeBahia(), 365)} value={data}
+              onChange={e => setData(e.target.value)} disabled={salvando} /></Field>
+            <Field label="Hora de início *" hint={ehHoje ? `Hoje, no mínimo ${horaMinima}` : undefined}>
+              <Input type="time" value={hora} min={ehHoje ? horaMinima : undefined}
+                className={horaNoPassado || dataNoPassado ? 'border-destructive' : ''}
+                onChange={e => setHora(e.target.value)} disabled={salvando} /></Field>
           </div>
           <div className="flex items-start gap-2 rounded-md border bg-muted/40 p-3 text-xs">
             {jornada?.turno === 'diurno' || !jornada ? <Clock className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> : <Moon className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />}
@@ -155,6 +172,17 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
             <Textarea rows={3} value={tarefa} onChange={e => setTarefa(e.target.value)} disabled={salvando}
               placeholder="Ex: instalação de 8 câmeras IP no hall e no subsolo" />
           </Field>
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" className="mt-0.5" checked={testeEfetivo} disabled={salvando || soTeste}
+              onChange={e => setTeste(e.target.checked)} />
+            <span>Escala de teste
+              <span className="block text-xs text-muted-foreground">
+                {soTeste
+                  ? 'Marcada automaticamente: todos os técnicos selecionados são de perfil de teste.'
+                  : 'Funciona igual a uma escala normal, mas fica fora de todos os indicadores e pode ser removida a qualquer momento.'}
+              </span>
+            </span>
+          </label>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" className="mt-0.5" checked={enviar} onChange={e => setEnviar(e.target.checked)} disabled={salvando} />
             <span>Enviar WhatsApp agora

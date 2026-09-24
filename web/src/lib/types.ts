@@ -30,6 +30,8 @@ export interface EscalaPainel {
   supervisor_avisado_em: string | null
   semaforo: Semaforo
   pode_remover: boolean
+  teste: boolean
+  perfil_teste: boolean
   turno: Turno | null
   hora_fim_prevista: string | null
   duracao_prevista_min: number | null
@@ -65,7 +67,7 @@ export interface LinhaTempo {
 export interface Tecnico {
   id: string; nome: string; telefone_e164: string; funcao: string; equipe: string | null
   is_supervisor: boolean; opt_in: boolean; opt_in_em: string | null; ativo: boolean
-  perfil_teste: boolean; created_at: string
+  perfil_teste: boolean; desligado_em: string | null; created_at: string
 }
 
 export interface Local {
@@ -188,6 +190,13 @@ export const STATUS_BACKLOG: Record<StatusBacklog, { label: string; classe: stri
   planejado:    { label: 'Planejado',   classe: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',       barra: 'bg-gray-400' },
 }
 export const ESFORCO_LABEL: Record<string, string> = { P: 'até 3 dias', M: '1 a 2 semanas', G: '3 semanas ou mais' }
+
+export interface Documento {
+  id: string; tecnico_id: string; tecnico: string
+  habilidade_id: string | null; habilidade: string | null
+  caminho: string; nome_arquivo: string; mime: string; tamanho_bytes: number | null
+  validade: string | null; ocr_em: string | null; enviado_por: string; created_at: string
+}
 
 export const CATEGORIA_LABEL: Record<string, string> = {
   tecnica: 'Técnica', seguranca: 'Segurança', habilitacao: 'Habilitação', outra: 'Outra',

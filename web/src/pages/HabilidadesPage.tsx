@@ -3,6 +3,7 @@ import {
   AlertTriangle, CalendarClock, ChevronDown, ChevronRight, Edit2, ListChecks, Plus, RefreshCw, ShieldCheck, Trash2, Users,
 } from 'lucide-react'
 import { Button, Confirm, ErrorBox, Field, Input, Modal, Select, Textarea, ToggleRow, useToast } from '../components/ui'
+import DocumentosArquivos from '../components/DocumentosArquivos'
 import { api, erroMsg } from '../lib/api'
 import { CATEGORIA_LABEL, NIVEL_LABEL, SITUACAO_HAB, diasAte, formatDate } from '../lib/types'
 import type { Habilidade, Nivel, TecnicoAgrupado, Tecnico, TipoAtividade } from '../lib/types'
@@ -65,7 +66,7 @@ export default function HabilidadesPage({ tecnicos, podeEditar }: { tecnicos: Te
       )}
 
       {secao === 'tecnicos' && <PorTecnico agrupado={agrupado} catalogo={catalogo} tecnicos={tecnicos} podeEditar={podeEditar} recarregar={carregar} />}
-      {secao === 'documentos' && <Documentos agrupado={agrupado} />}
+      {secao === 'documentos' && <><Documentos agrupado={agrupado} /><DocumentosArquivos tecnicos={tecnicos} catalogo={catalogo} podeEditar={podeEditar} /></>}
       {secao === 'catalogo' && <Catalogo catalogo={catalogo} podeEditar={podeEditar} recarregar={carregar} />}
       {secao === 'tipos' && <Tipos tipos={tipos} catalogo={catalogo} podeEditar={podeEditar} recarregar={carregar} />}
     </div>

@@ -49,6 +49,17 @@ O sistema guarda nome, telefone e histórico de escalas de empregados. Pontos re
   **sem** nome ou telefone.
 - O log de webhook guarda o conteúdo das mensagens recebidas: limpe periodicamente (30 dias).
 
+## Documentos dos técnicos
+
+Bucket privado `documentos`: criptografia em repouso (AES-256), sem URL pública, link assinado de
+2 minutos por abertura, políticas de acesso por papel no próprio banco e trilha de quem enviou
+cada arquivo. Retenção de 5 anos após o desligamento (`tecnicos.desligado_em`), com
+`vw_documentos_expirados` apontando o que já passou do prazo.
+
+O Supabase mantém ISO/IEC 27001 e SOC 2 Tipo 2 para a infraestrutura. Certificação é da
+organização, não do código: o que o projeto entrega é o desenho seguro; a conformidade da Infoxtec
+depende de política interna, contrato com os titulares e processo de resposta a incidentes.
+
 ## Riscos conhecidos
 
 | Risco | Situação |

@@ -21,7 +21,7 @@ Nove funcionalidades pedidas, analisadas por viabilidade, dependência e esforç
 | 4 | Integração com ponto VRmais | M/G | API VRmais + parecer jurídico | Parcial (sem bloqueio) |
 | 6 | IA que sugere a escala | G | #5, #3, geolocalização | Protótipo só |
 | 7 | Predição e pré-programação | G | #6, #8 | Não |
-| 10 | Upload de documentos com OCR | M | Storage + OCR | Sim |
+| 10 | Upload de documentos com OCR | M | Storage + OCR | **Entregue** |
 | 11 | Perfil de teste para técnicos | P | — | **Entregue** |
 | 12 | Indicadores clicáveis na Agenda | P | — | **Entregue** |
 | 13 | Submenu da Agenda | P | — | **Entregue** |
@@ -267,7 +267,7 @@ que precisa retirar.
 
 ---
 
-## 10. Upload de documentos com leitura automática da validade
+## 10. Upload de documentos com leitura automática da validade — ENTREGUE (24/09/2026)
 
 **Problema:** hoje a validade de NR, CNH e ASO é digitada à mão e o documento em si fica fora do
 sistema. Numa fiscalização ou auditoria, ninguém encontra o arquivo.
@@ -289,8 +289,9 @@ lida de um ASO vencido é pior que campo em branco, porque cria uma falsa sensa�
 **Riscos:** são documentos pessoais — controle de acesso restrito, link temporário e prazo de
 retenção definido. Vale alinhar com o RH quanto tempo guardar após o desligamento.
 
-**Aceite:** anexar um ASO em JPG, o sistema sugerir a validade, a pessoa confirmar, e o arquivo
-abrir pelo painel depois.
+**Entregue:** bucket privado com criptografia em repouso, acesso só por link assinado de 2 minutos
+e restrito a admin/gestor, retenção de 5 anos após o desligamento e OCR opcional para imagens.
+Configuração em `supabase/setup/documentos.md`. O OCR liga ao cadastrar `GOOGLE_VISION_KEY`.
 
 ---
 

@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, TecnicoAgrupado, Ligacao, ItemBacklog,
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, TecnicoAgrupado, Ligacao, ItemBacklog, Documento,
 } from './types'
 
 function traduzir(msg: string): string {
@@ -28,11 +28,11 @@ export const api = {
 
   criarEscalas: (p: {
     tecnicos: string[]; local: string | null; data: string; hora: string
-    tarefa: string; duracao: number; prioridade: string; enviar: boolean; tipo?: string | null
+    tarefa: string; duracao: number; prioridade: string; enviar: boolean; tipo?: string | null; teste?: boolean
   }) => rpc<ResultadoLote[]>('app_criar_escalas', {
     p_tecnicos: p.tecnicos, p_local: p.local, p_data: p.data, p_hora: p.hora,
     p_tarefa: p.tarefa, p_duracao: p.duracao, p_prioridade: p.prioridade, p_enviar: p.enviar,
-    p_tipo: p.tipo ?? null,
+    p_tipo: p.tipo ?? null, p_teste: p.teste ?? false,
   }),
   mudarStatus: (escalaId: string, status: string) =>
     rpc<string>('app_mudar_status', { p_escala: escalaId, p_status: status }),
@@ -79,9 +79,66 @@ export const api = {
   moverBacklogItem: (id: string, coluna: string, posicao?: number) =>
     rpc<void>('app_mover_backlog_item', { p_id: id, p_coluna: coluna, p_posicao: posicao ?? null }),
 
+  documentos: (tecnicoId?: string) => rpc<Documento[]>('app_documentos', { p_tecnico: tecnicoId ?? null }),
+  registrarDocumento: (d: Record<string, unknown>) => rpc<string>('app_registrar_documento', { p: d }),
+  excluirDocumento: (id: string) => rpc<string>('app_excluir_documento', { p_id: id }),
+
   usuarios: () => rpc<UsuarioPainel[]>('app_usuarios'),
   salvarUsuario: (u: { email: string; nome: string; papel: Papel; ativo: boolean }) =>
     rpc<string>('app_salvar_usuario', { p_email: u.email, p_nome: u.nome, p_papel: u.papel, p_ativo: u.ativo }),
+}
+
+/** Envia o arquivo ao Storage privado e registra os metadados. */
+export async function enviarDocumento(p: {
+  tecnicoId: string; habilidadeId: string | null; arquivo: File; validade: string | null
+}): Promise<string> {
+  const ext = p.arquivo.name.split('.').pop()?.toLowerCase() ?? 'bin'
+  const caminho = `${p.tecnicoId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+  const { error } = await supabase.storage.from('documentos')
+    .upload(caminho, p.arquivo, { contentType: p.arquivo.type, upsert: false })
+  if (error) throw new Error(`Falha no envio do arquivo: ${error.message}`)
+  try {
+    return await api.registrarDocumento({
+      tecnico_id: p.tecnicoId, habilidade_id: p.habilidadeId, caminho,
+      nome_arquivo: p.arquivo.name, mime: p.arquivo.type,
+      tamanho_bytes: p.arquivo.size, validade: p.validade,
+    })
+  } catch (e) {
+    // metadado falhou: nao deixa arquivo orfao no Storage
+    await supabase.storage.from('documentos').remove([caminho])
+    throw e
+  }
+}
+
+export async function abrirDocumento(caminho: string): Promise<string> {
+  const { data, error } = await supabase.storage.from('documentos').createSignedUrl(caminho, 120)
+  if (error || !data) throw new Error('Não foi possível abrir o documento.')
+  return data.signedUrl
+}
+
+export async function removerDocumento(id: string): Promise<void> {
+  const caminho = await api.excluirDocumento(id)
+  await supabase.storage.from('documentos').remove([caminho])
+}
+
+/** OCR: manda o arquivo para a Edge Function e recebe a data sugerida. */
+export async function lerValidadePorOCR(arquivo: File): Promise<{ sugestao: string | null; erro?: string }> {
+  const base64 = await new Promise<string>((ok, falha) => {
+    const r = new FileReader()
+    r.onload = () => ok(String(r.result).split(',')[1] ?? '')
+    r.onerror = () => falha(new Error('Não consegui ler o arquivo.'))
+    r.readAsDataURL(arquivo)
+  })
+  const { data: sessao } = await supabase.auth.getSession()
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/documento-ocr`
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessao.session?.access_token ?? ''}` },
+    body: JSON.stringify({ base64, mime: arquivo.type }),
+  })
+  const r = await resp.json().catch(() => ({}))
+  if (!r.ok) return { sugestao: null, erro: r.erro ?? 'OCR indisponível.' }
+  return { sugestao: r.sugestao ?? null }
 }
 
 export function erroMsg(e: unknown): string {

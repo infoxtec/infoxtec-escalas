@@ -88,3 +88,23 @@ funções com prefixo `app_`.
 **Por quê:** a migration 26 usou lista manual e esqueceu 34 funções, derrubando o acesso ao painel
 com "Sem permissão para esta ação". Com o laço, função nova nasce liberada para usuário logado e
 nada do schema fica aberto ao público.
+
+## 13. Escala sempre no futuro
+
+**Decisão:** a escala precisa começar no mínimo 5 minutos à frente, validado no banco e na tela.
+**Por quê:** escala no passado não é enviada pelo motor (a view só considera escalas futuras) e
+ficava presa no painel sem explicação.
+
+## 14. Escala de teste
+
+**Decisão:** escala marcada como teste funciona por completo, fica fora de todos os indicadores e
+pode ser removida a qualquer momento, mesmo depois de entregue e respondida.
+**Por quê:** homologar o fluxo de ponta a ponta sem sujar estatística. Escala de técnico com
+perfil de teste já nasce marcada.
+
+## 15. OCR sugere, pessoa confirma
+
+**Decisão:** a leitura automática preenche o campo de validade, mas o salvamento exige
+confirmação humana.
+**Por quê:** uma data errada lida de um ASO vencido cria falsa conformidade — pior que campo
+vazio. Também por isso PDF não é lido automaticamente em vez de arriscar leitura ruim.

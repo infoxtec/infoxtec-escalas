@@ -188,7 +188,10 @@ export default function AgendaPage({ tecnicos, locais, tipos, podeEditar }: { te
                         {e.turno && e.turno !== 'diurno' && <Moon className="h-3 w-3 shrink-0 text-indigo-500" />}{horario}
                       </span>
                     </td>
-                    <td className="truncate px-3 py-2.5" title={e.tecnico}>{e.tecnico}</td>
+                    <td className="truncate px-3 py-2.5" title={e.tecnico}>
+                      {e.teste && <span className="mr-1 rounded bg-purple-100 px-1 py-0.5 text-[10px] font-medium text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">teste</span>}
+                      {e.tecnico}
+                    </td>
                     <td className="truncate px-3 py-2.5 text-xs text-muted-foreground" title={e.local}>{e.local}</td>
                     <td className="truncate px-3 py-2.5 text-xs" title={e.descricao_tarefa}>{e.descricao_tarefa}</td>
                     <td className="truncate px-3 py-2.5">

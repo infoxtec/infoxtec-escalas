@@ -140,6 +140,10 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
               checked={!!edit.opt_in} onChange={v => setEdit(p => ({ ...p, opt_in: v }))} disabled={salvando} />
             <ToggleRow label="Perfil de teste" description="Para homologação: recebe mensagens e ligações manuais, mas fica fora dos indicadores, do painel de pendências, dos alertas e das ligações automáticas."
               checked={!!edit.perfil_teste} onChange={v => setEdit(p => ({ ...p, perfil_teste: v }))} disabled={salvando} />
+            <Field label="Data de desligamento" hint="Inicia a contagem de guarda dos documentos (5 anos).">
+              <Input type="date" value={edit.desligado_em ?? ''} disabled={salvando}
+                onChange={e => setEdit(p => ({ ...p, desligado_em: e.target.value || null }))} />
+            </Field>
             {edit.id && <ToggleRow label="Ativo" description={edit.ativo ? 'Aparece na seleção de novas escalas.' : 'Inativo: não aparece em novas escalas; o histórico fica preservado.'}
               checked={!!edit.ativo} onChange={v => setEdit(p => ({ ...p, ativo: v }))} disabled={salvando} />}
             {erro && <ErrorBox>{erro}</ErrorBox>}

@@ -32,7 +32,7 @@ são lembrados da escala do dia seguinte, com prazo às 18h.
 | Painel | React 18 + TypeScript + Vite + Tailwind, na Vercel | R$ 0 |
 | Login | Supabase Auth (e-mail e senha) | R$ 0 |
 | Banco, regras, agendamento, segredos | Supabase: PostgreSQL, pg_cron, pg_net, Vault | R$ 0 |
-| Webhooks | Supabase Edge Functions (Deno): `webhook-evolution` e `voz-escala` | R$ 0 |
+| Edge Functions | Supabase (Deno): `webhook-evolution`, `voz-escala` e `documento-ocr` | R$ 0 |
 | Ligação de voz | Twilio (URA) | ~R$ 0,24 por ligação |
 | WhatsApp | Evolution API 2.4 em VPS própria | custo da VPS |
 
@@ -75,6 +75,8 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Item 2 do backlog: URA de voz pela Twilio, testada em produção (1 aprova, 2 nega)
 - [x] Aba Roadmap: backlog, entregas e dívidas técnicas dentro do painel, com Kanban
 - [x] Itens 11, 12 e 13: perfil de teste, indicadores clicáveis e submenu da Agenda
+- [x] Item 10: documentos em armazenamento privado com OCR opcional e retenção de 5 anos
+- [x] Escala sempre no futuro (mínimo 5 minutos) e escala de teste fora das estatísticas
 - [x] Item 5 do backlog: habilidades, requisitos por tipo de atividade e gestão de documentos (NRs, CNH, ASO)
 - [x] Item 3 do backlog (parcial): painel de acompanhamento por local
 - [ ] Desligar o painel Retool e remover as funções da bancada de teste

@@ -122,10 +122,16 @@ e só é permitido enquanto o WhatsApp não confirmou a entrega no aparelho.
   a habilidade no nível exigido, aparece um aviso vermelho com o que falta. A escala pode ser
   criada mesmo assim: a decisão é do supervisor.
 - **Local** — opcional. Sem local, a mensagem diz "a confirmar".
-- **Data e Hora de início** — o **término é calculado sozinho** pela jornada CLT e aparece logo
+- **Data e Hora de início** — a escala **nunca pode começar no passado**: o mínimo é 5 minutos à
+  frente do horário atual. O campo de data não aceita dias anteriores a hoje, e no mesmo dia a
+  hora mínima aparece como dica. O **término é calculado sozinho** pela jornada CLT e aparece logo
   abaixo, junto do tipo de jornada (diurna, noturna ou mista). Não existe campo de duração.
 - **Prioridade** — baixa, normal ou urgente.
 - **Descrição da tarefa** — obrigatória; é o que o técnico lê no WhatsApp.
+- **Escala de teste** — funciona igual a uma escala normal (envia WhatsApp, aceita resposta,
+  liga), mas fica **fora de todos os indicadores** e pode ser removida a qualquer momento, mesmo
+  depois de entregue e respondida. Marca sozinha quando todos os técnicos escolhidos são de
+  perfil de teste. Na tabela da Agenda, essas escalas aparecem com o selo roxo "teste".
 - **Enviar WhatsApp agora** — marcado, a escala sai em até 1 minuto. Desmarcado, fica como
   rascunho e nada é enviado.
 
@@ -173,6 +179,7 @@ Cadastro da equipe.
 | Equipe | Opcional, para organização |
 | **Supervisor** | Recebe os alertas: recusa, falta de resposta, prazo das 18h e documentos vencidos |
 | **Autorização WhatsApp** | **Sem isso o sistema não envia nada para ele.** Registre o aceite antes de ligar |
+| **Data de desligamento** | Inicia a contagem de guarda dos documentos (5 anos) |
 | **Perfil de teste** | Para homologação: recebe mensagens e ligações manuais normalmente, mas fica fora dos indicadores, do painel de pendências, dos alertas e das ligações automáticas |
 | Ativo | Inativo não aparece em novas escalas; o histórico é preservado |
 
@@ -215,6 +222,21 @@ lista ordenada pelo mais urgente. Dá para incluir técnicos inativos. Quando ex
 vencido, aparece um aviso vermelho em qualquer aba levando até aqui.
 
 Toda segunda às 8h os supervisores recebem essa lista pelo WhatsApp.
+
+### Arquivos dos documentos
+
+Na mesma aba Documentos, abaixo da lista de validades. **Enviar documento** pede o técnico, o
+documento (NR, CNH, ASO), o arquivo em PDF ou imagem até 8 MB e a validade.
+
+Em **imagens**, o sistema lê o documento e **sugere** a data — confira sempre antes de salvar,
+porque a leitura erra em foto torta ou com pouca luz. PDF não é lido automaticamente. Ao informar
+a validade com um documento vinculado, a habilidade do técnico é atualizada junto.
+
+Os arquivos ficam em armazenamento privado, criptografados, e abrem por link temporário de 2
+minutos — não existe endereço público. Só administrador e gestor enxergam ou enviam.
+
+A guarda é de **5 anos após o desligamento**: informe a data de desligamento no cadastro do
+técnico para a contagem começar.
 
 ### Habilidades (catálogo)
 
