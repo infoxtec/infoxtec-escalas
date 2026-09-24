@@ -169,7 +169,16 @@ export interface ItemBacklog {
   titulo: string; descricao: string | null; status: StatusBacklog
   esforco: 'P' | 'M' | 'G' | null; depende_de: string | null; observacao: string | null
   entregue_em: string | null; ordem: number; updated_at: string
+  coluna: ColunaKanban; posicao: number
 }
+export type ColunaKanban = 'backlog' | 'a_fazer' | 'fazendo' | 'revisao' | 'feito'
+export const COLUNAS_KANBAN: { id: ColunaKanban; titulo: string; dica: string }[] = [
+  { id: 'backlog',  titulo: 'Backlog',  dica: 'Ideias e itens sem data' },
+  { id: 'a_fazer',  titulo: 'A fazer',  dica: 'Priorizado para a próxima rodada' },
+  { id: 'fazendo',  titulo: 'Fazendo',  dica: 'Em desenvolvimento agora' },
+  { id: 'revisao',  titulo: 'Revisão',  dica: 'Construído, aguardando teste ou deploy' },
+  { id: 'feito',    titulo: 'Feito',    dica: 'Em produção' },
+]
 export const STATUS_BACKLOG: Record<StatusBacklog, { label: string; classe: string; barra: string }> = {
   concluido:    { label: 'Concluído',   classe: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300', barra: 'bg-green-500' },
   parcial:      { label: 'Parcial',     classe: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',    barra: 'bg-blue-500' },

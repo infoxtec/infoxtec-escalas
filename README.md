@@ -19,7 +19,8 @@ são lembrados da escala do dia seguinte, com prazo às 18h.
 | [Operação](docs/operacao.md) | Diagnóstico do dia a dia: o que consultar quando algo falha |
 | [Segurança](docs/seguranca.md) | Login, papéis, segredos, LGPD e riscos conhecidos |
 | [Decisões](docs/decisoes.md) | O que foi decidido, o que foi descartado e por quê |
-| [Backlog](docs/backlog.md) | As 9 funcionalidades dos próximos 60 dias |
+| [Backlog](docs/backlog.md) | As 9 funcionalidades dos próximos 60 dias (o quadro vive na aba Roadmap) |
+| [Agente de IA](docs/agente-ia.md) | Roteiro para predições: instrumentar, consultar, prever, sugerir |
 | [Telefonia (item 2)](docs/telefonia.md) | URA de voz: fornecedor, custos, script e resultado do piloto |
 | [Publicar no Vercel](docs/deploy-vercel.md) | Passo a passo do deploy e da liberação de usuários |
 | [Retool (legado)](docs/retool.md) | Painel antigo, a ser desligado |
@@ -72,7 +73,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Jornada CLT automática, painel de técnicos sem escala, alerta das 18h, colunas ajustáveis
 - [x] Escala cancelada libera o horário
 - [x] Item 2 do backlog: URA de voz pela Twilio, testada em produção (1 aprova, 2 nega)
-- [x] Aba Roadmap: backlog, entregas e dívidas técnicas dentro do painel
+- [x] Aba Roadmap: backlog, entregas e dívidas técnicas dentro do painel, com Kanban
 - [x] Item 5 do backlog: habilidades, requisitos por tipo de atividade e gestão de documentos (NRs, CNH, ASO)
 - [x] Item 3 do backlog (parcial): painel de acompanhamento por local
 - [ ] Desligar o painel Retool e remover as funções da bancada de teste

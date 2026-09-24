@@ -80,3 +80,11 @@ a lista pelo WhatsApp.
 marcar "excluir mesmo estando em uso" para prosseguir, e aí as atribuições e requisitos vão junto.
 **Por quê:** apagar uma NR usada por 20 técnicos por engano é caro de reconstruir. Desativar
 continua sendo o caminho recomendado.
+
+## 12. Permissões concedidas por laço, não por lista
+
+**Decisão:** ao fim de cada migration, revogar tudo e conceder `execute` percorrendo todas as
+funções com prefixo `app_`.
+**Por quê:** a migration 26 usou lista manual e esqueceu 34 funções, derrubando o acesso ao painel
+com "Sem permissão para esta ação". Com o laço, função nova nasce liberada para usuário logado e
+nada do schema fica aberto ao público.

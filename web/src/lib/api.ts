@@ -76,6 +76,8 @@ export const api = {
 
   backlog: () => rpc<ItemBacklog[]>('app_backlog'),
   salvarBacklogItem: (i: Partial<ItemBacklog>) => rpc<string>('app_salvar_backlog_item', { p: i }),
+  moverBacklogItem: (id: string, coluna: string, posicao?: number) =>
+    rpc<void>('app_mover_backlog_item', { p_id: id, p_coluna: coluna, p_posicao: posicao ?? null }),
 
   usuarios: () => rpc<UsuarioPainel[]>('app_usuarios'),
   salvarUsuario: (u: { email: string; nome: string; papel: Papel; ativo: boolean }) =>

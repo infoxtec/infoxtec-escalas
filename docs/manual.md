@@ -242,6 +242,10 @@ observações; o lápis edita qualquer campo, e o botão **Novo item** acrescent
 
 O percentual no topo conta item concluído como inteiro e parcial como meio.
 
+Duas visões: **Kanban** (padrão) e **Visão geral**. No Kanban, arraste o cartão entre Backlog,
+A fazer, Fazendo, Revisão e Feito. Ao cair em Feito, o item vira concluído e ganha a data de
+entrega; em Fazendo, vira em andamento. Clique no cartão para editar qualquer campo.
+
 ## 10. O que o técnico recebe
 
 ### Mensagem da escala

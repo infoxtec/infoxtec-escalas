@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, CheckCircle2, Clock, Edit2, Ban, Plus, RefreshCw, Rocket, Wrench } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clock, Edit2, Ban, KanbanSquare, List, Plus, RefreshCw, Rocket, Wrench } from 'lucide-react'
 import { Button, ErrorBox, Field, Input, Modal, Select, Textarea, useToast } from '../components/ui'
 import { api, erroMsg } from '../lib/api'
+import Kanban from '../components/Kanban'
 import { ESFORCO_LABEL, STATUS_BACKLOG, formatDate } from '../lib/types'
-import type { ItemBacklog, StatusBacklog } from '../lib/types'
+import type { ColunaKanban, ItemBacklog, StatusBacklog } from '../lib/types'
 
 const ICONE: Record<StatusBacklog, JSX.Element> = {
   concluido: <CheckCircle2 className="h-4 w-4" />,
@@ -26,6 +27,7 @@ export default function RoadmapPage({ podeEditar }: { podeEditar: boolean }) {
   const [edit, setEdit] = useState<Partial<ItemBacklog> | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [erroForm, setErroForm] = useState<string | null>(null)
+  const [visao, setVisao] = useState<'kanban' | 'lista'>('kanban')
 
   const carregar = useCallback(async () => {
     setCarregando(true); setErro(null)
@@ -38,6 +40,13 @@ export default function RoadmapPage({ podeEditar }: { podeEditar: boolean }) {
   const conta = (s: StatusBacklog) => backlog.filter(i => i.status === s).length
   const progresso = backlog.length === 0 ? 0
     : Math.round(100 * (conta('concluido') + conta('parcial') * 0.5) / backlog.length)
+
+  const mover = async (id: string, coluna: ColunaKanban) => {
+    // move na tela primeiro; se o banco recusar, recarrega e mostra o erro
+    setItens(l => l.map(i => (i.id === id ? { ...i, coluna } : i)))
+    try { await api.moverBacklogItem(id, coluna) } catch (e) { setErro(erroMsg(e)); await carregar() }
+    await carregar()
+  }
 
   const salvar = async () => {
     if (!edit) return
@@ -54,6 +63,16 @@ export default function RoadmapPage({ podeEditar }: { podeEditar: boolean }) {
         <Button variant="outline" size="sm" onClick={() => void carregar()} disabled={carregando}>
           <RefreshCw className={`h-3.5 w-3.5 ${carregando ? 'animate-spin' : ''}`} /> Atualizar
         </Button>
+        <div className="flex items-center gap-1 rounded-md border p-0.5">
+          <button type="button" onClick={() => setVisao('kanban')}
+            className={`flex items-center gap-1 rounded px-2.5 py-1 text-sm font-medium ${visao === 'kanban' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
+            <KanbanSquare className="h-3.5 w-3.5" /> Kanban
+          </button>
+          <button type="button" onClick={() => setVisao('lista')}
+            className={`flex items-center gap-1 rounded px-2.5 py-1 text-sm font-medium ${visao === 'lista' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
+            <List className="h-3.5 w-3.5" /> Visão geral
+          </button>
+        </div>
         <div className="flex-1" />
         {podeEditar && (
           <Button size="sm" onClick={() => { setEdit({ tipo: 'backlog', status: 'planejado', ordem: 100 }); setErroForm(null) }}>
@@ -91,7 +110,19 @@ export default function RoadmapPage({ podeEditar }: { podeEditar: boolean }) {
         </div>
       </div>
 
-      {(['backlog', 'entrega', 'divida'] as const).map(tipo => {
+      {visao === 'kanban' && (
+        <>
+          <Kanban itens={itens} podeEditar={podeEditar}
+            onMover={(id, coluna) => void mover(id, coluna)}
+            onAbrir={i => { setEdit({ ...i }); setErroForm(null) }} />
+          <p className="text-xs text-muted-foreground">
+            Arraste o cartão entre as colunas. Ao cair em <strong>Feito</strong>, o item vira concluído e ganha a data de entrega;
+            em <strong>Fazendo</strong>, vira em andamento. Clique no cartão para editar.
+          </p>
+        </>
+      )}
+
+      {visao === 'lista' && (['backlog', 'entrega', 'divida'] as const).map(tipo => {
         const lista = itens.filter(i => i.tipo === tipo)
         if (lista.length === 0) return null
         return (
