@@ -4,7 +4,7 @@ import { Button, Confirm, ErrorBox, Field, Input, Modal, Select, useToast } from
 import {
   abrirDocumento, api, enviarDocumento, erroMsg, lerValidadePorOCR, removerDocumento, vincularDocumentoDrive,
 } from '../lib/api'
-import { lerValidadeLocal } from '../lib/ocr'
+import { DESCRICAO_METODO, lerValidadeLocal } from '../lib/ocr'
 import { formatDate, formatDateTime } from '../lib/types'
 import type { Documento, Habilidade, Tecnico } from '../lib/types'
 
@@ -53,18 +53,13 @@ export default function DocumentosArquivos({ tecnicos, catalogo, podeEditar }: {
 
   /** Leitura local: o documento nao sai do navegador. */
   const lerValidade = async (f: File) => {
-    if (!f.type.startsWith('image/')) {
-      setErroForm('PDF não é lido automaticamente. Informe a validade ou envie uma foto da página.')
-      return
-    }
     setLendo(true); setProgresso(0); setErroForm(null)
     try {
       const r = await lerValidadeLocal(f, setProgresso)
       if (r.sugestao) {
         setForm(n => (n ? { ...n, validade: r.sugestao! } : n))
-        toast(r.datas.length > 1
-          ? `Encontrei ${r.datas.length} datas; sugeri a mais provável. Confira antes de salvar.`
-          : 'Validade sugerida pela leitura — confira antes de salvar.')
+        toast(`Validade sugerida pelo ${DESCRICAO_METODO[r.metodo]}`
+          + (r.datas.length > 1 ? ` — achei ${r.datas.length} datas, confira.` : ' — confira antes de salvar.'))
       } else {
         setErroForm('Não encontrei data no documento. Informe a validade manualmente.')
       }
@@ -77,7 +72,7 @@ export default function DocumentosArquivos({ tecnicos, catalogo, podeEditar }: {
     if (f.size > MAX_MB * 1024 * 1024) { setErroForm(`Arquivo acima de ${MAX_MB} MB.`); return }
     setErroForm(null)
     setForm({ ...form, arquivo: f, nome: f.name })
-    if (f.type.startsWith('image/')) await lerValidade(f)
+    await lerValidade(f)
   }
 
   const salvar = async () => {
@@ -188,7 +183,8 @@ export default function DocumentosArquivos({ tecnicos, catalogo, podeEditar }: {
         <strong>Arquivo enviado:</strong> fica em armazenamento privado, criptografado, e abre por link temporário de 2 minutos —
         só administrador e gestor acessam. <strong>Vinculado do Drive:</strong> o arquivo permanece no seu Drive e quem controla
         o acesso é a permissão de lá; a guarda de 5 anos também passa a ser manual. A leitura da validade acontece
-        no seu navegador: o documento não é enviado a nenhum servidor.
+        no seu navegador: o documento não é enviado a nenhum servidor. PDF com texto é lido na hora;
+        PDF escaneado e fotos passam pelo reconhecimento de imagem.
       </p>
 
       <Modal open={!!form} onClose={() => { if (!enviando && !lendo) setForm(null) }} width="max-w-md"
@@ -216,7 +212,7 @@ export default function DocumentosArquivos({ tecnicos, catalogo, podeEditar }: {
             </Field>
 
             {form.origem === 'storage' ? (
-              <Field label="Arquivo *" hint={`PDF ou imagem, até ${MAX_MB} MB. Em imagens, a validade é lida no seu navegador.`}>
+              <Field label="Arquivo *" hint={`PDF ou imagem, até ${MAX_MB} MB. A validade é lida no seu navegador, inclusive em PDF.`}>
                 <input type="file" accept=".pdf,.jpg,.jpeg,.png" disabled={enviando || lendo}
                   onChange={e => void escolherArquivo(e.target.files?.[0] ?? null)}
                   className="w-full text-sm file:mr-3 file:rounded-md file:border file:bg-background file:px-3 file:py-1.5 file:text-sm" />
@@ -231,8 +227,8 @@ export default function DocumentosArquivos({ tecnicos, catalogo, podeEditar }: {
                   <Input value={form.nome} placeholder="Ex: ASO 2026 — José Roberto" disabled={enviando}
                     onChange={e => setForm({ ...form, nome: e.target.value })} />
                 </Field>
-                <Field label="Ler a validade de uma imagem (opcional)" hint="Escolha aqui a mesma foto que está no Drive: ela é lida no navegador e não é enviada nem guardada.">
-                  <input type="file" accept=".jpg,.jpeg,.png" disabled={enviando || lendo}
+                <Field label="Ler a validade de um arquivo (opcional)" hint="Escolha o mesmo PDF ou foto que está no Drive: é lido no navegador e não é enviado nem guardado.">
+                  <input type="file" accept=".pdf,.jpg,.jpeg,.png" disabled={enviando || lendo}
                     onChange={e => { const f = e.target.files?.[0]; if (f) void lerValidade(f) }}
                     className="w-full text-sm file:mr-3 file:rounded-md file:border file:bg-background file:px-3 file:py-1.5 file:text-sm" />
                 </Field>
@@ -243,7 +239,7 @@ export default function DocumentosArquivos({ tecnicos, catalogo, podeEditar }: {
               <div className="space-y-1">
                 <p className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  {progresso < 0.15 ? 'Preparando o leitor (só na primeira vez)...' : 'Lendo o documento...'}
+                  {progresso < 0.2 ? 'Preparando o leitor (só na primeira vez)...' : 'Lendo o documento...'}
                 </p>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                   <div className="h-full bg-primary transition-all" style={{ width: `${Math.round(progresso * 100)}%` }} />
@@ -256,7 +252,7 @@ export default function DocumentosArquivos({ tecnicos, catalogo, podeEditar }: {
                 onChange={e => setForm({ ...form, validade: e.target.value })} />
             </Field>
 
-            {form.origem === 'storage' && form.arquivo?.type.startsWith('image/') && !lendo && (
+            {form.origem === 'storage' && form.arquivo && !lendo && (
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => void lerValidade(form.arquivo!)} disabled={enviando}>
                   <ScanLine className="h-3.5 w-3.5" /> Ler de novo

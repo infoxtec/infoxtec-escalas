@@ -75,7 +75,8 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Item 2 do backlog: URA de voz pela Twilio, testada em produção (1 aprova, 2 nega)
 - [x] Aba Roadmap: backlog, entregas e dívidas técnicas dentro do painel, com Kanban
 - [x] Itens 11, 12 e 13: perfil de teste, indicadores clicáveis e submenu da Agenda
-- [x] Item 10: documentos em armazenamento privado ou vinculados ao Drive, com OCR no navegador e retenção de 5 anos
+- [x] Item 10: documentos em armazenamento privado ou vinculados ao Drive, com leitura de PDF e imagem no navegador
+- [x] Sessão expira em 30 min de inatividade e cada publicação recarrega o painel aberto
 - [x] Escala sempre no futuro (mínimo 5 minutos) e escala de teste fora das estatísticas
 - [x] Item 5 do backlog: habilidades, requisitos por tipo de atividade e gestão de documentos (NRs, CNH, ASO)
 - [x] Item 3 do backlog (parcial): painel de acompanhamento por local

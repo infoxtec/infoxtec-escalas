@@ -234,9 +234,11 @@ temporário de 2 minutos, sem endereço público, e só administrador e gestor a
 quando a documentação já está organizada lá, mas atenção — **quem controla o acesso passa a ser a
 permissão do Drive**, e a guarda de 5 anos vira manual.
 
-Em **imagens**, o sistema lê a validade **dentro do seu navegador**: o documento não é enviado a
-servidor nenhum. Na primeira vez o leitor é baixado (uns segundos a mais) e depois fica em cache.
-Confira sempre antes de salvar — a leitura erra em foto torta ou com pouca luz. PDF não é lido.
+O sistema lê a validade **dentro do seu navegador**, em PDF ou imagem: o documento não é enviado
+a servidor nenhum. PDF gerado por sistema é lido na hora, direto do texto; PDF escaneado e fotos
+passam pelo reconhecimento de imagem, que leva alguns segundos. Na primeira vez o leitor é baixado
+e depois fica em cache. Confira sempre antes de salvar — a leitura erra em foto torta ou com
+pouca luz.
 Ao informar a validade com um documento vinculado, a habilidade do técnico é atualizada junto.
 
 A guarda é de **5 anos após o desligamento**: informe a data de desligamento no cadastro do
@@ -340,6 +342,16 @@ Nada é enviado fora da janela das 06h às 21h, nem para técnico sem autorizaç
 Supervisor é quem está marcado como tal na aba Técnicos. Ninguém recebe alerta sobre si mesmo.
 
 ---
+
+## 11b. Sessão e atualizações
+
+**Inatividade.** Depois de **30 minutos sem nenhuma interação**, a sessão é encerrada e o painel
+volta para a tela de login avisando o motivo. Mexer o mouse, digitar ou rolar a tela já conta como
+atividade, então isso só acontece com a janela realmente abandonada.
+
+**Versão nova.** Quando uma publicação nova entra no ar, o painel que estiver aberto **recarrega
+sozinho** em poucos minutos, renovando a conexão com o banco. Isso evita tela antiga conversando
+com um sistema já atualizado. O carimbo no topo mostra a versão em uso.
 
 ## 12. Perguntas frequentes
 

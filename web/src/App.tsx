@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js'
 import { Award, CalendarDays, LayoutGrid, Loader2, LogOut, MapPin, Rocket, ShieldCheck, Users } from 'lucide-react'
 import { Button, ErrorBox } from './components/ui'
 import { configurado, supabase, tipoDoLink } from './lib/supabase'
+import { MINUTOS_INATIVIDADE, useInatividade, useVersaoPublicada } from './lib/sessao'
 import { api, erroMsg } from './lib/api'
 import { PAPEL_LABEL } from './lib/types'
 import type { Acesso, Local, Tecnico, TipoAtividade } from './lib/types'
@@ -25,6 +26,16 @@ function Centro({ children }: { children: ReactNode }) {
 export default function App() {
   const [sessao, setSessao] = useState<Session | null | undefined>(undefined)
   const [definirSenha, setDefinirSenha] = useState<'invite' | 'recovery' | null>(tipoDoLink)
+
+  // Publicacao nova: recarrega o navegador que estiver aberto
+  useVersaoPublicada(__APP_BUILD__)
+
+  // 30 minutos parado: encerra a sessao
+  useInatividade(() => {
+    if (!sessao) return
+    sessionStorage.setItem('motivoSaida', 'inatividade')
+    void supabase.auth.signOut()
+  })
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSessao(data.session))

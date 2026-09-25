@@ -22,6 +22,11 @@ function Moldura({ titulo, children }: { titulo: string; children: React.ReactNo
 }
 
 export function Login() {
+  const [avisoInatividade] = useState(() => {
+    const houve = sessionStorage.getItem('motivoSaida') === 'inatividade'
+    sessionStorage.removeItem('motivoSaida')
+    return houve
+  })
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState<string | null>(null)
@@ -63,6 +68,11 @@ export function Login() {
   return (
     <Moldura titulo="Entre com seu e-mail e senha">
       <form onSubmit={entrar} className="space-y-3">
+        {avisoInatividade && (
+          <p className="rounded-md bg-amber-50 p-2.5 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+            Sua sessão foi encerrada após 30 minutos sem atividade. Entre novamente.
+          </p>
+        )}
         <Field label="E-mail"><Input type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} autoFocus /></Field>
         <Field label="Senha"><Input type="password" required autoComplete="current-password" value={senha} onChange={e => setSenha(e.target.value)} /></Field>
         {erro && <ErrorBox>{erro}</ErrorBox>}

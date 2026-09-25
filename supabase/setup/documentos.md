@@ -41,8 +41,17 @@ Nao precisa de chave, conta nem cartao, e **o documento nao sai da maquina de qu
 nada e enviado ao nosso servidor nem a terceiros. Na primeira leitura o navegador baixa o motor e
 o idioma (~12 MB), que ficam em cache; cada leitura leva de 2 a 8 segundos.
 
-Le **imagens** (JPG/PNG). PDF nao e lido: informe a validade ou envie uma foto da pagina.
-A sugestao **nunca grava sozinha**: aparece no campo para conferencia.
+Tres caminhos, escolhidos automaticamente pelo arquivo:
+
+| Arquivo | Como e lido | Tempo |
+|---|---|---|
+| **PDF digital** (gerado por sistema) | texto extraido direto do arquivo, sem OCR | instantaneo e exato |
+| **PDF escaneado** | pagina renderizada em imagem e lida por OCR | 3 a 10 s |
+| **Imagem** (JPG/PNG) | OCR direto | 2 a 8 s |
+
+Le ate 3 paginas do PDF procurando texto e, se nao achar data, ate 2 paginas por OCR. A escolha da
+data segue a regra: a futura mais proxima; havendo so datas passadas, a maior — que e a validade
+vencida, nao a emissao. A sugestao **nunca grava sozinha**: aparece no campo para conferencia.
 
 ### Opcional: leitura na nuvem (modo preciso)
 

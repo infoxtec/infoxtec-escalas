@@ -122,3 +122,23 @@ contra menos de 1 na nuvem. Para ler datas, a precisão se mostrou suficiente.
 **Decisão:** o modo Drive guarda só o link; o arquivo permanece no Google Drive da empresa.
 **Consequência registrada:** o controle de acesso passa a ser do Drive e a retenção de 5 anos vira
 manual. Para documento pessoal, o modo bucket continua sendo o recomendado.
+
+## 18. Leitura de PDF em duas etapas
+
+**Decisão:** tentar primeiro o texto embutido no PDF e só recorrer ao OCR quando não houver.
+**Por quê:** PDF gerado por sistema (a maioria dos ASO e certificados de NR) tem o texto dentro do
+arquivo — ler dali é instantâneo e sem erro, enquanto o OCR levaria segundos e poderia errar.
+
+## 19. Sessão expira em 30 minutos e deploy recarrega o painel
+
+**Decisão:** inatividade de 30 min encerra a sessão; publicação nova recarrega o navegador aberto.
+**Por quê:** painel em operação fica aberto em computador compartilhado, e tela antiga conversando
+com banco novo produz erro difícil de diagnosticar. O `version.json` é gerado no build e comparado
+a cada 3 minutos e a cada foco na janela.
+
+## 20. Indicadores contam só escala ativa de campo
+
+**Decisão:** ficam fora das contagens as canceladas, as de teste, os técnicos de homologação e os
+supervisores.
+**Por quê:** supervisor é administração do sistema, não produção de campo; cancelada não ocupa o
+técnico; e escala de teste existe justamente para não sujar estatística.
