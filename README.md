@@ -44,7 +44,7 @@ Projeto Supabase: `infoxtec-escalas` (ref `zpckrxydqqmmcrphrkxz`, região sa-eas
 ```
 web/                          painel React (o que vai para a Vercel, Root Directory = web)
 supabase/
-  migrations/                 01 a 35 — espelho exato do banco
+  migrations/                 01 a 37 — espelho exato do banco
   functions/                  Edge Functions: webhook-evolution, voz-escala, documento-ocr
   setup/                      config por ambiente, cron e segredos (rodar uma vez)
   seed.sql                    dados fictícios para desenvolvimento
@@ -94,6 +94,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Itens 11, 12 e 13: perfil de teste, indicadores clicáveis e submenu da Agenda
 - [x] Item 10: documentos em armazenamento privado ou vinculados ao Drive, com leitura de PDF e imagem no navegador
 - [x] Sessão expira em 30 min de inatividade e cada publicação recarrega o painel aberto
+- [x] Habilidades e documentos separados, envio em lote com classificação automática, atribuição no cadastro do técnico
 - [x] Escala sempre no futuro (mínimo 5 minutos) e escala de teste fora das estatísticas
 - [x] Item 5 do backlog: habilidades, requisitos por tipo de atividade e gestão de documentos (NRs, CNH, ASO)
 - [x] Item 3 do backlog (parcial): painel de acompanhamento por local

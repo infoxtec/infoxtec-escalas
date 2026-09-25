@@ -6,7 +6,7 @@ import {
 } from '../lib/api'
 import { DESCRICAO_METODO, lerValidadeLocal } from '../lib/ocr'
 import { formatDate, formatDateTime } from '../lib/types'
-import type { Documento, Habilidade, Tecnico } from '../lib/types'
+import type { Documento, Tecnico, TipoDocumento } from '../lib/types'
 
 const MAX_MB = 8
 type Origem = 'storage' | 'drive'
@@ -14,7 +14,7 @@ type Origem = 'storage' | 'drive'
 interface Formulario {
   origem: Origem
   tecnico: string
-  habilidade: string
+  tipoDocumento: string
   validade: string
   arquivo: File | null
   url: string
@@ -23,8 +23,8 @@ interface Formulario {
 
 /** Item 10: documentos em armazenamento privado ou vinculados ao Google Drive,
  *  com leitura da validade feita no proprio navegador. */
-export default function DocumentosArquivos({ tecnicos, catalogo, podeEditar }: {
-  tecnicos: Tecnico[]; catalogo: Habilidade[]; podeEditar: boolean
+export default function DocumentosArquivos({ tecnicos, tiposDoc, podeEditar, aoMudar }: {
+  tecnicos: Tecnico[]; tiposDoc: TipoDocumento[]; podeEditar: boolean; aoMudar?: () => Promise<void>
 }) {
   const toast = useToast()
   const [lista, setLista] = useState<Documento[]>([])
@@ -44,11 +44,11 @@ export default function DocumentosArquivos({ tecnicos, catalogo, podeEditar }: {
   }, [])
   useEffect(() => { void carregar() }, [carregar])
 
-  const comValidade = useMemo(() => catalogo.filter(h => h.ativo && h.exige_validade), [catalogo])
+  const comValidade = useMemo(() => tiposDoc.filter(d => d.ativo), [tiposDoc])
 
   const abrirForm = (origem: Origem) => {
     setErroForm(null); setProgresso(0)
-    setForm({ origem, tecnico: '', habilidade: '', validade: '', arquivo: null, url: '', nome: '' })
+    setForm({ origem, tecnico: '', tipoDocumento: '', validade: '', arquivo: null, url: '', nome: '' })
   }
 
   /** Leitura local: o documento nao sai do navegador. */
@@ -84,18 +84,18 @@ export default function DocumentosArquivos({ tecnicos, catalogo, podeEditar }: {
       if (form.origem === 'storage') {
         if (!form.arquivo) { setEnviando(false); return setErroForm('Selecione o arquivo.') }
         await enviarDocumento({
-          tecnicoId: form.tecnico, habilidadeId: form.habilidade || null,
+          tecnicoId: form.tecnico, tipoDocumentoId: form.tipoDocumento || null,
           arquivo: form.arquivo, validade: form.validade || null,
         })
       } else {
         if (!form.url.trim()) { setEnviando(false); return setErroForm('Cole o link do Google Drive.') }
         await vincularDocumentoDrive({
-          tecnicoId: form.tecnico, habilidadeId: form.habilidade || null,
+          tecnicoId: form.tecnico, tipoDocumentoId: form.tipoDocumento || null,
           url: form.url, nome: form.nome, validade: form.validade || null,
         })
       }
       toast('Documento registrado.')
-      setForm(null); await carregar()
+      setForm(null); await carregar(); await aoMudar?.()
     } catch (e) { setErroForm(erroMsg(e)) }
     finally { setEnviando(false) }
   }
@@ -110,7 +110,7 @@ export default function DocumentosArquivos({ tecnicos, catalogo, podeEditar }: {
   const excluir = async () => {
     if (!alvo) return
     setEnviando(true)
-    try { await removerDocumento(alvo.id); setAlvo(null); await carregar() }
+    try { await removerDocumento(alvo.id); setAlvo(null); await carregar(); await aoMudar?.() }
     catch (e) { setErro(erroMsg(e)) }
     finally { setEnviando(false) }
   }
@@ -152,7 +152,7 @@ export default function DocumentosArquivos({ tecnicos, catalogo, podeEditar }: {
             {lista.map(d => (
               <tr key={d.id} className="border-b last:border-0">
                 <td className="px-3 py-2.5 font-medium">{d.tecnico}</td>
-                <td className="px-3 py-2.5 text-xs">{d.habilidade ?? '—'}</td>
+                <td className="px-3 py-2.5 text-xs">{d.documento ?? '—'}</td>
                 <td className="px-3 py-2.5 text-xs">
                   <button type="button" onClick={() => void abrir(d)} className="inline-flex items-center gap-1 text-primary hover:underline">
                     <FileText className="h-3.5 w-3.5" />{d.nome_arquivo}
@@ -203,11 +203,11 @@ export default function DocumentosArquivos({ tecnicos, catalogo, podeEditar }: {
               </Select>
             </Field>
 
-            <Field label="Documento" hint="Ao informar a validade, a habilidade do técnico é atualizada junto.">
-              <Select className="w-full" value={form.habilidade} disabled={enviando}
-                onChange={e => setForm({ ...form, habilidade: e.target.value })}>
+            <Field label="Documento" hint="Ao informar a validade, o documento do técnico é atualizado junto.">
+              <Select className="w-full" value={form.tipoDocumento} disabled={enviando}
+                onChange={e => setForm({ ...form, tipoDocumento: e.target.value })}>
                 <option value="">— não vincular —</option>
-                {comValidade.map(h => <option key={h.id} value={h.id}>{h.nome}</option>)}
+                {comValidade.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
               </Select>
             </Field>
 
@@ -280,7 +280,7 @@ export default function DocumentosArquivos({ tecnicos, catalogo, podeEditar }: {
             ? <>O vínculo com <strong className="text-foreground">{alvo?.nome_arquivo}</strong> sai do painel. O arquivo continua no seu Google Drive.</>
             : <>O arquivo <strong className="text-foreground">{alvo?.nome_arquivo}</strong> de {alvo?.tecnico} será apagado do armazenamento.</>}
         </p>
-        <p>A validade cadastrada na habilidade não é alterada.</p>
+        <p>A validade cadastrada para o técnico não é alterada.</p>
       </Confirm>
     </div>
   )

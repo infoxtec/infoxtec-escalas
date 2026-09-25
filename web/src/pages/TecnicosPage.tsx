@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { AlertTriangle, Columns3, Edit2, Plus, RefreshCw, Trash2 } from 'lucide-react'
-import { Button, Confirm, ErrorBox, Field, Input, Sheet, SuccessBox, ToggleRow, useToast } from '../components/ui'
+import { Button, Confirm, ErrorBox, Field, Input, Select, Sheet, SuccessBox, ToggleRow, useToast } from '../components/ui'
 import { PlainTh, SortableTh, useColumnWidths, useSortable } from '../components/SortableTh'
 import { api, erroMsg } from '../lib/api'
+import { NIVEL_LABEL } from '../lib/types'
 import { telefoneValido } from '../lib/types'
-import type { Tecnico } from '../lib/types'
+import type { Habilidade, Nivel, Tecnico, TecnicoHabilidade } from '../lib/types'
 
 const NOVO: Partial<Tecnico> = { nome: '', telefone_e164: '', funcao: '', equipe: '', is_supervisor: false, opt_in: false, ativo: true, perfil_teste: false }
 
@@ -17,6 +18,25 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
   const [erro, setErro] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
   const [atualizando, setAtualizando] = useState(false)
+  const [catalogo, setCatalogo] = useState<Habilidade[]>([])
+  const [habilidades, setHabilidades] = useState<TecnicoHabilidade[]>([])
+  const [skills, setSkills] = useState<{ habilidade_id: string; nivel: Nivel }[]>([])
+
+  const carregarHabilidades = useCallback(async () => {
+    try {
+      const [c, h] = await Promise.all([api.habilidades(), api.tecnicoHabilidades()])
+      setCatalogo(c); setHabilidades(h)
+    } catch { /* habilidades sao complemento: a tela de tecnicos funciona sem elas */ }
+  }, [])
+  useEffect(() => { void carregarHabilidades() }, [carregarHabilidades])
+
+  const abrirEdicao = (t: Partial<Tecnico>) => {
+    setEdit(t)
+    setSkills(habilidades.filter(h => h.tecnico_id === t.id).map(h => ({ habilidade_id: h.habilidade_id, nivel: h.nivel })))
+    setErro(null); setOk(null)
+  }
+  const alternarSkill = (id: string) => setSkills(s =>
+    s.find(x => x.habilidade_id === id) ? s.filter(x => x.habilidade_id !== id) : [...s, { habilidade_id: id, nivel: 'basico' }])
 
   const [alvo, setAlvo] = useState<Tecnico | null>(null)
   const [confirmaNome, setConfirmaNome] = useState('')
@@ -39,9 +59,10 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
     if (!telefoneValido(edit.telefone_e164 ?? '')) return setErro('Telefone inválido: somente dígitos com código do país. Ex: 5571981776307')
     setSalvando(true)
     try {
-      await api.salvarTecnico(edit)
+      const id = await api.salvarTecnico(edit)
+      await api.definirHabilidades(id, skills)
       setOk(edit.id ? 'Técnico atualizado.' : 'Técnico criado.')
-      await recarregar()
+      await recarregar(); await carregarHabilidades()
       setTimeout(() => setEdit(null), 700)
     } catch (e) { setErro(erroMsg(e)) }
     finally { setSalvando(false) }
@@ -67,7 +88,7 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
           <Button variant="outline" size="sm" onClick={() => void atualizar()} disabled={atualizando}>
             <RefreshCw className={`h-3.5 w-3.5 ${atualizando ? 'animate-spin' : ''}`} /> Atualizar
           </Button>
-          {podeEditar && <Button size="sm" onClick={() => { setEdit({ ...NOVO }); setErro(null); setOk(null) }}><Plus className="h-4 w-4" /> Novo técnico</Button>}
+          {podeEditar && <Button size="sm" onClick={() => abrirEdicao({ ...NOVO })}><Plus className="h-4 w-4" /> Novo técnico</Button>}
         </div>
       </div>
 
@@ -107,7 +128,7 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
                   <td className="px-3 py-2.5 text-center"><span className={`inline-block h-2 w-2 rounded-full ${t.ativo ? 'bg-green-500' : 'bg-gray-400'}`} /></td>
                   <td className="px-3 py-2.5 text-right">
                     <div className="flex justify-end gap-1">
-                      {podeEditar && <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => { setEdit({ ...t }); setErro(null); setOk(null) }}><Edit2 className="h-3.5 w-3.5" /></Button>}
+                      {podeEditar && <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => abrirEdicao({ ...t })}><Edit2 className="h-3.5 w-3.5" /></Button>}
                       {podeExcluir && <Button variant="ghost" size="icon" aria-label="Excluir" className="text-destructive hover:bg-destructive/10" onClick={() => { setAlvo(t); setConfirmaNome(''); setErroExcluir(null) }}><Trash2 className="h-3.5 w-3.5" /></Button>}
                     </div>
                   </td>
@@ -140,6 +161,32 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
               checked={!!edit.opt_in} onChange={v => setEdit(p => ({ ...p, opt_in: v }))} disabled={salvando} />
             <ToggleRow label="Perfil de teste" description="Para homologação: recebe mensagens e ligações manuais, mas fica fora dos indicadores, do painel de pendências, dos alertas e das ligações automáticas."
               checked={!!edit.perfil_teste} onChange={v => setEdit(p => ({ ...p, perfil_teste: v }))} disabled={salvando} />
+            <hr />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Habilidades</p>
+              <p className="text-xs text-muted-foreground">
+                O que ele sabe fazer. Documentos com validade (NR, CNH, ASO) ficam na aba Habilidades → Documentos.
+              </p>
+              <div className="max-h-48 space-y-1 overflow-y-auto rounded-md border p-2">
+                {catalogo.length === 0 && <p className="px-1 text-xs text-muted-foreground">Nenhuma habilidade cadastrada ainda.</p>}
+                {catalogo.filter(h => h.ativo).map(h => {
+                  const sel = skills.find(s => s.habilidade_id === h.id)
+                  return (
+                    <div key={h.id} className={`flex items-center gap-2 rounded px-1.5 py-1 text-sm ${sel ? 'bg-muted/60' : ''}`}>
+                      <input type="checkbox" checked={!!sel} disabled={salvando} onChange={() => alternarSkill(h.id)} />
+                      <span className="flex-1">{h.nome}</span>
+                      {sel && (
+                        <Select className="h-7 text-xs" value={sel.nivel} disabled={salvando}
+                          onChange={e => setSkills(s => s.map(x => x.habilidade_id === h.id ? { ...x, nivel: e.target.value as Nivel } : x))}>
+                          {(['basico','intermediario','avancado'] as Nivel[]).map(n => <option key={n} value={n}>{NIVEL_LABEL[n]}</option>)}
+                        </Select>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+            <hr />
             <Field label="Data de desligamento" hint="Inicia a contagem de guarda dos documentos (5 anos).">
               <Input type="date" value={edit.desligado_em ?? ''} disabled={salvando}
                 onChange={e => setEdit(p => ({ ...p, desligado_em: e.target.value || null }))} />

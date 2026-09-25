@@ -147,3 +147,26 @@ a cada 3 minutos e a cada foco na janela.
 supervisores.
 **Por quê:** supervisor é administração do sistema, não produção de campo; cancelada não ocupa o
 técnico; e escala de teste existe justamente para não sujar estatística.
+
+## 21. Habilidade e documento são entidades diferentes
+
+**Decisão:** `habilidades` guarda o que o técnico sabe fazer e nunca vence; `tipos_documento`
+guarda NR, CNH e ASO, que vencem e podem bloquear a atividade.
+**Por quê:** misturar os dois num catálogo só com a marca "exige validade" confundia a tela e
+obrigava a inventar situações ("habilidade vencida") que não existem no mundo real.
+**Efeito colateral bom:** a aptidão passou a distinguir os motivos — "sem a habilidade", "nível
+abaixo", "documento vencido", "documento não cadastrado".
+**Migração:** os dados existentes foram convertidos na migration 36, sem perda.
+
+## 22. Atribuição de habilidade mora no cadastro do técnico
+
+**Decisão:** o submenu "Por técnico" saiu; marcar habilidades passou a ser parte de editar o
+técnico.
+**Por quê:** era uma tela a mais para fazer o que já se está fazendo ao cadastrar alguém.
+
+## 23. Classificação de documento por nome, depois por conteúdo
+
+**Decisão:** no envio em lote, o tipo é deduzido primeiro do nome do arquivo e só depois do texto
+lido; a palavra-chave mais específica ganha (`nr-35` antes de `nr-3`).
+**Por quê:** o nome é instantâneo e costuma bastar; ler o conteúdo de 30 arquivos leva minutos.
+**Limite aceito:** nada é enviado sem conferência humana na tabela de revisão.

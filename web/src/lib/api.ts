@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, TecnicoAgrupado, Ligacao, ItemBacklog, Documento,
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos,
 } from './types'
 
 function traduzir(msg: string): string {
@@ -63,7 +63,6 @@ export const api = {
   tecnicoHabilidades: () => rpc<TecnicoHabilidade[]>('app_tecnico_habilidades'),
   definirHabilidades: (tecnicoId: string, habilidades: { habilidade_id: string; nivel: string; validade?: string | null }[]) =>
     rpc<number>('app_definir_habilidades', { p_tecnico: tecnicoId, p_habilidades: habilidades }),
-  habilidadesPorTecnico: () => rpc<TecnicoAgrupado[]>('app_habilidades_por_tecnico'),
   excluirHabilidade: (id: string, forcar = false) =>
     rpc<{ excluida: boolean; nome: string; tecnicos_afetados: number; tipos_afetados: number }>(
       'app_excluir_habilidade', { p_id: id, p_forcar: forcar }),
@@ -79,6 +78,16 @@ export const api = {
   moverBacklogItem: (id: string, coluna: string, posicao?: number) =>
     rpc<void>('app_mover_backlog_item', { p_id: id, p_coluna: coluna, p_posicao: posicao ?? null }),
 
+  tiposDocumento: () => rpc<TipoDocumento[]>('app_tipos_documento'),
+  salvarTipoDocumento: (d: Partial<TipoDocumento>) => rpc<string>('app_salvar_tipo_documento', { p: d }),
+  excluirTipoDocumento: (id: string, forcar = false) =>
+    rpc<{ excluido: boolean; nome: string; tecnicos_afetados: number }>('app_excluir_tipo_documento', { p_id: id, p_forcar: forcar }),
+  documentosPorTecnico: () => rpc<TecnicoDocumentos[]>('app_documentos_por_tecnico'),
+  definirDocumento: (tecnico: string, tipo: string, validade: string | null, documento?: string | null) =>
+    rpc<void>('app_definir_documento', { p_tecnico: tecnico, p_tipo: tipo, p_validade: validade, p_documento: documento ?? null }),
+  removerDocumentoTecnico: (tecnico: string, tipo: string) =>
+    rpc<void>('app_remover_documento_tecnico', { p_tecnico: tecnico, p_tipo: tipo }),
+
   documentos: (tecnicoId?: string) => rpc<Documento[]>('app_documentos', { p_tecnico: tecnicoId ?? null }),
   registrarDocumento: (d: Record<string, unknown>) => rpc<string>('app_registrar_documento', { p: d }),
   excluirDocumento: (id: string) => rpc<string>('app_excluir_documento', { p_id: id }),
@@ -90,7 +99,7 @@ export const api = {
 
 /** Envia o arquivo ao Storage privado e registra os metadados. */
 export async function enviarDocumento(p: {
-  tecnicoId: string; habilidadeId: string | null; arquivo: File; validade: string | null
+  tecnicoId: string; tipoDocumentoId: string | null; arquivo: File; validade: string | null
 }): Promise<string> {
   const ext = p.arquivo.name.split('.').pop()?.toLowerCase() ?? 'bin'
   const caminho = `${p.tecnicoId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
@@ -99,7 +108,7 @@ export async function enviarDocumento(p: {
   if (error) throw new Error(`Falha no envio do arquivo: ${error.message}`)
   try {
     return await api.registrarDocumento({
-      tecnico_id: p.tecnicoId, habilidade_id: p.habilidadeId, caminho,
+      tecnico_id: p.tecnicoId, tipo_documento_id: p.tipoDocumentoId, caminho,
       nome_arquivo: p.arquivo.name, mime: p.arquivo.type,
       tamanho_bytes: p.arquivo.size, validade: p.validade,
     })
@@ -112,10 +121,10 @@ export async function enviarDocumento(p: {
 
 /** Documento que fica no Google Drive: guardamos o vinculo, nao o arquivo. */
 export async function vincularDocumentoDrive(p: {
-  tecnicoId: string; habilidadeId: string | null; url: string; nome: string; validade: string | null
+  tecnicoId: string; tipoDocumentoId: string | null; url: string; nome: string; validade: string | null
 }): Promise<string> {
   return api.registrarDocumento({
-    tecnico_id: p.tecnicoId, habilidade_id: p.habilidadeId, origem: 'drive',
+    tecnico_id: p.tecnicoId, tipo_documento_id: p.tipoDocumentoId, origem: 'drive',
     url: p.url.trim(), nome_arquivo: p.nome.trim() || 'Documento no Drive', validade: p.validade,
   })
 }

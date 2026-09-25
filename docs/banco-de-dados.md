@@ -33,8 +33,11 @@ erDiagram
 | `alertas_enviados` | Controle do alerta de prazo | Evita alerta duplicado no mesmo dia |
 | `log_exclusoes` | Registro de exclusões definitivas | Não guarda nome nem telefone |
 | `ligacoes` | Uma linha por ligação da URA | `call_sid` da Twilio, tecla digitada, duração e custo |
-| `habilidades` | Catálogo de habilidades e documentos | `exige_validade` ligado em NRs, CNH e ASO (migration 22) |
-| `tecnico_habilidades` | Quem tem o quê, em que nível e com qual validade | Alimenta a aptidão e a gestão de documentos |
+| `habilidades` | Catálogo do que o técnico sabe fazer | Não vence. NRs, CNH e ASO saíram daqui na migration 36 |
+| `tipos_documento` | NR, CNH, ASO e outros documentos com validade | `palavras_chave` alimenta a classificação automática no envio em lote |
+| `tecnico_documentos` | Validade de cada documento por técnico | Situação calculada em `vw_tecnico_documentos` |
+| `tipo_atividade_documentos` | Documentos exigidos por tipo de atividade | Documento vencido reprova na aptidão |
+| `tecnico_habilidades` | Quem sabe fazer o quê e em que nível | Sem validade: isso mora em `tecnico_documentos` |
 | `tipos_atividade` | Tipos de serviço (CFTV, fibra, link...) | Ligado à escala por `escalas.tipo_atividade_id` |
 | `tipo_atividade_requisitos` | Habilidades exigidas por tipo | Define quem é apto |
 | `ligacoes` | Uma linha por ligação da URA | `call_sid` da Twilio, tecla digitada, duração e custo |
@@ -60,7 +63,8 @@ erDiagram
 | `vw_linha_do_tempo` | Auditoria + eventos do WhatsApp em ordem |
 | `vw_ligacoes_pendentes` | Quem deve receber ligação agora: já recebeu WhatsApp N vezes, não respondeu, dentro da janela |
 | `vw_documentos_expirados` | Documentos que passaram dos 5 anos após o desligamento do técnico |
-| `vw_tecnico_habilidades` | Habilidades por técnico com situação: válido, vence em breve, vencido, sem data |
+| `vw_tecnico_habilidades` | Habilidades por técnico, com o nível |
+| `vw_tecnico_documentos` | Documentos por técnico com situação: válido, vence em breve, vencido, sem data |
 
 ## Funções por família
 

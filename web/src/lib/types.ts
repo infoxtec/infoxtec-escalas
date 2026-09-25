@@ -101,21 +101,43 @@ export function addDays(d: string, n: number): string {
   return x.toLocaleDateString('en-CA')
 }
 export type Nivel = 'basico' | 'intermediario' | 'avancado'
-export type SituacaoHabilidade = 'valida' | 'vencendo' | 'vencida' | 'sem_validade'
 
 export interface Habilidade {
   id: string; nome: string; categoria: 'tecnica' | 'seguranca' | 'habilitacao' | 'outra'
-  exige_validade: boolean; descricao: string | null; ativo: boolean
+  descricao: string | null; ativo: boolean
+}
+
+/** Documento com validade: NR, CNH, ASO. Separado de habilidade desde a migration 36. */
+export interface TipoDocumento {
+  id: string; nome: string; descricao: string | null
+  palavras_chave: string[]; ativo: boolean; ordem: number
+}
+export type SituacaoDocumento = 'valido' | 'vencendo' | 'vencido' | 'sem_data'
+export interface DocumentoDoTecnico {
+  tipo_documento_id: string; documento: string; validade: string | null
+  situacao: SituacaoDocumento; documento_id: string | null; arquivos: number
+}
+export interface TecnicoDocumentos {
+  tecnico_id: string; tecnico: string; funcao: string; ativo: boolean; perfil_teste: boolean
+  vencidos: number; vencendo: number; sem_data: number
+  documentos: DocumentoDoTecnico[]
+}
+export const SITUACAO_DOC: Record<SituacaoDocumento, { label: string; classe: string }> = {
+  valido:   { label: 'Válido',        classe: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
+  vencendo: { label: 'Vence em breve', classe: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' },
+  vencido:  { label: 'Vencido',        classe: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
+  sem_data: { label: 'Sem data',       classe: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
 }
 export interface TecnicoHabilidade {
   tecnico_id: string; tecnico: string; tecnico_ativo: boolean; funcao: string
-  habilidade_id: string; habilidade: string; categoria: string; exige_validade: boolean
-  nivel: Nivel; nivel_valor: number; validade: string | null; observacao: string | null
-  atualizado_em: string; situacao: SituacaoHabilidade
+  habilidade_id: string; habilidade: string; categoria: string
+  nivel: Nivel; nivel_valor: number; observacao: string | null; atualizado_em: string
 }
 export interface RequisitoTipo { habilidade_id: string; habilidade: string; nivel_minimo: Nivel }
+export interface RequisitoDocumento { tipo_documento_id: string; documento: string }
 export interface TipoAtividade {
-  id: string; nome: string; descricao: string | null; ativo: boolean; requisitos: RequisitoTipo[]
+  id: string; nome: string; descricao: string | null; ativo: boolean
+  requisitos: RequisitoTipo[]; documentos: RequisitoDocumento[]
 }
 export interface Aptidao { tecnico_id: string; nome: string; apto: boolean; faltando: string[] }
 
@@ -132,22 +154,6 @@ export interface PainelLocal {
 
 export const NIVEL_LABEL: Record<Nivel, string> = {
   basico: 'Básico', intermediario: 'Intermediário', avancado: 'Avançado',
-}
-export interface HabilidadeDoTecnico {
-  habilidade_id: string; habilidade: string; categoria: string; exige_validade: boolean
-  nivel: Nivel; validade: string | null; situacao: SituacaoHabilidade; observacao: string | null
-}
-export interface TecnicoAgrupado {
-  tecnico_id: string; tecnico: string; funcao: string; equipe: string | null; ativo: boolean
-  total: number; vencidos: number; vencendo: number; sem_data: number
-  habilidades: HabilidadeDoTecnico[]
-}
-
-export const SITUACAO_HAB: Record<SituacaoHabilidade, { label: string; classe: string }> = {
-  valida:       { label: 'Válido',        classe: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
-  vencendo:     { label: 'Vence em breve', classe: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' },
-  vencida:      { label: 'Vencido',        classe: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
-  sem_validade: { label: 'Sem data',       classe: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
 }
 export function diasAte(data: string | null): number | null {
   if (!data) return null
@@ -193,7 +199,7 @@ export const ESFORCO_LABEL: Record<string, string> = { P: 'até 3 dias', M: '1 a
 
 export interface Documento {
   id: string; tecnico_id: string; tecnico: string
-  habilidade_id: string | null; habilidade: string | null
+  tipo_documento_id: string | null; documento: string | null
   origem: 'storage' | 'drive'; url: string | null
   caminho: string | null; nome_arquivo: string; mime: string | null; tamanho_bytes: number | null
   validade: string | null; ocr_em: string | null; enviado_por: string; created_at: string

@@ -180,6 +180,7 @@ Cadastro da equipe.
 | **Supervisor** | Recebe os alertas: recusa, falta de resposta, prazo das 18h e documentos vencidos |
 | **Autorização WhatsApp** | **Sem isso o sistema não envia nada para ele.** Registre o aceite antes de ligar |
 | **Data de desligamento** | Inicia a contagem de guarda dos documentos (5 anos) |
+| **Habilidades** | Marque o que o técnico sabe fazer e o nível de cada uma. Documentos com validade ficam em Habilidades → Documentos |
 | **Perfil de teste** | Para homologação: recebe mensagens e ligações manuais normalmente, mas fica fora dos indicadores, do painel de pendências, dos alertas e das ligações automáticas |
 | Ativo | Inativo não aparece em novas escalas; o histórico é preservado |
 
@@ -199,71 +200,47 @@ dentro da mensagem do técnico. Locais inativos somem da seleção de novas esca
 
 ---
 
-## 8. Habilidades
+## 8. Habilidades e documentos
 
-Quatro seções.
+Três seções, e a distinção entre elas é o coração da tela:
 
-### Por técnico
+**Habilidade** é o que o técnico sabe fazer — CFTV, fibra óptica, cabeamento. **Não vence.**
 
-Um técnico por linha, com a quantidade de habilidades e a situação dos documentos. **Clique na
-linha** para abrir o submenu com a lista completa: habilidade, categoria, nível e validade.
-
-**Atribuir habilidades** (ou o lápis na linha) abre a tela de atribuição:
-
-1. Escolha o técnico — se ele já tiver habilidades, elas vêm marcadas.
-2. Marque tudo o que ele tem, definindo o nível de cada uma.
-3. NRs, CNH e ASO **exigem a data de validade**; o campo fica com borda vermelha até preencher.
-4. Salvar. **O que ficar desmarcado é removido do técnico.**
+**Documento** é NR, CNH e ASO. **Sempre vence** e pode impedir a escala numa atividade que o exija.
 
 ### Documentos
 
-Gestão de vencimentos: quatro indicadores (vencidos, sem data, vencem em 30 dias, em dia) e a
-lista ordenada pelo mais urgente. Dá para incluir técnicos inativos. Quando existe documento
-vencido, aparece um aviso vermelho em qualquer aba levando até aqui.
+Um técnico por linha, com o resumo da situação: vencidos, sem data, vencendo em 30 dias ou em dia.
+Clique na linha para abrir a lista completa, com validade e quantidade de anexos de cada documento.
+O filtro **"Só quem tem pendência"** deixa na tela apenas quem precisa de atenção.
 
-Toda segunda às 8h os supervisores recebem essa lista pelo WhatsApp.
+Dois botões por técnico:
 
-### Arquivos dos documentos
+| Botão | Para quê |
+|---|---|
+| **Enviar vários documentos** | Seleciona vários arquivos ou **uma pasta inteira** de uma vez |
+| **+** | Informa só a validade, sem anexar arquivo |
 
-Na mesma aba Documentos, abaixo da lista de validades, com duas formas de registrar:
+No envio em lote, o sistema identifica cada arquivo pelo **nome** — `NR35_JOSE.pdf` vira NR-35 — e,
+quando o nome não ajuda, pelo **conteúdo lido**. Também sugere a validade de cada um. Tudo aparece
+numa tabela de conferência, onde você corrige o que estiver errado, e **nada é enviado antes de
+você confirmar**. Arquivos sem documento ou sem validade ficam de fora do envio, marcados em
+amarelo.
 
-**Enviar arquivo** guarda o documento em armazenamento privado e criptografado: abre por link
-temporário de 2 minutos, sem endereço público, e só administrador e gestor acessam.
+Abaixo da lista fica a seção **Arquivos**, com tudo o que já foi enviado — anexar um por vez,
+vincular do Google Drive, abrir e excluir.
 
-**Vincular do Drive** guarda apenas o link: o arquivo continua no Google Drive da empresa. Útil
-quando a documentação já está organizada lá, mas atenção — **quem controla o acesso passa a ser a
-permissão do Drive**, e a guarda de 5 anos vira manual.
+### Habilidades
 
-O sistema lê a validade **dentro do seu navegador**, em PDF ou imagem: o documento não é enviado
-a servidor nenhum. PDF gerado por sistema é lido na hora, direto do texto; PDF escaneado e fotos
-passam pelo reconhecimento de imagem, que leva alguns segundos. Na primeira vez o leitor é baixado
-e depois fica em cache. Confira sempre antes de salvar — a leitura erra em foto torta ou com
-pouca luz.
-Ao informar a validade com um documento vinculado, a habilidade do técnico é atualizada junto.
-
-A guarda é de **5 anos após o desligamento**: informe a data de desligamento no cadastro do
-técnico para a contagem começar.
-
-### Habilidades (catálogo)
-
-Cadastro do que existe: nome, categoria (técnica, segurança, habilitação, outra), descrição,
-**Exige validade** e Ativa.
-
-**Excluir** recusa quando a habilidade está em uso e informa quantos técnicos e tipos seriam
-afetados; para prosseguir é preciso marcar "excluir mesmo estando em uso", e aí as atribuições
-vão junto. Para tirar de circulação sem perder histórico, desmarque **Ativa**.
+Catálogo do que existe: nome, categoria, descrição e se está ativa. **A atribuição por técnico é
+feita no cadastro dele**, na aba Técnicos — não existe mais tela separada para isso.
 
 ### Tipos de atividade
 
-Cada tipo (Instalação CFTV, Fusão de fibra...) lista as habilidades exigidas e o nível mínimo.
-É o que alimenta o aviso de aptidão na Nova escala.
-
-### Níveis
-
-Básico, Intermediário e Avançado. Um requisito de nível intermediário é atendido por quem tem
-intermediário ou avançado.
-
----
+Cada tipo (Instalação CFTV, Fusão de fibra) define o que o técnico precisa ter: **habilidades** no
+nível mínimo e **documentos válidos**. É o que alimenta o aviso ao montar a escala — quem não
+atende aparece em vermelho, com a lista do que falta e o motivo: não cadastrado, vencido, sem data
+ou nível abaixo.
 
 ## 9. Usuários (só administrador)
 
