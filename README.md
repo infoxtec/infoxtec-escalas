@@ -21,6 +21,7 @@ são lembrados da escala do dia seguinte, com prazo às 18h.
 | [Decisões](docs/decisoes.md) | O que foi decidido, o que foi descartado e por quê |
 | [Backlog](docs/backlog.md) | Análise de viabilidade dos 13 itens planejados (o quadro vive na aba Roadmap) |
 | [Agente de IA](docs/agente-ia.md) | Roteiro para predições: instrumentar, consultar, prever, sugerir |
+| [Segurança e homologação](docs/seguranca-homologacao.md) | Caminho para uso comercial: ordem das tarefas, LGPD e o que afirmar sobre certificação |
 | [Telefonia (item 2)](docs/telefonia.md) | URA de voz: fornecedor, custos, script e resultado do piloto |
 | [Publicar no Vercel](docs/deploy-vercel.md) | Passo a passo do deploy e da liberação de usuários |
 | [Retool (legado)](docs/retool.md) | Painel antigo, a ser desligado |
@@ -44,7 +45,7 @@ Projeto Supabase: `infoxtec-escalas` (ref `zpckrxydqqmmcrphrkxz`, região sa-eas
 ```
 web/                          painel React (o que vai para a Vercel, Root Directory = web)
 supabase/
-  migrations/                 01 a 37 — espelho exato do banco
+  migrations/                 01 a 38 — espelho exato do banco
   functions/                  Edge Functions: webhook-evolution, voz-escala, documento-ocr
   setup/                      config por ambiente, cron e segredos (rodar uma vez)
   seed.sql                    dados fictícios para desenvolvimento

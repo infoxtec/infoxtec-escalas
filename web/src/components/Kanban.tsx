@@ -1,14 +1,8 @@
 import { useState } from 'react'
 import type { DragEvent } from 'react'
 import { AlertTriangle, Ban, GripVertical } from 'lucide-react'
-import { COLUNAS_KANBAN, STATUS_BACKLOG } from '../lib/types'
+import { COLUNAS_KANBAN, STATUS_BACKLOG, grupoDe } from '../lib/types'
 import type { ColunaKanban, ItemBacklog } from '../lib/types'
-
-const TIPO_TAG: Record<ItemBacklog['tipo'], { label: string; classe: string }> = {
-  backlog: { label: 'Backlog',  classe: 'bg-primary/10 text-primary' },
-  entrega: { label: 'Entrega',  classe: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
-  divida:  { label: 'Dívida',   classe: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' },
-}
 
 /** Kanban simples: arraste o cartão entre colunas. Sem biblioteca externa. */
 export default function Kanban({ itens, podeEditar, onMover, onAbrir }: {
@@ -48,7 +42,7 @@ export default function Kanban({ itens, podeEditar, onMover, onAbrir }: {
             <div className="flex flex-1 flex-col gap-2">
               {lista.map(i => {
                 const st = STATUS_BACKLOG[i.status]
-                const tag = TIPO_TAG[i.tipo]
+                const tag = grupoDe(i.tipo)
                 return (
                   <div key={i.id}
                     draggable={podeEditar}
@@ -64,7 +58,7 @@ export default function Kanban({ itens, podeEditar, onMover, onAbrir }: {
                       </p>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-1">
-                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${tag.classe}`}>{tag.label}</span>
+                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${tag.classe}`}>{tag.tag}</span>
                       {i.esforco && <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{i.esforco}</span>}
                       {i.status === 'bloqueado' && (
                         <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:text-red-400">

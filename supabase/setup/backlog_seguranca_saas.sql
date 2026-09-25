@@ -1,0 +1,12 @@
+-- Itens de seguranca/homologacao e de SaaS exibidos no Roadmap.
+-- Rodar uma vez por ambiente. Depois do painel 3.1 no ar, rodar backlog_grupos.sql
+-- para mover cada item para o seu grupo proprio.
+-- A ordem de trabalho recomendada esta em docs/seguranca-homologacao.md.
+
+-- Os 32 itens foram inseridos em producao pela migration 38 (2026-09-25).
+-- Para recriar em outro ambiente, exporte de producao com:
+--   select 'insert into backlog_itens (tipo,titulo,descricao,status,esforco,depende_de,observacao,ordem,coluna,posicao) values ('
+--     || quote_literal(tipo) || ',' || quote_literal(titulo) || ',' || quote_nullable(descricao) || ','
+--     || quote_literal(status) || ',' || quote_nullable(esforco) || ',' || quote_nullable(depende_de) || ','
+--     || quote_nullable(observacao) || ',' || ordem || ',' || quote_literal(coluna) || ',' || posicao || ');'
+--   from backlog_itens where ordem >= 400 order by ordem;

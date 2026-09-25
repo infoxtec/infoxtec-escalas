@@ -172,9 +172,21 @@ export const LIGACAO_LABEL: Record<Ligacao['status'], string> = {
   sem_resposta: 'não atendeu', ocupado: 'ocupado', falha: 'falhou', encerrada: 'encerrada',
 }
 
+/** Grupos do Roadmap. Qualquer valor fora desta lista cai no grupo "Outros" em vez de quebrar. */
+export type GrupoBacklog = 'backlog' | 'entrega' | 'divida' | 'seguranca' | 'saas' | string
+export const GRUPO_BACKLOG: Record<string, { titulo: string; tag: string; classe: string }> = {
+  backlog:   { titulo: 'Backlog — funcionalidades', tag: 'Backlog',   classe: 'bg-primary/10 text-primary' },
+  entrega:   { titulo: 'Já implantado',             tag: 'Entrega',   classe: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
+  divida:    { titulo: 'Dívidas técnicas',          tag: 'Dívida',    classe: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' },
+  seguranca: { titulo: 'Segurança e homologação',   tag: 'Segurança', classe: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
+  saas:      { titulo: 'Transformação em SaaS',     tag: 'SaaS',      classe: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300' },
+}
+export const GRUPO_PADRAO = { titulo: 'Outros', tag: 'Outro', classe: 'bg-muted text-muted-foreground' }
+export const grupoDe = (tipo: string) => GRUPO_BACKLOG[tipo] ?? GRUPO_PADRAO
+
 export type StatusBacklog = 'concluido' | 'parcial' | 'em_andamento' | 'bloqueado' | 'planejado'
 export interface ItemBacklog {
-  id: string; numero: number | null; tipo: 'backlog' | 'entrega' | 'divida'
+  id: string; numero: number | null; tipo: GrupoBacklog
   titulo: string; descricao: string | null; status: StatusBacklog
   esforco: 'P' | 'M' | 'G' | null; depende_de: string | null; observacao: string | null
   entregue_em: string | null; ordem: number; updated_at: string

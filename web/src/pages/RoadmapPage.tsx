@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, CheckCircle2, Clock, Edit2, Ban, KanbanSquare, List, Plus, RefreshCw, Rocket, Wrench } from 'lucide-react'
+import { AlertTriangle, Ban, Building2, CheckCircle2, Clock, Edit2, KanbanSquare, List, Plus, RefreshCw, Rocket, ShieldAlert, Wrench } from 'lucide-react'
 import { Button, ErrorBox, Field, Input, Modal, Select, Textarea, useToast } from '../components/ui'
 import { api, erroMsg } from '../lib/api'
 import Kanban from '../components/Kanban'
-import { ESFORCO_LABEL, STATUS_BACKLOG, formatDate } from '../lib/types'
+import { ESFORCO_LABEL, GRUPO_BACKLOG, STATUS_BACKLOG, formatDate, grupoDe } from '../lib/types'
 import type { ColunaKanban, ItemBacklog, StatusBacklog } from '../lib/types'
 
 const ICONE: Record<StatusBacklog, JSX.Element> = {
@@ -13,10 +13,12 @@ const ICONE: Record<StatusBacklog, JSX.Element> = {
   bloqueado: <Ban className="h-4 w-4" />,
   planejado: <Clock className="h-4 w-4" />,
 }
-const GRUPO = {
-  backlog: { titulo: 'Backlog — 9 funcionalidades', icone: <Rocket className="h-4 w-4" /> },
-  entrega: { titulo: 'Já implantado', icone: <CheckCircle2 className="h-4 w-4" /> },
-  divida:  { titulo: 'Dívidas técnicas', icone: <Wrench className="h-4 w-4" /> },
+const ICONE_GRUPO: Record<string, JSX.Element> = {
+  backlog: <Rocket className="h-4 w-4" />,
+  entrega: <CheckCircle2 className="h-4 w-4" />,
+  divida: <Wrench className="h-4 w-4" />,
+  seguranca: <ShieldAlert className="h-4 w-4" />,
+  saas: <Building2 className="h-4 w-4" />,
 }
 
 export default function RoadmapPage({ podeEditar }: { podeEditar: boolean }) {
@@ -37,6 +39,15 @@ export default function RoadmapPage({ podeEditar }: { podeEditar: boolean }) {
   useEffect(() => { void carregar() }, [carregar])
 
   const backlog = useMemo(() => itens.filter(i => i.tipo === 'backlog'), [itens])
+  // grupos presentes nos dados, na ordem conhecida e com os desconhecidos no fim
+  const gruposPresentes = useMemo(() => {
+    const ordem = Object.keys(GRUPO_BACKLOG)
+    const vistos = Array.from(new Set(itens.map(i => i.tipo)))
+    return vistos.sort((a, b) => {
+      const ia = ordem.indexOf(a), ib = ordem.indexOf(b)
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
+    })
+  }, [itens])
   const conta = (s: StatusBacklog) => backlog.filter(i => i.status === s).length
   const progresso = backlog.length === 0 ? 0
     : Math.round(100 * (conta('concluido') + conta('parcial') * 0.5) / backlog.length)
@@ -122,12 +133,13 @@ export default function RoadmapPage({ podeEditar }: { podeEditar: boolean }) {
         </>
       )}
 
-      {visao === 'lista' && (['backlog', 'entrega', 'divida'] as const).map(tipo => {
+      {visao === 'lista' && gruposPresentes.map(tipo => {
         const lista = itens.filter(i => i.tipo === tipo)
         if (lista.length === 0) return null
         return (
           <div key={tipo} className="space-y-2">
-            <p className="flex items-center gap-2 text-sm font-semibold">{GRUPO[tipo].icone}{GRUPO[tipo].titulo}
+            <p className="flex items-center gap-2 text-sm font-semibold">
+              {ICONE_GRUPO[tipo] ?? <Rocket className="h-4 w-4" />}{grupoDe(tipo).titulo}
               <span className="text-xs font-normal text-muted-foreground">({lista.length})</span>
             </p>
             <div className="grid gap-2 xl:grid-cols-2">
@@ -186,7 +198,11 @@ export default function RoadmapPage({ podeEditar }: { podeEditar: boolean }) {
               <Field label="Grupo">
                 <Select className="w-full" value={edit.tipo ?? 'backlog'} disabled={salvando}
                   onChange={e => setEdit({ ...edit, tipo: e.target.value as ItemBacklog['tipo'] })}>
-                  <option value="backlog">Backlog</option><option value="entrega">Já implantado</option><option value="divida">Dívida técnica</option>
+                  <option value="backlog">Backlog</option>
+                  <option value="entrega">Já implantado</option>
+                  <option value="divida">Dívida técnica</option>
+                  <option value="seguranca">Segurança e homologação</option>
+                  <option value="saas">Transformação em SaaS</option>
                 </Select>
               </Field>
               <Field label="Ordem"><Input type="number" value={edit.ordem ?? 100} disabled={salvando}

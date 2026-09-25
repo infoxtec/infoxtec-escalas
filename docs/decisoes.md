@@ -170,3 +170,11 @@ técnico.
 lido; a palavra-chave mais específica ganha (`nr-35` antes de `nr-3`).
 **Por quê:** o nome é instantâneo e costuma bastar; ler o conteúdo de 30 arquivos leva minutos.
 **Limite aceito:** nada é enviado sem conferência humana na tabela de revisão.
+
+## 24. Dado novo só depois da tela que o suporta
+
+**Decisão:** nunca inserir no banco um valor que o painel publicado não saiba exibir.
+**Por quê:** a migration 38 criou os grupos `seguranca` e `saas` e inseriu 32 itens antes de a
+versão 3.1 do painel estar no ar. A aba Roadmap procurava a etiqueta do grupo, não encontrava e
+quebrava a tela inteira. Os itens foram movidos para `backlog` com prefixo no título até o deploy.
+**Prevenção aplicada:** o painel passou a tratar grupo desconhecido como "Outros" em vez de falhar.
