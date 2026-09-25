@@ -112,6 +112,38 @@ select fn_pendencias_escala(current_date + 1);
 `enviado = false` significa que o sistema avaliou e não havia pendência, ou que o horário já
 tinha passado da janela de 2 horas.
 
+## Ligações da URA
+
+```sql
+select l.criada_em at time zone 'America/Bahia' as quando, t.nome, l.status, l.digito,
+       l.duracao_seg, l.preco, left(coalesce(l.erro, '—'), 80) as erro
+from ligacoes l join tecnicos t on t.id = l.tecnico_id
+order by l.criada_em desc limit 20;
+
+-- quem está na fila para receber ligação agora
+select * from vw_ligacoes_pendentes;
+```
+
+`duracao_seg = 0` com status `sem_resposta` significa que a chamada não foi atendida — não é
+bloqueio de operadora. Para ver o registro real na Twilio, ver `supabase/setup/twilio.md`.
+
+## Documentos
+
+```sql
+-- documentos vencidos de retenção (5 anos após o desligamento)
+select * from vw_documentos_expirados;
+
+-- validade dos documentos por técnico ativo
+select tecnico, habilidade, validade, situacao
+from vw_tecnico_habilidades
+where tecnico_ativo and exige_validade
+order by validade nulls first;
+```
+
+Arquivo órfão no Storage (enviado, mas sem registro no banco) não deveria existir: o painel apaga
+o arquivo quando o registro falha. Se suspeitar de sobra, compare o bucket `documentos` com
+`select caminho from documentos where origem = 'storage'`.
+
 ## Limpeza periódica
 
 ```sql

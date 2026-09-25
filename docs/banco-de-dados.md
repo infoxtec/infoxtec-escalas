@@ -1,7 +1,7 @@
 # Banco de dados
 
-12 tabelas, 4 views, 59 funções, 4 gatilhos, 1 agendamento. Tudo versionado em
-`supabase/migrations` (01 a 18).
+19 tabelas, 7 views, 92 funções (41 delas são a API `app_*`), 5 gatilhos e 1 agendamento.
+Tudo versionado em `supabase/migrations` (01 a 35).
 
 ## Modelo
 
@@ -37,6 +37,9 @@ erDiagram
 | `tecnico_habilidades` | Quem tem o quê, em que nível e com qual validade | Alimenta a aptidão e a gestão de documentos |
 | `tipos_atividade` | Tipos de serviço (CFTV, fibra, link...) | Ligado à escala por `escalas.tipo_atividade_id` |
 | `tipo_atividade_requisitos` | Habilidades exigidas por tipo | Define quem é apto |
+| `ligacoes` | Uma linha por ligação da URA | `call_sid` da Twilio, tecla digitada, duração e custo |
+| `documentos` | Arquivos de NR, CNH e ASO | `origem` = `storage` (bucket privado) ou `drive` (vínculo) |
+| `backlog_itens` | Backlog do produto exibido na aba Roadmap | Grupos backlog, entrega e dívida; coluna do Kanban e posição |
 
 ### Status da escala
 
@@ -56,6 +59,7 @@ erDiagram
 | `vw_resumo_dia` | Indicadores por dia |
 | `vw_linha_do_tempo` | Auditoria + eventos do WhatsApp em ordem |
 | `vw_ligacoes_pendentes` | Quem deve receber ligação agora: já recebeu WhatsApp N vezes, não respondeu, dentro da janela |
+| `vw_documentos_expirados` | Documentos que passaram dos 5 anos após o desligamento do técnico |
 | `vw_tecnico_habilidades` | Habilidades por técnico com situação: válido, vence em breve, vencido, sem data |
 
 ## Funções por família
@@ -67,7 +71,15 @@ erDiagram
 `app_reenviar_escala`, `app_salvar_tecnico`, `app_excluir_tecnico`, `app_salvar_local`,
 `app_usuarios`, `app_salvar_usuario`, `app_habilidades`, `app_salvar_habilidade`,
 `app_tecnico_habilidades`, `app_salvar_tecnico_habilidade`, `app_remover_tecnico_habilidade`,
-`app_tipos_atividade`, `app_salvar_tipo_atividade`, `app_aptidao`, `app_painel_locais`.
+`app_tipos_atividade`, `app_salvar_tipo_atividade`, `app_aptidao`, `app_painel_locais`,
+`app_definir_habilidades`, `app_excluir_habilidade`, `app_habilidades_por_tecnico`,
+`app_ligacoes`, `app_ligar_escala`, `app_documentos`, `app_registrar_documento`,
+`app_excluir_documento`, `app_documentos_expirados`, `app_backlog`, `app_salvar_backlog_item`,
+`app_mover_backlog_item`.
+
+> **Permissão por laço:** toda migration termina revogando `execute` de tudo no schema e
+> concedendo de novo a **todas** as funções com prefixo `app_`. Lista manual já derrubou o painel
+> uma vez (migration 26, corrigida na 27).
 
 **Regra de negócio (`fn_*`)** — `fn_criar_escala`, `fn_criar_escalas_lote`, `fn_mudar_status`,
 `fn_remover_escala`, `fn_excluir_tecnico`, `fn_salvar_usuario_painel`, `fn_exigir_papel`,
@@ -76,6 +88,12 @@ erDiagram
 **Mensageria** — `fn_dispatcher_whatsapp` (o motor), `fn_payload_escala`, `fn_corpo_escala`,
 `fn_titulo_escala`, `fn_msg_escala`, `fn_msg_supervisor`, `fn_evo_post`, `fn_evo_get`,
 `fn_wa_texto`, `fn_avisar_supervisores`, `fn_alerta_prazo_escala`.
+
+**Voz (URA)** — `fn_preparar_ligacao`, `fn_registrar_call_sid`, `fn_voz_twiml`, `fn_voz_resposta`,
+`fn_voz_status`, `fn_disparar_ligacoes`, `fn_xml_escape`.
+
+**Regras de escala** — `fn_validar_inicio` (nunca no passado), `fn_marcar_escala_teste`,
+`fn_calcular_jornada`, `fn_aplicar_jornada`, `fn_aptidao`, `fn_nivel_valor`.
 
 **Webhook** — `fn_webhook_evolution` (porta de entrada, confere o token), `fn_wh_status`
 (entrega e leitura), `fn_wh_mensagem` (botões, 1/2, texto livre), `fn_tel_canonico`.
@@ -94,6 +112,7 @@ erDiagram
 | `trg_escalas_confirmacao` | Carimba `confirmada_em` |
 | `trg_escalas_updated` | Atualiza `updated_at` |
 | `trg_escalas_evento` | Grava a auditoria em `escala_eventos` |
+| `trg_escalas_teste` | Marca como teste a escala de técnico com perfil de homologação |
 
 ## Parâmetros (`config`)
 
@@ -113,6 +132,10 @@ Prazo: `alerta_escala_aviso` (16:00), `alerta_escala_prazo` (18:00),
 Voz (URA): `ligacao_ativa` (false), `ligacao_apos_tentativas` (2), `ligacao_janela_inicio`/`_fim`
 (08:00/20:00), `ligacao_max_por_escala` (2), `ligacao_intervalo_min` (45), `ligacao_por_execucao` (2),
 `twilio_caller_id`, `voz_url`, `voz_voice`, `voz_timeout_dtmf`. Ver `supabase/setup/twilio.md`.
+
+Voz (URA): ver `supabase/setup/twilio.md`. Documentos: ver `supabase/setup/documentos.md`.
+
+Escala: `antecedencia_minima_min` (5) — minutos mínimos entre agora e o início da escala.
 
 Ambiente: `evolution_url`, `evolution_instancia`, `evolution_versao`, `webhook_url`, `fuso`.
 

@@ -44,8 +44,8 @@ Projeto Supabase: `infoxtec-escalas` (ref `zpckrxydqqmmcrphrkxz`, região sa-eas
 ```
 web/                          painel React (o que vai para a Vercel, Root Directory = web)
 supabase/
-  migrations/                 01 a 18 — espelho exato do banco
-  functions/webhook-evolution Edge Function que recebe os eventos da Evolution
+  migrations/                 01 a 35 — espelho exato do banco
+  functions/                  Edge Functions: webhook-evolution, voz-escala, documento-ocr
   setup/                      config por ambiente, cron e segredos (rodar uma vez)
   seed.sql                    dados fictícios para desenvolvimento
 docs/                         a documentação da tabela acima
