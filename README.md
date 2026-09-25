@@ -51,6 +51,19 @@ supabase/
 docs/                         a documentação da tabela acima
 ```
 
+## Integração do Supabase com o GitHub
+
+O nome do arquivo de migration **precisa ser idêntico à versão gravada no banco** — é assim que a
+verificação do Supabase confere o repositório. Para listar as versões reais:
+
+```sql
+select version || '_' || name || '.sql' from supabase_migrations.schema_migrations order by version;
+```
+
+Se a verificação acusar *"Remote migration versions not found in local migrations directory"*, é
+porque algum arquivo está com nome diferente da versão aplicada. Renomear resolve; não é erro de
+permissão.
+
 ## Montar em um projeto novo
 
 ```bash
