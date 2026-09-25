@@ -188,5 +188,14 @@ begin
   return jsonb_build_object('ligacao_id', v_lig->>'ligacao_id', 'enfileirada', true);
 end $$;
 
-revoke execute on all functions in schema public from public, anon, authenticated;
-grant execute on function app_ligacoes(uuid), app_ligar_escala(uuid) to authenticated;
+-- Permissoes por laco: toda funcao app_* fica executavel por usuario logado.
+-- Lista fixa de assinaturas quebra quando a assinatura muda ao longo do historico.
+do $$
+declare f record;
+begin
+  execute 'revoke execute on all functions in schema public from public, anon, authenticated';
+  for f in select p.oid::regprocedure as a from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public' and p.proname like 'app\_%' loop
+    execute format('grant execute on function %s to authenticated', f.a);
+  end loop;
+end $$;

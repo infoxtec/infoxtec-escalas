@@ -64,6 +64,10 @@ Se a verificação acusar *"Remote migration versions not found in local migrati
 porque algum arquivo está com nome diferente da versão aplicada. Renomear resolve; não é erro de
 permissão.
 
+A verificação **reexecuta todo o histórico num banco vazio**, então uma migration antiga não pode
+depender do estado atual. Em especial: nenhum `grant` deve citar assinatura de função — use o laço
+sobre o prefixo `app_`, como fazem todas as migrations deste repositório.
+
 ## Montar em um projeto novo
 
 ```bash

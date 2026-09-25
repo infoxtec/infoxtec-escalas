@@ -85,9 +85,14 @@ continua sendo o caminho recomendado.
 
 **Decisão:** ao fim de cada migration, revogar tudo e conceder `execute` percorrendo todas as
 funções com prefixo `app_`.
-**Por quê:** a migration 26 usou lista manual e esqueceu 34 funções, derrubando o acesso ao painel
-com "Sem permissão para esta ação". Com o laço, função nova nasce liberada para usuário logado e
-nada do schema fica aberto ao público.
+**Por quê, na primeira vez:** a migration 26 usou lista manual e esqueceu 34 funções, derrubando o
+acesso ao painel com "Sem permissão para esta ação".
+**Por quê, na segunda:** a verificação do Supabase no GitHub reexecuta todo o histórico num banco
+vazio. Listas fixas citam a assinatura que existia no dia — e `app_criar_escalas` mudou duas vezes
+(ganhou `p_tipo` e depois `p_teste`). No banco real nunca quebrou, porque cada migration rodou
+sobre o estado daquele momento; no replay, quebrava. Todas as listas antigas foram convertidas
+para o laço.
+**Regra:** nenhuma migration deve citar assinatura de função num `grant`.
 
 ## 13. Escala sempre no futuro
 

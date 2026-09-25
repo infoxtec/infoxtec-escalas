@@ -96,18 +96,14 @@ begin
     from tecnicos t), '[]'::jsonb);
 end $$;
 
-revoke execute on all functions in schema public from public, anon, authenticated;
-grant execute on function
-  app_meu_acesso(), app_escalas(date, date), app_resumo(date, date), app_linha_do_tempo(uuid),
-  app_tecnicos(), app_locais(), app_pendencias(date), app_config(), app_simular_jornada(time),
-  app_criar_escalas(uuid[], uuid, date, time, text, int, text, boolean, uuid),
-  app_mudar_status(uuid, text), app_remover_escala(uuid), app_reenviar_escala(uuid),
-  app_salvar_tecnico(jsonb), app_excluir_tecnico(uuid), app_salvar_local(jsonb),
-  app_usuarios(), app_salvar_usuario(text, text, text, boolean),
-  app_habilidades(), app_salvar_habilidade(jsonb), app_tecnico_habilidades(),
-  app_salvar_tecnico_habilidade(jsonb), app_remover_tecnico_habilidade(uuid, uuid),
-  app_definir_habilidades(uuid, jsonb), app_excluir_habilidade(uuid, boolean),
-  app_habilidades_por_tecnico(),
-  app_tipos_atividade(), app_salvar_tipo_atividade(jsonb), app_aptidao(uuid),
-  app_painel_locais(date)
-to authenticated;
+-- Permissoes por laco: toda funcao app_* fica executavel por usuario logado.
+-- Lista fixa de assinaturas quebra quando a assinatura muda ao longo do historico.
+do $$
+declare f record;
+begin
+  execute 'revoke execute on all functions in schema public from public, anon, authenticated';
+  for f in select p.oid::regprocedure as a from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public' and p.proname like 'app\_%' loop
+    execute format('grant execute on function %s to authenticated', f.a);
+  end loop;
+end $$;
