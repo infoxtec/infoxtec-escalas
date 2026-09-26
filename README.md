@@ -23,6 +23,7 @@ são lembrados da escala do dia seguinte, com prazo às 18h.
 | [Agente de IA](docs/agente-ia.md) | Roteiro para predições: instrumentar, consultar, prever, sugerir |
 | [Segurança e homologação](docs/seguranca-homologacao.md) | Caminho para uso comercial: ordem das tarefas, LGPD e o que afirmar sobre certificação |
 | [Telefonia (item 2)](docs/telefonia.md) | URA de voz: fornecedor, custos, script e resultado do piloto |
+| [**Análise da topologia**](docs/analise-topologia.md) | **Desempenho medido, estrutura do banco, microserviços e achados por prioridade** |
 | [**Fluxo de desenvolvimento**](docs/fluxo-de-desenvolvimento.md) | **Ambientes, caminho de uma mudança até a produção e roteiro de adoção** |
 | [Ambiente de desenvolvimento no Mac](docs/ambiente-dev-mac.md) | Máquina Linux e banco de homologação para rodar o painel localmente |
 | [Publicar no Vercel](docs/deploy-vercel.md) | Passo a passo do deploy e da liberação de usuários |
@@ -48,7 +49,7 @@ Homologação: projeto Supabase `infoxtec-escalas-dev`, sem WhatsApp nem ligaç�
 ```
 web/                          painel React (o que vai para a Vercel, Root Directory = web)
 supabase/
-  migrations/                 01 a 38 — espelho exato do banco
+  migrations/                 01 a 39 (ver divergência em docs/analise-topologia.md, seção 4)
   functions/                  Edge Functions: webhook-evolution, voz-escala, documento-ocr
   setup/                      config por ambiente, cron e segredos (rodar uma vez)
   seed.sql                    dados fictícios para desenvolvimento
@@ -103,6 +104,8 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Item 5 do backlog: habilidades, requisitos por tipo de atividade e gestão de documentos (NRs, CNH, ASO)
 - [x] Item 3 do backlog (parcial): painel de acompanhamento por local
 - [x] Ambiente de homologação: projeto Supabase dev com as migrations e dados fictícios
+- [x] Migration 39: fuso do motor, acesso aos documentos, permissões e limpeza de logs (homologação)
+- [ ] Sincronizar o repositório com a produção (dispatcher com ligações e política de documentos)
 - [ ] Fluxo por pull request com CI (ver [docs/fluxo-de-desenvolvimento.md](docs/fluxo-de-desenvolvimento.md))
 - [ ] Desligar o painel Retool e remover as funções da bancada de teste
 - [ ] Backlog de 60 dias (ver [docs/backlog.md](docs/backlog.md))

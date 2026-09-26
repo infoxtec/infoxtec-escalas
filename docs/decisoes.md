@@ -178,3 +178,23 @@ lido; a palavra-chave mais específica ganha (`nr-35` antes de `nr-3`).
 versão 3.1 do painel estar no ar. A aba Roadmap procurava a etiqueta do grupo, não encontrava e
 quebrava a tela inteira. Os itens foram movidos para `backlog` com prefixo no título até o deploy.
 **Prevenção aplicada:** o painel passou a tratar grupo desconhecido como "Outros" em vez de falhar.
+
+## 25. Hora da escala é local e se compara com hora local
+
+**Decisão:** `data_servico + hora_inicio` é comparada com `now() at time zone fn_config('fuso')`,
+calculado uma vez por consulta.
+**Por quê:** a comparação com `now()` tratava a hora local como UTC. Escala marcada para as 3
+horas seguintes nunca era enviada, e lembretes e alertas paravam 3 horas antes (migration 39).
+**Descartado:** função auxiliar chamada por linha: correta, mas dobrava o tempo do motor (146 ms
+contra 71 ms com um ano de dados), porque função com `search_path` fixo não é expandida na view.
+**Longo prazo:** guardar o início como `timestamptz`.
+
+## 26. Sem microserviços; o provedor de WhatsApp vira adaptador
+
+**Decisão:** o núcleo continua no banco. O único componente a separar é o envio de mensagens:
+uma fila de saída no banco e uma Edge Function que fala com o provedor.
+**Por quê:** microserviços trariam rede, autenticação entre serviços e deploys coordenados sem
+ganho no volume atual (consultas de 8 a 76 ms com um ano de dados). Já o formato da Evolution
+embutido no SQL tornaria cara a migração para a API da Meta.
+**Quando:** junto com a migração para a Meta. Análise completa em
+[analise-topologia.md](analise-topologia.md).

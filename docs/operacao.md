@@ -146,10 +146,12 @@ o arquivo quando o registro falha. Se suspeitar de sobra, compare o bucket `docu
 
 ## Limpeza periódica
 
+Automática desde a migration 39: `fn_limpeza_logs()` roda todo dia às 03h17, agendada por
+`supabase/setup/cron.sql`. Apaga o log de webhook com mais de 30 dias, os alertas com mais de 90 e
+o histórico do `pg_cron` com mais de 7. Para rodar na hora:
+
 ```sql
-delete from webhook_eventos where recebido_em < now() - interval '30 days';
-delete from alertas_enviados where data_ref < current_date - interval '90 days';
-delete from cron.job_run_details where end_time < now() - interval '7 days';
+select fn_limpeza_logs();
 ```
 
 O `pg_cron` roda 1.440 vezes por dia e o histórico cresce rápido no plano gratuito.
