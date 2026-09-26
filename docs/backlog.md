@@ -338,3 +338,69 @@ no fluxo mais usado do dia.
 
 **Aceite:** as quatro telas na ordem pedida, e criar escala a partir de um técnico pendente
 continua levando o técnico preenchido.
+
+---
+
+## 14. Identificação automática do documento: tipo e técnico
+
+**Problema:** hoje o documento é enviado já dentro da ficha de um técnico, e o tipo é deduzido pelo
+nome do arquivo ou pelo texto (decisão 23). Quem recebe uma pasta de documentos misturados precisa
+abrir um por um para saber de quem é cada arquivo.
+
+**Escopo:** ao carregar um ou vários arquivos, ler o título (nome do arquivo e o texto da primeira
+página) e **sugerir** o tipo de documento e o técnico a que ele pertence. Nada é gravado sem a
+pessoa conferir na tabela de revisão.
+
+**Como fazer:** reaproveitar a leitura já existente (texto embutido do PDF, OCR no navegador para
+imagem) e a classificação por palavra-chave. Para o técnico, comparar o nome encontrado no
+documento com o cadastro, sem acento e por palavras. Sugestão com baixa confiança aparece
+destacada, para escolha manual.
+
+**Decisão pendente:** o casamento por nome falha com homônimos. O casamento seguro é pelo CPF, que
+hoje não existe no cadastro. Incluir o CPF é dado pessoal a mais (LGPD) e precisa de base legal
+registrada.
+
+**Regra:** a sugestão nunca grava sozinha (decisão 15). Esforço: M.
+
+## 15. Pré-visualização do documento e download com aviso de LGPD
+
+**Problema:** hoje o arquivo só é visto depois de gravado, abrindo em outra aba. Na hora de
+preencher a validade ou corrigir o nome, a pessoa não vê o documento ao lado do formulário.
+
+**Escopo:**
+- **No envio:** o documento aparece ao lado dos campos (tipo, técnico, validade), para conferir e
+  corrigir o que a leitura automática não acertou.
+- **Depois de gravado:** o mesmo visualizador, dentro do painel, sem baixar o arquivo.
+- **Download separado da visualização:** antes de baixar, a pessoa lê e aceita um aviso de
+  responsabilidade sobre dados pessoais (LGPD). Cada download fica registrado: quem, quando e qual
+  documento.
+
+**Como fazer:** o leitor de PDF (pdf.js) já está no painel; imagens abrem direto. O acesso
+continua por link assinado de curta duração. A trilha de downloads é uma tabela nova, gravada pela
+mesma função que libera o link.
+
+**Riscos:** visualizar no navegador ainda permite captura de tela; o aviso e a trilha tornam o uso
+rastreável, não impossível. Esforço: M.
+
+## 16. Classificação obrigatória: ASO, NR, suspensão ou advertência
+
+**Problema:** hoje um documento pode ser gravado sem tipo, e ele some dos controles de validade e
+das auditorias.
+
+**Escopo:** nenhum documento lido é gravado sem indicar a categoria: **ASO**, **NR**,
+**suspensão** ou **advertência**. A regra vale no banco, não só na tela.
+
+**Como fazer:**
+- `tipos_documento` ganha a categoria. ASO e NR exigem validade; suspensão e advertência não
+  vencem, mas pedem a data do fato.
+- `app_registrar_documento` recusa documento sem tipo.
+- Os documentos antigos sem tipo aparecem numa lista para classificar. A trava vale para os novos
+  desde o primeiro dia, e para todos quando a lista zerar.
+
+**Decisões pendentes:**
+- **Quem vê suspensão e advertência.** São registros disciplinares, mais sensíveis que ASO e NR.
+  A sugestão é restringir a admin e manter uma retenção própria.
+- **CNH:** o cadastro atual tem "CNH B" como tipo de documento. Confirmar se continua como
+  categoria própria ou sai da lista.
+
+Esforço: M. Depende do item 15 para a confirmação visual do tipo.

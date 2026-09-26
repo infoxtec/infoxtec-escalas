@@ -58,7 +58,7 @@ erDiagram
 | View | Para que serve |
 |---|---|
 | `vw_escalas_painel` | Tabela principal, com semáforo, jornada e `pode_remover` |
-| `vw_acoes_pendentes` | O motor: o que fazer agora e com qual diagnóstico |
+| `vw_acoes_pendentes` | O motor: o que fazer agora e com qual diagnóstico. Compara a hora local da escala com a hora local atual (migration 39) |
 | `vw_resumo_dia` | Indicadores por dia |
 | `vw_linha_do_tempo` | Auditoria + eventos do WhatsApp em ordem |
 | `vw_ligacoes_pendentes` | Quem deve receber ligação agora: já recebeu WhatsApp N vezes, não respondeu, dentro da janela |
@@ -79,7 +79,7 @@ erDiagram
 `app_definir_habilidades`, `app_excluir_habilidade`, `app_habilidades_por_tecnico`,
 `app_ligacoes`, `app_ligar_escala`, `app_documentos`, `app_registrar_documento`,
 `app_excluir_documento`, `app_documentos_expirados`, `app_backlog`, `app_salvar_backlog_item`,
-`app_mover_backlog_item`.
+`app_mover_backlog_item`, `app_pode_gerir_documentos` (usada pelas políticas do bucket `documentos`).
 
 > **Permissão por laço:** toda migration termina revogando `execute` de tudo no schema e
 > concedendo de novo a **todas** as funções com prefixo `app_`. Lista manual já derrubou o painel
@@ -89,7 +89,7 @@ erDiagram
 `fn_remover_escala`, `fn_excluir_tecnico`, `fn_salvar_usuario_painel`, `fn_exigir_papel`,
 `fn_papel`, `fn_calcular_jornada`, `fn_pendencias_escala`.
 
-**Mensageria** — `fn_dispatcher_whatsapp` (o motor), `fn_payload_escala`, `fn_corpo_escala`,
+**Mensageria** — `fn_dispatcher_whatsapp` (o motor, fases 1 a 6: confere respostas da Evolution, envia, aciona supervisores, alerta de prazo, documentos vencidos e ligações; desde a migration 41 uma falha numa escala fica registrada nela, com `erro_codigo = 'interno'`, sem travar as outras), `fn_payload_escala`, `fn_corpo_escala`,
 `fn_titulo_escala`, `fn_msg_escala`, `fn_msg_supervisor`, `fn_evo_post`, `fn_evo_get`,
 `fn_wa_texto`, `fn_avisar_supervisores`, `fn_alerta_prazo_escala`.
 
@@ -103,10 +103,18 @@ erDiagram
 (entrega e leitura), `fn_wh_mensagem` (botões, 1/2, texto livre), `fn_tel_canonico`.
 
 **Infra** — `fn_config`, `fn_config_int`, `fn_segredo` (lê do Vault), `fn_fmt_duracao`,
-`fn_http_resposta`.
+`fn_http_resposta`, `fn_limpeza_logs` (retenção de logs, agendada em `setup/cron.sql`).
+
+> **Hora da escala:** `data_servico` e `hora_inicio` são hora local, sem fuso. Nunca comparar
+> `data_servico + hora_inicio` com `now()`, que é UTC no servidor. Comparar com
+> `now() at time zone fn_config('fuso')`.
 
 > **Pendência de limpeza:** `fn_teste_wa_texto`, `fn_teste_wa_botoes` e `fn_teste_wa_resposta`
 > são da bancada de teste da migration 07 e podem ser removidas.
+
+> **Backlog do Roadmap:** `backlog_itens.numero` é obrigatório, único e atribuído pelo gatilho
+> `trg_backlog_numero` (`fn_numerar_backlog`), em sequência única para todos os grupos, desde a
+> migration 43. Depois de atribuído, não muda. O painel exibe com três dígitos (001).
 
 ## Gatilhos em `escalas`
 
@@ -140,6 +148,8 @@ Voz (URA): `ligacao_ativa` (false), `ligacao_apos_tentativas` (2), `ligacao_jane
 Voz (URA): ver `supabase/setup/twilio.md`. Documentos: ver `supabase/setup/documentos.md`.
 
 Escala: `antecedencia_minima_min` (5) — minutos mínimos entre agora e o início da escala.
+
+Retenção: `retencao_webhook_dias` (30), `retencao_cron_dias` (7).
 
 Ambiente: `evolution_url`, `evolution_instancia`, `evolution_versao`, `webhook_url`, `fuso`.
 

@@ -178,3 +178,47 @@ lido; a palavra-chave mais específica ganha (`nr-35` antes de `nr-3`).
 versão 3.1 do painel estar no ar. A aba Roadmap procurava a etiqueta do grupo, não encontrava e
 quebrava a tela inteira. Os itens foram movidos para `backlog` com prefixo no título até o deploy.
 **Prevenção aplicada:** o painel passou a tratar grupo desconhecido como "Outros" em vez de falhar.
+
+## 25. Hora da escala é local e se compara com hora local
+
+**Decisão:** `data_servico + hora_inicio` é comparada com `now() at time zone fn_config('fuso')`,
+calculado uma vez por consulta.
+**Por quê:** a comparação com `now()` tratava a hora local como UTC. Escala marcada para as 3
+horas seguintes nunca era enviada, e lembretes e alertas paravam 3 horas antes (migration 39).
+**Descartado:** função auxiliar chamada por linha: correta, mas dobrava o tempo do motor (146 ms
+contra 71 ms com um ano de dados), porque função com `search_path` fixo não é expandida na view.
+**Longo prazo:** guardar o início como `timestamptz`.
+
+## 26. Sem microserviços; o provedor de WhatsApp vira adaptador
+
+**Decisão:** o núcleo continua no banco. O único componente a separar é o envio de mensagens:
+uma fila de saída no banco e uma Edge Function que fala com o provedor.
+**Por quê:** microserviços trariam rede, autenticação entre serviços e deploys coordenados sem
+ganho no volume atual (consultas de 8 a 76 ms com um ano de dados). Já o formato da Evolution
+embutido no SQL tornaria cara a migração para a API da Meta.
+**Quando:** junto com a migração para a Meta. Análise completa em
+[analise-topologia.md](analise-topologia.md).
+
+## 27. Produção só muda por migration, e é conferida contra o repositório
+
+**Decisão:** nenhuma alteração direta no banco de produção. Divergências são detectadas por uma
+consulta que compara a estrutura da produção com a do repositório, só lendo definições.
+**Por quê:** a fase 6 do motor foi aplicada direto na produção e ficou fora do repositório. Quem
+recriasse o motor a partir do repositório desligaria as ligações sem perceber. A comparação de
+26/09 mostrou que essa era a única divergência real (migration 40).
+**Complemento:** o `plpgsql_check` encontrou duas funções que usavam uma coluna removida. Rodá-lo
+depois de cada migration pega esse tipo de erro antes da produção.
+
+## 28. Backlog direto na produção; o resto passa pela homologação
+
+**Decisão:** registros do backlog vão direto para a produção, numerados em sequência única (001,
+002...) pelo próprio banco. Qualquer outra mudança é aplicada primeiro na homologação, testada, e
+só vai para a produção com o comando do responsável, pelo `scripts/aplicar-producao.sh`.
+**Por quê:** o backlog é registro de trabalho, não parte do sistema: não há o que testar antes. Já
+banco, painel e Edge Functions afetam a operação. O script mantém o histórico de migrations da
+produção igual ao do repositório; aplicar por outro caminho gravaria outra versão e quebraria o
+próximo `db push`.
+**Numeração:** quem já tinha número manteve; os itens sem número foram numerados na ordem do id,
+por escolha do responsável. O número deixou de ser digitado. Quem cria não escolhe, e o número não muda depois
+(migration 43), para que "item 017" signifique sempre a mesma coisa.
+

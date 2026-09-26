@@ -94,6 +94,8 @@ export function formatDateTime(iso: string | null): string {
     timeZone: 'America/Bahia', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
   })
 }
+/** Número do item do backlog com três dígitos: 7 -> '007'. Atribuído pelo banco (migration 43). */
+export function numeroBacklog(n: number | null): string { return n === null ? '' : String(n).padStart(3, '0') }
 export function hojeBahia(): string { return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bahia' }) }
 export function addDays(d: string, n: number): string {
   const x = new Date(d + 'T12:00:00')

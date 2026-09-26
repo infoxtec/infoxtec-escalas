@@ -4,6 +4,9 @@ import type { Session } from '@supabase/supabase-js'
 import { Award, CalendarDays, LayoutGrid, Loader2, LogOut, MapPin, Rocket, ShieldCheck, Users } from 'lucide-react'
 import { Button, ErrorBox } from './components/ui'
 import { configurado, supabase, tipoDoLink } from './lib/supabase'
+
+// Definido só nos modos locais (npm run dev:homologacao / dev:producao); vazio no painel publicado
+const AMBIENTE_LOCAL = import.meta.env.VITE_AMBIENTE as 'homologacao' | 'producao' | undefined
 import { MINUTOS_INATIVIDADE, useInatividade, useVersaoPublicada } from './lib/sessao'
 import { api, erroMsg } from './lib/api'
 import { PAPEL_LABEL } from './lib/types'
@@ -107,6 +110,13 @@ function Painel({ email }: { email: string }) {
 
   return (
     <div className="flex min-h-screen flex-col">
+      {AMBIENTE_LOCAL && (
+        <div className={`px-4 py-1 text-center text-xs font-semibold text-white ${AMBIENTE_LOCAL === 'producao' ? 'bg-red-600' : 'bg-amber-600'}`}>
+          {AMBIENTE_LOCAL === 'producao'
+            ? 'PRODUÇÃO — dados reais: escalas criadas aqui são enviadas aos técnicos pelo WhatsApp'
+            : 'HOMOLOGAÇÃO — dados fictícios, sem WhatsApp nem ligações'}
+        </div>
+      )}
       <header className="sticky top-0 z-40 border-b bg-card/90 backdrop-blur">
         <div className="mx-auto flex h-12 max-w-screen-2xl items-center gap-3 px-4">
           <div className="flex shrink-0 items-center gap-2">
