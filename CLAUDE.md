@@ -48,6 +48,10 @@ end $$;
 
 - Tabela nova: RLS ligado e sem políticas. O acesso passa pelas funções.
 - Migration precisa rodar num banco vazio: não depender de dado que só existe na produção.
+- Depois de aplicar uma migration na homologação, rodar o `plpgsql_check` em todas as funções
+  (dentro de uma transação desfeita, como em `docs/analise-topologia.md`) e exigir zero erros.
+- Ao recriar uma função que já existe, partir da definição atual do banco de homologação, não de
+  uma migration antiga: a produção foi conferida contra a homologação em 26/09 (migration 40).
 - Dado novo que o painel precisa exibir só entra depois de o painel que sabe exibi-lo estar
   publicado (decisão 24).
 

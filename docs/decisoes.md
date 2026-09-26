@@ -198,3 +198,13 @@ ganho no volume atual (consultas de 8 a 76 ms com um ano de dados). Já o format
 embutido no SQL tornaria cara a migração para a API da Meta.
 **Quando:** junto com a migração para a Meta. Análise completa em
 [analise-topologia.md](analise-topologia.md).
+
+## 27. Produção só muda por migration, e é conferida contra o repositório
+
+**Decisão:** nenhuma alteração direta no banco de produção. Divergências são detectadas por uma
+consulta que compara a estrutura da produção com a do repositório, só lendo definições.
+**Por quê:** a fase 6 do motor foi aplicada direto na produção e ficou fora do repositório. Quem
+recriasse o motor a partir do repositório desligaria as ligações sem perceber. A comparação de
+26/09 mostrou que essa era a única divergência real (migration 40).
+**Complemento:** o `plpgsql_check` encontrou duas funções que usavam uma coluna removida. Rodá-lo
+depois de cada migration pega esse tipo de erro antes da produção.

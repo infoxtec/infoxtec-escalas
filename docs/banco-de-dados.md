@@ -89,7 +89,7 @@ erDiagram
 `fn_remover_escala`, `fn_excluir_tecnico`, `fn_salvar_usuario_painel`, `fn_exigir_papel`,
 `fn_papel`, `fn_calcular_jornada`, `fn_pendencias_escala`.
 
-**Mensageria** — `fn_dispatcher_whatsapp` (o motor), `fn_payload_escala`, `fn_corpo_escala`,
+**Mensageria** — `fn_dispatcher_whatsapp` (o motor, fases 1 a 6: confere respostas da Evolution, envia, aciona supervisores, alerta de prazo, documentos vencidos e ligações; desde a migration 41 uma falha numa escala fica registrada nela, com `erro_codigo = 'interno'`, sem travar as outras), `fn_payload_escala`, `fn_corpo_escala`,
 `fn_titulo_escala`, `fn_msg_escala`, `fn_msg_supervisor`, `fn_evo_post`, `fn_evo_get`,
 `fn_wa_texto`, `fn_avisar_supervisores`, `fn_alerta_prazo_escala`.
 

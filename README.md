@@ -49,7 +49,7 @@ Homologação: projeto Supabase `infoxtec-escalas-dev`, sem WhatsApp nem ligaç�
 ```
 web/                          painel React (o que vai para a Vercel, Root Directory = web)
 supabase/
-  migrations/                 01 a 39 (ver divergência em docs/analise-topologia.md, seção 4)
+  migrations/                 01 a 41 — espelho do banco (conferido contra a produção em 26/09)
   functions/                  Edge Functions: webhook-evolution, voz-escala, documento-ocr
   setup/                      config por ambiente, cron e segredos (rodar uma vez)
   seed.sql                    dados fictícios para desenvolvimento
@@ -105,7 +105,9 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Item 3 do backlog (parcial): painel de acompanhamento por local
 - [x] Ambiente de homologação: projeto Supabase dev com as migrations e dados fictícios
 - [x] Migration 39: fuso do motor, acesso aos documentos, permissões e limpeza de logs (homologação)
-- [ ] Sincronizar o repositório com a produção (dispatcher com ligações e política de documentos)
+- [x] Produção comparada com o repositório; migration 40 sincroniza a fase 6 do motor
+- [x] Migration 41: habilidades voltam a salvar, motor isola falha por escala, fuso no webhook (homologação)
+- [ ] Aplicar 39 a 41 em produção (docs/analise-topologia.md, seção 6)
 - [ ] Fluxo por pull request com CI (ver [docs/fluxo-de-desenvolvimento.md](docs/fluxo-de-desenvolvimento.md))
 - [ ] Desligar o painel Retool e remover as funções da bancada de teste
 - [ ] Backlog de 60 dias (ver [docs/backlog.md](docs/backlog.md))

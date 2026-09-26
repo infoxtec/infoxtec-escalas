@@ -1,7 +1,7 @@
 # Análise crítica da topologia e do banco
 
-Feita em 26/09/2026. Cobre desempenho, estrutura do banco, relações, a questão dos microserviços
-e o que foi corrigido na migration 39.
+Feita em 26/09/2026. Cobre desempenho, estrutura do banco, relações, a questão dos microserviços,
+a comparação entre produção e repositório e o que foi corrigido nas migrations 39 a 41.
 
 ## Resumo
 
@@ -10,7 +10,7 @@ e o que foi corrigido na migration 39.
 | O banco tem bom desempenho? | **Sim, medido.** Com um ano de operação simulado, as consultas levam de 8 a 76 ms. Não é o gargalo |
 | As relações estão bem modeladas? | **Sim, no essencial.** Modelo normalizado, chaves e restrições corretas. Os problemas estão em como o **tempo** é guardado e em pontos de higiene |
 | Vale separar em microserviços? | **Não.** Para uma equipe de uma pessoa, multiplicaria deploys, custos e pontos de falha. A exceção útil é isolar o **provedor de WhatsApp** num adaptador (seção 3) |
-| O que é grave? | Um bug de fuso que impedia o envio de escalas marcadas para as 3 horas seguintes, e o repositório não refletir o que está em produção |
+| O que é grave? | Um bug de fuso que impedia o envio de escalas marcadas para as 3 horas seguintes; três telas quebradas em produção (documentos, cadastro de habilidade, habilidades do técnico); e um motor que para por inteiro com um único dado ruim |
 
 ## Como foi analisado
 
@@ -18,6 +18,9 @@ e o que foi corrigido na migration 39.
 - Testes no projeto de **homologação** (`infoxtec-escalas-dev`), com dados simulados gravados e
   desfeitos na mesma transação. **A produção não foi acessada.**
 - Relatórios de desempenho e segurança do próprio Supabase (advisors) sobre a homologação.
+- `plpgsql_check`, verificador estático do Postgres, sobre todas as funções.
+- Comparação da estrutura da produção com a do repositório por uma consulta que só lê definições,
+  rodada pelo responsável no SQL Editor da produção (seção 4).
 
 ## 1. Desempenho
 
@@ -132,78 +135,110 @@ equipe é uma pessoa. A decisão 1 (regra no banco) continua certa para este tam
    `cron.job_run_details` e em nenhum outro lugar. Recomendação: indicador na aba Operação e
    alerta ao supervisor quando a última execução bem-sucedida tiver mais de 5 minutos.
 
-## 4. O repositório não reflete a produção
+## 4. Produção comparada com o repositório
 
-Duas evidências, as duas verificáveis no código:
+Uma consulta que só lê definições (sem dados) foi rodada na produção e comparou 199 objetos com o
+repositório até a migration 38: 97 funções, 8 views, 22 tabelas com colunas, restrições, índices
+e gatilhos, e 6 tipos. A mesma consulta rodada na homologação não acusou nenhum falso alarme.
 
-1. **Ligações de voz.** O comentário da migration 25 diz que o corpo completo do dispatcher (fases
-   1 a 6) foi aplicado direto no banco. No repositório, a última versão de
-   `fn_dispatcher_whatsapp` (migration 19) **não chama** `fn_disparar_ligacoes`. Um banco montado a
-   partir do repositório não faz ligações.
-2. **Documentos.** No banco montado a partir do repositório, abrir ou enviar documento falha com
-   `permission denied for function fn_papel` (testado). Em produção os documentos funcionam, então
-   alguém ajustou a produção fora das migrations.
+| Resultado | Objetos |
+|---|---|
+| Idênticos | Todas as tabelas, colunas, restrições, índices, gatilhos, tipos e views |
+| Só comentários e espaçamento diferentes | 21 funções (conferido com o texto normalizado) |
+| Mesma saída, texto escrito de outro jeito | `fn_voz_twiml` (testado lado a lado: saída idêntica em 4 casos) |
+| **Diferença real** | `fn_dispatcher_whatsapp`: a produção tem a fase 6, que chama as ligações da URA |
 
-**Consequência:** qualquer migration que recrie `fn_dispatcher_whatsapp` a partir da versão do
-repositório **desligaria as ligações em produção sem aviso**. Por isso a 39 não mexe no
-dispatcher nem no webhook.
+**A única divergência real era a fase 6 do motor**, aplicada direto no banco na época da migration
+25. A migration 40 traz essa versão para o repositório, byte a byte igual à da produção (conferido
+por hash). Em produção ela não muda nada.
 
-**Como resolver:** comparar as definições de funções, views e políticas da produção com as da
-homologação, e escrever uma migration de sincronização que traga para o repositório exatamente o
-que está em produção. Em produção ela não muda nada; na homologação ela completa o que falta.
+**Correção de uma suposição anterior:** a análise inicial supunha que a produção tinha as
+políticas de documentos ajustadas. Não tem. Elas são iguais às do repositório, e `fn_papel` também
+não tem permissão para o usuário logado. Isso significa que, na produção, **abrir e enviar
+arquivos de documento pelo painel falham** com `permission denied for function fn_papel`.
+Documentos vinculados por link do Drive não passam pelo Storage e não são afetados. A migration 39
+corrige.
+
+### Duas telas quebradas, encontradas pelo verificador
+
+O `plpgsql_check` analisou todas as funções e encontrou exatamente dois erros, presentes na
+produção e no repositório:
+
+| Função | Tela | Erro |
+|---|---|---|
+| `app_salvar_habilidade` | Habilidades: criar ou editar | `column "exige_validade" of relation "habilidades" does not exist` |
+| `app_definir_habilidades` | Técnicos: marcar habilidades | `column "exige_validade" does not exist` |
+
+A migration 36 removeu a coluna e essas duas funções continuaram usando-a. Corrigidas na 41; depois
+dela, o verificador aponta zero erros.
 
 ## 5. Achados por prioridade
 
 | # | Achado | Gravidade | Situação |
 |---|---|---|---|
-| 1 | Fuso: escalas das próximas 3 horas nunca enviadas | Crítica | **Corrigido na 39** (homologação) |
-| 2 | Repositório diferente da produção (dispatcher e documentos) | Crítica para o processo | A fazer: depende da comparação |
-| 3 | Política de documentos quebrada no repositório | Alta | **Corrigido na 39** |
-| 4 | Motor sem isolamento de falha por escala | Alta | A fazer, depois do item 2 |
-| 5 | `vw_ligacoes_pendentes` e tabelas com permissão para `anon` | Média | **Corrigido na 39** |
-| 6 | Logs sem retenção | Média | **Corrigido na 39** + `setup/cron.sql` |
-| 7 | Provedor de WhatsApp embutido no SQL | Média | Proposta: fila de saída + adaptador, junto com a API Meta |
-| 8 | Motor falha em silêncio | Média | A fazer |
-| 9 | `config` sem validação | Média | A fazer |
-| 10 | Desvio de fuso no webhook (9h em vez de 12h) | Baixa | Junto com a sincronização |
-| 11 | Estados sem fluxo, campo legado, índice duplicado | Baixa | A decidir |
+| 1 | Fuso: escalas das próximas 3 horas nunca enviadas | Crítica | **Corrigido na 39** |
+| 2 | Documentos: abrir e enviar arquivo falham (produção e repositório) | Alta | **Corrigido na 39** |
+| 3 | Habilidades: criar, editar e atribuir falham (produção e repositório) | Alta | **Corrigido na 41** |
+| 4 | Motor sem isolamento: um dado ruim trava todos os envios | Alta | **Corrigido na 41** |
+| 5 | Fase 6 do motor (ligações) fora do repositório | Crítica para o processo | **Sincronizado na 40** |
+| 6 | `vw_ligacoes_pendentes` e tabelas com permissão para `anon` | Média | **Corrigido na 39** |
+| 7 | Logs sem retenção | Média | **Corrigido na 39** + `setup/cron.sql` |
+| 8 | Desvio de fuso no webhook (9h em vez de 12h) | Baixa | **Corrigido na 41** |
+| 9 | Provedor de WhatsApp embutido no SQL | Média | Proposta: fila de saída + adaptador, junto com a API Meta |
+| 10 | Motor falha em silêncio | Média | A fazer |
+| 11 | `config` sem validação | Média | A fazer |
+| 12 | Estados sem fluxo, campo legado, índice duplicado | Baixa | A decidir |
 
-## 6. A migration 39
+## 6. As migrations 39, 40 e 41
 
-Arquivo: `supabase/migrations/20260926150050_39_fuso_documentos_permissoes_e_limpeza.sql`.
-Aplicada e testada na homologação.
+Todas aplicadas e testadas na homologação, com dados simulados desfeitos ao final de cada teste.
 
-| Parte | O que faz | Teste |
+| Migration | Parte | Teste |
 |---|---|---|
-| Fuso | `vw_acoes_pendentes` e `vw_ligacoes_pendentes` comparam hora local com hora local | Escalas de +1h e +2h passam a aparecer; escala já iniciada continua fora |
-| Documentos | Nova `app_pode_gerir_documentos()` (security definer) nas políticas do bucket | Admin lê; e-mail fora de `painel_usuarios` não lê |
-| Permissões | Revoga de `anon` e `authenticated` todo acesso direto às tabelas e views do schema `public` | `anon` bloqueado na view e em `tecnicos`; 9 funções do painel testadas como admin |
-| Limpeza | `fn_limpeza_logs()`: webhook 30 dias, alertas 90 dias, pg_cron 7 dias | Executa; sem permissão para `anon` e `authenticated` |
-| Desempenho | Hora local calculada uma vez por execução | 76 ms, igual ao anterior (a primeira versão, com função por linha, levava 146 ms) |
+| 39 | Fuso: views do motor comparam hora local com hora local | Escalas de +1h e +2h passam a aparecer; escala já iniciada continua fora |
+| 39 | Documentos: `app_pode_gerir_documentos()` nas políticas do bucket | Admin lê; e-mail fora de `painel_usuarios` não lê |
+| 39 | Permissões: nada do schema `public` acessível direto pela API | `anon` bloqueado na view e em `tecnicos`; 9 funções do painel testadas como admin |
+| 39 | Limpeza: `fn_limpeza_logs()` | Executa; sem permissão para `anon` e `authenticated` |
+| 39 | Desempenho | 76 ms com um ano de dados, igual ao anterior |
+| 40 | Motor igual ao da produção (fases 1 a 6) | Hash da definição idêntico ao da produção |
+| 41 | Habilidades sem a coluna removida | Criar, editar, atribuir e reatribuir como admin; usuário sem papel barrado |
+| 41 | Motor isola falha por escala | Três escalas, a do meio com erro forçado: as duas boas foram enviadas, a ruim ficou registrada como falha `interno` |
+| 41 | Webhook: janela de 12 horas no fuso certo | "1" solto para escala iniciada há 10 horas confirma a escala |
+| 41 | Verificador estático | Zero erros em todas as funções |
 
 ### Aplicar em produção
 
-A 39 é segura mesmo com a divergência da seção 4: não recria o dispatcher nem o webhook. Se a
-produção tiver uma versão diferente das duas views, o `create or replace view` falha e o
-`db push` desfaz tudo, sem efeito parcial.
+As três de uma vez, na ordem. Cada migration roda numa transação: se uma falhar, ela é desfeita
+inteira e o `db push` para.
 
 1. Merge do PR em `main`.
-2. Na máquina Linux: `npx supabase link --project-ref zpckrxydqqmmcrphrkxz`, conferir
-   `supabase/.temp/project-ref` e rodar `npx supabase db push`.
-3. No SQL Editor da produção, agendar a limpeza (linha nova de `supabase/setup/cron.sql`).
-4. Voltar o `link` para a homologação.
+2. Na máquina Linux, no repositório atualizado:
+   ```bash
+   npx supabase link --project-ref zpckrxydqqmmcrphrkxz
+   cat supabase/.temp/project-ref        # tem que mostrar zpckrxydqqmmcrphrkxz
+   npx supabase db push                  # lista 39, 40 e 41; confirmar com Y
+   ```
+3. No SQL Editor da produção, agendar a limpeza (última linha de `supabase/setup/cron.sql`).
+4. Testar no painel de produção: abrir um documento, salvar uma habilidade, marcar as habilidades de
+   um técnico.
+5. Voltar o `link` para a homologação: `npx supabase link --project-ref oruwnlxyvznpigbpjjbx`.
 
-**Efeito imediato:** escalas das próximas 3 horas que estavam presas serão enviadas no minuto
-seguinte, se estiverem dentro da janela de envio.
+**Efeitos imediatos em produção:** escalas das próximas 3 horas que estavam presas são enviadas no
+minuto seguinte, se estiverem dentro da janela de envio; documentos e habilidades voltam a
+funcionar no painel. O painel não precisa de nova publicação.
+
+**Como desfazer, se necessário:** o motor anterior está, na íntegra, na migration 40; o webhook
+anterior é o da migration 41 com a linha do fuso revertida; as views anteriores estão nas
+migrations 10 e 29.
 
 ## 7. Próximas etapas
 
-| Etapa | O quê | Depende de |
+| Etapa | O quê | Situação |
 |---|---|---|
-| A | Migration 39 na homologação | **Feito** |
-| B | Comparar definições da produção com a homologação | Autorização para ler só a estrutura da produção, ou rodar uma consulta e colar o resultado |
-| C | Migration 40: sincronizar o repositório com a produção | B |
-| D | Migration 41: isolamento de falha no motor, fuso no webhook, alerta de motor parado | C |
-| E | Aplicar 39 a 41 em produção | Revisão e merge |
-| F | Testes automatizados (pgTAP) para fuso, motor e permissões, rodando no CI | Fase 2 do [fluxo](fluxo-de-desenvolvimento.md) |
+| A | Migrations 39, 40 e 41 na homologação | **Feito** |
+| B | Comparar a produção com o repositório | **Feito** (seção 4) |
+| C | Aplicar 39 a 41 em produção | Revisão, merge e `db push` (seção 6) |
+| D | Alerta de motor parado (item 10) | A fazer |
+| E | Validação de `config` (item 11) | A fazer |
+| F | Testes automatizados (pgTAP) para fuso, motor, permissões e habilidades, e `plpgsql_check` no CI | Fase 2 do [fluxo](fluxo-de-desenvolvimento.md) |
 | G | Fila de saída e adaptador de WhatsApp | Junto com a migração para a API Meta |
