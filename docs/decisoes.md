@@ -208,3 +208,16 @@ recriasse o motor a partir do repositório desligaria as ligações sem perceber
 26/09 mostrou que essa era a única divergência real (migration 40).
 **Complemento:** o `plpgsql_check` encontrou duas funções que usavam uma coluna removida. Rodá-lo
 depois de cada migration pega esse tipo de erro antes da produção.
+
+## 28. Backlog direto na produção; o resto passa pela homologação
+
+**Decisão:** registros do backlog vão direto para a produção, numerados em sequência única (001,
+002...) pelo próprio banco. Qualquer outra mudança é aplicada primeiro na homologação, testada, e
+só vai para a produção com o comando do responsável, pelo `scripts/aplicar-producao.sh`.
+**Por quê:** o backlog é registro de trabalho, não parte do sistema: não há o que testar antes. Já
+banco, painel e Edge Functions afetam a operação. O script mantém o histórico de migrations da
+produção igual ao do repositório; aplicar por outro caminho gravaria outra versão e quebraria o
+próximo `db push`.
+**Numeração:** o número deixou de ser digitado. Quem cria não escolhe, e o número não muda depois
+(migration 43), para que "item 017" signifique sempre a mesma coisa.
+

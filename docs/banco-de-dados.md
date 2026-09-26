@@ -112,8 +112,9 @@ erDiagram
 > **Pendência de limpeza:** `fn_teste_wa_texto`, `fn_teste_wa_botoes` e `fn_teste_wa_resposta`
 > são da bancada de teste da migration 07 e podem ser removidas.
 
-> **Backlog do Roadmap:** itens de backlog entram por migration (como a 38 e a 42), sem duplicar
-> título e numerando a partir do maior número existente.
+> **Backlog do Roadmap:** `backlog_itens.numero` é obrigatório, único e atribuído pelo gatilho
+> `trg_backlog_numero` (`fn_numerar_backlog`), em sequência única para todos os grupos, desde a
+> migration 43. Depois de atribuído, não muda. O painel exibe com três dígitos (001).
 
 ## Gatilhos em `escalas`
 

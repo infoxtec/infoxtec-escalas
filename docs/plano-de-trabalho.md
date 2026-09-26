@@ -10,9 +10,16 @@ A análise que originou a lista está em [analise-topologia.md](analise-topologi
 | Peça | O que é | Situação |
 |---|---|---|
 | Máquina Linux no Mac | Onde você roda o painel, os comandos do Supabase e os scripts | Pronta |
-| Homologação | Projeto Supabase `infoxtec-escalas-dev` (`oruwnlxyvznpigbpjjbx`), com dados fictícios, sem WhatsApp nem ligações reais | Pronta, com as migrations 01 a 42 |
-| Produção | Projeto Supabase `infoxtec-escalas` (`zpckrxydqqmmcrphrkxz`) + painel na Vercel | Com as migrations 01 a 41, conferidas em 26/09. Falta a 42 (etapa 3) |
-| Repositório | GitHub `infoxtec/infoxtec-escalas`. A `main` é o que vale para a produção | 39 a 42 estão na branch `claude/dreamy-lovelace-7cxxih`, falta o merge (etapa 3) |
+| Homologação | Projeto Supabase `infoxtec-escalas-dev` (`oruwnlxyvznpigbpjjbx`), com dados fictícios, sem WhatsApp nem ligações reais | Pronta, com as migrations 01 a 43 |
+| Produção | Projeto Supabase `infoxtec-escalas` (`zpckrxydqqmmcrphrkxz`) + painel na Vercel | Com as migrations 01 a 41, conferidas em 26/09. Faltam a 42 e a 43 (etapa 3) |
+| Repositório | GitHub `infoxtec/infoxtec-escalas`. A `main` é o que vale para a produção | 39 a 43 e o painel 3.2 estão no pull request da branch `claude/dreamy-lovelace-7cxxih` (etapa 3) |
+
+## Regras combinadas (26/09)
+
+| Tipo de mudança | Caminho |
+|---|---|
+| **Registro no backlog** | Vai direto para a produção, feito pelo Claude, só na tabela do backlog. Numeração automática em sequência única: 001, 002... |
+| **Qualquer outra mudança** (banco, painel, Edge Functions) | Claude aplica na homologação, vocês dois testam, e só com o seu comando vai para a produção, pelo ciclo abaixo |
 
 ## O ciclo de toda mudança
 
@@ -31,7 +38,7 @@ flowchart LR
 |---|---|---|
 | 1 | Claude Code | Escreve a migration ou o código numa branch e abre o pull request |
 | 2 | Você, no Linux | `cd ~/infoxtec-escalas && git fetch && git checkout <branch> && git pull` e depois `./scripts/aplicar-homologacao.sh` |
-| 3 | Você | `cd web && npm run dev -- --host` e o teste descrito na etapa |
+| 3 | Você | `cd web && npm run dev:homologacao` e o teste descrito na etapa |
 | 4 | Você, no GitHub | Aprovar e fazer o merge do pull request |
 | 5 | Você, no Linux | `git checkout main && git pull` e depois `./scripts/aplicar-producao.sh` |
 | 6 | Você | O mesmo teste do passo 3, no painel de produção |
@@ -59,8 +66,13 @@ As etapas estão em ordem. Dentro de cada bloco, uma etapa só começa quando a 
 - [x] **1. Confirmar 39 a 41 em produção.** No Linux: `npx supabase link --project-ref zpckrxydqqmmcrphrkxz`, `npx supabase migration list` (39, 40 e 41 precisam aparecer em Remote) e voltar com `npx supabase link --project-ref oruwnlxyvznpigbpjjbx`.
       *Teste no painel de produção:* abrir um documento enviado por arquivo; criar uma habilidade; marcar as habilidades de um técnico. Os três falhavam antes.
 - [x] **2. Agendar a limpeza de logs na produção.** No SQL Editor da produção, rodar a última linha de `supabase/setup/cron.sql`. É a única exceção à regra de não rodar SQL na produção, porque agendamento não é migration.
-- [ ] **3. Merge do pull request** da branch `claude/dreamy-lovelace-7cxxih` na `main` e, em seguida, `./scripts/aplicar-producao.sh`, que aplica a migration 42 (só insere os itens 14 a 16 no backlog).
-      *Teste:* os três itens de documentos aparecem na aba Roadmap do painel de produção. A partir daqui, a `main` é igual à produção.
+- [ ] **3. Merge do pull request e aplicação na produção.** Leva para a produção o que ainda está só na homologação:
+      - migration 42: itens de documentos no backlog;
+      - migration 43: backlog numerado em sequência (001, 002...);
+      - painel 3.2: números com três dígitos e a faixa de ambiente no painel local.
+
+      Como: no GitHub, *Merge pull request*; a Vercel publica o painel sozinha. No Linux, `git checkout main && git pull` e `./scripts/aplicar-producao.sh`.
+      *Teste:* na aba Roadmap da produção, todos os itens com número de três dígitos, sem repetição, e os três de documentos no fim da lista do backlog. A partir daqui, a `main` é igual à produção.
 
 ### Bloco 2: ambiente e processo (configuração, sem código)
 
@@ -121,4 +133,5 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 |---|---|---|---|
 | 26/09 | Migrations 39, 40 e 41 | Aplicadas e testadas | Aplicadas e testadas (Bloco 1) |
 | 26/09 | Limpeza de logs agendada | Não se aplica | Agendada |
-| 26/09 | Migration 42: itens 14 a 16 no backlog | Aplicada e testada | Pendente (etapa 3) |
+| 26/09 | Migration 42: itens de documentos no backlog | Aplicada e testada | Pendente (etapa 3) |
+| 26/09 | Migration 43 + painel 3.2: numeração 001 do backlog | Aplicada e testada | Pendente (etapa 3) |

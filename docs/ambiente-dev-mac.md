@@ -92,6 +92,19 @@ npm run dev -- --host
 Abra `http://localhost:5173` (OrbStack) ou `http://IP-DA-MAQUINA:5173` (Multipass).
 O `.env.local` está no `.gitignore` e nunca vai para o GitHub.
 
+## Painel local na homologação ou na produção
+
+Desde o painel 3.2, o repositório traz a configuração dos dois ambientes (`web/.env.homologacao` e
+`web/.env.producao`, só com endereço e chave publicável). Não é preciso criar `.env.local`:
+
+```bash
+cd ~/infoxtec-escalas/web
+npm run dev:homologacao     # faixa amarela no topo: dados fictícios
+npm run dev:producao        # faixa vermelha no topo: dados reais, mensagens reais
+```
+
+Com a faixa vermelha, criar ou reenviar uma escala manda mensagem de verdade para o técnico.
+
 ## Problemas encontrados na primeira montagem
 
 | Mensagem | Causa | Solução |

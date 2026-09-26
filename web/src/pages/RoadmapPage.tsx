@@ -3,7 +3,7 @@ import { AlertTriangle, Ban, Building2, CheckCircle2, Clock, Edit2, KanbanSquare
 import { Button, ErrorBox, Field, Input, Modal, Select, Textarea, useToast } from '../components/ui'
 import { api, erroMsg } from '../lib/api'
 import Kanban from '../components/Kanban'
-import { ESFORCO_LABEL, GRUPO_BACKLOG, STATUS_BACKLOG, formatDate, grupoDe } from '../lib/types'
+import { ESFORCO_LABEL, GRUPO_BACKLOG, STATUS_BACKLOG, formatDate, grupoDe, numeroBacklog } from '../lib/types'
 import type { ColunaKanban, ItemBacklog, StatusBacklog } from '../lib/types'
 
 const ICONE: Record<StatusBacklog, JSX.Element> = {
@@ -150,7 +150,7 @@ export default function RoadmapPage({ podeEditar }: { podeEditar: boolean }) {
                     <div className="flex items-start gap-2">
                       <div className="min-w-0 flex-1">
                         <p className="font-medium">
-                          {i.numero !== null && <span className="mr-1.5 text-muted-foreground">#{i.numero}</span>}
+                          {i.numero !== null && <span className="mr-1.5 font-mono text-muted-foreground">{numeroBacklog(i.numero)}</span>}
                           {i.titulo}
                         </p>
                         {i.descricao && <p className="mt-0.5 text-xs text-muted-foreground">{i.descricao}</p>}
@@ -193,8 +193,8 @@ export default function RoadmapPage({ podeEditar }: { podeEditar: boolean }) {
         {edit && (
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-3">
-              <Field label="Nº"><Input type="number" value={edit.numero ?? ''} disabled={salvando}
-                onChange={e => setEdit({ ...edit, numero: e.target.value ? Number(e.target.value) : null })} /></Field>
+              <Field label="Nº"><Input value={edit.id ? numeroBacklog(edit.numero ?? null) : 'automático'} disabled
+                title="Numerado pelo banco, em sequência" /></Field>
               <Field label="Grupo">
                 <Select className="w-full" value={edit.tipo ?? 'backlog'} disabled={salvando}
                   onChange={e => setEdit({ ...edit, tipo: e.target.value as ItemBacklog['tipo'] })}>

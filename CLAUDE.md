@@ -9,7 +9,14 @@ arquitetura e decisões em `docs/arquitetura.md` e `docs/decisoes.md`; fluxo de 
 
 - **Produção:** projeto Supabase `zpckrxydqqmmcrphrkxz`. Nunca aplicar migration, rodar SQL,
   publicar Edge Function nem ler dados de técnicos na produção. Isso é feito por uma pessoa,
-  depois do merge.
+  depois do merge, com `scripts/aplicar-producao.sh` (mantém o histórico de versões igual ao
+  repositório; migration aplicada por outro caminho ganha outra versão e quebra o `db push`).
+- **Exceção, combinada em 26/09: backlog.** Quando o responsável pedir para registrar algo no
+  backlog, o registro vai **direto para a produção**, na tabela `backlog_itens` e só nela (inserir
+  ou atualizar itens; nada de estrutura). O número é atribuído pelo banco, em sequência única,
+  exibido com três dígitos (001, 002...). A análise do item vai para `docs/backlog.md`.
+- **Todo o resto** (estrutura, funções, painel, Edge Functions) segue o ciclo: Claude aplica na
+  homologação, os dois testam, e só com o comando do responsável vai para a produção.
 - **Homologação:** projeto Supabase `infoxtec-escalas-dev`. É onde se testa. Nunca cadastrar nele
   segredos da Evolution ou da Twilio, nem rodar `supabase/setup/cron.sql`.
 - Antes de qualquer `npx supabase db push`, conferir `supabase/.temp/project-ref`. O caminho normal
@@ -68,7 +75,9 @@ end $$;
 ## Convenções
 
 - Português em código, comentários, documentação e mensagens de commit.
-- Segredos nunca no repositório. Variáveis do painel ficam em `web/.env.local`.
+- Segredos nunca no repositório. `web/.env.homologacao` e `web/.env.producao` só têm endereço e
+  chave publicável, que não são segredo (ficam no navegador por design). Qualquer outra variável
+  fica em `web/.env.local`, fora do Git.
 - Mudança de regra, tabela ou função: atualizar `docs/banco-de-dados.md`. Decisão de arquitetura:
   registrar em `docs/decisoes.md`. Entrega relevante: marcar no histórico do `README.md`.
 - Trabalhar sempre em branch e abrir pull request. Nada vai direto para `main`.

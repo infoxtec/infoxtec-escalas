@@ -1,10 +1,12 @@
 {
   "name": "infoxtec-escalas-web",
   "private": true,
-  "version": "3.1.0",
+  "version": "3.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:homologacao": "vite --mode homologacao --host",
+    "dev:producao": "vite --mode producao --host",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview"
   },
