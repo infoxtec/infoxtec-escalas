@@ -86,7 +86,7 @@ As etapas estão em ordem. Dentro de cada bloco, uma etapa só começa quando a 
 
 ### Bloco 3: banco (cada uma é uma migration: homologação, teste, produção)
 
-- [ ] **7. Alerta de motor parado.** Se o motor não rodar com sucesso por mais de 5 minutos, os supervisores recebem aviso, e a aba Operação mostra a última execução.
+- [ ] **7. Alerta de motor parado.** *Migration 44 e painel 3.3 aplicados na homologação em 26/09; aguardando teste conjunto e sua ordem.* Se o motor não rodar com sucesso por mais de 5 minutos, os supervisores recebem aviso, e a aba Operação mostra a última execução.
       *Teste na homologação:* simular falha do motor e ver o alerta registrado.
 - [ ] **8. Validação dos parâmetros (`config`).** Gravar um valor inválido (por exemplo, texto em `max_tentativas`) passa a ser recusado, em vez de quebrar o motor.
 - [ ] **9. Limpeza do legado.** Remover as funções da bancada de teste (`fn_teste_wa_*`) e o índice duplicado `idx_notif_wa`.
@@ -145,3 +145,4 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 | 26/09 | Migration 43 + painel 3.2: numeração 001 do backlog | Aplicada e testada | Aplicada e conferida |
 | 26/09 | Merge do PR #1: `main` igual à produção | Não se aplica | Concluído |
 | 26/09 | Vercel: Preview e Development na homologação | Configurado | Production sem alteração |
+| 26/09 | Migration 44 + painel 3.3: alerta de motor parado | Aplicada e testada | Aguardando sua ordem |

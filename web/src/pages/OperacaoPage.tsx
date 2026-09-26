@@ -3,7 +3,7 @@ import { AlertTriangle, CheckCircle2, Clock, ExternalLink, MapPin, RefreshCw, XC
 import { Button, ErrorBox, Input } from '../components/ui'
 import { api, erroMsg } from '../lib/api'
 import { addDays, formatDate, hojeBahia, SEMAFORO_CLASSES, STATUS_LABEL } from '../lib/types'
-import type { PainelLocal, StatusEscala } from '../lib/types'
+import type { EstadoMotor, PainelLocal, StatusEscala } from '../lib/types'
 
 const STATUS_CLASSE: Record<string, string> = {
   confirmada: SEMAFORO_CLASSES.verde, em_execucao: SEMAFORO_CLASSES.verde, concluida: SEMAFORO_CLASSES.verde,
@@ -20,15 +20,38 @@ function Barra({ pct, cor }: { pct: number; cor: string }) {
   )
 }
 
+/** Situação do motor de envio: em dia, parado ou não agendado neste ambiente (migration 44). */
+function QuadroMotor({ m }: { m: EstadoMotor }) {
+  const hora = new Date(m.ultima_execucao_ok).toLocaleTimeString('pt-BR', { timeZone: 'America/Bahia', hour: '2-digit', minute: '2-digit' })
+  const [classe, icone, texto] = !m.motor_agendado
+    ? ['border-muted bg-muted/40 text-muted-foreground', <Clock key="i" className="h-4 w-4" />,
+       'Motor de envio não agendado neste ambiente (normal na homologação).']
+    : m.em_dia
+      ? ['border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950/30 dark:text-green-300', <CheckCircle2 key="i" className="h-4 w-4" />,
+         `Motor de envio em dia · última execução às ${hora}.`]
+      : ['border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300', <XCircle key="i" className="h-4 w-4" />,
+         `Motor de envio parado há ${m.minutos} min (última execução às ${hora}). Escalas não estão saindo. ${m.alerta_ativo ? 'Supervisores avisados.' : 'Supervisores serão avisados.'}`]
+  return (
+    <div className={`flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm ${classe}`}>
+      {icone}<span>{texto}</span>
+      {m.motor_agendado && !m.vigia_agendado && (
+        <span className="text-xs">Vigia não agendado: rode a linha "vigia-motor" de supabase/setup/cron.sql.</span>
+      )}
+    </div>
+  )
+}
+
 /** Item 3: acompanhamento do dia agrupado por local. */
 export default function OperacaoPage() {
   const [data, setData] = useState(hojeBahia())
   const [locais, setLocais] = useState<PainelLocal[]>([])
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const [motor, setMotor] = useState<EstadoMotor | null>(null)
 
   const carregar = useCallback(async () => {
     setCarregando(true); setErro(null)
+    api.estadoMotor().then(setMotor).catch(() => setMotor(null))
     try { setLocais(await api.painelLocais(data)) } catch (e) { setErro(erroMsg(e)) }
     finally { setCarregando(false) }
   }, [data])
@@ -56,6 +79,8 @@ export default function OperacaoPage() {
         <div className="flex-1" />
         <p className="text-xs text-muted-foreground">{formatDate(data)} · atualiza sozinho a cada minuto</p>
       </div>
+
+      {motor && <QuadroMotor m={motor} />}
 
       {erro && <ErrorBox>{erro}</ErrorBox>}
 

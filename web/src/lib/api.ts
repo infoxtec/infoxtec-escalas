@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos,
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor,
 } from './types'
 
 function traduzir(msg: string): string {
@@ -18,6 +18,7 @@ async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
 
 export const api = {
   meuAcesso: () => rpc<Acesso>('app_meu_acesso'),
+  estadoMotor: () => rpc<EstadoMotor>('app_estado_motor'),
 
   escalas: (inicio: string, fim: string) =>
     rpc<EscalaPainel[]>('app_escalas', { p_inicio: inicio, p_fim: fim }),

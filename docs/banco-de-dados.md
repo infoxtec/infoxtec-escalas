@@ -102,6 +102,12 @@ erDiagram
 **Webhook** — `fn_webhook_evolution` (porta de entrada, confere o token), `fn_wh_status`
 (entrega e leitura), `fn_wh_mensagem` (botões, 1/2, texto livre), `fn_tel_canonico`.
 
+**Vigia do motor** — `fn_vigiar_motor` (agendada a cada 5 minutos em `setup/cron.sql`) lê
+`motor_estado.ultima_execucao_ok`, gravada pelo motor ao fim de cada execução concluída, e avisa os
+supervisores quando passam `motor_alerta_min` minutos sem execução (uma vez por ocorrência, dentro
+da janela de envio) e quando normaliza. `app_estado_motor` alimenta o quadro da aba Operação
+(migration 44).
+
 **Infra** — `fn_config`, `fn_config_int`, `fn_segredo` (lê do Vault), `fn_fmt_duracao`,
 `fn_http_resposta`, `fn_limpeza_logs` (retenção de logs, agendada em `setup/cron.sql`).
 
@@ -150,6 +156,8 @@ Voz (URA): ver `supabase/setup/twilio.md`. Documentos: ver `supabase/setup/docum
 Escala: `antecedencia_minima_min` (5) — minutos mínimos entre agora e o início da escala.
 
 Retenção: `retencao_webhook_dias` (30), `retencao_cron_dias` (7).
+
+Vigia: `motor_alerta_min` (5) — minutos sem execução concluída do motor para avisar os supervisores.
 
 Ambiente: `evolution_url`, `evolution_instancia`, `evolution_versao`, `webhook_url`, `fuso`.
 

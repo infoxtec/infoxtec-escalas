@@ -147,6 +147,11 @@ export interface TecnicoNoLocal {
   escala_id: string; tecnico: string; telefone: string; hora: string; fim: string | null
   status: StatusEscala; status_envio: string | null; tarefa: string; tipo: string | null
 }
+/** Situação do motor de envio (migration 44). */
+export interface EstadoMotor {
+  ultima_execucao_ok: string; minutos: number; limite_min: number; em_dia: boolean
+  alerta_ativo: boolean; motor_agendado: boolean; vigia_agendado: boolean
+}
 export interface PainelLocal {
   local_id: string | null; local: string; endereco: string | null; link_maps: string | null
   primeira_hora: string | null; total: number; confirmadas: number; aguardando: number
