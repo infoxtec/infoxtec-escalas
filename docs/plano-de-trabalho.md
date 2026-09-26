@@ -10,9 +10,9 @@ A análise que originou a lista está em [analise-topologia.md](analise-topologi
 | Peça | O que é | Situação |
 |---|---|---|
 | Máquina Linux no Mac | Onde você roda o painel, os comandos do Supabase e os scripts | Pronta |
-| Homologação | Projeto Supabase `infoxtec-escalas-dev` (`oruwnlxyvznpigbpjjbx`), com dados fictícios, sem WhatsApp nem ligações reais | Pronta, com as migrations 01 a 41 |
-| Produção | Projeto Supabase `infoxtec-escalas` (`zpckrxydqqmmcrphrkxz`) + painel na Vercel | Recebeu 39 a 41 em 26/09 (confirmar na etapa 1) |
-| Repositório | GitHub `infoxtec/infoxtec-escalas`. A `main` é o que vale para a produção | 39 a 41 ainda estão na branch `claude/dreamy-lovelace-7cxxih`, falta o merge |
+| Homologação | Projeto Supabase `infoxtec-escalas-dev` (`oruwnlxyvznpigbpjjbx`), com dados fictícios, sem WhatsApp nem ligações reais | Pronta, com as migrations 01 a 42 |
+| Produção | Projeto Supabase `infoxtec-escalas` (`zpckrxydqqmmcrphrkxz`) + painel na Vercel | Com as migrations 01 a 41, conferidas em 26/09. Falta a 42 (etapa 3) |
+| Repositório | GitHub `infoxtec/infoxtec-escalas`. A `main` é o que vale para a produção | 39 a 42 estão na branch `claude/dreamy-lovelace-7cxxih`, falta o merge (etapa 3) |
 
 ## O ciclo de toda mudança
 
@@ -56,10 +56,11 @@ As etapas estão em ordem. Dentro de cada bloco, uma etapa só começa quando a 
 
 ### Bloco 1: fechar o que já foi feito
 
-- [ ] **1. Confirmar 39 a 41 em produção.** No Linux: `npx supabase link --project-ref zpckrxydqqmmcrphrkxz`, `npx supabase migration list` (39, 40 e 41 precisam aparecer em Remote) e voltar com `npx supabase link --project-ref oruwnlxyvznpigbpjjbx`.
+- [x] **1. Confirmar 39 a 41 em produção.** No Linux: `npx supabase link --project-ref zpckrxydqqmmcrphrkxz`, `npx supabase migration list` (39, 40 e 41 precisam aparecer em Remote) e voltar com `npx supabase link --project-ref oruwnlxyvznpigbpjjbx`.
       *Teste no painel de produção:* abrir um documento enviado por arquivo; criar uma habilidade; marcar as habilidades de um técnico. Os três falhavam antes.
-- [ ] **2. Agendar a limpeza de logs na produção.** No SQL Editor da produção, rodar a última linha de `supabase/setup/cron.sql`. É a única exceção à regra de não rodar SQL na produção, porque agendamento não é migration.
-- [ ] **3. Merge do pull request** da branch `claude/dreamy-lovelace-7cxxih` na `main`. A partir daqui, a `main` é igual à produção.
+- [x] **2. Agendar a limpeza de logs na produção.** No SQL Editor da produção, rodar a última linha de `supabase/setup/cron.sql`. É a única exceção à regra de não rodar SQL na produção, porque agendamento não é migration.
+- [ ] **3. Merge do pull request** da branch `claude/dreamy-lovelace-7cxxih` na `main` e, em seguida, `./scripts/aplicar-producao.sh`, que aplica a migration 42 (só insere os itens 14 a 16 no backlog).
+      *Teste:* os três itens de documentos aparecem na aba Roadmap do painel de produção. A partir daqui, a `main` é igual à produção.
 
 ### Bloco 2: ambiente e processo (configuração, sem código)
 
@@ -96,13 +97,28 @@ Edge Function não é migration: é publicada com `npx supabase functions deploy
 - [ ] **17. Plano da Vercel.** O Hobby é para uso não comercial: Vercel Pro ou Cloudflare Pages.
 - [ ] **18. Backup do Supabase.** O plano Free não tem backup diário com restauração pelo painel; avaliar o Pro.
 
-### Bloco 7: arquitetura (projetos maiores)
+### Bloco 7: gestão de documentos (backlog 14 a 16)
 
-- [ ] **19. WhatsApp pela API oficial da Meta**, com a fila de saída e o adaptador descritos na decisão 26. É o item 1 do Bloco 1 de [segurança e homologação](seguranca-homologacao.md).
-- [ ] **20. Início da escala como instante (`timestamptz`)**, eliminando a classe de erro de fuso na raiz.
+Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem banco (migration) e painel (tela), pelo mesmo ciclo. As decisões pendentes precisam de resposta antes de começar.
+
+- [ ] **19. Pré-visualização e download com aviso de LGPD** (backlog 15). Vem primeiro porque as outras duas usam o visualizador.
+      *Teste:* enviar um PDF e uma foto e ver o documento ao lado dos campos; baixar um documento e conferir o aviso e o registro do download.
+- [ ] **20. Classificação obrigatória: ASO, NR, suspensão ou advertência** (backlog 16).
+      *Decidir antes:* quem vê suspensão e advertência; se CNH continua como categoria.
+      *Teste:* tentar gravar um documento sem categoria e ver a recusa; classificar os antigos pela lista.
+- [ ] **21. Identificação automática do tipo e do técnico** (backlog 14).
+      *Decidir antes:* se o cadastro passa a ter CPF.
+      *Teste:* enviar uma pasta com documentos de técnicos diferentes e conferir as sugestões.
+
+### Bloco 8: arquitetura (projetos maiores)
+
+- [ ] **22. WhatsApp pela API oficial da Meta**, com a fila de saída e o adaptador descritos na decisão 26. É o item 1 do Bloco 1 de [segurança e homologação](seguranca-homologacao.md).
+- [ ] **23. Início da escala como instante (`timestamptz`)**, eliminando a classe de erro de fuso na raiz.
 
 ## Registro
 
 | Data | Etapa | Homologação | Produção |
 |---|---|---|---|
-| 26/09 | Migrations 39, 40 e 41 | Aplicadas e testadas | Aplicadas (confirmar na etapa 1) |
+| 26/09 | Migrations 39, 40 e 41 | Aplicadas e testadas | Aplicadas e testadas (Bloco 1) |
+| 26/09 | Limpeza de logs agendada | Não se aplica | Agendada |
+| 26/09 | Migration 42: itens 14 a 16 no backlog | Aplicada e testada | Pendente (etapa 3) |

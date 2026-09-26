@@ -19,7 +19,7 @@ são lembrados da escala do dia seguinte, com prazo às 18h.
 | [Operação](docs/operacao.md) | Diagnóstico do dia a dia: o que consultar quando algo falha |
 | [Segurança](docs/seguranca.md) | Login, papéis, segredos, LGPD e riscos conhecidos |
 | [Decisões](docs/decisoes.md) | O que foi decidido, o que foi descartado e por quê |
-| [Backlog](docs/backlog.md) | Análise de viabilidade dos 13 itens planejados (o quadro vive na aba Roadmap) |
+| [Backlog](docs/backlog.md) | Análise de viabilidade dos 16 itens planejados (o quadro vive na aba Roadmap) |
 | [Agente de IA](docs/agente-ia.md) | Roteiro para predições: instrumentar, consultar, prever, sugerir |
 | [Segurança e homologação](docs/seguranca-homologacao.md) | Caminho para uso comercial: ordem das tarefas, LGPD e o que afirmar sobre certificação |
 | [Telefonia (item 2)](docs/telefonia.md) | URA de voz: fornecedor, custos, script e resultado do piloto |
@@ -50,7 +50,7 @@ Homologação: projeto Supabase `infoxtec-escalas-dev`, sem WhatsApp nem ligaç�
 ```
 web/                          painel React (o que vai para a Vercel, Root Directory = web)
 supabase/
-  migrations/                 01 a 41 — espelho do banco (conferido contra a produção em 26/09)
+  migrations/                 01 a 42 — espelho do banco (conferido contra a produção em 26/09)
   functions/                  Edge Functions: webhook-evolution, voz-escala, documento-ocr
   setup/                      config por ambiente, cron e segredos (rodar uma vez)
   seed.sql                    dados fictícios para desenvolvimento
