@@ -150,7 +150,7 @@ export default function RoadmapPage({ podeEditar }: { podeEditar: boolean }) {
                     <div className="flex items-start gap-2">
                       <div className="min-w-0 flex-1">
                         <p className="font-medium">
-                          {i.numero !== null && <span className="mr-1.5 font-mono text-muted-foreground">{numeroBacklog(i.numero)}</span>}
+                          {i.numero !== null && <span className="mr-1.5 font-mono text-muted-foreground">{numeroBacklog(i.numero)} -</span>}
                           {i.titulo}
                         </p>
                         {i.descricao && <p className="mt-0.5 text-xs text-muted-foreground">{i.descricao}</p>}

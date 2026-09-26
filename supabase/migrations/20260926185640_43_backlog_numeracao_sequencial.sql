@@ -2,9 +2,10 @@
 --
 -- Regra combinada em 26/09/2026: todo registro do backlog tem numero, em sequencia unica para
 -- todos os grupos (backlog, entregas, dividas, seguranca, SaaS). O painel exibe com tres digitos.
--- 1. Itens sem numero recebem o proximo, na ordem em que aparecem no Roadmap (ordem, titulo).
--- 2. Numero repetido: o item que aparece primeiro fica com ele; os outros recebem o proximo livre.
--- 3. Numero passa a ser obrigatorio e unico, e e atribuido pelo banco: quem cria nao escolhe.
+-- 1. Quem ja tem numero mantem o numero (exibido como 001, 002...).
+-- 2. Itens sem numero recebem o proximo, na ordem do id (decisao do responsavel em 26/09/2026).
+-- 3. Numero repetido: o item de menor id fica com ele; os outros recebem o proximo livre.
+-- 4. Numero passa a ser obrigatorio e unico, e e atribuido pelo banco: quem cria nao escolhe.
 
 do $$
 declare r record; v_prox int;
@@ -12,13 +13,13 @@ begin
   select coalesce(max(numero), 0) into v_prox from backlog_itens;
   for r in
     select id from (
-      select id, numero, ordem, titulo,
-             row_number() over (partition by numero order by ordem, titulo, id) as rep
+      select id, numero,
+             row_number() over (partition by numero order by id) as rep
       from backlog_itens
     ) x
     where numero is null or rep > 1
-    -- primeiro os repetidos (na ordem do numero), depois os sem numero (na ordem do Roadmap)
-    order by (numero is null), numero, ordem, titulo, id
+    -- primeiro os repetidos (na ordem do numero), depois os sem numero (na ordem do id)
+    order by (numero is null), numero, id
   loop
     v_prox := v_prox + 1;
     update backlog_itens set numero = v_prox where id = r.id;

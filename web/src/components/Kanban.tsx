@@ -53,7 +53,7 @@ export default function Kanban({ itens, podeEditar, onMover, onAbrir }: {
                     <div className="flex items-start gap-1.5">
                       {podeEditar && <GripVertical className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
                       <p className="flex-1 text-sm font-medium leading-tight">
-                        {i.numero !== null && <span className="font-mono text-muted-foreground">{numeroBacklog(i.numero)} </span>}
+                        {i.numero !== null && <span className="font-mono text-muted-foreground">{numeroBacklog(i.numero)} - </span>}
                         {i.titulo}
                       </p>
                     </div>

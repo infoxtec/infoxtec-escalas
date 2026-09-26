@@ -218,6 +218,7 @@ só vai para a produção com o comando do responsável, pelo `scripts/aplicar-p
 banco, painel e Edge Functions afetam a operação. O script mantém o histórico de migrations da
 produção igual ao do repositório; aplicar por outro caminho gravaria outra versão e quebraria o
 próximo `db push`.
-**Numeração:** o número deixou de ser digitado. Quem cria não escolhe, e o número não muda depois
+**Numeração:** quem já tinha número manteve; os itens sem número foram numerados na ordem do id,
+por escolha do responsável. O número deixou de ser digitado. Quem cria não escolhe, e o número não muda depois
 (migration 43), para que "item 017" signifique sempre a mesma coisa.
 
