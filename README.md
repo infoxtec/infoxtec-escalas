@@ -23,6 +23,8 @@ são lembrados da escala do dia seguinte, com prazo às 18h.
 | [Agente de IA](docs/agente-ia.md) | Roteiro para predições: instrumentar, consultar, prever, sugerir |
 | [Segurança e homologação](docs/seguranca-homologacao.md) | Caminho para uso comercial: ordem das tarefas, LGPD e o que afirmar sobre certificação |
 | [Telefonia (item 2)](docs/telefonia.md) | URA de voz: fornecedor, custos, script e resultado do piloto |
+| [**Fluxo de desenvolvimento**](docs/fluxo-de-desenvolvimento.md) | **Ambientes, caminho de uma mudança até a produção e roteiro de adoção** |
+| [Ambiente de desenvolvimento no Mac](docs/ambiente-dev-mac.md) | Máquina Linux e banco de homologação para rodar o painel localmente |
 | [Publicar no Vercel](docs/deploy-vercel.md) | Passo a passo do deploy e da liberação de usuários |
 | [Retool (legado)](docs/retool.md) | Painel antigo, a ser desligado |
 
@@ -39,6 +41,7 @@ são lembrados da escala do dia seguinte, com prazo às 18h.
 
 Painel em produção: **https://infoxtec-escalas.vercel.app**
 Projeto Supabase: `infoxtec-escalas` (ref `zpckrxydqqmmcrphrkxz`, região sa-east-1).
+Homologação: projeto Supabase `infoxtec-escalas-dev`, sem WhatsApp nem ligações reais.
 
 ## Estrutura
 
@@ -99,5 +102,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Escala sempre no futuro (mínimo 5 minutos) e escala de teste fora das estatísticas
 - [x] Item 5 do backlog: habilidades, requisitos por tipo de atividade e gestão de documentos (NRs, CNH, ASO)
 - [x] Item 3 do backlog (parcial): painel de acompanhamento por local
+- [x] Ambiente de homologação: projeto Supabase dev com as migrations e dados fictícios
+- [ ] Fluxo por pull request com CI (ver [docs/fluxo-de-desenvolvimento.md](docs/fluxo-de-desenvolvimento.md))
 - [ ] Desligar o painel Retool e remover as funções da bancada de teste
 - [ ] Backlog de 60 dias (ver [docs/backlog.md](docs/backlog.md))

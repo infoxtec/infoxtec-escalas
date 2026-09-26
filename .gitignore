@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+.DS_Store
+
+# estado local do Supabase CLI (guarda a ref do projeto ligado)
+supabase/.temp/
+supabase/.branches/
