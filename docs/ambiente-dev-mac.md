@@ -105,6 +105,28 @@ npm run dev:producao        # faixa vermelha no topo: dados reais, mensagens rea
 
 Com a faixa vermelha, criar ou reenviar uma escala manda mensagem de verdade para o técnico.
 
+### Painel no ar sem deixar o terminal aberto
+
+O `npm run dev:...` vive dentro da janela: fechou a janela, o painel para. Para deixá-lo rodando
+em segundo plano, use o script (desde o painel 3.3):
+
+```bash
+cd ~/infoxtec-escalas
+./scripts/painel.sh iniciar             # homologação em http://localhost:5173
+./scripts/painel.sh iniciar producao    # produção em http://localhost:5174 (dados reais)
+./scripts/painel.sh status              # o que está no ar
+./scripts/painel.sh log                 # acompanha a saída; Ctrl+C sai do log, não para o painel
+./scripts/painel.sh parar               # para a homologação (ou: parar producao)
+```
+
+Depois de iniciar, pode fechar o terminal. O script instala as dependências novas sozinho quando
+o `git pull` trouxer alguma. O painel para ao desligar a máquina Linux, ao fechar o OrbStack ou
+quando o Mac dorme por muito tempo: é só rodar `iniciar` de novo.
+
+O painel local é para teste. O painel sempre no ar, sem depender do Mac, é o da Vercel: a produção
+em https://infoxtec-escalas.vercel.app e, para a homologação, o endereço de *preview* que aparece no
+pull request.
+
 ## Problemas encontrados na primeira montagem
 
 | Mensagem | Causa | Solução |
@@ -114,6 +136,8 @@ Com a faixa vermelha, criar ou reenviar uma escala manda mensagem de verdade par
 | `Cannot find project ref. Have you run supabase link?` | O `link` falhou antes | Refazer o `link` com o Project ID correto |
 | `relation "tecnicos" does not exist` | Seed rodado antes das migrations | Rodar `npx supabase db push` primeiro |
 | `duplicate key ... painel_usuarios_pkey` | O admin já é criado pela migration 14 | Nada a fazer |
+| `npm error Missing script: "dev:homologacao"` | O checkout local está numa versão antiga, sem o script | `cd ~/infoxtec-escalas && git fetch && git checkout <branch> && git pull` |
+| Painel cai ao fechar o terminal | `npm run dev` roda preso à janela | `./scripts/painel.sh iniciar` |
 | `Acesso não autorizado` no painel | E-mail do login diferente do de `painel_usuarios` | Usar o mesmo e-mail, em minúsculas |
 
 ## Cuidado com o `link`

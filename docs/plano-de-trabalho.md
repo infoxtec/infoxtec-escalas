@@ -38,7 +38,7 @@ flowchart LR
 |---|---|---|
 | 1 | Claude Code | Escreve a migration ou o código numa branch e abre o pull request |
 | 2 | Você, no Linux | `cd ~/infoxtec-escalas && git fetch && git checkout <branch> && git pull` e depois `./scripts/aplicar-homologacao.sh` |
-| 3 | Você | `cd web && npm run dev:homologacao` e o teste descrito na etapa |
+| 3 | Você | `./scripts/painel.sh iniciar` (fica no ar com o terminal fechado) e o teste descrito na etapa |
 | 4 | Você, no GitHub | Aprovar e fazer o merge do pull request |
 | 5 | Você, no Linux | `git checkout main && git pull` e depois `./scripts/aplicar-producao.sh` |
 | 6 | Você | O mesmo teste do passo 3, no painel de produção |

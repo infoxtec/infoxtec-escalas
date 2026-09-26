@@ -24,11 +24,20 @@ arquitetura e decisões em `docs/arquitetura.md` e `docs/decisoes.md`; fluxo de 
 - A lista de trabalho pendente, em ordem, está em `docs/plano-de-trabalho.md`. Ao concluir uma
   etapa, marcar `[x]` e registrar na tabela do fim do arquivo.
 
+## Equipe de especialistas
+
+Subagentes do projeto em `.claude/agents/`, carregados sozinhos em toda sessão. Acionar pelo nome
+quando o assunto for da especialidade: `cto` (arquitetura e decisões), `po` (backlog e critérios de
+aceite), `scrum-master` (próxima etapa e roteiro de teste), `dev-banco` (migrations e funções),
+`fullstack` (painel e Edge Functions), `infra-bd` (desempenho, cron, hospedagem, backup),
+`seguranca` (revisão antes do merge e LGPD). Toda mudança de banco ou de Edge Function passa pela
+revisão do `seguranca` antes do pull request.
+
 ## Comandos
 
 ```bash
 cd web && npm ci && npm run build   # checagem de tipos + build; precisa passar antes de todo commit
-cd web && npm run dev               # painel local; exige web/.env.local
+./scripts/painel.sh iniciar        # painel local da homologação em segundo plano (porta 5173)
 npx supabase migration new 39_descricao   # nova migration (numeração segue a última)
 ```
 

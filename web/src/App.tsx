@@ -120,8 +120,9 @@ function Painel({ email }: { email: string }) {
       <header className="sticky top-0 z-40 border-b bg-card/90 backdrop-blur">
         <div className="mx-auto flex h-12 max-w-screen-2xl items-center gap-3 px-4">
           <div className="flex shrink-0 items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-primary" />
-            <span className="hidden text-sm font-semibold sm:inline">Infoxtec Escalas</span>
+            {/* a logomarca tem fundo escuro proprio: fica num selo, legivel no tema claro e no escuro */}
+            <img src="/logo-infoxtec.png" alt="Infoxtec" className="h-7 w-auto rounded-md bg-[#0d1e3c] px-1.5 py-0.5" />
+            <span className="hidden text-sm font-semibold sm:inline">Escalas</span>
             <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground" title={`Build de ${__APP_BUILD__}`}>
               v{__APP_VERSION__} · {__APP_BUILD__}
             </span>

@@ -1,21 +1,22 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { CalendarDays } from 'lucide-react'
 import { Button, ErrorBox, Field, Input, SuccessBox } from '../components/ui'
 import { supabase } from '../lib/supabase'
 
 function Moldura({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <div className="w-full max-w-sm rounded-lg border bg-card p-6 shadow-sm">
-        <div className="mb-5 flex items-center gap-2">
-          <CalendarDays className="h-6 w-6 text-primary" />
-          <div>
-            <p className="text-sm font-semibold">Infoxtec Escalas</p>
+      <div className="w-full max-w-sm overflow-hidden rounded-lg border bg-card shadow-sm">
+        <div className="flex justify-center bg-[#0d1e3c] px-6 py-5">
+          <img src="/logo-infoxtec.png" alt="Infoxtec" className="h-12 w-auto" />
+        </div>
+        <div className="p-6">
+          <div className="mb-5">
+            <p className="text-sm font-semibold">Escalas</p>
             <p className="text-xs text-muted-foreground">{titulo}</p>
           </div>
+          {children}
         </div>
-        {children}
       </div>
     </div>
   )
