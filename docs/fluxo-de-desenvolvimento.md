@@ -100,8 +100,8 @@ Não como um projeto de migração. Os componentes ficam; alguns ajustes valem a
 
 | Componente | Decisão | Motivo |
 |---|---|---|
-| Supabase produção | **Manter** o projeto. Avaliar o plano Pro | O plano Free não inclui backup diário com restauração pelo painel, e o Bloco 1 exige backup testado. Confira preço e limites em supabase.com/pricing |
-| Vercel Hobby | **Trocar o plano**: Vercel Pro ou Cloudflare Pages | Hobby é restrito a uso não comercial (decisão 6). A troca de plano não muda o fluxo; a do Cloudflare exige refazer as variáveis e o domínio |
+| Supabase produção | **Manter** no plano gratuito | Sem backup nativo com restauração: substituído por backup diário gratuito pelo GitHub Actions, com teste mensal de restauração (plano de trabalho, etapa 18) |
+| Vercel Hobby | **Migrar para o Cloudflare Pages**, também gratuito | Hobby é restrito a uso não comercial (decisão 6); o Cloudflare Pages gratuito permite. Exige refazer as variáveis e o endereço (plano de trabalho, etapa 17) |
 | Evolution API | Manter por ora | A migração para a API oficial da Meta já é o item 1 do Bloco 1 e não depende deste fluxo |
 | Twilio | Manter | Sem problema identificado |
 | Retool | **Desligar** | Quem tem edição lá executa SQL na produção sem passar por nada disto |
@@ -165,8 +165,8 @@ Não precisa de nenhum segredo, porque não toca em nenhum projeto real.
 
 ### Fase 4 — Infraestrutura da produção
 
-Decisões de contratação, não de código: plano da Vercel ou mudança para Cloudflare Pages, plano Pro
-do Supabase e data para desligar o Retool.
+Sem nenhuma assinatura (decisão 29): painel no Cloudflare Pages, backup diário pelo GitHub Actions
+e data para desligar o Retool.
 
 ### Fase 5 — Qualidade e segurança
 

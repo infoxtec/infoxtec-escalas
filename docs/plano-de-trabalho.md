@@ -79,7 +79,10 @@ As etapas estão em ordem. Dentro de cada bloco, uma etapa só começa quando a 
 - [x] **4. Preview da Vercel apontando para a homologação.** Feito com `scripts/configurar-vercel-homologacao.sh`: Production usa a produção; Preview e Development usam a homologação.
       *Teste:* abrir o preview de um PR e conferir que só aparecem os dados fictícios.
 - [ ] **5. Login da homologação.** Supabase dev → Authentication → URL Configuration: incluir `http://localhost:5173/**` e `https://*.vercel.app/**`; desligar o cadastro público.
-- [x] **6. Proteção contra senha vazada.** Exige plano pago do Supabase; movida para a etapa 18.
+- [ ] **6. Senha forte, sem custo.** A proteção nativa do Supabase é paga, então fica em duas partes gratuitas:
+      - *Configuração (você):* nos dois projetos, Authentication → tamanho mínimo de senha **12**.
+      - *Código (Claude, pelo ciclo):* ao criar ou trocar a senha, o painel consulta a base pública de senhas vazadas (Have I Been Pwned). Só os 5 primeiros caracteres do *hash* da senha saem do navegador; a senha nunca. Senha encontrada é recusada.
+      *Teste:* tentar cadastrar `Senha@123456` e ver a recusa.
 
 ### Bloco 3: banco (cada uma é uma migration: homologação, teste, produção)
 
@@ -103,11 +106,16 @@ Edge Function não é migration: é publicada com `npx supabase functions deploy
 - [ ] **14. CI no GitHub.** Em todo pull request: compilar o painel, reaplicar todas as migrations num banco vazio e rodar o `plpgsql_check`. Pega sozinho os erros que nesta análise foram encontrados à mão.
 - [ ] **15. Testes automáticos das regras críticas** (pgTAP): fuso do motor, jornada CLT, permissões por papel, habilidades.
 
-### Bloco 6: decisões de infraestrutura (contratação)
+### Bloco 6: infraestrutura sem custo
+
+Regra (decisão 29): nenhuma assinatura paga. Cada item abaixo usa só planos gratuitos.
 
 - [ ] **16. Desligar o Retool.** Quem tem edição lá executa SQL na produção sem passar por nada deste plano.
-- [ ] **17. Plano da Vercel.** O Hobby é para uso não comercial: Vercel Pro ou Cloudflare Pages.
-- [ ] **18. Plano pago do Supabase (Pro).** O plano Free não tem backup diário com restauração pelo painel nem a proteção contra senha vazada (etapa 6). Ao contratar, ligar as duas na produção.
+- [ ] **17. Painel no Cloudflare Pages (gratuito).** O plano gratuito da Vercel proíbe uso comercial; o do Cloudflare Pages permite, também publica a `main` sozinho e tem preview por branch.
+      *Como:* criar o projeto no Cloudflare ligado ao GitHub (pasta `web`, comando `npm run build`, saída `dist`), cadastrar as variáveis de produção e de preview, converter os cabeçalhos de segurança do `vercel.json` para o arquivo `_headers`, e atualizar os endereços de login no Supabase.
+      *Teste:* o painel abre no endereço novo, com login, e a Vercel só é desligada depois de uma semana rodando em paralelo.
+- [ ] **18. Backup diário gratuito.** O Supabase gratuito não tem backup com restauração pelo painel. Substituto: toda madrugada, o GitHub Actions (gratuito em repositório privado) faz uma cópia completa do banco de produção, criptografada com uma senha que só você guarda, e mantém as últimas 30.
+      *Teste de restauração:* uma vez por mês, o mesmo robô restaura a cópia mais recente num banco temporário, confere as contagens e apaga o banco. Os dados reais nunca vão para a homologação (LGPD).
 
 ### Bloco 7: gestão de documentos (backlog 14 a 16)
 
