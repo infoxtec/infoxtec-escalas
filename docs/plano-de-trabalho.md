@@ -79,7 +79,7 @@ As etapas estão em ordem. Dentro de cada bloco, uma etapa só começa quando a 
 - [x] **4. Preview da Vercel apontando para a homologação.** Feito com `scripts/configurar-vercel-homologacao.sh`: Production usa a produção; Preview e Development usam a homologação.
       *Teste:* abrir o preview de um PR e conferir que só aparecem os dados fictícios.
 - [ ] **5. Login da homologação.** Supabase dev → Authentication → URL Configuration: incluir `http://localhost:5173/**` e `https://*.vercel.app/**`; desligar o cadastro público.
-- [ ] **6. Proteção contra senha vazada.** Nas configurações de senha do Authentication, ligar *Leaked password protection* (apontado pelo relatório de segurança do Supabase). Primeiro na homologação, depois na produção. Se a opção aparecer bloqueada, ela depende do plano pago e passa para a etapa 18.
+- [x] **6. Proteção contra senha vazada.** Exige plano pago do Supabase; movida para a etapa 18.
 
 ### Bloco 3: banco (cada uma é uma migration: homologação, teste, produção)
 
@@ -107,7 +107,7 @@ Edge Function não é migration: é publicada com `npx supabase functions deploy
 
 - [ ] **16. Desligar o Retool.** Quem tem edição lá executa SQL na produção sem passar por nada deste plano.
 - [ ] **17. Plano da Vercel.** O Hobby é para uso não comercial: Vercel Pro ou Cloudflare Pages.
-- [ ] **18. Backup do Supabase.** O plano Free não tem backup diário com restauração pelo painel; avaliar o Pro.
+- [ ] **18. Plano pago do Supabase (Pro).** O plano Free não tem backup diário com restauração pelo painel nem a proteção contra senha vazada (etapa 6). Ao contratar, ligar as duas na produção.
 
 ### Bloco 7: gestão de documentos (backlog 14 a 16)
 
