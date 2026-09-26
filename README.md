@@ -23,6 +23,7 @@ são lembrados da escala do dia seguinte, com prazo às 18h.
 | [Agente de IA](docs/agente-ia.md) | Roteiro para predições: instrumentar, consultar, prever, sugerir |
 | [Segurança e homologação](docs/seguranca-homologacao.md) | Caminho para uso comercial: ordem das tarefas, LGPD e o que afirmar sobre certificação |
 | [Telefonia (item 2)](docs/telefonia.md) | URA de voz: fornecedor, custos, script e resultado do piloto |
+| [**Plano de trabalho**](docs/plano-de-trabalho.md) | **O que falta fazer, na ordem, e o ciclo homologação → produção de cada mudança** |
 | [**Análise da topologia**](docs/analise-topologia.md) | **Desempenho medido, estrutura do banco, microserviços e achados por prioridade** |
 | [**Fluxo de desenvolvimento**](docs/fluxo-de-desenvolvimento.md) | **Ambientes, caminho de uma mudança até a produção e roteiro de adoção** |
 | [Ambiente de desenvolvimento no Mac](docs/ambiente-dev-mac.md) | Máquina Linux e banco de homologação para rodar o painel localmente |
@@ -53,6 +54,7 @@ supabase/
   functions/                  Edge Functions: webhook-evolution, voz-escala, documento-ocr
   setup/                      config por ambiente, cron e segredos (rodar uma vez)
   seed.sql                    dados fictícios para desenvolvimento
+scripts/                      aplicar-homologacao.sh e aplicar-producao.sh (migrations com travas)
 docs/                         a documentação da tabela acima
 ```
 
@@ -107,7 +109,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Migration 39: fuso do motor, acesso aos documentos, permissões e limpeza de logs (homologação)
 - [x] Produção comparada com o repositório; migration 40 sincroniza a fase 6 do motor
 - [x] Migration 41: habilidades voltam a salvar, motor isola falha por escala, fuso no webhook (homologação)
-- [ ] Aplicar 39 a 41 em produção (docs/analise-topologia.md, seção 6)
+- [ ] Próximas etapas: ver [docs/plano-de-trabalho.md](docs/plano-de-trabalho.md)
 - [ ] Fluxo por pull request com CI (ver [docs/fluxo-de-desenvolvimento.md](docs/fluxo-de-desenvolvimento.md))
 - [ ] Desligar o painel Retool e remover as funções da bancada de teste
 - [ ] Backlog de 60 dias (ver [docs/backlog.md](docs/backlog.md))

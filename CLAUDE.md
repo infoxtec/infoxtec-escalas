@@ -12,7 +12,10 @@ arquitetura e decisões em `docs/arquitetura.md` e `docs/decisoes.md`; fluxo de 
   depois do merge.
 - **Homologação:** projeto Supabase `infoxtec-escalas-dev`. É onde se testa. Nunca cadastrar nele
   segredos da Evolution ou da Twilio, nem rodar `supabase/setup/cron.sql`.
-- Antes de qualquer `npx supabase db push`, conferir `supabase/.temp/project-ref`.
+- Antes de qualquer `npx supabase db push`, conferir `supabase/.temp/project-ref`. O caminho normal
+  é `scripts/aplicar-homologacao.sh` e `scripts/aplicar-producao.sh`.
+- A lista de trabalho pendente, em ordem, está em `docs/plano-de-trabalho.md`. Ao concluir uma
+  etapa, marcar `[x]` e registrar na tabela do fim do arquivo.
 
 ## Comandos
 

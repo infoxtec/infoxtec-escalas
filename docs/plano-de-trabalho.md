@@ -1,0 +1,108 @@
+# Plano de trabalho
+
+O mapa de tudo o que falta fazer, na ordem, para não perder nenhuma etapa. Cada etapa diz **onde**
+a mudança acontece, **como testar** e **como levar para a produção**. Marque `[x]` ao concluir.
+
+A análise que originou a lista está em [analise-topologia.md](analise-topologia.md).
+
+## Onde estamos
+
+| Peça | O que é | Situação |
+|---|---|---|
+| Máquina Linux no Mac | Onde você roda o painel, os comandos do Supabase e os scripts | Pronta |
+| Homologação | Projeto Supabase `infoxtec-escalas-dev` (`oruwnlxyvznpigbpjjbx`), com dados fictícios, sem WhatsApp nem ligações reais | Pronta, com as migrations 01 a 41 |
+| Produção | Projeto Supabase `infoxtec-escalas` (`zpckrxydqqmmcrphrkxz`) + painel na Vercel | Recebeu 39 a 41 em 26/09 (confirmar na etapa 1) |
+| Repositório | GitHub `infoxtec/infoxtec-escalas`. A `main` é o que vale para a produção | 39 a 41 ainda estão na branch `claude/dreamy-lovelace-7cxxih`, falta o merge |
+
+## O ciclo de toda mudança
+
+Sempre o mesmo caminho, sem atalho:
+
+```mermaid
+flowchart LR
+    A[1. Claude escreve<br/>numa branch] --> B[2. Você aplica na<br/>homologação]
+    B --> C[3. Você testa no<br/>painel local]
+    C --> D[4. Merge do PR<br/>na main]
+    D --> E[5. Você aplica<br/>na produção]
+    E --> F[6. Você testa no<br/>painel de produção]
+```
+
+| Passo | Quem | Comando ou ação |
+|---|---|---|
+| 1 | Claude Code | Escreve a migration ou o código numa branch e abre o pull request |
+| 2 | Você, no Linux | `cd ~/infoxtec-escalas && git fetch && git checkout <branch> && git pull` e depois `./scripts/aplicar-homologacao.sh` |
+| 3 | Você | `cd web && npm run dev -- --host` e o teste descrito na etapa |
+| 4 | Você, no GitHub | Aprovar e fazer o merge do pull request |
+| 5 | Você, no Linux | `git checkout main && git pull` e depois `./scripts/aplicar-producao.sh` |
+| 6 | Você | O mesmo teste do passo 3, no painel de produção |
+
+**Nunca rode SQL direto na produção**, nem os comandos `supabase migration repair` ou
+`supabase db pull` que o Supabase sugere quando algo dá errado. Se algo falhar, pare e traga a
+mensagem completa.
+
+### Os dois scripts
+
+| Script | O que faz | Travas |
+|---|---|---|
+| `scripts/aplicar-homologacao.sh` | Liga na homologação, mostra a situação das migrations e aplica | Confere que o link ficou na homologação antes de aplicar |
+| `scripts/aplicar-producao.sh` | Liga na produção, mostra o que vai ser aplicado e só aplica se você digitar `PRODUCAO` | Recusa rodar fora da `main`, com arquivo alterado ou com a `main` desatualizada; ao terminar, sempre volta o link para a homologação |
+
+Painel de produção sem banco novo (só mudança de tela): o passo 5 é o próprio merge, porque a
+Vercel publica a `main` sozinha.
+
+## Etapas
+
+As etapas estão em ordem. Dentro de cada bloco, uma etapa só começa quando a anterior terminou.
+
+### Bloco 1: fechar o que já foi feito
+
+- [ ] **1. Confirmar 39 a 41 em produção.** No Linux: `npx supabase link --project-ref zpckrxydqqmmcrphrkxz`, `npx supabase migration list` (39, 40 e 41 precisam aparecer em Remote) e voltar com `npx supabase link --project-ref oruwnlxyvznpigbpjjbx`.
+      *Teste no painel de produção:* abrir um documento enviado por arquivo; criar uma habilidade; marcar as habilidades de um técnico. Os três falhavam antes.
+- [ ] **2. Agendar a limpeza de logs na produção.** No SQL Editor da produção, rodar a última linha de `supabase/setup/cron.sql`. É a única exceção à regra de não rodar SQL na produção, porque agendamento não é migration.
+- [ ] **3. Merge do pull request** da branch `claude/dreamy-lovelace-7cxxih` na `main`. A partir daqui, a `main` é igual à produção.
+
+### Bloco 2: ambiente e processo (configuração, sem código)
+
+- [ ] **4. Preview da Vercel apontando para a homologação.** Vercel → Settings → Environment Variables: deixar as variáveis atuais só em *Production* e criar as de *Preview* com a URL e a chave do projeto dev. Hoje um deploy de teste grava no banco real.
+      *Teste:* abrir o preview de um PR e conferir que só aparecem os dados fictícios.
+- [ ] **5. Login da homologação.** Supabase dev → Authentication → URL Configuration: incluir `http://localhost:5173/**` e `https://*.vercel.app/**`; desligar o cadastro público.
+- [ ] **6. Proteção contra senha vazada.** Nas configurações de senha do Authentication, ligar *Leaked password protection* (apontado pelo relatório de segurança do Supabase). Primeiro na homologação, depois na produção. Se a opção aparecer bloqueada, ela depende do plano pago e passa para a etapa 18.
+
+### Bloco 3: banco (cada uma é uma migration: homologação, teste, produção)
+
+- [ ] **7. Alerta de motor parado.** Se o motor não rodar com sucesso por mais de 5 minutos, os supervisores recebem aviso, e a aba Operação mostra a última execução.
+      *Teste na homologação:* simular falha do motor e ver o alerta registrado.
+- [ ] **8. Validação dos parâmetros (`config`).** Gravar um valor inválido (por exemplo, texto em `max_tentativas`) passa a ser recusado, em vez de quebrar o motor.
+- [ ] **9. Limpeza do legado.** Remover as funções da bancada de teste (`fn_teste_wa_*`) e o índice duplicado `idx_notif_wa`.
+- [ ] **10. Decisão de negócio: fechar escalas passadas.** Hoje uma escala confirmada fica "confirmada" para sempre. Decidir se passa a ser concluída automaticamente depois do término previsto. Só vira migration depois da sua decisão.
+
+### Bloco 4: segurança das Edge Functions
+
+- [ ] **11. `documento-ocr` valida o login por conta própria**, sem depender só da configuração de publicação.
+- [ ] **12. `voz-escala` confere a assinatura da Twilio** (`X-Twilio-Signature`) em vez de confiar só no token da URL.
+- [ ] **13. Trocar a biblioteca `xlsx`** da importação de planilhas, que tem vulnerabilidade alta sem correção no npm.
+      *Teste:* importar a mesma planilha antes e depois.
+
+Edge Function não é migration: é publicada com `npx supabase functions deploy <nome>`, primeiro no projeto dev e depois no de produção, pelo mesmo ciclo.
+
+### Bloco 5: proteção automática
+
+- [ ] **14. CI no GitHub.** Em todo pull request: compilar o painel, reaplicar todas as migrations num banco vazio e rodar o `plpgsql_check`. Pega sozinho os erros que nesta análise foram encontrados à mão.
+- [ ] **15. Testes automáticos das regras críticas** (pgTAP): fuso do motor, jornada CLT, permissões por papel, habilidades.
+
+### Bloco 6: decisões de infraestrutura (contratação)
+
+- [ ] **16. Desligar o Retool.** Quem tem edição lá executa SQL na produção sem passar por nada deste plano.
+- [ ] **17. Plano da Vercel.** O Hobby é para uso não comercial: Vercel Pro ou Cloudflare Pages.
+- [ ] **18. Backup do Supabase.** O plano Free não tem backup diário com restauração pelo painel; avaliar o Pro.
+
+### Bloco 7: arquitetura (projetos maiores)
+
+- [ ] **19. WhatsApp pela API oficial da Meta**, com a fila de saída e o adaptador descritos na decisão 26. É o item 1 do Bloco 1 de [segurança e homologação](seguranca-homologacao.md).
+- [ ] **20. Início da escala como instante (`timestamptz`)**, eliminando a classe de erro de fuso na raiz.
+
+## Registro
+
+| Data | Etapa | Homologação | Produção |
+|---|---|---|---|
+| 26/09 | Migrations 39, 40 e 41 | Aplicadas e testadas | Aplicadas (confirmar na etapa 1) |

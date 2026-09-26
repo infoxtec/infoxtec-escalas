@@ -79,6 +79,9 @@ raiz. Ele é lido automaticamente em toda sessão.
 
 ## O ciclo de uma mudança
 
+> A versão prática deste ciclo, com os scripts e a lista de etapas pendentes, está em
+> [plano-de-trabalho.md](plano-de-trabalho.md).
+
 1. **Pedir.** No Claude Code, descrever a mudança. Ele cria a branch, escreve a migration nova
    (`npx supabase migration new 39_descricao`), altera o painel e confere o build.
 2. **Revisar.** O Claude Code abre o PR. O CI roda e a Vercel publica um preview.
