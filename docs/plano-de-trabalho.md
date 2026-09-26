@@ -11,8 +11,8 @@ A análise que originou a lista está em [analise-topologia.md](analise-topologi
 |---|---|---|
 | Máquina Linux no Mac | Onde você roda o painel, os comandos do Supabase e os scripts | Pronta |
 | Homologação | Projeto Supabase `infoxtec-escalas-dev` (`oruwnlxyvznpigbpjjbx`), com dados fictícios, sem WhatsApp nem ligações reais | Pronta, com as migrations 01 a 43 |
-| Produção | Projeto Supabase `infoxtec-escalas` (`zpckrxydqqmmcrphrkxz`) + painel na Vercel | Com as migrations 01 a 41, conferidas em 26/09. Faltam a 42 e a 43 (etapa 3) |
-| Repositório | GitHub `infoxtec/infoxtec-escalas`. A `main` é o que vale para a produção | 39 a 43 e o painel 3.2 estão no pull request da branch `claude/dreamy-lovelace-7cxxih` (etapa 3) |
+| Produção | Projeto Supabase `infoxtec-escalas` (`zpckrxydqqmmcrphrkxz`) + painel na Vercel | Com as migrations 01 a 43 e o painel 3.2 |
+| Repositório | GitHub `infoxtec/infoxtec-escalas`. A `main` é o que vale para a produção | `main` igual à produção desde o merge do PR #1 (26/09) |
 
 ## Regras combinadas (26/09)
 
@@ -66,7 +66,7 @@ As etapas estão em ordem. Dentro de cada bloco, uma etapa só começa quando a 
 - [x] **1. Confirmar 39 a 41 em produção.** No Linux: `npx supabase link --project-ref zpckrxydqqmmcrphrkxz`, `npx supabase migration list` (39, 40 e 41 precisam aparecer em Remote) e voltar com `npx supabase link --project-ref oruwnlxyvznpigbpjjbx`.
       *Teste no painel de produção:* abrir um documento enviado por arquivo; criar uma habilidade; marcar as habilidades de um técnico. Os três falhavam antes.
 - [x] **2. Agendar a limpeza de logs na produção.** No SQL Editor da produção, rodar a última linha de `supabase/setup/cron.sql`. É a única exceção à regra de não rodar SQL na produção, porque agendamento não é migration.
-- [ ] **3. Merge do pull request e aplicação na produção.** Leva para a produção o que ainda está só na homologação:
+- [x] **3. Merge do pull request e aplicação na produção.** Leva para a produção o que ainda está só na homologação:
       - migration 42: itens de documentos no backlog;
       - migration 43: backlog numerado em sequência (001, 002...);
       - painel 3.2: números com três dígitos e a faixa de ambiente no painel local.
@@ -133,5 +133,6 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 |---|---|---|---|
 | 26/09 | Migrations 39, 40 e 41 | Aplicadas e testadas | Aplicadas e testadas (Bloco 1) |
 | 26/09 | Limpeza de logs agendada | Não se aplica | Agendada |
-| 26/09 | Migration 42: itens de documentos no backlog | Aplicada e testada | Pendente (etapa 3) |
-| 26/09 | Migration 43 + painel 3.2: numeração 001 do backlog | Aplicada e testada | Pendente (etapa 3) |
+| 26/09 | Migration 42: itens de documentos no backlog | Aplicada e testada | Aplicada e conferida |
+| 26/09 | Migration 43 + painel 3.2: numeração 001 do backlog | Aplicada e testada | Aplicada e conferida |
+| 26/09 | Merge do PR #1: `main` igual à produção | Não se aplica | Concluído |
