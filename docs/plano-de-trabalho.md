@@ -76,7 +76,7 @@ As etapas estão em ordem. Dentro de cada bloco, uma etapa só começa quando a 
 
 ### Bloco 2: ambiente e processo (configuração, sem código)
 
-- [ ] **4. Preview da Vercel apontando para a homologação.** Vercel → Settings → Environment Variables: deixar as variáveis atuais só em *Production* e criar as de *Preview* com a URL e a chave do projeto dev. Hoje um deploy de teste grava no banco real.
+- [x] **4. Preview da Vercel apontando para a homologação.** Feito com `scripts/configurar-vercel-homologacao.sh`: Production usa a produção; Preview e Development usam a homologação.
       *Teste:* abrir o preview de um PR e conferir que só aparecem os dados fictícios.
 - [ ] **5. Login da homologação.** Supabase dev → Authentication → URL Configuration: incluir `http://localhost:5173/**` e `https://*.vercel.app/**`; desligar o cadastro público.
 - [ ] **6. Proteção contra senha vazada.** Nas configurações de senha do Authentication, ligar *Leaked password protection* (apontado pelo relatório de segurança do Supabase). Primeiro na homologação, depois na produção. Se a opção aparecer bloqueada, ela depende do plano pago e passa para a etapa 18.
@@ -136,3 +136,4 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 | 26/09 | Migration 42: itens de documentos no backlog | Aplicada e testada | Aplicada e conferida |
 | 26/09 | Migration 43 + painel 3.2: numeração 001 do backlog | Aplicada e testada | Aplicada e conferida |
 | 26/09 | Merge do PR #1: `main` igual à produção | Não se aplica | Concluído |
+| 26/09 | Vercel: Preview e Development na homologação | Configurado | Production sem alteração |
