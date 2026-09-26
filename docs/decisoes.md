@@ -222,3 +222,16 @@ próximo `db push`.
 por escolha do responsável. O número deixou de ser digitado. Quem cria não escolhe, e o número não muda depois
 (migration 43), para que "item 017" signifique sempre a mesma coisa.
 
+## 29. Nenhuma assinatura paga
+
+**Decisão:** o sistema roda só em planos gratuitos. O que o plano gratuito não oferece é resolvido
+com alternativa gratuita ou sai do plano.
+**Substituições:**
+- Proteção contra senha vazada (paga no Supabase): senha mínima de 12 caracteres e consulta à base
+  pública Have I Been Pwned feita pelo painel, sem enviar a senha.
+- Backup com restauração (pago no Supabase): cópia diária criptografada pelo GitHub Actions, com
+  teste mensal de restauração num banco temporário.
+- Vercel Pro (o gratuito proíbe uso comercial): Cloudflare Pages gratuito.
+**Fora do escopo desta regra:** serviços cobrados por uso, sem assinatura, que o sistema já usa ou
+planeja usar (ligação pela Twilio, mensagens pela API oficial da Meta). Cada um é decidido à parte.
+

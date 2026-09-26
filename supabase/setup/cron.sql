@@ -5,3 +5,6 @@ select cron.schedule('dispatcher-whatsapp', '* * * * *', $$select fn_dispatcher_
 
 -- Limpeza de logs (migration 39): todo dia as 03h17 da Bahia (06h17 UTC).
 select cron.schedule('limpeza-logs', '17 6 * * *', $$select fn_limpeza_logs()$$);
+
+-- Vigia do motor (migration 44): a cada 5 minutos, avisa os supervisores se o motor parou.
+select cron.schedule('vigia-motor', '*/5 * * * *', $$select fn_vigiar_motor()$$);

@@ -110,6 +110,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Produção comparada com o repositório; migration 40 sincroniza a fase 6 do motor
 - [x] Migration 41: habilidades voltam a salvar, motor isola falha por escala, fuso no webhook (homologação)
 - [x] Backlog numerado em sequência (001) e painel local nos dois ambientes (painel 3.2)
+- [x] Painel 3.3: alerta de motor parado (migration 44), logomarca Infoxtec, painel local em segundo plano (`scripts/painel.sh`) e subagentes especialistas em `.claude/agents/` (homologação)
 - [ ] Próximas etapas: ver [docs/plano-de-trabalho.md](docs/plano-de-trabalho.md)
 - [ ] Fluxo por pull request com CI (ver [docs/fluxo-de-desenvolvimento.md](docs/fluxo-de-desenvolvimento.md))
 - [ ] Desligar o painel Retool e remover as funções da bancada de teste

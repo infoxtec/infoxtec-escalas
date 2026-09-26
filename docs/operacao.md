@@ -144,6 +144,19 @@ Arquivo órfão no Storage (enviado, mas sem registro no banco) não deveria exi
 o arquivo quando o registro falha. Se suspeitar de sobra, compare o bucket `documentos` com
 `select caminho from documentos where origem = 'storage'`.
 
+## Motor parado
+
+Desde a migration 44, a aba **Operação** mostra no topo se o motor de envio está em dia. Se ele
+passar de 5 minutos sem concluir uma execução, os supervisores recebem aviso pelo WhatsApp (uma
+vez) e outro quando normalizar. Para ver o motivo da falha:
+
+```sql
+select start_time at time zone 'America/Bahia' as inicio, status, left(return_message, 200) as mensagem
+from cron.job_run_details
+where jobid = (select jobid from cron.job where jobname = 'dispatcher-whatsapp')
+order by start_time desc limit 10;
+```
+
 ## Limpeza periódica
 
 Automática desde a migration 39: `fn_limpeza_logs()` roda todo dia às 03h17, agendada por

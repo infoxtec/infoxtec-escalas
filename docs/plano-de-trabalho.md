@@ -11,8 +11,8 @@ A análise que originou a lista está em [analise-topologia.md](analise-topologi
 |---|---|---|
 | Máquina Linux no Mac | Onde você roda o painel, os comandos do Supabase e os scripts | Pronta |
 | Homologação | Projeto Supabase `infoxtec-escalas-dev` (`oruwnlxyvznpigbpjjbx`), com dados fictícios, sem WhatsApp nem ligações reais | Pronta, com as migrations 01 a 43 |
-| Produção | Projeto Supabase `infoxtec-escalas` (`zpckrxydqqmmcrphrkxz`) + painel na Vercel | Com as migrations 01 a 41, conferidas em 26/09. Faltam a 42 e a 43 (etapa 3) |
-| Repositório | GitHub `infoxtec/infoxtec-escalas`. A `main` é o que vale para a produção | 39 a 43 e o painel 3.2 estão no pull request da branch `claude/dreamy-lovelace-7cxxih` (etapa 3) |
+| Produção | Projeto Supabase `infoxtec-escalas` (`zpckrxydqqmmcrphrkxz`) + painel na Vercel | Com as migrations 01 a 43 e o painel 3.2 |
+| Repositório | GitHub `infoxtec/infoxtec-escalas`. A `main` é o que vale para a produção | `main` igual à produção desde o merge do PR #1 (26/09) |
 
 ## Regras combinadas (26/09)
 
@@ -38,7 +38,7 @@ flowchart LR
 |---|---|---|
 | 1 | Claude Code | Escreve a migration ou o código numa branch e abre o pull request |
 | 2 | Você, no Linux | `cd ~/infoxtec-escalas && git fetch && git checkout <branch> && git pull` e depois `./scripts/aplicar-homologacao.sh` |
-| 3 | Você | `cd web && npm run dev:homologacao` e o teste descrito na etapa |
+| 3 | Você | `./scripts/painel.sh iniciar` (fica no ar com o terminal fechado) e o teste descrito na etapa |
 | 4 | Você, no GitHub | Aprovar e fazer o merge do pull request |
 | 5 | Você, no Linux | `git checkout main && git pull` e depois `./scripts/aplicar-producao.sh` |
 | 6 | Você | O mesmo teste do passo 3, no painel de produção |
@@ -66,7 +66,7 @@ As etapas estão em ordem. Dentro de cada bloco, uma etapa só começa quando a 
 - [x] **1. Confirmar 39 a 41 em produção.** No Linux: `npx supabase link --project-ref zpckrxydqqmmcrphrkxz`, `npx supabase migration list` (39, 40 e 41 precisam aparecer em Remote) e voltar com `npx supabase link --project-ref oruwnlxyvznpigbpjjbx`.
       *Teste no painel de produção:* abrir um documento enviado por arquivo; criar uma habilidade; marcar as habilidades de um técnico. Os três falhavam antes.
 - [x] **2. Agendar a limpeza de logs na produção.** No SQL Editor da produção, rodar a última linha de `supabase/setup/cron.sql`. É a única exceção à regra de não rodar SQL na produção, porque agendamento não é migration.
-- [ ] **3. Merge do pull request e aplicação na produção.** Leva para a produção o que ainda está só na homologação:
+- [x] **3. Merge do pull request e aplicação na produção.** Leva para a produção o que ainda está só na homologação:
       - migration 42: itens de documentos no backlog;
       - migration 43: backlog numerado em sequência (001, 002...);
       - painel 3.2: números com três dígitos e a faixa de ambiente no painel local.
@@ -76,14 +76,17 @@ As etapas estão em ordem. Dentro de cada bloco, uma etapa só começa quando a 
 
 ### Bloco 2: ambiente e processo (configuração, sem código)
 
-- [ ] **4. Preview da Vercel apontando para a homologação.** Vercel → Settings → Environment Variables: deixar as variáveis atuais só em *Production* e criar as de *Preview* com a URL e a chave do projeto dev. Hoje um deploy de teste grava no banco real.
+- [x] **4. Preview da Vercel apontando para a homologação.** Feito com `scripts/configurar-vercel-homologacao.sh`: Production usa a produção; Preview e Development usam a homologação.
       *Teste:* abrir o preview de um PR e conferir que só aparecem os dados fictícios.
 - [ ] **5. Login da homologação.** Supabase dev → Authentication → URL Configuration: incluir `http://localhost:5173/**` e `https://*.vercel.app/**`; desligar o cadastro público.
-- [ ] **6. Proteção contra senha vazada.** Nas configurações de senha do Authentication, ligar *Leaked password protection* (apontado pelo relatório de segurança do Supabase). Primeiro na homologação, depois na produção. Se a opção aparecer bloqueada, ela depende do plano pago e passa para a etapa 18.
+- [ ] **6. Senha forte, sem custo.** A proteção nativa do Supabase é paga, então fica em duas partes gratuitas:
+      - *Configuração (você):* nos dois projetos, Authentication → tamanho mínimo de senha **12**.
+      - *Código (Claude, pelo ciclo):* ao criar ou trocar a senha, o painel consulta a base pública de senhas vazadas (Have I Been Pwned). Só os 5 primeiros caracteres do *hash* da senha saem do navegador; a senha nunca. Senha encontrada é recusada.
+      *Teste:* tentar cadastrar `Senha@123456` e ver a recusa.
 
 ### Bloco 3: banco (cada uma é uma migration: homologação, teste, produção)
 
-- [ ] **7. Alerta de motor parado.** Se o motor não rodar com sucesso por mais de 5 minutos, os supervisores recebem aviso, e a aba Operação mostra a última execução.
+- [ ] **7. Alerta de motor parado.** *Migration 44 e painel 3.3 aplicados na homologação em 26/09; aguardando teste conjunto e sua ordem.* Se o motor não rodar com sucesso por mais de 5 minutos, os supervisores recebem aviso, e a aba Operação mostra a última execução.
       *Teste na homologação:* simular falha do motor e ver o alerta registrado.
 - [ ] **8. Validação dos parâmetros (`config`).** Gravar um valor inválido (por exemplo, texto em `max_tentativas`) passa a ser recusado, em vez de quebrar o motor.
 - [ ] **9. Limpeza do legado.** Remover as funções da bancada de teste (`fn_teste_wa_*`) e o índice duplicado `idx_notif_wa`.
@@ -103,11 +106,16 @@ Edge Function não é migration: é publicada com `npx supabase functions deploy
 - [ ] **14. CI no GitHub.** Em todo pull request: compilar o painel, reaplicar todas as migrations num banco vazio e rodar o `plpgsql_check`. Pega sozinho os erros que nesta análise foram encontrados à mão.
 - [ ] **15. Testes automáticos das regras críticas** (pgTAP): fuso do motor, jornada CLT, permissões por papel, habilidades.
 
-### Bloco 6: decisões de infraestrutura (contratação)
+### Bloco 6: infraestrutura sem custo
+
+Regra (decisão 29): nenhuma assinatura paga. Cada item abaixo usa só planos gratuitos.
 
 - [ ] **16. Desligar o Retool.** Quem tem edição lá executa SQL na produção sem passar por nada deste plano.
-- [ ] **17. Plano da Vercel.** O Hobby é para uso não comercial: Vercel Pro ou Cloudflare Pages.
-- [ ] **18. Backup do Supabase.** O plano Free não tem backup diário com restauração pelo painel; avaliar o Pro.
+- [ ] **17. Painel no Cloudflare Pages (gratuito).** O plano gratuito da Vercel proíbe uso comercial; o do Cloudflare Pages permite, também publica a `main` sozinho e tem preview por branch.
+      *Como:* criar o projeto no Cloudflare ligado ao GitHub (pasta `web`, comando `npm run build`, saída `dist`), cadastrar as variáveis de produção e de preview, converter os cabeçalhos de segurança do `vercel.json` para o arquivo `_headers`, e atualizar os endereços de login no Supabase.
+      *Teste:* o painel abre no endereço novo, com login, e a Vercel só é desligada depois de uma semana rodando em paralelo.
+- [ ] **18. Backup diário gratuito.** O Supabase gratuito não tem backup com restauração pelo painel. Substituto: toda madrugada, o GitHub Actions (gratuito em repositório privado) faz uma cópia completa do banco de produção, criptografada com uma senha que só você guarda, e mantém as últimas 30.
+      *Teste de restauração:* uma vez por mês, o mesmo robô restaura a cópia mais recente num banco temporário, confere as contagens e apaga o banco. Os dados reais nunca vão para a homologação (LGPD).
 
 ### Bloco 7: gestão de documentos (backlog 14 a 16)
 
@@ -133,5 +141,8 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 |---|---|---|---|
 | 26/09 | Migrations 39, 40 e 41 | Aplicadas e testadas | Aplicadas e testadas (Bloco 1) |
 | 26/09 | Limpeza de logs agendada | Não se aplica | Agendada |
-| 26/09 | Migration 42: itens de documentos no backlog | Aplicada e testada | Pendente (etapa 3) |
-| 26/09 | Migration 43 + painel 3.2: numeração 001 do backlog | Aplicada e testada | Pendente (etapa 3) |
+| 26/09 | Migration 42: itens de documentos no backlog | Aplicada e testada | Aplicada e conferida |
+| 26/09 | Migration 43 + painel 3.2: numeração 001 do backlog | Aplicada e testada | Aplicada e conferida |
+| 26/09 | Merge do PR #1: `main` igual à produção | Não se aplica | Concluído |
+| 26/09 | Vercel: Preview e Development na homologação | Configurado | Production sem alteração |
+| 26/09 | Migration 44 + painel 3.3: alerta de motor parado | Aplicada e testada | Aguardando sua ordem |
