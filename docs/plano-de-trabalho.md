@@ -118,7 +118,7 @@ Regra (decisão 29): nenhuma assinatura paga. Cada item abaixo usa só planos gr
 - [ ] **17. Painel no Cloudflare Pages (gratuito).** O plano gratuito da Vercel proíbe uso comercial; o do Cloudflare Pages permite, também publica a `main` sozinho e tem preview por branch.
       *Como:* criar o projeto no Cloudflare ligado ao GitHub (pasta `web`, comando `npm run build`, saída `dist`), cadastrar as variáveis de produção e de preview, converter os cabeçalhos de segurança do `vercel.json` para o arquivo `_headers`, e atualizar os endereços de login no Supabase.
       *Teste:* o painel abre no endereço novo, com login, e a Vercel só é desligada depois de uma semana rodando em paralelo.
-- [ ] **18. Backup diário gratuito.** *Criado em 27/09 (`backup.yml` e `restauracao.yml`); falta cadastrar os dois segredos no GitHub (roteiro, parte C).* O Supabase gratuito não tem backup com restauração pelo painel. Substituto: toda madrugada, o GitHub Actions (gratuito em repositório privado) faz uma cópia completa do banco de produção, criptografada com uma senha que só você guarda, e mantém as últimas 30.
+- [x] **18. Backup diário gratuito.** *Funcionando desde 27/09: primeiro backup da produção (80 KB, criptografado) e teste de restauração conferido (13 técnicos, 8 locais, 47 escalas, 91 notificações, 1 documento, 3 usuários, 60 itens de backlog).* O Supabase gratuito não tem backup com restauração pelo painel. Substituto: toda madrugada, o GitHub Actions (gratuito em repositório privado) faz uma cópia completa do banco de produção, criptografada com uma senha que só você guarda, e mantém as últimas 30.
       *Teste de restauração:* uma vez por mês, o mesmo robô restaura a cópia mais recente num banco temporário, confere as contagens e apaga o banco. Os dados reais nunca vão para a homologação (LGPD).
 
 ### Bloco 7: gestão de documentos (backlog 14 a 16)
@@ -165,3 +165,4 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 | 27/09 | Merge do PR #2: painel 3.3 (alerta de motor, logomarca) | Não se aplica | Painel publicado; migration 44 pendente |
 | 27/09 | Migrations 45 e 46, Edge Functions, CI, backup, painel 3.4 (etapas 8 a 12, 14, 18, 10b, 10c) | Aplicadas e testadas; teste conjunto aprovado | Aplicadas pelo responsável (migrations 44 a 46, Edge Functions, `vigia-motor`) e conferidas |
 | 27/09 | Painel 3.4.1: sessão não cai mais sozinha (decisão 35, PR #4) | Testado em navegador com duas abas | Publicado |
+| 27/09 | Backup diário e teste de restauração (etapa 18, PR #6) | Não se aplica | Primeiro backup e restauração conferidos |
