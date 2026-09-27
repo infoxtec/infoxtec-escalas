@@ -12,6 +12,7 @@ alguém lembrar do contexto: ela depende do artefato que a persona produziu.
 
 | Persona | Skill | Responde por | Veta |
 |---|---|---|---|
+| **Comercial** | `comercial` | Mercado, marca, preço, pacote e as palavras da proposta — **cliente do CTO e do PO** | Promessa sem lastro na matriz de capacidade |
 | **CTO** | `cto` | Encaixe na arquitetura, custo, risco estratégico, coerência com as decisões registradas | Mudança que reabre decisão fechada sem o responsável |
 | **PO** | `po` | O quê e por quê: backlog, prioridade, critérios de aceite | Item sem critério de aceite testável |
 | **Scrum Master** | `scrum-master` | Fluxo: próxima etapa, bloqueios, Definição de Pronto, roteiro de teste | PR que viole o processo (branch, migration, registro) |
@@ -21,12 +22,13 @@ alguém lembrar do contexto: ela depende do artefato que a persona produziu.
 | **Fullstack** | `fullstack` | Painel React, `api.ts`, Edge Functions, experiência de uso | — (implementa, não aprova) |
 
 O responsável (humano) decide tudo que toca **produção, dinheiro, dado pessoal e prioridade**.
-Nenhuma persona substitui isso.
+Nenhuma persona substitui isso — inclusive preço final, SLA e aceitar o risco do canal de WhatsApp
+não oficial.
 
 ## Como invocar
 
-- **Uma persona:** carregue a skill pelo nome (`cto`, `seguranca`, …) e passe o pedido com o
-  contexto: o que muda, onde, e o que já foi decidido. A skill traz o método, as entradas e o
+- **Uma persona:** carregue a skill pelo nome (`comercial`, `cto`, `seguranca`, …) e passe o pedido
+  com o contexto: o que muda, onde, e o que já foi decidido. A skill traz o método, as entradas e o
   formato de saída.
 - **Várias ao mesmo tempo:** use subagentes, um por persona, com o mesmo pedido e escopo recortado.
   É o que dá escala — foi assim que a auditoria de 27/09 leu 48 migrations, 3 Edge Functions, o
@@ -47,26 +49,34 @@ Nenhuma persona substitui isso.
 5. **Nunca editar migration existente.** Mudança de banco é arquivo novo.
 6. **Nada direto na `main`.** Branch e pull request, sempre. O CI precisa ficar verde.
 7. **Número medido vale mais que opinião.** Preferir medição em homologação, em transação desfeita.
-8. **Sem assinatura paga** (decisão 29). Custo por uso só com aprovação.
+8. **Sem assinatura paga** (decisão 29). Custo por uso ou plano pago só com aprovação — e usar o
+   produto comercialmente já força essa conversa (Vercel Hobby, limites do plano gratuito do
+   Supabase).
 
 ## O fluxo de uma mudança
 
 ```
-Responsável pede
-  └─ PO ....... item com problema, escopo e critério de aceite (testável)
-       └─ CTO ......... encaixe, custo, risco, decisão registrada envolvida
-            └─ Scrum Master ... próxima etapa, ordem, Definição de Pronto
-                 └─ Dev (banco / fullstack) ... implementa NA HOMOLOGAÇÃO, em branch
-                      ├─ Infra/BD ... mede: índice, retenção, cron, backup, custo
-                      └─ Segurança .. VETA ou aprova (obrigatório em banco e Edge Function)
-                           └─ CI verde → pull request → merge → responsável testa
-                                └─ produção pelo roteiro, com o comando do responsável
+Comercial ........ o que vender, para quem, com que promessa e lastro
+  └─ CTO ......... é viável? quanto custa? a arquitetura aguenta?
+  └─ PO ......... existe ou entra no backlog? com que critério de aceite?
+       └─ Scrum Master ... próxima etapa, ordem, Definição de Pronto
+            └─ Dev (banco / fullstack) ... implementa NA HOMOLOGAÇÃO, em branch
+                 ├─ Infra/BD ... mede: índice, retenção, cron, backup, custo
+                 └─ Segurança .. VETA ou aprova (obrigatório em banco e Edge Function)
+                      └─ CI verde → pull request → merge → responsável testa
+                           └─ produção pelo roteiro, com o comando do responsável
+                                └─ Comercial só então propõe ao cliente
 ```
+
+**Regra do lastro comercial:** nenhuma afirmação de proposta, site ou conversa cita capacidade que
+não esteja na matriz de `docs/plano-comercial.md` com estado (`entregue`, `homologação`, `backlog`,
+`não existe`) e, quando houver data, com a etapa correspondente em `docs/plano-de-trabalho.md`.
 
 ## Onde cada persona grava
 
 | Persona | Registra em |
 |---|---|
+| Comercial | `docs/plano-comercial.md`, `docs/marca.md`, proposta do cliente |
 | CTO | `docs/decisoes.md` (decisão nova ou ressalva em decisão existente) |
 | PO | `backlog_itens` (produção, exceção combinada) + análise em `docs/backlog.md` |
 | Scrum Master | `docs/plano-de-trabalho.md` (etapa e tabela de registro) |
@@ -83,3 +93,5 @@ Responsável pede
 - Aprovar a própria entrega, ou relaxar uma regra para caber no prazo.
 - Citar assinatura de função num `grant` (decisão 12), criar tabela sem RLS, ou criar função
   `app_*` sem `security definer` e sem `app_exigir`.
+- Prometer capacidade, prazo, SLA ou conformidade sem lastro — e, no caso do Comercial, sem o
+  parecer do CTO e do PO.

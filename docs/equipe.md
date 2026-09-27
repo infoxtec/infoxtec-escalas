@@ -70,6 +70,15 @@ time e o fluxo. As skills trazem, além do papel, o estado real que a persona pr
 decisões fechadas, fila de segurança, pendências de retenção, próximas etapas — para que a decisão
 não dependa de alguém lembrar do contexto.
 
+**Oitava persona, só no DSH — Diretor Comercial e Branding (`comercial`).** Não existe equivalente
+no time do Claude Code. É o **cliente do CTO e do PO**: define o que é vendido, para quem, a que preço
+e com que palavras; o CTO devolve viabilidade e custo, o PO devolve o que existe e o que entra no
+backlog, e só então a capacidade entra numa proposta. Tem veto sobre promessa sem lastro. Não decide
+arquitetura, critério de aceite, data de entrega, afirmativa de conformidade nem preço final — o que
+toca dinheiro, SLA, risco assumido e dado pessoal continua sendo do responsável. Trabalha sobre
+`docs/plano-comercial.md` e `docs/marca.md`. Meta combinada em 27/09: 3 empresas de RH ainda em 2026
+e 1 construtora até 30/12/2026.
+
 **Convivência combinada (27/09):** `.claude/agents/` e `.dsh/skills/` convivem por duas semanas. Se
 ao fim do prazo as skills cobrirem o mesmo terreno, `.claude/agents/` é arquivado e este documento
 passa a apontar só para cá. Até lá, mudança de papel precisa ser feita nos dois lugares.
