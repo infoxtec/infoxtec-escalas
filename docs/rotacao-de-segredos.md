@@ -133,9 +133,13 @@ select fn_evo_get('/instance/connectionState/' || fn_config('evolution_instancia
 select * from fn_http_resposta(<numero>);
 ```
 
-**Esperado:** `{"instance":{"instanceName":"infoxtec","state":"open"}}` — e a limpeza da resposta
-depois de conferir (`delete from net._http_response where id = <numero>;`), porque ela guarda a chave
-na URL.
+**Esperado:** `{"instance":{"instanceName":"infoxtec","state":"open"}}`. A chave viaja no **cabeçalho**
+(`apikey`), não na URL — então a resposta **não** a carrega. Ainda assim, apague o registro depois de
+conferir (`delete from net._http_response where id = <numero>;`) para não deixar rastro de consulta.
+
+> **Cuidado que não se aplica aqui, mas se aplica ao `WEBHOOK_TOKEN`:** no passo 4.3 a limpeza é
+> **obrigatória**, porque a resposta do `/webhook/set/` devolve a configuração gravada — **com o token
+> na URL**. É a diferença entre higiene e vazamento.
 
 ---
 
