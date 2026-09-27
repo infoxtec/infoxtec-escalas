@@ -34,6 +34,12 @@ aceite), `scrum-master` (próxima etapa e roteiro de teste), `dev-banco` (migrat
 revisão do `seguranca` antes do pull request.
 Papéis, fluxo entre eles e regras comuns: `docs/equipe.md`.
 
+O mesmo time existe para o DeepSeek Harness, em `.dsh/skills/`, com as regras do time e o fluxo de
+decisão em `AGENTS.md` (que não substitui este arquivo — este vence). Há uma persona a mais lá:
+`comercial`, o Diretor Comercial e Branding, que é **cliente do CTO e do PO** e responde por mercado,
+marca, preço, pacote e pelas palavras da proposta, em `docs/plano-comercial.md` e `docs/marca.md`.
+Afirmação comercial só entra em proposta com lastro na matriz de capacidade daquele documento.
+
 ## Comandos
 
 ```bash
@@ -91,4 +97,7 @@ end $$;
   fica em `web/.env.local`, fora do Git.
 - Mudança de regra, tabela ou função: atualizar `docs/banco-de-dados.md`. Decisão de arquitetura:
   registrar em `docs/decisoes.md`. Entrega relevante: marcar no histórico do `README.md`.
+- Afirmação comercial — proposta, site, conversa de venda — só com lastro na matriz de
+  `docs/plano-comercial.md`; nome, mote e posicionamento em `docs/marca.md`. Preço, SLA, garantia e
+  aceitar risco são decisão do responsável, não do material de venda.
 - Trabalhar sempre em branch e abrir pull request. Nada vai direto para `main`.

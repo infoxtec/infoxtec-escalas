@@ -54,3 +54,36 @@ flowchart LR
 - Português em tudo.
 - Quando faltar uma decisão de negócio, **perguntar ao responsável**, com opções e recomendação.
   Não supor.
+
+## Personas no DeepSeek Harness (DSH)
+
+Desde 27/09 o time também existe para o DSH, que roda na estação Linux com o repositório como
+workspace. O conteúdo é o mesmo dos sete papéis do Claude Code, em outro formato:
+
+| Peça | Onde fica | Como é usada |
+|---|---|---|
+| Regras do time e fluxo de decisão | `AGENTS.md`, na raiz | carregado em toda sessão, junto com o `CLAUDE.md` |
+| Os sete papéis (mais o Comercial, que só existe aqui) | `.dsh/skills/<papel>/SKILL.md` | carregados sob demanda, pelo nome da skill |
+
+**O `CLAUDE.md` continua sendo a regra que vence** nos dois ambientes; o `AGENTS.md` só acrescenta o
+time e o fluxo. As skills trazem, além do papel, o estado real que a persona precisa conhecer —
+decisões fechadas, fila de segurança, pendências de retenção, próximas etapas — para que a decisão
+não dependa de alguém lembrar do contexto.
+
+**Oitava persona, só no DSH — Diretor Comercial e Branding (`comercial`).** Não existe equivalente
+no time do Claude Code. É o **cliente do CTO e do PO**: define o que é vendido, para quem, a que preço
+e com que palavras; o CTO devolve viabilidade e custo, o PO devolve o que existe e o que entra no
+backlog, e só então a capacidade entra numa proposta. Tem veto sobre promessa sem lastro. Não decide
+arquitetura, critério de aceite, data de entrega, afirmativa de conformidade nem preço final — o que
+toca dinheiro, SLA, risco assumido e dado pessoal continua sendo do responsável. Trabalha sobre
+`docs/plano-comercial.md` e `docs/marca.md`. Meta combinada em 27/09: 3 empresas de RH ainda em 2026
+e 1 construtora até 30/12/2026.
+
+**Convivência combinada (27/09):** `.claude/agents/` e `.dsh/skills/` convivem por duas semanas. Se
+ao fim do prazo as skills cobrirem o mesmo terreno, `.claude/agents/` é arquivado e este documento
+passa a apontar só para cá. Até lá, mudança de papel precisa ser feita nos dois lugares.
+
+**Pendência de LGPD a registrar em `decisoes.md`:** as sessões do DSH enviam o conteúdo do
+repositório — inclusive o esquema do banco, que descreve dados de técnicos — para o provedor do
+modelo, fora do Brasil. É o mesmo tipo de tratamento já registrado para a cópia de backup no GitHub
+e precisa da mesma decisão explícita do responsável.
