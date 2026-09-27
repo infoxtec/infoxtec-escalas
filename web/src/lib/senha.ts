@@ -4,8 +4,16 @@
  * caracteres do SHA-1 da senha saem do navegador, nunca a senha nem o hash inteiro.
  */
 
-/** Mesmo valor configurado em Authentication > Password no Supabase (os dois projetos). */
-export const SENHA_MINIMA = 12
+/** Mesma regra configurada no Supabase (os dois projetos): 8 caracteres, com letras e números. */
+export const SENHA_MINIMA = 8
+export const REGRA_SENHA = `Mínimo de ${SENHA_MINIMA} caracteres, com letras e números.`
+
+/** Mensagem de erro, ou null se a senha cumpre a regra. */
+export function problemaNaSenha(senha: string): string | null {
+  if (senha.length < SENHA_MINIMA) return `A senha precisa ter pelo menos ${SENHA_MINIMA} caracteres.`
+  if (!/[A-Za-zÀ-ÿ]/.test(senha) || !/\d/.test(senha)) return 'A senha precisa ter letras e números.'
+  return null
+}
 
 /** true se a senha aparece em vazamentos conhecidos. Sem conexão com a base, não bloqueia. */
 export async function senhaVazada(senha: string): Promise<boolean> {

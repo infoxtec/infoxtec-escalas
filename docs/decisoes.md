@@ -295,3 +295,16 @@ navegador com duas abas.
 - Toda saída do painel (por inatividade ou pelo botão Sair) usa `scope: 'local'`: encerra só
   aquele navegador. Para derrubar a sessão em todos os aparelhos, um administrador redefine a
   senha do usuário.
+
+## 36. Senha: 8 caracteres, com letras e números
+
+**Decisão (responsável, 27/09):** a senha do painel tem no mínimo 8 caracteres, com letras e
+números, configurado nos dois projetos do Supabase. Substitui o mínimo de 12 da decisão 29. A
+consulta à base de senhas vazadas (Have I Been Pwned) continua no painel.
+
+## 37. Biblioteca de planilhas guardada no repositório
+
+**Decisão (27/09):** a versão corrigida do `xlsx` (0.20.3) só é distribuída pelo site da SheetJS,
+fora do npm. O arquivo oficial foi baixado pelo GitHub Actions e guardado em
+`web/vendor/xlsx-0.20.3.tgz`, forma recomendada pela própria SheetJS. O build não depende mais do
+site deles. Para atualizar, trocar o arquivo e rodar `npm install file:vendor/<arquivo>`.
