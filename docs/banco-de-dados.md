@@ -122,6 +122,22 @@ da janela de envio) e quando normaliza. `app_estado_motor` alimenta o quadro da 
 > `trg_backlog_numero` (`fn_numerar_backlog`), em sequência única para todos os grupos, desde a
 > migration 43. Depois de atribuído, não muda. O painel exibe com três dígitos (001).
 
+### Migrations 45 e 46 (27/09)
+
+| Peça | O que faz |
+|---|---|
+| `fn_concluir_escalas()` | Fase 7 do motor: confirmada/em execução vira concluída 5 min depois do término previsto |
+| `escalas_horario_ativo_unico` | Índice único parcial agora ignora `cancelada` e `recusada` (decisão 31) |
+| `fn_pendencias_escala` | Técnico só com escala recusada conta como "sem escala" |
+| `fn_dispatcher_whatsapp` | Trava `pg_try_advisory_xact_lock` (uma execução por vez), `lock_timeout` de 20 s, fase 7 e sinal ao monitor externo |
+| `fn_evolution_falhando()` | Verdadeiro com 2+ falhas e nenhum envio com sucesso nos últimos 15 min; o sinal vai como `/fail` |
+| `fn_avisar_tecnico(texto)` | WhatsApp para `alerta_tecnico_telefones` (sem repetir quem já é supervisor) |
+| `fn_vigiar_motor` | Também avisa os telefones técnicos e, uma vez por dia na janela, o banco acima de `banco_alerta_mb` |
+| `fn_limpeza_logs` | Também apaga `payload_envio` com mais de 90 dias |
+| `fn_validar_config` / `trg_config_validar` | Validação dos parâmetros |
+| Índices | `respostas(notificacao_id)`, `ocorrencias(escala_id)`, `ligacoes(tecnico_id)`, `escalas(local_id)`, `tecnico_documentos(documento_id)`; removido o duplicado `idx_notif_wa` |
+| Removidas | `fn_teste_wa_botoes`, `fn_teste_wa_resposta`, `fn_teste_wa_texto` (bancada de teste) |
+
 ## Gatilhos em `escalas`
 
 | Gatilho | O que faz |
@@ -153,11 +169,21 @@ Voz (URA): `ligacao_ativa` (false), `ligacao_apos_tentativas` (2), `ligacao_jane
 
 Voz (URA): ver `supabase/setup/twilio.md`. Documentos: ver `supabase/setup/documentos.md`.
 
-Escala: `antecedencia_minima_min` (5) — minutos mínimos entre agora e o início da escala.
+Escala: `antecedencia_minima_min` (5) — minutos mínimos entre agora e o início da escala;
+`conclusao_automatica_min` (5) — minutos depois do término previsto para a escala confirmada ou em
+execução virar concluída (fase 7 do motor, decisão 30).
 
-Retenção: `retencao_webhook_dias` (30), `retencao_cron_dias` (7).
+Retenção: `retencao_webhook_dias` (30), `retencao_cron_dias` (7), `retencao_payload_dias` (90,
+apaga só o conteúdo enviado de `notificacoes.payload_envio`; a notificação fica).
 
-Vigia: `motor_alerta_min` (5) — minutos sem execução concluída do motor para avisar os supervisores.
+Vigia: `motor_alerta_min` (5) — minutos sem execução concluída do motor para avisar os supervisores;
+`alerta_tecnico_telefones` — telefones que também recebem os avisos técnicos (motor parado,
+normalizado, banco cheio); `banco_alerta_mb` (350) — tamanho do banco que gera um aviso por dia;
+`monitor_ping_url` — URL do healthchecks.io que recebe o sinal do motor (vazio desliga; decisão 34).
+
+**Validação (migration 45):** o gatilho `trg_config_validar` recusa valor fora do formato das chaves
+conhecidas (inteiro, hora `HH:MM`, `true`/`false`, fuso existente, lista de dias 1–7, telefones
+E.164). Chave nova sem regra é aceita como texto.
 
 Ambiente: `evolution_url`, `evolution_instancia`, `evolution_versao`, `webhook_url`, `fuso`.
 

@@ -32,23 +32,23 @@ fi
 voltar_para_dev() {
   echo
   echo "== Voltando o link para a homologacao"
-  npx supabase link --project-ref "$DEV" || echo "ATENCAO: rode 'npx supabase link --project-ref $DEV' antes de continuar."
+  npx --yes supabase@2.118.0 link --project-ref "$DEV" || echo "ATENCAO: rode 'npx --yes supabase@2.118.0 link --project-ref $DEV' antes de continuar."
 }
 trap voltar_para_dev EXIT
 
-npx supabase link --project-ref "$PROD"
+npx --yes supabase@2.118.0 link --project-ref "$PROD"
 [ "$(cat supabase/.temp/project-ref)" = "$PROD" ] || { echo "O link nao ficou na producao. Nada foi aplicado."; exit 1; }
 
 # 3. Mostra o que vai acontecer
 echo
 echo "== Situacao das migrations (Local = repositorio, Remote = PRODUCAO)"
-npx supabase migration list
+npx --yes supabase@2.118.0 migration list
 echo
 echo "Confira: as versoes que aparecem so em Local sao as que serao aplicadas agora."
 read -r -p "Para aplicar na PRODUCAO, digite PRODUCAO: " resposta
 [ "$resposta" = "PRODUCAO" ] || { echo "Cancelado. Nada foi aplicado."; exit 1; }
 
-npx supabase db push
+npx --yes supabase@2.118.0 db push
 
 echo
 echo "Aplicado em producao. Faca o teste da etapa no painel: https://infoxtec-escalas.vercel.app"

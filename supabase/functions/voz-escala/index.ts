@@ -4,14 +4,22 @@
 // Deploy: supabase functions deploy voz-escala --no-verify-jwt
 //
 // Rotas (todas exigem ?token= igual ao segredo VOZ_TOKEN do Vault):
-//   ?acao=iniciar  { ligacao_id }  -> cria a chamada na Twilio
+//   ?acao=iniciar  { ligacao_id }  -> cria a chamada na Twilio (chamada pelo motor, via pg_net)
 //   ?acao=twiml&ligacao=<id>       -> TwiML falado ao atender
 //   ?acao=digito&ligacao=<id>      -> tecla digitada (ou sem_resposta=1)
 //   ?acao=status&ligacao=<id>      -> callback de status da chamada
+//
+// As três últimas vêm da Twilio e também são conferidas pela assinatura X-Twilio-Signature
+// (HMAC-SHA1 com o TWILIO_AUTH_TOKEN). Enquanto o segredo da função TWILIO_ASSINATURA não for
+// "obrigatoria", a assinatura inválida só é registrada no log, sem bloquear: é o período de
+// observação para confirmar que o endereço calculado bate com o da Twilio. Ver docs/telefonia.md.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import postgres from "npm:postgres@3.4.5";
 
 const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { prepare: false, max: 2, idle_timeout: 20 });
+
+const TIMEOUT_MS = 10_000;
+const ASSINATURA_OBRIGATORIA = Deno.env.get("TWILIO_ASSINATURA") === "obrigatoria";
 
 const xml = (corpo: string) =>
   new Response(corpo, { status: 200, headers: { "Content-Type": "text/xml; charset=utf-8" } });
@@ -21,10 +29,37 @@ const json = (corpo: unknown, status = 200) =>
 
 const desligar = () => xml('<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>');
 
-async function tokenValido(token: string): Promise<boolean> {
-  if (!token) return false;
-  const linhas = await sql<{ ok: boolean }[]>`select fn_segredo('VOZ_TOKEN') = ${token} as ok`;
-  return linhas[0]?.ok === true;
+/** Comparação em tempo constante: não revela, pelo tempo de resposta, quantos caracteres batem. */
+function iguais(a: string, b: string): boolean {
+  const x = new TextEncoder().encode(a);
+  const y = new TextEncoder().encode(b);
+  let dif = x.length ^ y.length;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) dif |= (x[i] ?? 0) ^ (y[i] ?? 0);
+  return dif === 0;
+}
+
+async function segredos(): Promise<{ voz_token: string | null; auth_token: string | null; voz_url: string | null }> {
+  const [r] = await sql<{ voz_token: string | null; auth_token: string | null; voz_url: string | null }[]>`
+    select fn_segredo('VOZ_TOKEN') as voz_token, fn_segredo('TWILIO_AUTH_TOKEN') as auth_token,
+           fn_config('voz_url') as voz_url`;
+  return r ?? { voz_token: null, auth_token: null, voz_url: null };
+}
+
+/**
+ * Assinatura da Twilio: base64(HMAC-SHA1(auth_token, URL + parâmetros do POST em ordem alfabética,
+ * chave seguida de valor)). A URL é a pública (voz_url) com a mesma query string recebida, porque
+ * o endereço interno que a função enxerga não é o que a Twilio chamou.
+ */
+async function assinaturaValida(req: Request, url: URL, form: Record<string, string>,
+                                authToken: string | null, vozUrl: string | null): Promise<boolean> {
+  const recebida = req.headers.get("X-Twilio-Signature") ?? "";
+  if (!recebida || !authToken || !vozUrl) return false;
+  const base = vozUrl.split("?")[0] + url.search;
+  const dados = base + Object.keys(form).sort().map(k => k + form[k]).join("");
+  const chave = await crypto.subtle.importKey("raw", new TextEncoder().encode(authToken),
+    { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+  const assinatura = new Uint8Array(await crypto.subtle.sign("HMAC", chave, new TextEncoder().encode(dados)));
+  return iguais(btoa(String.fromCharCode(...assinatura)), recebida);
 }
 
 /** Parametros da Twilio chegam como formulario; os nossos, na query string. */
@@ -45,11 +80,23 @@ Deno.serve(async (req: Request) => {
   const acao = url.searchParams.get("acao") ?? "";
   const ligacao = url.searchParams.get("ligacao") ?? "";
 
-  if (!(await tokenValido(url.searchParams.get("token") ?? ""))) {
+  const seg = await segredos();
+  const token = url.searchParams.get("token") ?? "";
+  if (!token || !seg.voz_token || !iguais(token, seg.voz_token)) {
     return acao === "iniciar" ? json({ ok: false, erro: "nao autorizado" }, 401) : desligar();
   }
 
   const form = await parametros(req);
+
+  // chamadas da Twilio (todas menos "iniciar", que vem do motor)
+  if (acao !== "iniciar") {
+    if (await assinaturaValida(req, url, form, seg.auth_token, seg.voz_url)) {
+      if (!ASSINATURA_OBRIGATORIA) console.log("voz-escala: assinatura da Twilio ok", acao);
+    } else {
+      console.warn("voz-escala: assinatura da Twilio invalida", acao, ASSINATURA_OBRIGATORIA ? "(bloqueada)" : "(observacao)");
+      if (ASSINATURA_OBRIGATORIA) return desligar();
+    }
+  }
 
   try {
     if (acao === "iniciar") {
@@ -98,6 +145,7 @@ Deno.serve(async (req: Request) => {
             "Content-Type": "application/x-www-form-urlencoded",
           },
           body: corpo,
+          signal: AbortSignal.timeout(TIMEOUT_MS),
         },
       );
       const dadosTwilio = await resp.json().catch(() => ({}));

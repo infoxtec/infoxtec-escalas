@@ -152,14 +152,23 @@ export async function lerValidadePorOCR(arquivo: File): Promise<{ sugestao: stri
   })
   const { data: sessao } = await supabase.auth.getSession()
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/documento-ocr`
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessao.session?.access_token ?? ''}` },
-    body: JSON.stringify({ base64, mime: arquivo.type }),
-  })
-  const r = await resp.json().catch(() => ({}))
-  if (!r.ok) return { sugestao: null, erro: r.erro ?? 'OCR indisponível.' }
-  return { sugestao: r.sugestao ?? null }
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessao.session?.access_token ?? ''}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ base64, mime: arquivo.type }),
+      signal: AbortSignal.timeout(30000),
+    })
+    const r = await resp.json().catch(() => ({}))
+    if (!r.ok) return { sugestao: null, erro: r.erro ?? 'OCR indisponível.' }
+    return { sugestao: r.sugestao ?? null }
+  } catch {
+    return { sugestao: null, erro: 'Leitura na nuvem indisponível agora. Informe a validade manualmente.' }
+  }
 }
 
 export function erroMsg(e: unknown): string {

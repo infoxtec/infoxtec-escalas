@@ -1,0 +1,65 @@
+# Backup diário da produção (etapa 18), sem custo.
+# Cópia completa do banco (papéis, estrutura e dados), compactada e criptografada com uma senha que
+# só o responsável guarda. Fica como artefato do GitHub por 30 dias.
+# Segredos do repositório (Settings > Secrets and variables > Actions):
+#   PRODUCAO_DB_URL  conexão do banco de produção (Supabase > Connect > Session pooler), com a senha
+#   BACKUP_SENHA     senha da criptografia; sem ela o backup não abre
+# Ficam de fora os logs que se refazem sozinhos (webhook_eventos) para poupar a cota de tráfego.
+# Os arquivos do Storage (documentos) não entram no pg_dump; ver docs/operacao.md.
+name: Backup da produção
+
+on:
+  schedule:
+    - cron: '37 6 * * *'   # 03:37 em Salvador
+  workflow_dispatch:
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.118.0
+      - name: Conferir segredos
+        env:
+          URL: ${{ secrets.PRODUCAO_DB_URL }}
+          SENHA: ${{ secrets.BACKUP_SENHA }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$SENHA" ]; then
+            echo "::error::Cadastre PRODUCAO_DB_URL e BACKUP_SENHA em Settings > Secrets and variables > Actions"
+            exit 1
+          fi
+      - name: Copiar o banco
+        env:
+          URL: ${{ secrets.PRODUCAO_DB_URL }}
+        run: |
+          mkdir -p copia
+          supabase db dump --db-url "$URL" -f copia/roles.sql --role-only
+          supabase db dump --db-url "$URL" -f copia/schema.sql
+          supabase db dump --db-url "$URL" -f copia/data.sql --use-copy --data-only -x public.webhook_eventos
+          ls -la copia
+      - name: Compactar e criptografar
+        env:
+          SENHA: ${{ secrets.BACKUP_SENHA }}
+        run: |
+          nome="producao-$(date -u +%Y%m%d-%H%M)"
+          tar -czf "$nome.tar.gz" -C copia .
+          gpg --batch --yes --pinentry-mode loopback --symmetric --cipher-algo AES256 --passphrase-fd 3 \
+              --output "$nome.tar.gz.gpg" "$nome.tar.gz" 3<<<"$SENHA"
+          rm -rf copia "$nome.tar.gz"
+          echo "ARQUIVO=$nome.tar.gz.gpg" >> "$GITHUB_ENV"
+          ls -la "$nome.tar.gz.gpg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backup-producao
+          path: ${{ env.ARQUIVO }}
+          retention-days: 30
+          if-no-files-found: error

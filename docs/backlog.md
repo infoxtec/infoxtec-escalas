@@ -356,6 +356,8 @@ imagem) e a classificação por palavra-chave. Para o técnico, comparar o nome 
 documento com o cadastro, sem acento e por palavras. Sugestão com baixa confiança aparece
 destacada, para escolha manual.
 
+**Decidido em 27/09 (decisão 32):** o cadastro do técnico passa a ter CPF, usado no casamento seguro.
+
 **Decisão pendente:** o casamento por nome falha com homônimos. O casamento seguro é pelo CPF, que
 hoje não existe no cadastro. Incluir o CPF é dado pessoal a mais (LGPD) e precisa de base legal
 registrada.
@@ -396,6 +398,8 @@ das auditorias.
 - `app_registrar_documento` recusa documento sem tipo.
 - Os documentos antigos sem tipo aparecem numa lista para classificar. A trava vale para os novos
   desde o primeiro dia, e para todos quando a lista zerar.
+
+**Decidido em 27/09 (decisão 32):** suspensão e advertência só para administradores, guardadas por 3 anos; CNH continua como categoria.
 
 **Decisões pendentes:**
 - **Quem vê suspensão e advertência.** São registros disciplinares, mais sensíveis que ASO e NR.

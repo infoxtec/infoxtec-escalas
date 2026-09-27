@@ -235,3 +235,48 @@ com alternativa gratuita ou sai do plano.
 **Fora do escopo desta regra:** serviços cobrados por uso, sem assinatura, que o sistema já usa ou
 planeja usar (ligação pela Twilio, mensagens pela API oficial da Meta). Cada um é decidido à parte.
 
+
+## 30. Escala encerrada vira concluída sozinha
+
+**Decisão (responsável, 27/09):** escala `confirmada` ou `em_execucao` passa a `concluida` 5 minutos
+depois do término previsto (início + jornada + intervalo). Parâmetro `conclusao_automatica_min`.
+**Por quê:** escala confirmada ficava "confirmada" para sempre e contaminava os indicadores.
+**Como:** fase 7 do motor (`fn_concluir_escalas`), registrada na linha do tempo com o ator
+`conclusao_automatica` (migration 45). Escala que ninguém confirmou não é tocada.
+
+## 31. Recusa libera o horário
+
+**Decisão (responsável, 27/09):** escala `recusada` não ocupa mais o horário do técnico. Fecha o
+ponto em aberto da decisão 9.
+**Como:** o índice único parcial ignora `cancelada` e `recusada`; o técnico que só tem escala
+recusada no dia volta para "Técnicos sem escala" e para o alerta das 18h (migrations 45 e 46).
+Reabrir uma recusada cujo horário já foi ocupado é recusado com mensagem.
+
+## 32. Documentos disciplinares, CNH e CPF
+
+**Decisão (responsável, 27/09), para as etapas 20 e 21:**
+- Suspensão e advertência: só administradores veem; guardadas por 3 anos.
+- CNH continua como categoria de documento.
+- O cadastro do técnico passa a ter CPF, usado para identificar o técnico nos documentos.
+**Consequência:** CPF e registros disciplinares são dados pessoais sensíveis para a LGPD; entram
+com acesso restrito por papel e prazo de retenção, e o aviso de privacidade aos técnicos passa a
+ser pré-requisito das etapas 20 e 21.
+
+## 33. WhatsApp continua pela Evolution
+
+**Decisão (responsável, 27/09):** o custo por uso da API oficial da Meta não foi aceito; a Evolution
+continua. A etapa 22 sai do plano.
+**Risco aceito:** a Evolution usa o WhatsApp de forma não oficial; o número pode ser bloqueado.
+**Mitigação:** monitor externo (decisão 34), avisos técnicos, e o plano manual de contingência em
+`docs/operacao.md`.
+
+## 34. Avisos técnicos por dois caminhos
+
+**Decisão (27/09):** falhas técnicas avisam o responsável por dois caminhos independentes:
+1. **WhatsApp, pela Evolution:** motor parado, motor normalizado e banco perto do limite vão aos
+   supervisores e aos telefones de `alerta_tecnico_telefones` (David Cerqueira).
+2. **Monitor externo gratuito (healthchecks.io), por e-mail e Telegram:** o motor manda um sinal a
+   cada minuto; sem sinal (motor parado, Supabase fora ou pausado) ou com sinal de falha (Evolution
+   recusando envios), o monitor avisa.
+**Por quê os dois:** quando a própria Evolution ou o Supabase caem, o WhatsApp não tem como avisar.
+O aviso por WhatsApp no healthchecks.io é pago (decisão 29), por isso e-mail e Telegram.

@@ -1,0 +1,100 @@
+# CI de todo pull request: nada é aplicado em projeto real e nenhum segredo é usado.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SUPABASE_CLI: 2.118.0
+
+jobs:
+  painel:
+    name: Painel (tipos e build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run build
+
+  auditoria:
+    name: Dependências do painel (npm audit)
+    runs-on: ubuntu-latest
+    # informativa até a troca do xlsx (etapa 13); depois, passa a bloquear
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm audit --omit=dev --audit-level=high
+
+  funcoes:
+    name: Edge Functions (deno check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno check supabase/functions/*/index.ts
+
+  banco:
+    name: Banco (migrations do zero + plpgsql_check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: ${{ env.SUPABASE_CLI }}
+      - name: Banco vazio com todas as migrations e o seed
+        run: supabase db start
+      - name: plpgsql_check em todas as funções (exige zero erros)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -q <<'SQL'
+          create extension if not exists plpgsql_check;
+          do $$
+          declare r text := ''; n int := 0; f record; x record;
+          begin
+            for f in select p.oid, p.proname, p.prorettype = 'trigger'::regtype as trig
+                     from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+                     join pg_language l on l.oid = p.prolang
+                     where ns.nspname = 'public' and l.lanname = 'plpgsql' loop
+              for x in select * from plpgsql_check_function_tb(f.oid,
+                         relid => case when f.trig then coalesce((select tgrelid from pg_trigger where tgfoid = f.oid limit 1), 0) else 0 end)
+                       where level = 'error' loop
+                n := n + 1; r := r || f.proname || ': ' || x.message || E'\n';
+              end loop;
+            end loop;
+            if n > 0 then raise exception E'plpgsql_check: % erro(s)\n%', n, r; end if;
+            raise notice 'plpgsql_check: zero erros';
+          end $$;
+          SQL
+      - name: Toda função app_* começa exigindo papel (regra do CLAUDE.md)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          faltando=$(psql "postgresql://postgres@127.0.0.1:54322/postgres" -At -c "
+            select string_agg(p.proname, ', ') from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+            where n.nspname = 'public' and p.proname like 'app\_%' and p.proname not in ('app_exigir', 'app_email', 'app_meu_acesso', 'app_pode_gerir_documentos')  -- auxiliares de acesso
+              and (not p.prosecdef or pg_get_functiondef(p.oid) not ilike '%app_exigir%')")
+          if [ -n "$faltando" ]; then echo "Funções app_* sem app_exigir ou sem security definer: $faltando"; exit 1; fi
+          echo "ok"
