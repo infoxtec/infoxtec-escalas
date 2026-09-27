@@ -2,6 +2,10 @@
 
 Gestão de escalas da equipe técnica de campo, com envio e confirmação pelo WhatsApp.
 
+O produto se chama **Trilha** — *toda jornada deixa uma trilha*. Este repositório é o módulo de
+escalas e documentos, que é a base dele; a visão comercial (módulos, pacotes e preço) está no
+[Plano comercial](docs/plano-comercial.md) e a marca na [Marca](docs/marca.md).
+
 O gestor cadastra a escala no painel, para um ou vários técnicos. Em até um minuto o técnico
 recebe no WhatsApp a escala completa — data, horário com término pela jornada CLT, local,
 endereço, mapa e tarefa — com dois botões, "Ciente, confirmado" e "Tenho um problema", e a
@@ -15,7 +19,7 @@ são lembrados da escala do dia seguinte, com prazo às 18h.
 |---|---|
 | [**Manual de uso**](docs/manual.md) | **Tela a tela: o que cada botão faz e o que o técnico recebe** |
 | [Plano comercial](docs/plano-comercial.md) | O que é vendido, para quem, a que preço, o que ainda não existe e o que bloqueia a venda |
-| [Marca](docs/marca.md) | Nome, posicionamento, tom de voz e o que a marca não pode prometer |
+| [Marca](docs/marca.md) | Trilha: nome, narrativa, posicionamento, identidade e o que a marca não promete |
 | [Arquitetura](docs/arquitetura.md) | Como as peças se encaixam e por que o banco é o centro |
 | [Banco de dados](docs/banco-de-dados.md) | Tabelas, views, funções, gatilhos e parâmetros |
 | [Operação](docs/operacao.md) | Diagnóstico do dia a dia: o que consultar quando algo falha |

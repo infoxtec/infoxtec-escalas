@@ -1,7 +1,11 @@
-# Plano comercial — v1
+# Plano comercial — Trilha (v1)
 
 Escrito em 27/09/2026 pela persona **Comercial** (Diretor Comercial e Branding), com os dados que o
 CTO e o PO já produziram no repositório. Substitui qualquer material de venda anterior.
+
+**Produto:** Trilha · *Toda jornada deixa uma trilha.* — nome, narrativa e identidade em
+[`docs/marca.md`](marca.md).
+**Empresa:** Infoxtec Tecnologia e Serviços Ltda — CNPJ 04.309.223/0001-96, EPP, lucro presumido.
 
 **Como ler este documento**
 
@@ -18,6 +22,26 @@ CTO e o PO já produziram no repositório. Substitui qualquer material de venda 
   2. o **parecer do CTO** sobre multi-empresa (seção 5) e sobre o modelo de acesso por módulo (§15.3);
   3. o **preço final e a política de desconto**, que são do responsável (seção 14);
   4. a **decisão sobre o ponto** (§15.2), que é regulatória antes de ser técnica.
+
+---
+
+## Quem vende
+
+**Infoxtec Tecnologia e Serviços Ltda** — CNPJ **04.309.223/0001-96**, empresa de pequeno porte
+(EPP), tributada pelo **lucro presumido**. O produto se chama **Trilha** (`docs/marca.md`).
+
+Três consequências que valem para proposta, contrato e preço:
+
+1. **O preço tem tributo dentro.** No lucro presumido, serviço carrega IRPJ e CSLL sobre base
+   presumida de 32%, PIS/COFINS no regime cumulativo e ISS municipal — da ordem de **13% a 16% da
+   receita**, antes de qualquer custo. O piso da seção 7 passa a incluir isso; **confirmar alíquotas
+   e o enquadramento do software (ISS ou ICMS) com a contabilidade**.
+2. **EPP é vantagem em licitação.** Empresa de pequeno porte tem tratamento diferenciado em compras
+   públicas. Se o cliente atende contrato público — comum em RH/BPF de serviços, facilities e
+   construção — isso entra na conversa como diferencial, não como detalhe.
+3. **Identificação do operador.** Razão social e CNPJ entram no contrato e no anexo de tratamento de
+   dados (LGPD), porque a Infoxtec é quem **opera** os dados pessoais do cliente controlador. É o
+   primeiro item do G3.
 
 ---
 
@@ -165,6 +189,18 @@ O que eu consigo afirmar com os números do próprio projeto:
 | Painel | Vercel Hobby **não pode**; Cloudflare Pages gratuito pode | decisão 6 / etapa 17 |
 | Backup | GitHub Actions, gratuito, 30 dias | `docs/operacao.md` |
 | VPS da Evolution | valor **não está no repositório** — pendência a levantar | — |
+| **Tributos sobre a receita** | **~13% a 16% do preço** — IRPJ 4,8% + CSLL 2,88% (base presumida de 32%), PIS/COFINS 3,65% (cumulativo) e ISS de 2% a 5% | regime informado pelo responsável; **confirmar com a contabilidade** |
+
+**O tributo entra no piso, não no lucro.** Como a alíquota incide sobre o **preço** e não sobre o
+custo, a conta correta é:
+
+```
+preço mínimo  ≥  custo direto por cliente  ÷  (1 − alíquota de tributos)
+```
+
+Com 15% de tributo, cada R$ 100 de custo direto exigem **R$ 117,65** de preço só para empatar — antes
+de margem, suporte e implantação. Ignorar isso é o erro que faz um SaaS parecer rentável na planilha
+e não fechar o mês no caixa.
 
 **A conclusão que orienta o preço:** o custo variável por técnico é da ordem de **R$ 1,50 a R$ 2,00
 por mês** (mensagem + uma ligação eventual). Isso é quase nada. **A conta não fecha nem deixa de
@@ -360,8 +396,8 @@ que eu **não li** (seção 16). A reconciliação é o primeiro passo do PO ao 
 13. **Retenção por tipo de documento:** confirmar com o RH/jurídico os prazos reais — o ASO pode
     exigir 20 anos, e não os 5 configurados hoje — e autorizar a mudança do parâmetro único para
     regra por tipo (§15.5).
-14. **Nome do produto**, agora que o escopo mudou: Farol, Trilha, Vínculo ou Baliza
-    (`docs/marca.md`, §10).
+14. **Nome do produto** — **decidido em 27/09: Trilha** (`docs/marca.md`). Falta a verificação de
+    INPI e de domínio, que é o que ainda pode derrubar o nome.
 
 ---
 
@@ -479,9 +515,9 @@ técnico ativo (seção 6). Sem isso, "modular" vira promessa de folheto.
 
 ### 15.8 Impacto no nome
 
-Com o produto cobrindo ponto, documentos, escala e projetos, o nome precisa falar de **registro da
-jornada**, não só de orientação. "Farol" continua defensável (é arbitrário e cobre "orientar a
-operação"), mas o centro de gravidade mudou. **Duas opções novas em `docs/marca.md`, §10.**
+O escopo ampliado mudou o brief, e o responsável decidiu: o produto se chama **Trilha** — a trilha da
+pessoa (documento → escala → ponto → obra) e a trilha de auditoria (a prova de cada passo).
+Assinatura, mote e narrativa em `docs/marca.md`.
 
 ---
 
@@ -517,3 +553,8 @@ portaria que regulamenta o art. 74 da CLT
    sem estimativa.
 8. **A NR-7 e os 20 anos de guarda do ASO** precisam de confirmação do RH/jurídico antes de virarem
    regra no banco — está como pergunta, não como fato.
+9. **Alíquotas de tributo (seção 7)** são estimativa de lucro presumido para serviços, informadas a
+   partir do regime da empresa. O enquadramento do software (ISS ou ICMS) e as alíquotas efetivas do
+   município **não foram confirmados** — dependem da contabilidade.
+10. **A marca Trilha não passou por INPI nem por registro de domínio.** O DNS de `trilha.com.br`
+    resolve, o que indica que o endereço está ocupado (`docs/marca.md`, §7).

@@ -1,229 +1,186 @@
 # Marca
 
-Escrito em 27/09/2026 pela persona **Comercial**. **v3** — depois da v2 (nome e mote) e da revisão de
-escopo: o produto deixou de ser só escala e passou a cobrir a **jornada do recurso** (ponto,
-documentos, escalas e projetos, com RH, Operações e gestor na mesma base). Ver §10.
+Escrito em 27/09/2026 pela persona **Comercial**. **v4 — nome decidido pelo responsável: Trilha.**
+
+O produto se chama **Trilha**. Desenvolvido e operado por **Infoxtec Tecnologia e Serviços Ltda** —
+CNPJ 04.309.223/0001-96, empresa de pequeno porte (EPP), tributada pelo lucro presumido.
 
 ---
 
-## 1. O que mudou e por que a v1 estava errada
+## 1. O nome, e o que vem com ele
 
-| | v1 | v2 |
+> # Trilha
+>
+> ### Toda jornada deixa uma trilha.
+>
+> **Do documento à obra, tudo registrado.**
+>
+> *Escalas, ponto, documentos e projetos das equipes de campo, na mesma base.*
+
+Três camadas, para três usos diferentes:
+
+| Camada | Texto | Onde é usada |
 |---|---|---|
-| Nome | Ciente | **Farol** |
-| Mote | "a prova de que o time foi avisado" | **"Ninguém fica no escuro."** |
+| **Assinatura** | *Toda jornada deixa uma trilha.* | marca, site, abertura de proposta |
+| **Mote** | *Do documento à obra, tudo registrado.* | proposta, apresentação comercial |
+| **Descritor** | *Escalas, ponto, documentos e projetos das equipes de campo, na mesma base.* | quem precisa saber o que é em uma linha |
 
-**Por que "Ciente" era fraco** — e o erro foi meu:
+**Módulos:** *Trilha Escala* · *Trilha Ponto* · *Trilha Documentos* · *Trilha Projetos*.
 
-1. **É semi-descritivo.** Descreve a ação que o produto executa (o técnico responde "ciente"), o que
-   coloca a marca na categoria mais difícil de proteger e mais fácil de confundir. Direito de marca
-   protege o que tem **caráter distintivo** ([WIPO](https://www.wipo.int/documents/d/business/docs-es-el-secreto-esta-en-la-marca-cl-es.pdf));
-   nomes de fantasia e arbitrários são a categoria mais forte, descritivos a mais fraca
-   ([fanciful mark](https://www.legalzoom.com/business-glossary/fanciful-mark)).
-2. **Não é marca, é funcionalidade.** Qualquer concorrente pode dizer "o técnico fica ciente".
-3. **Não moderniza nada.** Nome comum do domínio, sem espaço para identidade visual ou para virar
-   símbolo.
+## 2. Por que Trilha (o motor semântico)
 
-O caso que resume o argumento: a **KeepTruckin** trocou de nome para **Motive** justamente para deixar
-de ser lida como "app de caminhão" e passar a valer para toda operação de campo
-([FreightWaves](https://www.freightwaves.com/news/keeptruckin-rebrands-as-motive-to-broaden-reach),
-[SiliconANGLE](https://siliconangle.com/2022/04/12/keeptruckin-rebrands-motive-shifts-focus-automated-operations/),
-[gomotive.com](https://gomotive.com/blog/meet-motive/)). Nome que descreve uma função **limita o
-mercado e envelhece**.
+A palavra tem **dois sentidos**, e o produto é os dois ao mesmo tempo:
 
----
+1. **A trilha da pessoa** — o caminho percorrido: o documento que a habilita, a escala que ela
+   recebe, o ponto que registra, a obra que entrega.
+2. **A trilha de auditoria** — a prova de cada passo: quem foi avisado, quando, se leu, com que
+   documento, por quantas horas.
 
-## 2. Critérios usados (objetivos, nesta ordem)
+Um nome só, dois serviços: **organiza a operação e sustenta a conformidade**. Nenhum concorrente
+consegue dizer isso com a mesma palavra, porque nenhum deles guarda o caminho inteiro — eles guardam
+um pedaço (o aplicativo de ponto, a pasta de documentos, a planilha de escala, o projeto).
 
-1. **Distintividade jurídica** — de fantasia ou arbitrário, nunca descritivo. É o que dá proteção e
-   evita confusão ([WIPO](https://www.wipo.int/documents/d/business/docs-es-el-secreto-esta-en-la-marca-cl-es.pdf)).
-2. **Memorabilidade e sonoridade** — os sons do nome influenciam a impressão que o comprador forma
-   antes de qualquer explicação ([estudo de *sound symbolism*, Oxford](https://ora.ox.ac.uk/objects/uuid:39ccf1b1-1b79-497f-944c-a7e3f815ecbc/files/rpn89d721s)).
-   Nomes curtos, com vogal aberta e terminação em vogal são mais lembrados e mais fáceis ao telefone.
-3. **Funciona nos dois segmentos** — empresa de RH/BPO de serviços e construtora.
-4. **Não amarra ao canal** — WhatsApp é caminho, não produto. Nada de "Zap" no nome.
-5. **Não sugere vigilância nem ponto eletrônico** — o produto acompanha **comunicação**, não
-   jornada. Isso elimina nomes do campo de "radar", "vigia" e "monitor" (ver §6).
-6. **Domínio `.com.br` e INPI viáveis**, classes prováveis 42 (software) e 35 (gestão).
+E é marca **arbitrária** no domínio de software (a terceira categoria mais forte de proteção): uma
+trilha não descreve um sistema de gestão, ela o evoca.
 
-**O que o padrão das marcas de software bem-sucedidas mostra:** nomes **evocativos ou arbitrários**,
-curtos, dois sons, terminando em vogal — Nubank, Stone, Cora, Omie, Vindi, Pipefy no Brasil;
-Samsara, Motive, ServiceTitan, Jobber em operação de campo no mundo. Os descritivos que venceram
-(Conta Azul, RD Station) chegaram lá com muito investimento em marketing e carregam marca
-juridicamente mais fraca — não é o caminho de quem está entrando.
+## 3. A narrativa
 
----
+> **A ideia em uma frase:** toda equipe de campo deixa uma trilha. Na maioria das empresas, essa
+> trilha se perde entre o WhatsApp, a planilha, a pasta de papel e a ligação que ninguém anotou.
+> **O Trilha guarda a trilha.**
 
-## 3. Candidatos avaliados
+O roteiro abaixo é o que o vendedor conta — e cada cena é verificável no produto ou declaradamente
+fora dele.
+
+**Cena 1 — a manhã sem resposta.** São 6h e o supervisor liga para 22 pessoas para saber quem vai ao
+posto. Duas não atendem. Às 8h, uma não apareceu, e não existe registro de que ela tenha sido
+avisada. *O que o Trilha faz hoje:* envia a escala pelo WhatsApp com confirmação, reenvia a cada 30
+minutos até três vezes e avisa o supervisor quando ninguém responde.
+
+**Cena 2 — a pergunta sem resposta.** Três meses depois alguém pergunta: "o trabalhador foi
+avisado?"; "o ASO dele estava válido naquele dia?"; "quantas horas ele cumpriu naquela semana?"; "que
+serviço foi entregue naquela frente?". A resposta existe — espalhada em quatro lugares que não
+conversam. *O que o Trilha faz hoje:* guarda envio, entrega, leitura e resposta; avisa o vencimento
+de NR, CNH e ASO antes de acontecer; e mantém o histórico por escala.
+
+**Cena 3 — a virada.** O Trilha **não inventa um processo novo: registra o que já acontece.** A
+mensagem que o técnico já recebe passa a valer como prova. O documento que já está na pasta passa a
+avisar antes de vencer. A jornada que já é combinada passa a ser apurável. A atividade que já é
+executada passa a ser projeto. Nada é pedido duas vezes a ninguém.
+
+**Cena 4 — a trilha inteira.** Do documento que habilita à obra que conclui. Quem foi avisado, quando
+e se leu. Quem está com documento vencendo. Quem estará onde amanhã. Quem cumpriu que jornada. Cada
+área no seu módulo, sobre os mesmos dados.
+
+### A mesma trilha, quatro olhares
+
+O mesmo registro, recortado por quem olha — é assim que o produto se conta para cada área:
+
+| Quem | O trecho da trilha que é dele |
+|---|---|
+| **RH** | o documento e a habilitação: quem está apto, o que vence, o que já venceu, o que a auditoria vai pedir |
+| **Operações** | o dia: quem foi escalado, quem confirmou, quem faltou, onde está cada equipe |
+| **Gestor imediato** | a própria equipe: pendências de resposta, documentos do time, o que trava amanhã |
+| **Trabalhador** | o próprio caminho: onde tem que estar, quando, e o comprovante de que foi avisado |
+
+### O que a narrativa **não** diz
+
+Nada de "controle total", "fim do no-show" ou "conformidade garantida". **A trilha não impede o
+problema; ela faz com que o problema não vire surpresa nem disputa.** Essa é a promessa honesta — e é
+mais vendável que a outra, porque é a única que se sustenta no segundo mês.
+
+## 4. O que mudou até aqui
+
+| | Nome | Mote | Situação |
+|---|---|---|---|
+| v1 | Ciente | "a prova de que o time foi avisado" | recusado pelo responsável |
+| v2 | Farol | "Ninguém fica no escuro." | recusado: o escopo mudou |
+| v4 | **Trilha** | **"Do documento à obra, tudo registrado."** | **decidido em 27/09** |
+
+**Por que "Ciente" era fraco** — e o erro foi meu: é **semidescritivo**, descreve a ação que o
+produto executa, o que o coloca na categoria mais fraca de proteção de marca ([WIPO](https://www.wipo.int/documents/d/business/docs-es-el-secreto-esta-en-la-marca-cl-es.pdf);
+[fanciful mark](https://www.legalzoom.com/business-glossary/fanciful-mark)), e não é marca — é
+funcionalidade. O caso que resume o argumento: a **KeepTruckin** virou [Motive](https://gomotive.com/blog/meet-motive/)
+para deixar de ser lida como "app de caminhão" ([FreightWaves](https://www.freightwaves.com/news/keeptruckin-rebrands-as-motive-to-broaden-reach)).
+
+**Por que "Farol" foi abandonado:** era a marca certa para o produto de v1 — **orientar e avisar**.
+Com o escopo ampliado para ponto, documentos e projetos, o centro de gravidade passou a ser
+**registrar a jornada**. Farol falava de visibilidade; Trilha fala de registro. Permanece como
+alternativa, se o INPI travar (§7).
+
+## 5. Critérios usados (objetivos, nesta ordem)
+
+1. **Distintividade jurídica** — de fantasia ou arbitrário, nunca descritivo ([WIPO](https://www.wipo.int/documents/d/business/docs-es-el-secreto-esta-en-la-marca-cl-es.pdf)).
+2. **Memorabilidade e sonoridade** — os sons do nome moldam a impressão antes de qualquer explicação
+   ([estudo de *sound symbolism*, Oxford](https://ora.ox.ac.uk/objects/uuid:39ccf1b1-1b79-497f-944c-a7e3f815ecbc/files/rpn89d721s)).
+   Trilha: duas sílabas, vogal aberta, termina em vogal, sem ambiguidade ao telefone.
+3. **Funciona nos dois segmentos** — RH/BPO de serviços e construção.
+4. **Não amarra ao canal** — WhatsApp é caminho, não produto.
+5. **Não sugere vigilância nem ponto eletrônico** — a trilha é do **trabalhador**, não sobre ele.
+   Essa distinção é obrigatória no material, e é o que separa o Trilha de um sistema de monitoramento.
+6. **Domínio `.com.br` e INPI viáveis** (classes prováveis 42, 35 e 9).
+
+## 6. Candidatos avaliados
 
 DNS é **indício fraco**, não prova: só diz se há algo publicado no endereço. Registro, INPI e
 conflito de marca **não foram verificados** (§7).
 
 | Candidato | Tipo | Força da marca | DNS `.com.br` | Veredito |
 |---|---|---|---|---|
-| **Farol** | Arbitrário (farol para software de escala) | Alta — distintivo, memorável, 2 sílabas, vogal final | `farol.com.br` não resolve | **Escolhido** |
-| **Baliza** | Arbitrário (balizar = orientar, marcar o ponto) | Alta — mais distintivo, menos usado; 3 sílabas | `baliza.com.br` não resolve | **Plano B** |
-| **Trilha** | Evocativo (caminho percorrido + trilha de auditoria) | Alta — cobre os quatro módulos com a mesma palavra | `trilha.com.br` resolve | **Opção nova (§10)** |
-| **Vínculo** | Arbitrário no software; jargão do RH (relação de emprego) | Alta — fala a língua do comprador | `vinculo.com.br` não resolve | **Opção nova (§10)** |
-| Radar | Arbitrário, mas de campo semântico de vigilância | Média — moderno, porém sugere monitoramento do trabalhador | não resolve | Descartado (§6) |
-| Pulso | Evocativo (tempo real) | Média — bonito, pouco específico para este problema | não resolve | Descartado |
-| Prumo | Arbitrário (precisão; DNA de obra) | Boa, porém soa ferramenta de construção, não software | `prumo.com.br` resolve | Descartado |
-| Firmo | Cunhado ("eu firmo") | Boa — compromisso + firmeza | `firmo.com.br` e `firmo.app` resolvem | Descartado |
-| Ciente | Semidescritivo | Fraca | `ciente.com.br` não resolve | Descartado (§1) |
+| **Trilha** | Evocativo (caminho percorrido + trilha de auditoria) | Alta — cobre os quatro módulos com uma palavra | resolve (há algo publicado) | **Escolhido** |
+| Farol | Arbitrário (orientação, aviso) | Alta | não resolve | Alternativa |
+| Vínculo | Arbitrário no software; jargão do RH | Alta — fala a língua do RH | não resolve | Alternativa |
+| Baliza | Arbitrário (balizar = orientar, marcar o ponto) | Alta | não resolve | Alternativa |
+| Ciente | Semidescritivo | Fraca | não resolve | Descartado (§4) |
+| Radar, Vigia, Monitor, Central | Campo semântico de **vigilância** | Média — aproxima o produto do que ele não é | — | Descartados por princípio |
+| Pulso, Prumo, Firmo | Evocativo / arbitrário | Média a boa | `prumo.com.br` e `firmo.com.br` resolvem | Descartados |
 
----
+## 7. Verificações obrigatórias antes de registrar
 
-## 4. Recomendação
+**Nada abaixo foi feito.** É o roteiro, não o resultado:
 
-> # Farol
->
-> ### Ninguém fica no escuro.
->
-> *Confirmação de escala e conformidade de equipes de campo, pelo WhatsApp.*
+1. **INPI — busca de anterioridade** nas classes 42 (software), 35 (gestão) e 9, além das classes de
+   serviços de RH, segurança do trabalho, construção e **ponto eletrônico** — este último é o
+   confronto mais provável, porque "trilha" pode aparecer em marca de controle de jornada.
+2. **Registro do domínio** `trilha.com.br` no Registro.br (o DNS já resolve, então provavelmente está
+   ocupado — verificar se está à venda ou se `trilha.com`, `trilha.app` ou `usetrilha.com.br` servem)
+   e do `.com`.
+3. **Conflito de marca** em software de gestão de campo, SST, ponto e sinalização.
+4. **Redes sociais** e resultado de busca.
+5. **Decisão societária:** a marca fica no CNPJ da Infoxtec Tecnologia e Serviços Ltda ou em empresa
+   separada, caso haja intenção de revenda.
 
-**Módulos:** *Farol Escala* · *Farol Conformidade* · *Farol Voz*.
+Alternativas já avaliadas, em ordem, se o INPI travar: **Farol**, **Vínculo**, **Baliza**.
 
-### Por que "Farol"
+## 8. Os três eixos, ditos com verdade
 
-- **Distintividade alta:** um farol para um sistema de escalas é marca **arbitrária** — a segunda
-  categoria mais forte de proteção.
-- **O significado é o produto:** o farol **orienta** quem está em campo e **avisa** quem coordena.
-  Ninguém fica sem saber para onde ir nem quem vai chegar.
-- **Coerência com o que já existe:** o painel já usa **semáforo** de status por escala. Farol e
-  semáforo são a mesma família de sinal luminoso — a marca nasce alinhada ao produto, sem forçar
-  metáfora.
-- **Sonoridade:** duas sílabas, vogal aberta, termina em vogal, sem ambiguidade ao telefone.
-- **Atravessa os dois segmentos:** serve para posto de serviço e para canteiro de obra.
-- **Não é vigilância:** farol ilumina e orienta; não fiscaliza pessoa.
-
-### Por que esse mote
-
-"Ninguém fica no escuro" é expressão corrente no Brasil para *não ficar sem informação*. Diz, em
-quatro palavras, o que o produto faz pelos dois lados: o técnico sabe onde tem que estar, o gestor
-sabe quem confirmou. É curto, humano, sem superlativo e sem promessa que o produto não cumpra.
-
-Alternativas, se o responsável preferir outro tom: **"Quem avisa, chega."** (mais provocador) e
-**"Toda equipe na direção certa."** (mais institucional).
-
----
-
-## 5. Os três eixos, ditos com verdade
-
-O responsável pediu uma marca de **inovação, segurança e eficiência**. Nenhum nome entrega isso —
-o que entrega é a prova. Cada eixo ganha uma frase verificável no produto:
+O responsável pediu uma marca de **inovação, segurança e eficiência**. Nenhum nome entrega isso — o
+que entrega é a prova. Cada eixo ganha uma frase verificável no produto:
 
 | Eixo | O que dizemos | Por que é verdade |
 |---|---|---|
 | **Inovação** | "O trabalhador não instala nada, não cria login e não faz treinamento: a confirmação acontece no WhatsApp que ele já usa." | A mensagem, os botões e a resposta 1/2 chegam e voltam pelo WhatsApp; não existe app do técnico |
 | **Segurança** | "Fica registrado quem foi avisado, quando, e se leu." | Cada notificação guarda horário de envio, entrega, leitura e a resposta do técnico |
-| **Eficiência** | "Quem não respondeu deixa de ser ligação e vira alerta ao supervisor em minutos." | Reenvio a cada 30 minutos, até 3 vezes, e escalonamento ao supervisor; alerta das 16h e prazo das 18h |
+| **Eficiência** | "Quem não respondeu deixa de ser ligação e vira alerta ao supervisor em minutos." | Reenvio a cada 30 minutos, até 3 vezes, e escalonamento; alertas das 16h e das 18h |
 
-É essa tabela — não o nome — que sustenta "inovação, segurança e eficiência" numa proposta.
+## 9. Identidade e aplicação
 
----
-
-## 6. Por que "Radar" foi descartado
-
-O produto registra **comunicação**, não jornada. Um nome do campo de vigilância aproxima a marca
-justamente do que o backlog 4 alerta ser risco trabalhista — bloquear ou vigiar ponto cria passivo.
-Para um comprador de RH, "radar" soa como monitoramento de pessoa; "farol" soa como orientação. A
-diferença é pequena na palavra e grande no contrato.
-
-Pelo mesmo motivo ficam fora: "Vigia", "Monitor", "Central", "Ponto Certo" e qualquer nome que
-flerte com ponto eletrônico.
-
----
-
-## 7. Identidade e aplicação
-
-- **Símbolo:** um feixe de luz, não um desenho de farol — o símbolo é o **sinal**, não o objeto.
-  Funciona em ícone pequeno e em favicon.
-- **Cor:** azul-petróleo (confiança, noite, operação) com um amarelo-âmbar só para o sinal/estado
-  (é a mesma lógica do semáforo que o painel já usa).
+- **Símbolo:** uma **trilha com marcos** — pontos ligados por um caminho. Não é pégada, não é mapa,
+  não é olho: é caminho registrado. Funciona em ícone pequeno e em favicon.
+- **Cor:** azul-petróleo (operação, confiança) com um **âmbar** reservado ao marco/estado — a mesma
+  lógica do semáforo de status que o painel já usa.
 - **Tipografia:** sem serifa, com número tabular nos horários — o produto é feito de horários.
 - **Onde aparece:** painel (cabeçalho e login), proposta, contrato, dossiê de conformidade e
   assinatura da mensagem.
 - **No WhatsApp, cuidado:** a mensagem chega ao trabalhador do cliente. A assinatura deve ser do
   **cliente contratante**, não do fornecedor — o técnico precisa saber quem o está convocando.
-- **Relação com a Infoxtec:** recomendação de manter **"Farol, by Infoxtec"** por enquanto (a marca
-  existente dá confiança a quem assina contrato) e migrar para marca própria **se** os RH virarem
-  canal/revenda (seção 14, item 8 do plano comercial).
+- **Relação com a Infoxtec:** por ora **"Trilha, by Infoxtec"** — a marca existente dá confiança a
+  quem assina contrato. Migrar para marca própria **se** os RH virarem canal/revenda (seção 14,
+  item 8 do plano comercial).
 
----
+## 10. O que a marca não promete
 
-## 8. Verificações obrigatórias antes de registrar
+Ficam fora do nome, da assinatura e do material: "ponto", "checklist", "laudo", "IA", "completo",
+"certificado", "oficial do WhatsApp", "monitoramento", "controle total".
 
-**Nada abaixo foi feito.** É o roteiro, não o resultado:
-
-1. **INPI — busca de anterioridade** nas classes 42 (software), 35 (gestão) e 9, além das classes de
-   serviços de RH, segurança do trabalho e construção. É o passo que pode derrubar o nome.
-2. **Registro do domínio** `farol.com.br` no Registro.br (o DNS não resolver **não** garante que
-   esteja livre) e do `.com`.
-3. **Conflito de marca** em: software de gestão de campo, SST, ponto eletrônico, sinalização e
-   segurança eletrônica. "Farol" é palavra comum — a checagem por classe é o que decide.
-4. **Redes sociais** e resultado de busca, para não nascer disputando nome.
-5. **Decisão societária:** a marca fica no CNPJ da Infoxtec ou em empresa separada, caso haja
-   intenção de revenda.
-
-Alternativa em caso de travamento: **Baliza** (§3), com o mote **"Cada um no seu posto."**
-
----
-
-## 9. O que a marca não promete
-
-Ficam fora do nome e da assinatura as palavras que o produto não sustenta: "ponto", "checklist",
-"laudo", "IA", "completo", "certificado", "oficial do WhatsApp", "monitoramento".
-
-O Farol promete **orientar e avisar** — e é exatamente isso que ele faz.
-
----
-
-## 10. Briefing revisado: o produto mudou (v3)
-
-O produto deixou de ser escala e passou a cobrir a **jornada do recurso**: ponto, escala, documentos
-de liberação para obra e projetos, com RH, Operações e gestor imediato na mesma base. O nome tem que
-sustentar isso. Há duas leituras possíveis, e elas levam a nomes diferentes:
-
-- **Orientação** — o nome diz "você enxerga e é avisado". É o **Farol**: serve ao produto de hoje e
-  cresce com ele.
-- **Registro da jornada** — o nome diz "tudo fica registrado e comprovado". São as duas opções
-  abaixo, e servem ao produto que está sendo desenhado.
-
-### Trilha — *"Do documento à obra, tudo registrado."*
-
-- **O que significa:** a trilha é o caminho percorrido **e** a trilha de auditoria. Cobre os quatro
-  módulos com uma palavra só: a escala é o caminho do dia, o ponto é o registro da jornada, o
-  documento é a habilitação, o projeto é o destino.
-- **Força:** curta, PT-nativa, duas sílabas, termina em vogal; une "jornada" e "trilha de auditoria"
-  sem forçar metáfora — é literalmente o que o produto entrega e o que o RH precisa mostrar numa
-  auditoria.
-- **Risco:** `trilha.com.br` já resolve no DNS (há algo publicado) e "trilha" tem uso em aplicativo
-  de caminhada — a identidade precisa ancorar no contexto de trabalho.
-- **Mote alternativo:** "A jornada inteira, registrada."
-
-### Vínculo — *"A prova de tudo que foi combinado."*
-
-- **O que significa:** no vocabulário do RH, vínculo é a relação entre trabalhador e empresa. O
-  produto guarda **o vínculo e tudo que o comprova**: documentos, jornada, escala, ocorrências.
-- **Força:** fala a língua do comprador (as três metas são empresas de RH), é arbitrário no domínio
-  de software, e `vinculo.com.br` **não resolve** no DNS — o melhor indício da lista nova.
-- **Risco:** é jargão trabalhista; pode soar "sistema de RH" e afastar Operações e projetos, além de
-  ser confundido com folha de pagamento.
-
-### Como decidir (critério, não gosto)
-
-| Se a identidade do produto for… | Nome |
-|---|---|
-| A operação que enxerga e avisa | **Farol** |
-| A jornada do trabalhador registrada e comprovada | **Trilha** |
-| O vínculo empregatício e sua conformidade | **Vínculo** |
-| Alternativa se o INPI travar | **Baliza** |
-
-**Recomendação:** **Trilha**. O produto descrito é um registro de jornada com módulos, não um painel
-de visibilidade — e "trilha" é a única opção que cobre, com a mesma palavra, o caminho do dia e a
-trilha de auditoria que sustenta a conformidade. **Farol** continua sendo a escolha mais segura se a
-decisão for manter o foco comercial na cunha (confirmação de escala) e crescer depois: é o nome que
-vende 2026 sem depender de módulo que ainda não existe.
-
-Qualquer que seja o escolhido, a verificação de INPI (§8) continua obrigatória — e agora pesa mais,
-porque o nome precisa cobrir quatro módulos, não um.
+A Trilha promete **registrar o caminho** — e é exatamente isso que ela faz.
