@@ -24,6 +24,9 @@ são lembrados da escala do dia seguinte, com prazo às 18h.
 | [Banco de dados](docs/banco-de-dados.md) | Tabelas, views, funções, gatilhos e parâmetros |
 | [Operação](docs/operacao.md) | Diagnóstico do dia a dia: o que consultar quando algo falha |
 | [Segurança](docs/seguranca.md) | Login, papéis, segredos, LGPD e riscos conhecidos |
+| [Análise de segurança e LGPD](docs/analise-seguranca.md) | Os riscos abertos, o inventário de dados pessoais, os prazos e o que se pode afirmar |
+| [Análise de infraestrutura](docs/analise-infraestrutura.md) | Componentes, pontos únicos de falha, capacidade, backup e observabilidade |
+| [Análise do código](docs/analise-codigo.md) | Banco, painel e Edge Functions: estrutura, duplicação, defeitos e o que fazer primeiro |
 | [Decisões](docs/decisoes.md) | O que foi decidido, o que foi descartado e por quê |
 | [Backlog](docs/backlog.md) | Análise de viabilidade dos 16 itens planejados (o quadro vive na aba Roadmap) |
 | [Análise do backlog](docs/analise-backlog.md) | Revisão consolidada: o que está pronto sem estar marcado, duplicidades, bloqueios por decisão e a fila recomendada |
@@ -36,6 +39,40 @@ são lembrados da escala do dia seguinte, com prazo às 18h.
 | [Ambiente de desenvolvimento no Mac](docs/ambiente-dev-mac.md) | Máquina Linux e banco de homologação para rodar o painel localmente |
 | [Publicar no Vercel](docs/deploy-vercel.md) | Passo a passo do deploy e da liberação de usuários |
 | [Retool (legado)](docs/retool.md) | Painel antigo, a ser desligado |
+
+## Materiais por área
+
+Três áreas concentram as análises e as decisões. Cada documento responde a uma pergunta diferente.
+
+### Segurança e LGPD
+
+| Documento | Pergunta que responde |
+|---|---|
+| [Segurança](docs/seguranca.md) | Como o acesso é controlado hoje e quais riscos já são conhecidos |
+| [Análise de segurança e LGPD](docs/analise-seguranca.md) | O que ainda não está protegido, quais dados pessoais existem, por quanto tempo ficam, e o que a Segurança veta |
+| [Segurança e homologação](docs/seguranca-homologacao.md) | O que falta para vender com segurança e o que é honesto afirmar sobre certificação |
+
+### Código e infraestrutura
+
+| Documento | Pergunta que responde |
+|---|---|
+| [Análise de infraestrutura](docs/analise-infraestrutura.md) | Onde cada coisa roda, quanto custa, o que quebra primeiro, como se recupera e o que fica invisível |
+| [Análise do código](docs/analise-codigo.md) | Como o banco, o painel e as Edge Functions estão escritos: o que está morto, o que duplica e o que consertar primeiro |
+| [Análise da topologia](docs/analise-topologia.md) | Desempenho medido e estrutura do banco |
+| [Banco de dados](docs/banco-de-dados.md) · [Operação](docs/operacao.md) | Referência do modelo e diagnóstico do dia a dia |
+
+### Comercial
+
+| Documento | Pergunta que responde |
+|---|---|
+| [Plano comercial](docs/plano-comercial.md) | O que se vende, para quem, a que preço, o que ainda não existe e o que bloqueia a venda |
+| [Marca](docs/marca.md) | Trilha: nome, narrativa, posicionamento e o que a marca não promete |
+| [Análise do backlog](docs/analise-backlog.md) | O que existe, o que duplica, o que está bloqueado por decisão e a fila recomendada |
+| [Backlog](docs/backlog.md) | Análise de viabilidade item a item |
+
+**Ordem de leitura para quem chega agora:** plano comercial (o que se pretende) → análises de
+infraestrutura e de código (o que existe de fato) → análise de segurança (o que falta proteger) →
+[plano de trabalho](docs/plano-de-trabalho.md) (a ordem de execução).
 
 ## Stack
 
