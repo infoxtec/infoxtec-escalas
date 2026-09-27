@@ -280,3 +280,18 @@ continua. A etapa 22 sai do plano.
    recusando envios), o monitor avisa.
 **Por quê os dois:** quando a própria Evolution ou o Supabase caem, o WhatsApp não tem como avisar.
 O aviso por WhatsApp no healthchecks.io é pago (decisão 29), por isso e-mail e Telegram.
+
+## 35. Sessão do painel: inatividade medida no navegador, saída só local
+
+**Problema (27/09):** o painel "deslogava sozinho" 3 a 60 segundos depois do login. Os `auth_logs`
+mostraram que a saída era pedida pelo próprio navegador. Uma aba do painel esquecida em segundo
+plano media a própria inatividade, achava que tinham passado 30 minutos e chamava `signOut()`,
+cujo escopo padrão (`global`) encerra a sessão em todas as abas e aparelhos. Reproduzido num
+navegador com duas abas.
+**Decisão:**
+- A inatividade é medida no navegador inteiro: toda aba grava a última atividade em
+  `localStorage`, e nenhuma aba encerra a sessão enquanto houver uso em outra.
+- O login conta como atividade.
+- Toda saída do painel (por inatividade ou pelo botão Sair) usa `scope: 'local'`: encerra só
+  aquele navegador. Para derrubar a sessão em todos os aparelhos, um administrador redefine a
+  senha do usuário.

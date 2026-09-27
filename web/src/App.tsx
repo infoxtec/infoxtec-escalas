@@ -7,7 +7,7 @@ import { configurado, supabase, tipoDoLink } from './lib/supabase'
 
 // Definido só nos modos locais (npm run dev:homologacao / dev:producao); vazio no painel publicado
 const AMBIENTE_LOCAL = import.meta.env.VITE_AMBIENTE as 'homologacao' | 'producao' | undefined
-import { MINUTOS_INATIVIDADE, useInatividade, useVersaoPublicada } from './lib/sessao'
+import { MINUTOS_INATIVIDADE, registrarAtividade, useInatividade, useVersaoPublicada } from './lib/sessao'
 import { api, erroMsg } from './lib/api'
 import { PAPEL_LABEL } from './lib/types'
 import type { Acesso, Local, Tecnico, TipoAtividade } from './lib/types'
@@ -37,12 +37,14 @@ export default function App() {
   useInatividade(() => {
     if (!sessao) return
     sessionStorage.setItem('motivoSaida', 'inatividade')
-    void supabase.auth.signOut()
+    // local: encerra so neste navegador; 'global' derrubaria tambem o celular e outros computadores
+    void supabase.auth.signOut({ scope: 'local' })
   })
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSessao(data.session))
     const { data } = supabase.auth.onAuthStateChange((evento, s) => {
+      if (evento === 'SIGNED_IN') registrarAtividade()
       setSessao(s)
       if (evento === 'PASSWORD_RECOVERY') setDefinirSenha('recovery')
     })
@@ -64,7 +66,8 @@ function Painel({ email }: { email: string }) {
   const [locais, setLocais] = useState<Local[]>([])
   const [tipos, setTipos] = useState<TipoAtividade[]>([])
 
-  const sair = () => { void supabase.auth.signOut() }
+  // local: sai só deste navegador, sem derrubar o painel aberto no celular ou em outro computador
+  const sair = () => { void supabase.auth.signOut({ scope: 'local' }) }
 
   const recarregarCadastros = useCallback(async () => {
     try {
