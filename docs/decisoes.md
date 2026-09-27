@@ -302,6 +302,17 @@ navegador com duas abas.
 números, configurado nos dois projetos do Supabase. Substitui o mínimo de 12 da decisão 29. A
 consulta à base de senhas vazadas (Have I Been Pwned) continua no painel.
 
+## 38. Motivo da recusa por número e edição de escala
+
+**Decisão (27/09, backlog 064 e 065):** depois do "2", o técnico escolhe o motivo por número (1 a 5).
+O sistema só pergunta quando ele não tem outra escala aguardando resposta, para o número não ser
+lido como 1/2 de outra escala. Editar escala já enviada pede nova confirmação só quando muda data,
+hora ou local (responsável, 27/09); mudar a tarefa apenas avisa o técnico.
+**LGPD (migration 48):** o motivo "saúde" é dado sensível. É gravado como `saude` para uso
+restrito, mas aparece como "Motivo pessoal" no WhatsApp dos supervisores e no painel. Finalidade:
+entender recusas e planejar escalas; nunca critério de punição. Retenção: a mesma das escalas.
+Edições da mesma escala têm intervalo mínimo de 2 minutos, e escala de teste não avisa o técnico.
+
 ## 37. Biblioteca de planilhas guardada no repositório
 
 **Decisão (27/09):** a versão corrigida do `xlsx` (0.20.3) só é distribuída pelo site da SheetJS,

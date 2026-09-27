@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor,
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, IndicadoresResposta, EscalaEdicao,
 } from './types'
 
 function traduzir(msg: string): string {
@@ -19,6 +19,12 @@ async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
 export const api = {
   meuAcesso: () => rpc<Acesso>('app_meu_acesso'),
   estadoMotor: () => rpc<EstadoMotor>('app_estado_motor'),
+  indicadoresResposta: (dias = 30) => rpc<IndicadoresResposta>('app_indicadores_resposta', { p_dias: dias }),
+  escalaEdicao: (id: string) => rpc<EscalaEdicao>('app_escala_edicao', { p_escala: id }),
+  editarEscala: (p: { id: string; data_servico: string; hora_inicio: string; local_id: string; descricao_tarefa: string }) =>
+    rpc<{ alterada: boolean; nova_confirmacao?: boolean }>('app_editar_escala', { p }),
+  substituirTecnico: (escala: string, tecnico: string) =>
+    rpc<{ escala: string }>('app_substituir_tecnico', { p_escala: escala, p_tecnico: tecnico }),
 
   escalas: (inicio: string, fim: string) =>
     rpc<EscalaPainel[]>('app_escalas', { p_inicio: inicio, p_fim: fim }),

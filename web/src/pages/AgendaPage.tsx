@@ -216,7 +216,7 @@ export default function AgendaPage({ tecnicos, locais, tipos, podeEditar }: { te
 
       </>)}
 
-      <EscalaDrawer escala={selecionada} open={!!selecionada} onClose={() => setSelecionada(null)} onRefresh={() => void carregar()} podeEditar={podeEditar} />
+      <EscalaDrawer escala={selecionada} open={!!selecionada} onClose={() => setSelecionada(null)} onRefresh={() => void carregar()} podeEditar={podeEditar} tecnicos={tecnicos} locais={locais} />
     </div>
   )
 }

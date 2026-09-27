@@ -148,8 +148,8 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 
 ### Bloco 9: produto (análise global de 27/09, aprovado pelo responsável)
 
-- [ ] **24. Motivo de recusa estruturado e tempo de resposta** (backlog 064) (fase 0 de [agente-ia.md](agente-ia.md)). Base dos indicadores: sem ela, cada semana é dado perdido.
-- [ ] **25. Editar e reagendar escala** (backlog 065), com "substituir técnico" depois de uma recusa. Hoje é preciso cancelar e criar de novo.
+- [ ] **24. Motivo de recusa estruturado e tempo de resposta** (backlog 064). *Homologação: pronto em 27/09 (migration 47, painel 3.5, PR #12); falta a produção.* (fase 0 de [agente-ia.md](agente-ia.md)). Base dos indicadores: sem ela, cada semana é dado perdido.
+- [ ] **25. Editar e reagendar escala** (backlog 065). *Homologação: pronto em 27/09 (migration 47, painel 3.5, PR #12); falta a produção.*, com "substituir técnico" depois de uma recusa. Hoje é preciso cancelar e criar de novo.
 
 ## Registro
 
@@ -168,3 +168,4 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 | 27/09 | Backup diário e teste de restauração (etapa 18, PR #6) | Não se aplica | Primeiro backup e restauração conferidos |
 | 27/09 | Painel 3.4.2: senha 8 com letras e números (etapa 6) e xlsx 0.20.3 (etapa 13) | Testado (importação xlsx, xls e csv) | Publicado (PR #8) |
 | 27/09 | Retool desligado (etapa 16): senha do banco trocada, conexão apagada | Não se aplica | Conferido |
+| 27/09 | Migrations 47 e 48 + painel 3.5: motivo de recusa (064) e editar/substituir escala (065) | Aplicada e testada; plpgsql_check zero | Aguardando ordem |

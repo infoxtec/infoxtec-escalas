@@ -3,7 +3,7 @@ import { AlertTriangle, CheckCircle2, Clock, ExternalLink, MapPin, RefreshCw, XC
 import { Button, ErrorBox, Input } from '../components/ui'
 import { api, erroMsg } from '../lib/api'
 import { addDays, formatDate, hojeBahia, SEMAFORO_CLASSES, STATUS_LABEL } from '../lib/types'
-import type { EstadoMotor, PainelLocal, StatusEscala } from '../lib/types'
+import type { EstadoMotor, PainelLocal, StatusEscala, IndicadoresResposta } from '../lib/types'
 
 const STATUS_CLASSE: Record<string, string> = {
   confirmada: SEMAFORO_CLASSES.verde, em_execucao: SEMAFORO_CLASSES.verde, concluida: SEMAFORO_CLASSES.verde,
@@ -41,6 +41,30 @@ function QuadroMotor({ m }: { m: EstadoMotor }) {
   )
 }
 
+/** Backlog 064: recusas por motivo e tempo de resposta. */
+function QuadroRecusas({ d }: { d: IndicadoresResposta }) {
+  const total = d.recusas.reduce((a, r) => a + r.total, 0)
+  return (
+    <div className="rounded-lg border bg-card p-3 text-sm">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="font-medium">Respostas dos técnicos · últimos {d.dias} dias</p>
+        <p className="text-xs text-muted-foreground">
+          {d.respostas} respostas{d.mediana_resposta_min != null && ` · tempo de resposta típico: ${d.mediana_resposta_min} min`}
+        </p>
+      </div>
+      {total === 0 ? <p className="mt-1 text-xs text-muted-foreground">Nenhuma recusa no período.</p> : (
+        <ul className="mt-2 flex flex-wrap gap-2">
+          {d.recusas.map(r => (
+            <li key={r.motivo} className="rounded-full bg-muted px-2.5 py-0.5 text-xs">
+              {r.rotulo}: <strong>{r.total}</strong>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 /** Item 3: acompanhamento do dia agrupado por local. */
 export default function OperacaoPage() {
   const [data, setData] = useState(hojeBahia())
@@ -48,10 +72,12 @@ export default function OperacaoPage() {
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [motor, setMotor] = useState<EstadoMotor | null>(null)
+  const [indicadores, setIndicadores] = useState<IndicadoresResposta | null>(null)
 
   const carregar = useCallback(async () => {
     setCarregando(true); setErro(null)
     api.estadoMotor().then(setMotor).catch(() => setMotor(null))
+    api.indicadoresResposta(30).then(setIndicadores).catch(() => setIndicadores(null))
     try { setLocais(await api.painelLocais(data)) } catch (e) { setErro(erroMsg(e)) }
     finally { setCarregando(false) }
   }, [data])
@@ -81,6 +107,7 @@ export default function OperacaoPage() {
       </div>
 
       {motor && <QuadroMotor m={motor} />}
+      {indicadores && <QuadroRecusas d={indicadores} />}
 
       {erro && <ErrorBox>{erro}</ErrorBox>}
 
