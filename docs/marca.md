@@ -1,7 +1,8 @@
 # Marca
 
-Escrito em 27/09/2026 pela persona **Comercial**. **v2 — revisão do nome e do mote**, depois de a
-proposta anterior ("Ciente") ser recusada pelo responsável.
+Escrito em 27/09/2026 pela persona **Comercial**. **v3** — depois da v2 (nome e mote) e da revisão de
+escopo: o produto deixou de ser só escala e passou a cobrir a **jornada do recurso** (ponto,
+documentos, escalas e projetos, com RH, Operações e gestor na mesma base). Ver §10.
 
 ---
 
@@ -62,6 +63,8 @@ conflito de marca **não foram verificados** (§7).
 |---|---|---|---|---|
 | **Farol** | Arbitrário (farol para software de escala) | Alta — distintivo, memorável, 2 sílabas, vogal final | `farol.com.br` não resolve | **Escolhido** |
 | **Baliza** | Arbitrário (balizar = orientar, marcar o ponto) | Alta — mais distintivo, menos usado; 3 sílabas | `baliza.com.br` não resolve | **Plano B** |
+| **Trilha** | Evocativo (caminho percorrido + trilha de auditoria) | Alta — cobre os quatro módulos com a mesma palavra | `trilha.com.br` resolve | **Opção nova (§10)** |
+| **Vínculo** | Arbitrário no software; jargão do RH (relação de emprego) | Alta — fala a língua do comprador | `vinculo.com.br` não resolve | **Opção nova (§10)** |
 | Radar | Arbitrário, mas de campo semântico de vigilância | Média — moderno, porém sugere monitoramento do trabalhador | não resolve | Descartado (§6) |
 | Pulso | Evocativo (tempo real) | Média — bonito, pouco específico para este problema | não resolve | Descartado |
 | Prumo | Arbitrário (precisão; DNA de obra) | Boa, porém soa ferramenta de construção, não software | `prumo.com.br` resolve | Descartado |
@@ -172,3 +175,55 @@ Ficam fora do nome e da assinatura as palavras que o produto não sustenta: "pon
 "laudo", "IA", "completo", "certificado", "oficial do WhatsApp", "monitoramento".
 
 O Farol promete **orientar e avisar** — e é exatamente isso que ele faz.
+
+---
+
+## 10. Briefing revisado: o produto mudou (v3)
+
+O produto deixou de ser escala e passou a cobrir a **jornada do recurso**: ponto, escala, documentos
+de liberação para obra e projetos, com RH, Operações e gestor imediato na mesma base. O nome tem que
+sustentar isso. Há duas leituras possíveis, e elas levam a nomes diferentes:
+
+- **Orientação** — o nome diz "você enxerga e é avisado". É o **Farol**: serve ao produto de hoje e
+  cresce com ele.
+- **Registro da jornada** — o nome diz "tudo fica registrado e comprovado". São as duas opções
+  abaixo, e servem ao produto que está sendo desenhado.
+
+### Trilha — *"Do documento à obra, tudo registrado."*
+
+- **O que significa:** a trilha é o caminho percorrido **e** a trilha de auditoria. Cobre os quatro
+  módulos com uma palavra só: a escala é o caminho do dia, o ponto é o registro da jornada, o
+  documento é a habilitação, o projeto é o destino.
+- **Força:** curta, PT-nativa, duas sílabas, termina em vogal; une "jornada" e "trilha de auditoria"
+  sem forçar metáfora — é literalmente o que o produto entrega e o que o RH precisa mostrar numa
+  auditoria.
+- **Risco:** `trilha.com.br` já resolve no DNS (há algo publicado) e "trilha" tem uso em aplicativo
+  de caminhada — a identidade precisa ancorar no contexto de trabalho.
+- **Mote alternativo:** "A jornada inteira, registrada."
+
+### Vínculo — *"A prova de tudo que foi combinado."*
+
+- **O que significa:** no vocabulário do RH, vínculo é a relação entre trabalhador e empresa. O
+  produto guarda **o vínculo e tudo que o comprova**: documentos, jornada, escala, ocorrências.
+- **Força:** fala a língua do comprador (as três metas são empresas de RH), é arbitrário no domínio
+  de software, e `vinculo.com.br` **não resolve** no DNS — o melhor indício da lista nova.
+- **Risco:** é jargão trabalhista; pode soar "sistema de RH" e afastar Operações e projetos, além de
+  ser confundido com folha de pagamento.
+
+### Como decidir (critério, não gosto)
+
+| Se a identidade do produto for… | Nome |
+|---|---|
+| A operação que enxerga e avisa | **Farol** |
+| A jornada do trabalhador registrada e comprovada | **Trilha** |
+| O vínculo empregatício e sua conformidade | **Vínculo** |
+| Alternativa se o INPI travar | **Baliza** |
+
+**Recomendação:** **Trilha**. O produto descrito é um registro de jornada com módulos, não um painel
+de visibilidade — e "trilha" é a única opção que cobre, com a mesma palavra, o caminho do dia e a
+trilha de auditoria que sustenta a conformidade. **Farol** continua sendo a escolha mais segura se a
+decisão for manter o foco comercial na cunha (confirmação de escala) e crescer depois: é o nome que
+vende 2026 sem depender de módulo que ainda não existe.
+
+Qualquer que seja o escolhido, a verificação de INPI (§8) continua obrigatória — e agora pesa mais,
+porque o nome precisa cobrir quatro módulos, não um.

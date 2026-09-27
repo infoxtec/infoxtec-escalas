@@ -9,11 +9,15 @@ CTO e o PO já produziram no repositório. Substitui qualquer material de venda 
   conversa cita capacidade que não esteja lá, com estado.
 - **Preço é hipótese** até a terceira conversa de venda. O que já é firme é o **piso de custo**
   (seção 7) e a estrutura de cobrança (seção 6).
-- Três coisas **ainda faltam** para este plano fechar, e estão marcadas ao longo do texto:
+- **A seção 15 é nova e muda o desenho do produto:** em 27/09 o escopo passou de "escala" para
+  **plataforma da jornada do recurso** — ponto, documentos, escala e projetos, com RH, Operações e
+  gestor imediato na mesma base. Ela tem um **muro regulatório**; leia antes de prometer ponto.
+- Quatro coisas **ainda faltam** para este plano fechar, e estão marcadas ao longo do texto:
   1. os itens do grupo **SaaS** do Roadmap, que vivem em `backlog_itens` na **produção** e não
      puderam ser lidos (a consulta de exportação está em `supabase/setup/backlog_seguranca_saas.sql`);
-  2. o **parecer do CTO** sobre multi-empresa (seção 5);
-  3. o **preço final e a política de desconto**, que são do responsável (seção 14).
+  2. o **parecer do CTO** sobre multi-empresa (seção 5) e sobre o modelo de acesso por módulo (§15.3);
+  3. o **preço final e a política de desconto**, que são do responsável (seção 14);
+  4. a **decisão sobre o ponto** (§15.2), que é regulatória antes de ser técnica.
 
 ---
 
@@ -71,7 +75,10 @@ conversa é o que separa uma venda saudável de um problema em 90 dias.
 | **Portal ou app do técnico** ("minhas escalas") | O técnico só recebe WhatsApp; não consulta histórico sozinho |
 | **Checklist e laudo pelo técnico** (backlog 1) | Sem registro de execução com foto e assinatura |
 | **Relatório/dossiê de conformidade exportável** | Hoje os dados estão no painel; não há PDF assinado para auditoria do cliente tomador |
-| **Integrações** com chamados, almoxarifado e ponto (backlog 8, 9 e 4) | Dependem de levantamento de API que ninguém fez |
+| **Integrações** com chamados e almoxarifado (backlog 8 e 9) | Dependem de levantamento de API que ninguém fez |
+| **Ponto e jornada (M3)** | Não iniciado, e é **programa regulado** — ver §15.2 antes de qualquer promessa |
+| **Atividades e projetos: Kanban, Gantt e Curva S (M4)** | Não existe; Curva S é domínio de PMO, com outro comprador (§15.4) |
+| **Acesso por área** (RH, Operações, gestor imediato) com módulos e escopo por equipe | Hoje só existem `admin`, `gestor` e `leitura` (§15.3) |
 | **MFA** nas contas administrativas | Item do bloco 1 de `docs/seguranca-homologacao.md` |
 | **SLA e monitoramento por cliente** | Existe alerta operacional, não contrato de disponibilidade |
 | **Trilha de leitura de documento** | Não há como responder "quem abriu o ASO" |
@@ -91,6 +98,9 @@ volta para quem vendeu.
 | **G3 · Contrato e tratamento de dados** | Ao vender, a Infoxtec passa a **operar** dados pessoais de terceiros — inclusive dado de saúde (ASO). Faltam contrato com anexo de tratamento, inventário, prazos, canal do titular e plano de incidente | `docs/seguranca-homologacao.md` (bloco 2) | Responsável + Segurança |
 | **G4 · Multi-empresa** | Decide se cada cliente é um projeto separado ou um cliente dentro do mesmo sistema (seção 5) | este documento, §5, + CTO | CTO |
 | **G5 · Preço** | Publicar tabela depois da terceira conversa; antes disso, proposta sob medida | seção 7 | Responsável |
+| **G6 · Ponto é programa regulado** | **Só vale para quem vender o módulo de ponto.** Enquadramento como REP-P, registro do programa no INPI, atestado técnico e termo de responsabilidade, comprovante ao trabalhador e Arquivo Eletrônico de Dados. Decide-se **antes de desenvolver**, com jurídico e contabilidade | §15.2 + [gov.br](https://www.gov.br/participamaisbrasil/portaria-horario-trabalho) | Responsável + jurídico |
+
+O **G6 não bloqueia** a venda de M1 e M2 — ele só existe se o ponto entrar no escopo.
 
 **G1 é o caminho crítico.** A migração para a API oficial está estimada em **R$ 8 a R$ 11 por mês no
 volume atual** (decisão 3) e resolve o risco de banimento. Enquanto ela não acontece, a única forma
@@ -184,7 +194,7 @@ publicam depois da terceira conversa de venda.
 | **Implantação** | Todos | Carga de técnicos, locais e tipos de atividade, configuração de documentos e jornada, treinamento e acompanhamento do primeiro ciclo | Valor único, por escopo |
 | **Assento extra** | — | Usuário de painel adicional | Assento de gestão/mês |
 
-**Hipóteses de valor** (a testar, sem fonte de mercado — ver seção 15): mínimo mensal na casa de
+**Hipóteses de valor** (a testar, sem fonte de mercado — ver seção 16): mínimo mensal na casa de
 poucas centenas de reais; técnico ativo na casa de unidades de reais por mês, com faixas
 decrescentes por volume; implantação na casa de um a três meses de assinatura. **Não publicar antes
 de testar.** O método de teste está na seção 10.
@@ -323,7 +333,7 @@ opinar sobre viabilidade. Ordenados por impacto na receita.
 | 10 | **SLA e monitoramento por cliente** | Só quando houver contrato que exija | P3 |
 
 Os itens 1 a 4 já estão, em parte, nos grupos **Segurança** e **SaaS** do Roadmap na produção —
-que eu **não li** (seção 15). A reconciliação é o primeiro passo do PO ao aceitar esta lista.
+que eu **não li** (seção 16). A reconciliação é o primeiro passo do PO ao aceitar esta lista.
 
 ---
 
@@ -338,15 +348,152 @@ que eu **não li** (seção 15). A reconciliação é o primeiro passo do PO ao 
 7. **Quem atende o cliente** depois da venda — suporte, prazo de resposta e o que é gratuito.
 8. **Os 3 RH são usuários finais ou canal/revenda?** Muda o desenho todo: se for revenda, o produto
    precisa de marca própria e de um painel de parceiro, e o preço passa a ser por volume.
+9. **O ponto entra no produto?** Se sim: REP-P próprio (com o custo e o risco regulatório) ou
+   **integração** com um REP-P já homologado (§15.2). É a decisão de maior consequência aberta hoje.
+10. **O ponto será registrado pelo celular do trabalhador?** Se sim, geolocalização entra no
+    tratamento de dados, e o produto precisa deixar de parecer vigilância — é decisão de LGPD e de
+    posicionamento ao mesmo tempo.
+11. **Qual o escopo de acesso de cada área** (RH, Operações, gestor imediato)? A matriz do §15.3 é
+    proposta; quem define o que cada um vê é o responsável, com a Segurança.
+12. **M4 entra no produto ou vira linha separada?** Kanban ligado à escala é evolução; Gantt depende
+    de cliente pagante; Curva S é outro produto (§15.4).
+13. **Retenção por tipo de documento:** confirmar com o RH/jurídico os prazos reais — o ASO pode
+    exigir 20 anos, e não os 5 configurados hoje — e autorizar a mudança do parâmetro único para
+    regra por tipo (§15.5).
+14. **Nome do produto**, agora que o escopo mudou: Farol, Trilha, Vínculo ou Baliza
+    (`docs/marca.md`, §10).
 
 ---
 
-## 15. Fontes, limites e o que falta
+## 15. A plataforma: jornada do recurso, módulos e o muro do ponto
+
+**O que o responsável definiu (27/09):** o produto deixa de ser só escala. O RH, a área de Operações e
+o gestor imediato passam a usar **a mesma ferramenta, em módulos distintos, sobre os mesmos dados**,
+com **toda a jornada do recurso registrada**: o ponto (dev ainda não iniciado), a escala e a
+programação, os documentos exigidos para liberar entrada em obra, e a gestão de atividades e projetos
+(Kanban, Gantt, Curva S).
+
+Isso é mudança de **identidade**, não de roadmap. As consequências, na ordem em que importam:
+
+### 15.1 Os quatro módulos, com estado real
+
+| Módulo | O que é | Estado |
+|---|---|---|
+| **M1 · Escala e programação** | o produto de hoje: criar, confirmar por WhatsApp, cobrar, escalonar, indicadores | **entregue** |
+| **M2 · Documentos e liberação para obra** | NR, CNH e ASO com validade, alerta de vencimento, arquivo privado, vínculo com a aptidão do técnico | **entregue, com lacunas** (expurgo sem executor, sem trilha de leitura, retenção única de 5 anos) |
+| **M3 · Ponto e jornada** | registro de ponto e apuração da jornada | **não iniciado** — e é programa regulado (§15.2) |
+| **M4 · Atividades e projetos** | Kanban, Gantt, Curva S, gestão de atividades | **não existe** |
+
+A boa notícia estrutural: M1 e M2 **já compartilham o mesmo modelo de dados** (técnico, local, escala,
+documento, aptidão) e a mesma regra no banco. É isso que torna "mesmos dados, módulos distintos"
+barato para M1+M2 — e caro só onde o domínio é novo, em M3 e M4.
+
+### 15.2 O muro do ponto (M3): ler antes da primeira linha de código
+
+Ponto não é funcionalidade: é **programa regulado**. A anotação do horário de trabalho é disciplinada
+pelo art. 74 da CLT e pela portaria que o regulamenta, que exige **Atestado Técnico e Termo de
+Responsabilidade** ([gov.br](https://www.gov.br/participamaisbrasil/portaria-horario-trabalho);
+[modelo do Atestado e do Termo](https://espacolegislacao.totvs.com/wp-content/uploads/2022/08/modelo-do-atestado-tecnico-e-termo-de-responsabilidade.pdf)).
+Na prática — e isto **o jurídico e a contabilidade precisam confirmar no texto oficial antes de
+qualquer desenvolvimento**:
+
+- enquadramento como **REP-P** (registro eletrônico de ponto por programa), com **registro do
+  programa no INPI**, atestado técnico e termo de responsabilidade assinados;
+- **comprovante de registro ao trabalhador** e **pré-assinalação** do intervalo;
+- geração do **Arquivo Eletrônico de Dados (AED)** no layout oficial, para fiscalização;
+- **carimbo do tempo** e trilha que resista a questionamento pericial;
+- se o registro for pelo celular do trabalhador, **geolocalização** entra no tratamento: dado pessoal
+  com base legal própria — e o pior lugar possível para um produto que já precisa não parecer
+  vigilância.
+
+**Recomendação, alinhada ao que já está escrito no backlog 4:** decidir antes de desenvolver entre
+**(a)** virar REP-P de verdade, com jurídico e contabilidade no projeto desde o primeiro dia; ou
+**(b) integrar** com um REP-P já homologado e ficar com a parte que é nossa — escala, documento e
+jornada calculada. A opção (b) entrega o discurso comercial sem assumir a responsabilidade
+regulatória do registro. E o backlog já registra que **bloquear** ponto por falta de aceite de escala
+cria passivo trabalhista: **conciliar e alertar, nunca impedir**.
+
+Some-se que hoje o sistema **não é** sistema de ponto; passar a ser muda o contrato, o risco e o
+seguro. É decisão do responsável (item 9 da seção 14).
+
+### 15.3 Acesso por área: os três papéis atuais não bastam
+
+O pedido é RH, Operações e gestor imediato na mesma ferramenta, cada um no seu módulo, sobre os mesmos
+dados. Hoje existem só `admin`, `gestor` e `leitura` — insuficiente. O que falta é um modelo de
+**módulo + papel + escopo**:
+
+| Área | Precisa ver | Não pode ver |
+|---|---|---|
+| RH | documentos e vencimentos de todos, ponto e jornada, dados cadastrais | a operação do dia a dia (escala, tarefa, projeto) além do necessário |
+| Operações | escala, programação, alocação, atividades e projetos | detalhe de saúde do ASO; motivo de saúde da recusa |
+| Gestor imediato | a própria equipe: escala, confirmação, documentos **do seu time**, pendências | outras equipes; dados de RH do resto da empresa |
+| Trabalhador | a própria escala e o próprio comprovante | qualquer dado de terceiro |
+
+Isso é **RBAC com escopo por equipe** mais *entitlement* por módulo (o que o cliente contratou).
+Para o CTO: (i) o papel atual precisa ganhar escopo (empresa, área, equipe); (ii) cada função `app_*`
+passa a exigir módulo **e** escopo; (iii) a Segurança precisa aprovar essa matriz antes do primeiro
+código, porque é ela que define o que vaza entre áreas — e, vendendo a terceiros, entre empresas.
+
+### 15.4 Gestão de atividades e projetos (M4): cuidado com a dispersão
+
+Kanban, Gantt e **Curva S** não são telas: são domínio de PMO. Curva S exige **avanço
+físico-financeiro** — EAP, medição por serviço, orçamento e desembolso. Quem compra isso já usa MS
+Project, Primavera, Smartsheet, Monday ou ClickUp.
+
+Recomendação: **não vender M4 antes de existir e antes de um cliente pagar por ele**. Kanban simples
+de atividades ligado à escala é evolução plausível do M1 (a atividade já está no produto); Gantt é o
+passo seguinte; **Curva S é outro produto**, com outro comprador (PMO/engenharia) e outro concorrente
+— e é o item que mais ameaça o foco do que já vende.
+
+### 15.5 Retenção: um prazo só não serve mais
+
+Com ponto e documentos na mesma base, o prazo único de 5 anos deixa de fazer sentido. Cada tratamento
+tem prazo próprio, e o mais longo não é o da jornada: a NR-7 exige guarda do ASO/prontuário por
+**20 anos** após o desligamento, muito além dos 5 anos configurados hoje (**confirmar com o
+RH/jurídico**). Isso muda o desenho: `retencao_documentos_anos` precisa virar **retenção por tipo de
+documento**, e o expurgo — que hoje não roda — passa a ter consequência legal nos dois sentidos:
+apagar cedo demais e guardar além do necessário são igualmente errados.
+
+### 15.6 O que muda no pacote e no preço
+
+- **M1** continua sendo a cunha: é o que abre a porta e o que ninguém entrega do jeito que entregamos.
+- **M2** vira o pacote de conformidade — e, com RH e Operações na mesma base, deixa de ser "documento
+  do técnico" para ser **o arquivo de conformidade da empresa**.
+- **M3** é pacote regulado, com preço e risco próprios; só entra com o jurídico no projeto.
+- **M4** é linha separada, comprada à parte.
+
+O módulo passa a ser a unidade de *entitlement*; a cobrança continua por assento de gestão e por
+técnico ativo (seção 6). Sem isso, "modular" vira promessa de folheto.
+
+### 15.7 Sequência sugerida (por receita, não por vontade)
+
+| Ordem | O quê | Por quê nesta posição |
+|---|---|---|
+| 1 | Fechar G1–G3 e vender **M1+M2** | é o que existe e é o que a meta de 2026 exige |
+| 2 | **RBAC com escopo por equipe** em M1+M2 | é o pedido central: RH, Operações e gestor na mesma ferramenta |
+| 3 | **Retenção por tipo de documento** e expurgo | débito legal do M2, hoje prometido e não executado |
+| 4 | **M3 (ponto)**, com jurídico: REP-P próprio ou integração | maior risco regulatório; não começar sem a decisão |
+| 5 | **M4 Kanban** de atividades ligado à escala | evolução natural, esforço contido |
+| 6 | **M4 Gantt** | só com cliente pagante |
+| 7 | **M4 Curva S** | outro produto; tratar como tal |
+
+### 15.8 Impacto no nome
+
+Com o produto cobrindo ponto, documentos, escala e projetos, o nome precisa falar de **registro da
+jornada**, não só de orientação. "Farol" continua defensável (é arbitrário e cobre "orientar a
+operação"), mas o centro de gravidade mudou. **Duas opções novas em `docs/marca.md`, §10.**
+
+---
+
+## 16. Fontes, limites e o que falta
 
 **Fontes usadas:** `docs/arquitetura.md`, `docs/banco-de-dados.md`, `docs/decisoes.md`,
 `docs/backlog.md`, `docs/seguranca.md`, `docs/seguranca-homologacao.md`, `docs/operacao.md`,
 `docs/telefonia.md`, `docs/analise-global.md`, `docs/plano-de-trabalho.md`,
-`supabase/setup/documentos.md`, `supabase/setup/backlog_seguranca_saas.sql`, e as 48 migrations.
+`supabase/setup/documentos.md`, `supabase/setup/backlog_seguranca_saas.sql`, as 48 migrations, e a
+portaria que regulamenta o art. 74 da CLT
+([gov.br](https://www.gov.br/participamaisbrasil/portaria-horario-trabalho)) com o
+[modelo de Atestado Técnico e Termo de Responsabilidade](https://espacolegislacao.totvs.com/wp-content/uploads/2022/08/modelo-do-atestado-tecnico-e-termo-de-responsabilidade.pdf).
 
 **Limites declarados (não verifiquei):**
 
@@ -360,4 +507,13 @@ que eu **não li** (seção 15). A reconciliação é o primeiro passo do PO ao 
 4. **Titularidade do domínio `evo.vluma.com.br`**, usado como endereço da Evolution, não está
    documentada — relevante para o anexo de tratamento de dados.
 5. Disponibilidade de nome e domínio: foi feito apenas um teste de DNS, que **não é prova** de
-   disponibilidade (ver `docs/marca.md`).
+   disponibilidade (ver `docs/marca.md`, §8).
+6. **Os requisitos exatos da portaria do art. 74 da CLT** (REP-P, INPI, AED, comprovante,
+   pré-assinalação) vieram de fonte secundária e de conhecimento geral; **não li o texto oficial
+   inteiro**. É exatamente por isso que a decisão do §15.2 começa pelo jurídico e pela contabilidade,
+   não por este documento.
+7. **O escopo da plataforma (§15) não tem parecer do CTO**: o custo de RBAC com escopo, multi-empresa
+   e retenção por tipo está estimado em ordem de grandeza, não medido. Multi-empresa (§5) continua
+   sem estimativa.
+8. **A NR-7 e os 20 anos de guarda do ASO** precisam de confirmação do RH/jurídico antes de virarem
+   regra no banco — está como pergunta, não como fato.
