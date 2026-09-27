@@ -37,7 +37,8 @@ export default function App() {
   useInatividade(() => {
     if (!sessao) return
     sessionStorage.setItem('motivoSaida', 'inatividade')
-    void supabase.auth.signOut()
+    // local: encerra so neste navegador; 'global' derrubaria tambem o celular e outros computadores
+    void supabase.auth.signOut({ scope: 'local' })
   })
 
   useEffect(() => {

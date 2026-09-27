@@ -112,6 +112,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Backlog numerado em sequência (001) e painel local nos dois ambientes (painel 3.2)
 - [x] Painel 3.3: alerta de motor parado (migration 44), logomarca Infoxtec, painel local em segundo plano (`scripts/painel.sh`) e subagentes especialistas em `.claude/agents/` (homologação)
 - [x] Migrations 45 e 46, Edge Functions corrigidas, CI, backup diário e painel 3.4 com senha forte (homologação, 27/09)
+- [x] Painel 3.4.1: aba esquecida em segundo plano não encerra mais a sessão da aba em uso (27/09)
 - [ ] Próximas etapas: ver [docs/plano-de-trabalho.md](docs/plano-de-trabalho.md)
 - [ ] Fluxo por pull request com CI (ver [docs/fluxo-de-desenvolvimento.md](docs/fluxo-de-desenvolvimento.md))
 - [ ] Desligar o painel Retool e remover as funções da bancada de teste

@@ -3,19 +3,38 @@ import { useEffect, useRef } from 'react'
 export const MINUTOS_INATIVIDADE = 30
 const EVENTOS = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'visibilitychange']
 
-/** Desconecta o usuario apos N minutos sem nenhuma interacao na tela. */
+// Ultima atividade compartilhada entre as abas do mesmo navegador: uma aba esquecida em segundo
+// plano nao pode encerrar a sessao enquanto a pessoa trabalha em outra aba.
+const CHAVE_ATIVIDADE = 'ultimaAtividade'
+
+function lerAtividade(): number {
+  try { return Number(localStorage.getItem(CHAVE_ATIVIDADE)) || 0 } catch { return 0 }
+}
+function gravarAtividade(t: number) {
+  try { localStorage.setItem(CHAVE_ATIVIDADE, String(t)) } catch { /* sem storage: vale so a aba */ }
+}
+
+/** Desconecta o usuario apos N minutos sem nenhuma interacao em nenhuma aba do painel. */
 export function useInatividade(aoExpirar: () => void, minutos = MINUTOS_INATIVIDADE) {
   const ultimo = useRef(Date.now())
   const callback = useRef(aoExpirar)
   callback.current = aoExpirar
 
   useEffect(() => {
-    const marcar = () => { if (document.visibilityState === 'visible') ultimo.current = Date.now() }
+    gravarAtividade(Math.max(ultimo.current, lerAtividade()))
+    let gravadoEm = 0
+    const marcar = () => {
+      if (document.visibilityState !== 'visible') return
+      const agora = Date.now()
+      ultimo.current = agora
+      if (agora - gravadoEm > 5_000) { gravadoEm = agora; gravarAtividade(agora) }   // no maximo a cada 5 s
+    }
     EVENTOS.forEach(e => window.addEventListener(e, marcar, { passive: true }))
 
     // confere a cada 30s: pega tambem o computador que ficou suspenso
     const relogio = setInterval(() => {
-      if (Date.now() - ultimo.current >= minutos * 60_000) callback.current()
+      const ultima = Math.max(ultimo.current, lerAtividade())
+      if (Date.now() - ultima >= minutos * 60_000) callback.current()
     }, 30_000)
 
     return () => {
