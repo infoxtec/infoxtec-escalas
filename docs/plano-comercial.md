@@ -356,29 +356,35 @@ perdida em 30.
 Cada item abaixo é um pedido formal, para o PO transformar em item com critério de aceite e o CTO
 opinar sobre viabilidade. Ordenados por impacto na receita.
 
-| # | Item | Por que o comercial precisa | Prioridade |
-|---|---|---|---|
-| 1 | **Multi-empresa** (`empresa_id`, isolamento e papéis por cliente) | Sem isso, cada cliente é uma instalação e o preço por assento não fecha (§5) | P0 |
-| 2 | **Relatório/dossiê de conformidade** (por obra, posto ou cliente tomador; PDF com validade dos documentos e registro das comunicações) | É o que o RH entrega ao cliente tomador e o que a construtora mostra na fiscalização. Vende sozinho | P0 |
-| 3 | **Registro de acesso a documento** (quem abriu, quando, qual) — nasce dentro do item **015** do backlog, não como item novo | Pergunta obrigatória em questionário de segurança de qualquer cliente médio | P1 |
-| 4 | **MFA** para administradores | Bloco 1 de segurança; trava venda para cliente maior | P1 |
-| 5 | **Portal do técnico** ("minhas escalas", confirmação fora do WhatsApp) | Reduz dependência do canal e atende cliente que não quer WhatsApp | P1 |
-| 6 | **Administração de contas** (painel do fornecedor: clientes, limites, status) | Sem isso a operação de 3 a 5 clientes é manual e some | P1 |
-| 7 | **Cobrança e assinatura** (fatura mensal, histórico, bloqueio por inadimplência) | Faturamento manual não escala além de 5 clientes | P2 |
-| 8 | **Expurgo automático dos documentos** (o prazo de 5 anos não roda sozinho) | Prometemos retenção; hoje ela é declaração | P2 |
-| 9 | **Checklist e laudo pelo técnico** (backlog 1) | Aumenta o valor por técnico e abre o discurso de execução, não só de aceite | P2 |
-| 10 | **SLA e monitoramento por cliente** | Só quando houver contrato que exija | P3 |
-| 11 | **Publicação em `www.infoxtec.com.br/trilha`** — `base: '/trilha/'` no Vite, `/version.json` relativo, rewrite da Vercel e Redirect URLs do Auth nos dois projetos | Sem isso o painel não abre no endereço decidido, e a recarga automática de versão falha em silêncio | P0 |
+| # | Item | Por que o comercial precisa | Já existe no quadro? | Prioridade |
+|---|---|---|---|---|
+| 1 | **Multi-empresa** (`empresa_id`, isolamento por cliente) | Sem isso, cada cliente é uma instalação e o preço por assento não fecha (§5) | **Sim: 029** (multi-tenant) | P0 |
+| 2 | **Dossiê de conformidade** por obra, posto ou cliente tomador | É o que o RH entrega ao cliente tomador e o que a construtora mostra na fiscalização. Vende sozinho | **Parcial: 018** (histórico de auditoria exportável) e **047** (exportação de dados do cliente); o recorte por obra não existe | P0 |
+| 3 | **RBAC com escopo por equipe** e *entitlement* por módulo | É o pedido central: RH, Operações e gestor na mesma base, cada um no seu módulo (§15.3) | **Não** — o 029 isola empresas, não áreas | P0 |
+| 4 | **Publicação em `www.infoxtec.com.br/trilha`** — `base: '/trilha/'` no Vite, `/version.json` relativo, rewrite da Vercel e Redirect URLs do Auth nos dois projetos | Sem isso o painel não abre no endereço decidido, e a recarga automática de versão falha em silêncio | **Não** | P0 |
+| 5 | **Registro de acesso a documento** (quem abriu, quando, qual) | Pergunta obrigatória em questionário de segurança de qualquer cliente médio | **Dentro do 015** — não criar item novo | P1 |
+| 6 | **Retenção por tipo de documento** e expurgo automático | Prometemos retenção e hoje ela é declaração; o ASO pode exigir 20 anos, não 5 (§15.5) | **Não** (o 047 exclui a pedido, não expurga por prazo) | P1 |
+| 7 | **Portal do técnico** ("minhas escalas", confirmação fora do WhatsApp) | Reduz dependência do canal e atende cliente que não quer WhatsApp | **Não** | P1 |
+| 8 | **Página do produto e materiais de venda** | Sem material com lastro, cada proposta começa do zero | **Não** | P1 |
+| 9 | **MFA** para administradores | Bloco 1 de segurança; trava venda para cliente maior | Grupo `seguranca`, bloco 1 | P1 |
+| 10 | **Checklist e laudo pelo técnico** | Aumenta o valor por técnico e abre o discurso de execução, não só de aceite | **Sim: 001** | P2 |
 
-Os itens 1 a 4 já estão, em parte, nos grupos **Segurança** e **SaaS** do Roadmap na produção —
-que eu **não li** (seção 16). A reconciliação é o primeiro passo do PO ao aceitar esta lista.
+**O que saiu desta lista depois da exportação de 27/09** (já existe no quadro, não é trabalho novo):
+administração de contas (**034**), cobrança e assinatura (**036**, com **019** de medição de uso),
+SLA e monitoramento (**058**, com **032**) e o canal oficial do WhatsApp (**023** — é o portão G1).
 
-> **Revisão de 27/09:** a análise consolidada de todo o backlog — duplicidades, itens prontos que
+**Itens do quadro que este plano não tinha visto e que mudam decisões:** **017** (cadastro e
+onboarding da empresa cliente), **030** (validar preço e modelo com 3 clientes piloto), **040**
+(marca do cliente no painel — white-label), **042** (fila de envio com limites por número) e **055**
+(CI/CD com testes e migrations versionadas, que sobrepõe as etapas 14 e 15 do plano de trabalho).
+
+> **Reconciliação de 27/09:** a análise consolidada do backlog — duplicidades, itens prontos que
 > constam como pendentes, bloqueios por decisão e a fila recomendada — está em
-> [`docs/analise-backlog.md`](analise-backlog.md). Duas correções vieram dela: o item "trilha de
-> leitura de documento" virou **"registro de acesso a documento"** (colisão com o nome do produto) e
-> nasce dentro do item **015**, não como item novo; e a integração com o ponto VRmais (item 004) é o
-> mesmo território do módulo **Ponto (M3)**.
+> [`docs/analise-backlog.md`](analise-backlog.md). Três correções vieram dela: o "trilha de leitura
+> de documento" virou **"registro de acesso a documento"** (colisão com o nome do produto) e nasce
+> dentro do item **015**; a integração com o ponto VRmais (item **004**) é o mesmo território do
+> módulo **Ponto (M3)**; e o item **018** do quadro precisa ser renomeado para "Histórico de
+> auditoria exportável", pelo mesmo motivo de marca.
 
 ---
 

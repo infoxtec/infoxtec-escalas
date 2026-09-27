@@ -14,13 +14,19 @@ Revisão consolidada de **tudo o que o repositório sabe sobre o backlog**, feit
 | Carga inicial | `supabase/setup/backlog_seed.sql` | lido — **é de 26/09 e não é o estado atual** |
 | Itens de documento | migration 42 (itens numerados a partir do maior) | lido |
 | Grupo segurança e homologação | `docs/seguranca-homologacao.md` (17 itens) | lido |
-| Grupo SaaS | criado pela migration 38, ~15 itens | **não lido** — só existe na produção |
+| Grupo SaaS | criado pela migration 38 — **15 itens**, exportados da produção em 27/09 | **lido** — ver seção 4 |
 | Roteiro de IA | `docs/agente-ia.md` (fases 0 a 4) | lido |
 | Fila de trabalho | `docs/plano-de-trabalho.md` (25 etapas + pendências) | lido |
 
-**Para esta análise ficar 100%**, falta exportar o grupo SaaS. A consulta está pronta em
-`supabase/setup/backlog_seguranca_saas.sql`; basta rodá-la no SQL Editor da produção e me passar o
-resultado. Enquanto isso, a seção 4 deste documento cobre o que é legível.
+**A exportação chegou em 27/09** (itens de `saas` e os primeiros de `seguranca`, por ordem): com ela
+esta análise cobre os cinco grupos. O que ainda não tenho são os **números** dos demais itens de
+`seguranca` — o conteúdo deles está em `docs/seguranca-homologacao.md`, e só cinco apareceram na
+exportação.
+
+**Aviso de processo:** o quadro real está na produção e o repositório **não o espelha**. Duas
+consequências práticas: (a) o `supabase/setup/backlog_seed.sql` não deve ser usado como estado
+(seção 3.1); (b) uma análise feita só pelo repositório erra por omissão — foi o que aconteceu com a
+seção 4 deste documento antes desta exportação.
 
 ## 1. Como o quadro funciona hoje
 
@@ -74,6 +80,10 @@ Renomear para **"registro de acesso a documento"** em todo material — e o mesm
 "trilha de auditoria", que deve ser escrita como "histórico de auditoria" quando estiver ao lado da
 marca.
 
+A exportação de 27/09 confirmou o problema: o grupo `seguranca` já tem um item chamado
+**"Trilha de auditoria exportável" (nº 018)**. Renomear para **"Histórico de auditoria exportável"**
+antes de a marca Trilha aparecer no painel, senão o produto e o item passam a se chamar igual.
+
 ### 3.4 Itens bloqueados por **decisão**, não por técnica
 
 Estes não andam com esforço de desenvolvimento; andam com uma resposta sua:
@@ -122,17 +132,50 @@ Definição do item (guarda-chuva, grupo `saas`):
 | **Depende de** | Portões G1, G2 e G3 |
 | **Observação** | Item-pai dos módulos comerciais: dossiê de conformidade, registro de acesso a documento, RBAC com escopo, cobrança e administração de contas |
 
-**Filhos propostos** (só entram no quadro com a sua autorização — cada um vira item próprio):
+**Filhos propostos** — **reconciliados** com o grupo SaaS depois da exportação (ver 4.1 e 4.2):
 
-| # | Item proposto | Grupo | Prioridade |
+| # | Item proposto | Situação real | Ação |
 |---|---|---|---|
-| a | Dossiê de conformidade exportável (por obra, posto ou cliente tomador) | `saas` | P0 |
-| b | RBAC com escopo por equipe e entitlement por módulo | `saas` | P0 |
-| c | Registro de acesso a documento (quem abriu, quando, qual) — dentro do item 015 | `backlog` | P1 |
-| d | Administração de contas (painel do fornecedor: clientes, limites, status) | `saas` | P1 |
-| e | Cobrança e assinatura (fatura, histórico, bloqueio por inadimplência) | `saas` | P2 |
-| f | Página do produto e materiais de venda em `infoxtec.com.br/trilha` | `saas` | P1 |
-| g | Retenção por tipo de documento e expurgo automático | `seguranca` | P1 |
+| a | Dossiê de conformidade exportável (por obra, posto ou cliente tomador) | parcial: **018** (histórico de auditoria exportável) e **047** (exportação e exclusão de dados do cliente); o recorte por obra/posto **não existe** | manter, como filho do 018 |
+| b | RBAC com escopo por equipe e entitlement por módulo | **não existe** — o **029** isola empresas, não áreas dentro da mesma empresa | manter, P0 |
+| c | Registro de acesso a documento | dentro do item **015** | não criar item novo |
+| d | Administração de contas | **já é o item 034** (painel do operador do SaaS) | retirar |
+| e | Cobrança e assinatura | **já é o item 036** (planos, limites e cobrança), com **019** (medição de uso) | retirar |
+| f | Página do produto e materiais de venda em `infoxtec.com.br/trilha` | **não existe** | manter, dentro do Plano Diretor |
+| g | Retenção por tipo de documento e expurgo automático | **não existe** (o 047 exclui dado a pedido, não expurga por prazo) | manter, P1 |
+
+### 4.1 O grupo SaaS, agora conhecido
+
+Os 15 itens, com os números reais da produção:
+
+| Nº | Item | O que significa para o plano comercial |
+|---|---|---|
+| 017 | Cadastro e onboarding da empresa cliente | o autoatendimento **está planejado** — a seção 3 do plano comercial diz "não existe hoje", o que continua verdade, mas já tem item |
+| 019 | Medição de uso por cliente | é o que torna possível cobrar por técnico ativo e por assento |
+| 023 | WhatsApp por cliente na API oficial | **é o portão G1**, já com item — falta a decisão |
+| 029 | Multi-tenant: isolar dados por empresa | é a opção B da seção 5 do plano comercial |
+| 030 | Validar preço e modelo com 3 clientes piloto | **é a metade de preço do Plano Diretor Comercial** |
+| 032 | Observabilidade: erros, métricas e traços | cobre parte do bloco 2 de segurança (monitoramento) |
+| 034 | Painel do operador do SaaS | administração de contas do fornecedor |
+| 036 | Planos, limites e cobrança | cobrança e assinatura |
+| 040 | Marca do cliente no painel (white-label) | responde à pergunta 8 da seção 14 do plano comercial: se os RH forem revenda, o item já existe |
+| 042 | Fila de envio com limites por número | mitigação direta do risco de banimento |
+| 044 | Central de ajuda e página de status | suporte de primeiro nível |
+| 047 | Exportação e exclusão de dados do cliente | **é o canal do titular do G3** — o lado do cliente, não o do técnico |
+| 048 | API pública e webhooks para clientes | integrações de terceiros |
+| 055 | CI/CD com testes e migrations versionadas | sobrepõe as etapas 14 e 15 do plano de trabalho |
+| 058 | Suporte estruturado com SLA | o SLA que a seção 13 do plano comercial propunha como item novo |
+
+Os cinco itens de `seguranca` que vieram na exportação completam o bloco 3 de
+`docs/seguranca-homologacao.md`: **018** (histórico de auditoria exportável), **031** (rotação e
+inventário de segredos), **049** (contrato, termo de uso e SLA), **052** (validação jurídica da
+jornada CLT) e **056** (revisão formal de RLS e permissões).
+
+### 4.2 O que isso muda no Plano Diretor Comercial
+
+O item guarda-chuva **não duplica o 030**: ele **consolida**, com o 030 como a parte de preço.
+Depende, na prática, de **023** (canal), **029** (isolamento), **047** (LGPD do cliente) e **058**
+(SLA) — quatro itens que já existem no quadro e que não podem ser tratados como trabalho novo.
 
 ## 5. Fila recomendada
 
@@ -153,8 +196,19 @@ Consolida o plano de trabalho, o plano comercial e este backlog em uma ordem só
 
 ## 6. O que falta para fechar a análise
 
-1. **Exportar o grupo SaaS** da produção (`supabase/setup/backlog_seguranca_saas.sql`) — sem ele, a
-   seção 4 pode duplicar itens que já existem, e parte deste documento fica incompleta.
-2. **Atualizar no quadro** os itens da seção 2 (status, `entregue_em`, observação).
-3. **Reescrever o item 1 do grupo `seguranca`** conforme a decisão 33.
-4. **Decidir** os quatro pontos da seção 3.4.
+1. ~~Exportar o grupo SaaS~~ — **feito em 27/09** (seção 4.1). Faltam apenas os **números** dos 12
+   itens de `seguranca` que não vieram na exportação, para citá-los por número no quadro.
+2. **Confirmar se o Plano Diretor Comercial entrou no quadro.** O `INSERT` foi entregue, mas não
+   tenho acesso à produção para verificar: conferir na aba Roadmap ou com
+   `select numero, tipo, titulo from backlog_itens where titulo ilike '%Plano Diretor%'`. Se entrou
+   com `ordem = 500`, ele aparece **no meio do grupo `seguranca`** (que ocupa de ~400 a 560) e não
+   junto dos itens de SaaS (600 a 740) — ajustar `ordem` para 750 se quiser agrupado.
+3. **Atualizar no quadro** os itens da seção 2 (status, `entregue_em`, observação) — e lembrar que
+   **número não muda**: é edição do item, nunca criação de outro.
+4. **Renomear dois itens** por causa da marca Trilha: **018** ("Trilha de auditoria exportável" →
+   "Histórico de auditoria exportável") e o termo "trilha de leitura de documento" no material.
+5. **Reescrever o item 1 do grupo `seguranca`** conforme a decisão 33.
+6. **Decidir** os quatro pontos da seção 3.4.
+7. **Registrar sem duplicar**: o `INSERT` avulso não tem trava. Usar sempre a forma guardada
+   (`insert ... select ... where not exists (select 1 from backlog_itens where titulo = ...)`), como
+   faz a migration 42.
