@@ -146,6 +146,7 @@ da janela de envio) e quando normaliza. `app_estado_motor` alimenta o quadro da 
 | `fn_motivo_rotulo(texto)` | Nome do motivo para mensagens e painel |
 | `app_indicadores_resposta(dias)` | Recusas por motivo e mediana do tempo entre o primeiro envio e a resposta (aba Operação) |
 | `app_escala_edicao(id)` / `app_editar_escala(p)` | Editar data, hora, local e tarefa. Mudou data, hora ou local de escala enviada: volta a aguardar resposta e reenvia. Só tarefa: avisa o técnico |
+| `fn_edicao_permitida` (migration 48) | Intervalo mínimo de 2 minutos entre edições da mesma escala; escala de teste não avisa o técnico; saúde aparece como "Motivo pessoal" |
 | `app_substituir_tecnico(escala, tecnico)` | Escala recusada gera outra igual para o técnico escolhido; eventos `substituida`/`substitui` ligam as duas |
 
 ## Gatilhos em `escalas`

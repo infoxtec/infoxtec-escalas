@@ -308,6 +308,10 @@ consulta à base de senhas vazadas (Have I Been Pwned) continua no painel.
 O sistema só pergunta quando ele não tem outra escala aguardando resposta, para o número não ser
 lido como 1/2 de outra escala. Editar escala já enviada pede nova confirmação só quando muda data,
 hora ou local (responsável, 27/09); mudar a tarefa apenas avisa o técnico.
+**LGPD (migration 48):** o motivo "saúde" é dado sensível. É gravado como `saude` para uso
+restrito, mas aparece como "Motivo pessoal" no WhatsApp dos supervisores e no painel. Finalidade:
+entender recusas e planejar escalas; nunca critério de punição. Retenção: a mesma das escalas.
+Edições da mesma escala têm intervalo mínimo de 2 minutos, e escala de teste não avisa o técnico.
 
 ## 37. Biblioteca de planilhas guardada no repositório
 
