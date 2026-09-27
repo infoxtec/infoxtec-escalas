@@ -50,6 +50,8 @@ Três áreas concentram as análises e as decisões. Cada documento responde a u
 |---|---|
 | [Segurança](docs/seguranca.md) | Como o acesso é controlado hoje e quais riscos já são conhecidos |
 | [Análise de segurança e LGPD](docs/analise-seguranca.md) | O que ainda não está protegido, quais dados pessoais existem, por quanto tempo ficam, e o que a Segurança veta |
+| [Evidências de segurança](docs/evidencias-seguranca.md) | O que responder ao questionário de segurança de um cliente, com a consulta que comprova cada afirmação |
+| [Rotação de segredos](docs/rotacao-de-segredos.md) | O passo a passo para trocar cada credencial, o que pode quebrar e o inventário que precisa ser mantido |
 | [Segurança e homologação](docs/seguranca-homologacao.md) | O que falta para vender com segurança e o que é honesto afirmar sobre certificação |
 
 ### Código e infraestrutura
