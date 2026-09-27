@@ -137,11 +137,17 @@ função vem do arquivo `supabase/config.toml`; não precisa digitar.
 ### D4. Backup diário
 1. No Supabase da produção → botão **Connect** (topo) → **Session pooler** → copie a *URI* e troque
    `[YOUR-PASSWORD]` pela senha do B3.
-2. Invente uma senha longa para o backup (por exemplo, quatro palavras e números) e **guarde no
+2. Invente uma senha longa para o backup (seis palavras aleatórias ou 32 caracteres ou mais) e **guarde no
    gerenciador de senhas**. Sem ela, nenhum backup abre.
-3. No GitHub → **Settings → Secrets and variables → Actions → New repository secret**:
-   - `PRODUCAO_DB_URL` = a URI do passo 1
-   - `BACKUP_SENHA` = a senha do passo 2
+3. No GitHub → **Settings → Environments → New environment** → nome `producao-backup` →
+   **Configure environment**:
+   - **Deployment branches and tags** → *Selected branches and tags* → **Add** → `main`.
+     Assim só o que está na `main` consegue ler os segredos; um workflow de outra branch não.
+   - **Environment secrets → Add environment secret**:
+     - `PRODUCAO_DB_URL` = a URI do passo 1
+     - `BACKUP_SENHA` = a senha do passo 2
+
+   Não cadastre esses dois como *repository secrets*: esses qualquer branch consegue ler.
 4. GitHub → **Actions → Backup da produção → Run workflow**. Deve ficar verde e gerar o artefato
    `backup-producao`.
 5. GitHub → **Actions → Teste de restauração do backup → Run workflow**. Deve ficar verde e mostrar

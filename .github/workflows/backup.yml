@@ -1,7 +1,8 @@
 # Backup diário da produção (etapa 18), sem custo.
 # Cópia completa do banco (papéis, estrutura e dados), compactada e criptografada com uma senha que
 # só o responsável guarda. Fica como artefato do GitHub por 30 dias.
-# Segredos do repositório (Settings > Secrets and variables > Actions):
+# Segredos do ambiente "producao-backup" (Settings > Environments), restrito à branch main, para
+# que nenhum workflow de outra branch consiga lê-los:
 #   PRODUCAO_DB_URL  conexão do banco de produção (Supabase > Connect > Session pooler), com a senha
 #   BACKUP_SENHA     senha da criptografia; sem ela o backup não abre
 # Ficam de fora os logs que se refazem sozinhos (webhook_eventos) para poupar a cota de tráfego.
@@ -23,9 +24,11 @@ permissions:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    # segredos só existem no ambiente producao-backup, liberado apenas para a branch main
+    environment: producao-backup
     steps:
-      - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb  # v1.7.3
         with:
           version: 2.118.0
       - name: Conferir segredos
@@ -34,7 +37,7 @@ jobs:
           SENHA: ${{ secrets.BACKUP_SENHA }}
         run: |
           if [ -z "$URL" ] || [ -z "$SENHA" ]; then
-            echo "::error::Cadastre PRODUCAO_DB_URL e BACKUP_SENHA em Settings > Secrets and variables > Actions"
+            echo "::error::Cadastre PRODUCAO_DB_URL e BACKUP_SENHA no ambiente producao-backup (Settings > Environments)"
             exit 1
           fi
       - name: Copiar o banco
@@ -57,7 +60,7 @@ jobs:
           rm -rf copia "$nome.tar.gz"
           echo "ARQUIVO=$nome.tar.gz.gpg" >> "$GITHUB_ENV"
           ls -la "$nome.tar.gz.gpg"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: backup-producao
           path: ${{ env.ARQUIVO }}

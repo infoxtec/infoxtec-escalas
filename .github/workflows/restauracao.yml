@@ -15,8 +15,10 @@ permissions:
 jobs:
   restaurar:
     runs-on: ubuntu-latest
+    # segredos só existem no ambiente producao-backup, liberado apenas para a branch main
+    environment: producao-backup
     steps:
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb  # v1.7.3
         with:
           version: 2.118.0
       - name: Baixar o backup mais recente
@@ -41,9 +43,15 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: |
-          psql "postgresql://postgres@127.0.0.1:54322/postgres" --single-transaction -v ON_ERROR_STOP=1 \
-            -f copia/roles.sql -f copia/schema.sql \
-            -c 'set session_replication_role = replica' -f copia/data.sql
+          # VERBOSITY=terse e stderr em arquivo: um erro de COPY não despeja a linha (dados pessoais) no log
+          if ! psql "postgresql://postgres@127.0.0.1:54322/postgres" --single-transaction -q \
+                 -v ON_ERROR_STOP=1 -v VERBOSITY=terse \
+                 -f copia/roles.sql -f copia/schema.sql \
+                 -c 'set session_replication_role = replica' -f copia/data.sql > /dev/null 2> erro.log; then
+            echo "::error::Restauração falhou: $(grep -m1 -oE 'ERROR: +[^:]+' erro.log || echo 'erro sem código')"
+            exit 1
+          fi
+          echo "Restauração sem erros"
       - name: Conferir contagens
         env:
           PGPASSWORD: postgres

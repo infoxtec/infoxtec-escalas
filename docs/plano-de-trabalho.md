@@ -99,7 +99,7 @@ As etapas estão em ordem. Dentro de cada bloco, uma etapa só começa quando a 
 ### Bloco 4: segurança das Edge Functions
 
 - [ ] **11. `documento-ocr` valida o login por conta própria**, sem depender só da configuração de publicação. *Homologação: pronto em 27/09 (PR #3); falta a produção, pelo [roteiro](roteiro-producao.md).* Corrigido junto: o botão de leitura na nuvem falhava sempre no navegador (faltava CORS) e a chave do Google podia vazar numa mensagem de erro.
-- [ ] **12. `voz-escala` confere a assinatura da Twilio** (`X-Twilio-Signature`) em vez de confiar só no token da URL. *Homologação: pronto em 27/09 (PR #3); falta a produção, pelo [roteiro](roteiro-producao.md).* Começa em observação; o bloqueio é ligado depois de conferir o log ([telefonia.md](telefonia.md)).
+- [ ] **12. `voz-escala` confere a assinatura da Twilio** (`X-Twilio-Signature`) em vez de confiar só no token da URL. *Homologação: pronto em 27/09 (PR #3); falta a produção, pelo [roteiro](roteiro-producao.md).* Começa em observação; o bloqueio é ligado depois de conferir o log ([telefonia.md](telefonia.md)). **Prazo:** ligar o bloqueio depois de 10 ligações reais com `assinatura da Twilio ok` no log, no máximo 30 dias após a publicação; até lá a proteção continua sendo só o token.
 - [ ] **13. Trocar a biblioteca `xlsx`** da importação de planilhas, que tem vulnerabilidade alta sem correção no npm. *A versão corrigida (0.20.3) só existe no site da SheetJS, bloqueado na rede do ambiente do Claude; ver roteiro, parte D.*
       *Teste:* importar a mesma planilha antes e depois.
 
@@ -138,6 +138,13 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 
 - [ ] ~~**22. WhatsApp pela API oficial da Meta.**~~ *Fora do plano (decisão 33, 27/09): a Evolution continua; mitigação na etapa 10c e na contingência de `operacao.md`.*
 - [ ] **23. Início da escala como instante (`timestamptz`)**, eliminando a classe de erro de fuso na raiz.
+
+### Pendências da revisão de segurança do PR #3 (baixas)
+
+- [ ] `monitor_ping_url` aceitar só `https://hc-ping.com/<uuid>`.
+- [ ] `webhook-evolution` recusar corpo sem `content-length` (411) antes de ler.
+- [ ] CORS da `documento-ocr` limitado aos domínios do painel.
+- [ ] Registrar em `decisoes.md` que o GitHub guarda cópia cifrada dos dados (tratamento LGPD).
 
 ### Bloco 9: produto (análise global de 27/09, aprovado pelo responsável)
 
