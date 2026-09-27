@@ -3,7 +3,7 @@
 O mapa de tudo o que falta fazer, na ordem, para não perder nenhuma etapa. Cada etapa diz **onde**
 a mudança acontece, **como testar** e **como levar para a produção**. Marque `[x]` ao concluir.
 
-A análise que originou a lista está em [analise-topologia.md](analise-topologia.md).
+A análise que originou a lista está em [analise-topologia.md](analise-topologia.md); a revisão global de 27/09, com as prioridades consolidadas, em [analise-global.md](analise-global.md).
 
 ## Onde estamos
 
@@ -88,6 +88,7 @@ As etapas estão em ordem. Dentro de cada bloco, uma etapa só começa quando a 
 
 - [ ] **7. Alerta de motor parado.** *Migration 44 e painel 3.3 aplicados na homologação em 26/09; aguardando teste conjunto e sua ordem.* Se o motor não rodar com sucesso por mais de 5 minutos, os supervisores recebem aviso, e a aba Operação mostra a última execução.
       *Teste na homologação:* simular falha do motor e ver o alerta registrado.
+      *Passo manual na produção, depois do script:* no SQL Editor da produção, rodar a linha `vigia-motor` de `supabase/setup/cron.sql`. Sem ela o alerta nunca dispara; a aba Operação avisa quando o vigia não está agendado.
 - [ ] **8. Validação dos parâmetros (`config`).** Gravar um valor inválido (por exemplo, texto em `max_tentativas`) passa a ser recusado, em vez de quebrar o motor.
 - [ ] **9. Limpeza do legado.** Remover as funções da bancada de teste (`fn_teste_wa_*`) e o índice duplicado `idx_notif_wa`.
 - [ ] **10. Decisão de negócio: fechar escalas passadas.** Hoje uma escala confirmada fica "confirmada" para sempre. Decidir se passa a ser concluída automaticamente depois do término previsto. Só vira migration depois da sua decisão.
@@ -145,4 +146,4 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 | 26/09 | Migration 43 + painel 3.2: numeração 001 do backlog | Aplicada e testada | Aplicada e conferida |
 | 26/09 | Merge do PR #1: `main` igual à produção | Não se aplica | Concluído |
 | 26/09 | Vercel: Preview e Development na homologação | Configurado | Production sem alteração |
-| 26/09 | Migration 44 + painel 3.3: alerta de motor parado | Aplicada e testada | Aguardando sua ordem |
+| 26/09 | Migration 44 + painel 3.3: alerta de motor parado, logomarca, painel em segundo plano | Aplicada e testada pelo Claude; teste conjunto pendente | Aguardando sua ordem |
