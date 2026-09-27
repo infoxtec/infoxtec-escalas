@@ -142,9 +142,21 @@ conflito de marca **não foram verificados** (§7).
 1. **INPI — busca de anterioridade** nas classes 42 (software), 35 (gestão) e 9, além das classes de
    serviços de RH, segurança do trabalho, construção e **ponto eletrônico** — este último é o
    confronto mais provável, porque "trilha" pode aparecer em marca de controle de jornada.
-2. **Registro do domínio** `trilha.com.br` no Registro.br (o DNS já resolve, então provavelmente está
-   ocupado — verificar se está à venda ou se `trilha.com`, `trilha.app` ou `usetrilha.com.br` servem)
-   e do `.com`.
+2. **Endereço — decidido em 27/09: `www.infoxtec.com.br/trilha`**, caminho dentro do site da
+   Infoxtec, **não** domínio próprio. Não há domínio a registrar. O que isso exige do painel (não é
+   só configuração de servidor):
+   - `base: '/trilha/'` no `web/vite.config.ts` — hoje os caminhos dos arquivos são absolutos e
+     quebrariam no subdiretório;
+   - `web/src/lib/sessao.ts` busca `/version.json` em caminho absoluto: precisa passar a relativo,
+     senão a recarga automática de versão para de funcionar **em silêncio**;
+   - a regra `rewrites` do `web/vercel.json` pressupõe a raiz;
+   - incluir `https://www.infoxtec.com.br/trilha/**` nas Redirect URLs do Supabase Auth nos **dois**
+     projetos (produção e homologação);
+   - decidir como o build chega ao caminho: proxy reverso do site para a Vercel ou publicação em
+     subdiretório da hospedagem atual.
+   **Comercial:** o caminho reforça "Trilha, by Infoxtec" e custa zero. A desvantagem é não ter
+   endereço próprio — ruim para ditar por telefone e impraticável se os RH virarem revenda; nesse
+   caso, revisitar com um domínio curto.
 3. **Conflito de marca** em software de gestão de campo, SST, ponto e sinalização.
 4. **Redes sociais** e resultado de busca.
 5. **Decisão societária:** a marca fica no CNPJ da Infoxtec Tecnologia e Serviços Ltda ou em empresa

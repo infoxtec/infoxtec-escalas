@@ -453,3 +453,30 @@ técnico; a substituição cancela a do técnico anterior com aviso e cria a do 
 
 **Decidido em 27/09:** editar uma escala confirmada pede nova confirmação do técnico só se mudar
 data, hora ou local; mudar só a tarefa não pede. Esforço: M. Etapa 25 do plano de trabalho.
+
+---
+
+## Plano Diretor Comercial do Trilha
+
+**Pedido em 27/09/2026.** Guarda-chuva comercial do produto, registrado no grupo `saas` do Roadmap.
+
+**Problema:** o produto tinha plano de produto e plano de trabalho, mas não tinha plano comercial.
+Marca, pacotes e preço vinham sendo decididos caso a caso, e cada conversa de venda começaria do
+zero.
+
+**Escopo:** manter vivos `docs/plano-comercial.md` e `docs/marca.md` como base; produzir os materiais
+de venda (proposta, uma página do produto, apresentação); definir a política de preço e desconto; o
+contrato e o anexo de tratamento de dados; a publicação em `www.infoxtec.com.br/trilha`; e o
+acompanhamento das metas (3 empresas de RH em 2026 e 1 construtora até 30/12/2026).
+
+**Fora de escopo:** o desenvolvimento dos módulos — cada um é item próprio —, mídia paga (decisão 29
+limita a planos gratuitos) e o preço final, que é do responsável.
+
+**Depende de:** portões **G1** (canal oficial do WhatsApp), **G2** (painel fora do plano gratuito da
+Vercel) e **G3** (contrato e tratamento de dados). Sem os três, é documento, não venda.
+
+**Esforço:** M. **Critério de aceite:** três propostas emitidas do mesmo material, com a seção "o que
+não está incluso" preenchida a partir da matriz de capacidade, e o item-pai com os filhos registrados
+no quadro.
+
+**Análise completa do backlog, filhos propostos e fila recomendada:** [analise-backlog.md](analise-backlog.md).
