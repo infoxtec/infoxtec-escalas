@@ -6,6 +6,7 @@ CTO e o PO já produziram no repositório. Substitui qualquer material de venda 
 **Produto:** Trilha · *Toda jornada deixa uma trilha.* — nome, narrativa e identidade em
 [`docs/marca.md`](marca.md).
 **Empresa:** Infoxtec Tecnologia e Serviços Ltda — CNPJ 04.309.223/0001-96, EPP, lucro presumido.
+**Endereço do produto:** `www.infoxtec.com.br/trilha`.
 
 **Como ler este documento**
 
@@ -359,7 +360,7 @@ opinar sobre viabilidade. Ordenados por impacto na receita.
 |---|---|---|---|
 | 1 | **Multi-empresa** (`empresa_id`, isolamento e papéis por cliente) | Sem isso, cada cliente é uma instalação e o preço por assento não fecha (§5) | P0 |
 | 2 | **Relatório/dossiê de conformidade** (por obra, posto ou cliente tomador; PDF com validade dos documentos e registro das comunicações) | É o que o RH entrega ao cliente tomador e o que a construtora mostra na fiscalização. Vende sozinho | P0 |
-| 3 | **Trilha de leitura de documento** (quem abriu, quando, qual) | Pergunta obrigatória em questionário de segurança de qualquer cliente médio | P1 |
+| 3 | **Registro de acesso a documento** (quem abriu, quando, qual) — nasce dentro do item **015** do backlog, não como item novo | Pergunta obrigatória em questionário de segurança de qualquer cliente médio | P1 |
 | 4 | **MFA** para administradores | Bloco 1 de segurança; trava venda para cliente maior | P1 |
 | 5 | **Portal do técnico** ("minhas escalas", confirmação fora do WhatsApp) | Reduz dependência do canal e atende cliente que não quer WhatsApp | P1 |
 | 6 | **Administração de contas** (painel do fornecedor: clientes, limites, status) | Sem isso a operação de 3 a 5 clientes é manual e some | P1 |
@@ -367,9 +368,17 @@ opinar sobre viabilidade. Ordenados por impacto na receita.
 | 8 | **Expurgo automático dos documentos** (o prazo de 5 anos não roda sozinho) | Prometemos retenção; hoje ela é declaração | P2 |
 | 9 | **Checklist e laudo pelo técnico** (backlog 1) | Aumenta o valor por técnico e abre o discurso de execução, não só de aceite | P2 |
 | 10 | **SLA e monitoramento por cliente** | Só quando houver contrato que exija | P3 |
+| 11 | **Publicação em `www.infoxtec.com.br/trilha`** — `base: '/trilha/'` no Vite, `/version.json` relativo, rewrite da Vercel e Redirect URLs do Auth nos dois projetos | Sem isso o painel não abre no endereço decidido, e a recarga automática de versão falha em silêncio | P0 |
 
 Os itens 1 a 4 já estão, em parte, nos grupos **Segurança** e **SaaS** do Roadmap na produção —
 que eu **não li** (seção 16). A reconciliação é o primeiro passo do PO ao aceitar esta lista.
+
+> **Revisão de 27/09:** a análise consolidada de todo o backlog — duplicidades, itens prontos que
+> constam como pendentes, bloqueios por decisão e a fila recomendada — está em
+> [`docs/analise-backlog.md`](analise-backlog.md). Duas correções vieram dela: o item "trilha de
+> leitura de documento" virou **"registro de acesso a documento"** (colisão com o nome do produto) e
+> nasce dentro do item **015**, não como item novo; e a integração com o ponto VRmais (item 004) é o
+> mesmo território do módulo **Ponto (M3)**.
 
 ---
 
@@ -526,6 +535,7 @@ Assinatura, mote e narrativa em `docs/marca.md`.
 **Fontes usadas:** `docs/arquitetura.md`, `docs/banco-de-dados.md`, `docs/decisoes.md`,
 `docs/backlog.md`, `docs/seguranca.md`, `docs/seguranca-homologacao.md`, `docs/operacao.md`,
 `docs/telefonia.md`, `docs/analise-global.md`, `docs/plano-de-trabalho.md`,
+`docs/analise-backlog.md`, `docs/agente-ia.md`, `supabase/setup/backlog_seed.sql`,
 `supabase/setup/documentos.md`, `supabase/setup/backlog_seguranca_saas.sql`, as 48 migrations, e a
 portaria que regulamenta o art. 74 da CLT
 ([gov.br](https://www.gov.br/participamaisbrasil/portaria-horario-trabalho)) com o
