@@ -36,8 +36,6 @@ jobs:
   auditoria:
     name: Dependências do painel (npm audit)
     runs-on: ubuntu-latest
-    # informativa até a troca do xlsx (etapa 13); depois, passa a bloquear
-    continue-on-error: true
     defaults:
       run:
         working-directory: web
@@ -46,7 +44,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm audit --omit=dev --audit-level=high
+      # informativa até a troca do xlsx (etapa 13): vira aviso amarelo; depois, tirar o || e bloquear
+      - run: npm audit --omit=dev --audit-level=high || echo "::warning::npm audit encontrou vulnerabilidade (xlsx, etapa 13)"
 
   funcoes:
     name: Edge Functions (deno check)
