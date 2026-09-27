@@ -32,6 +32,7 @@ aceite), `scrum-master` (próxima etapa e roteiro de teste), `dev-banco` (migrat
 `fullstack` (painel e Edge Functions), `infra-bd` (desempenho, cron, hospedagem, backup),
 `seguranca` (revisão antes do merge e LGPD). Toda mudança de banco ou de Edge Function passa pela
 revisão do `seguranca` antes do pull request.
+Papéis, fluxo entre eles e regras comuns: `docs/equipe.md`.
 
 ## Comandos
 

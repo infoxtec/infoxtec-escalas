@@ -451,5 +451,5 @@ técnico; a substituição cancela a do técnico anterior com aviso e cria a do 
   no mesmo horário e local, com o histórico ligando as duas.
 - Edição que cria conflito de horário é recusada com mensagem.
 
-**Decisão pendente:** editar uma escala confirmada exige nova confirmação do técnico? (sugestão:
-sim, se mudar data, hora ou local). Esforço: M. Etapa 25 do plano de trabalho.
+**Decidido em 27/09:** editar uma escala confirmada pede nova confirmação do técnico só se mudar
+data, hora ou local; mudar só a tarefa não pede. Esforço: M. Etapa 25 do plano de trabalho.
