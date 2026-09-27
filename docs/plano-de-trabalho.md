@@ -148,8 +148,8 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 
 ### Bloco 9: produto (análise global de 27/09, aprovado pelo responsável)
 
-- [ ] **24. Motivo de recusa estruturado e tempo de resposta** (fase 0 de [agente-ia.md](agente-ia.md)). Base dos indicadores: sem ela, cada semana é dado perdido.
-- [ ] **25. Editar e reagendar escala**, com "substituir técnico" depois de uma recusa. Hoje é preciso cancelar e criar de novo.
+- [ ] **24. Motivo de recusa estruturado e tempo de resposta** (backlog 064) (fase 0 de [agente-ia.md](agente-ia.md)). Base dos indicadores: sem ela, cada semana é dado perdido.
+- [ ] **25. Editar e reagendar escala** (backlog 065), com "substituir técnico" depois de uma recusa. Hoje é preciso cancelar e criar de novo.
 
 ## Registro
 

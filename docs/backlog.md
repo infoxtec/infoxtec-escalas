@@ -408,3 +408,48 @@ das auditorias.
   categoria própria ou sai da lista.
 
 Esforço: M. Depende do item 15 para a confirmação visual do tipo.
+
+---
+
+## 064. Motivo de recusa estruturado
+
+**Problema:** quando o técnico responde 2 (não vai), a recusa fica sem motivo. A tabela
+`ocorrencias` já tem o campo `motivo` (saúde, falta de material, conflito de agenda, transporte,
+outro), mas ele nunca é preenchido; o que chega é texto livre em `detalhe`, que não dá para somar.
+
+**Escopo:** depois do "2", o WhatsApp pergunta o motivo numa lista numerada (1 Saúde, 2 Transporte,
+3 Conflito de agenda, 4 Falta de material, 5 Outro). O número vai para `ocorrencias.motivo`; o
+detalhe escrito continua opcional. O sistema também grava o tempo entre o envio e a resposta.
+
+**Critérios de aceite:**
+- Dado um técnico que respondeu 2, quando ele responde 3, então a ocorrência fica com motivo
+  "conflito de agenda".
+- Dado um técnico que respondeu 2, quando ele manda texto em vez de número, então o texto vai para
+  o detalhe e o motivo fica "outro".
+- A aba Operação mostra recusas por motivo no período.
+
+**Por que agora:** é a fase 0 de `docs/agente-ia.md` e pré-requisito dos itens 006 (IA que sugere
+a escala) e 007 (predição). Cada semana sem ele é histórico perdido. Esforço: P (cerca de 1 dia).
+Etapa 24 do plano de trabalho.
+
+---
+
+## 065. Editar e reagendar escala
+
+**Problema:** para trocar horário, local ou técnico, o gestor precisa cancelar e criar de novo.
+Depois de uma recusa, não há atalho para escalar outro técnico no mesmo horário. O status
+`reagendada` existe no banco, mas nenhuma ação leva a ele.
+
+**Escopo:** no detalhe da escala, "Editar" (horário, local, tarefa) e "Substituir técnico". A
+escala editada recalcula a jornada, confere conflito e aptidão e manda a mensagem corrigida ao
+técnico; a substituição cancela a do técnico anterior com aviso e cria a do novo.
+
+**Critérios de aceite:**
+- Dada uma escala confirmada, quando o gestor muda o horário, então o técnico recebe a mensagem
+  corrigida e a escala volta a aguardar confirmação.
+- Dada uma escala recusada, quando o gestor usa "Substituir técnico", então a nova escala é criada
+  no mesmo horário e local, com o histórico ligando as duas.
+- Edição que cria conflito de horário é recusada com mensagem.
+
+**Decisão pendente:** editar uma escala confirmada exige nova confirmação do técnico? (sugestão:
+sim, se mudar data, hora ou local). Esforço: M. Etapa 25 do plano de trabalho.
