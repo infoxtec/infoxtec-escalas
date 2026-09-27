@@ -44,8 +44,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # informativa até a troca do xlsx (etapa 13): vira aviso amarelo; depois, tirar o || e bloquear
-      - run: npm audit --omit=dev --audit-level=high || echo "::warning::npm audit encontrou vulnerabilidade (xlsx, etapa 13)"
+      # bloqueia vulnerabilidade alta ou crítica nas dependências que vão para o navegador
+      - run: npm audit --omit=dev --audit-level=high
 
   funcoes:
     name: Edge Functions (deno check)

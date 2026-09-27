@@ -47,10 +47,10 @@ No Supabase, projeto **infoxtec-escalas-dev**:
    - **Save**.
 2. **Authentication → Sign In / Providers** → desligue **Allow new users to sign up** → **Save**.
 
-### B2. Senha mínima de 12 caracteres (etapa 6)
+### B2. Senha mínima de 8 caracteres, com letras e números (etapa 6, decisão 36) — feito em 27/09
 
 Nos **dois** projetos (`infoxtec-escalas` e `infoxtec-escalas-dev`):
-**Authentication → Sign In / Providers → Email** → **Minimum password length** = `12` → **Save**.
+**Authentication → Sign In / Providers → Email** → **Minimum password length** = `8` e exigência de letras e números → **Save**.
 
 A outra metade da etapa 6 (recusar senha vazada) já está no painel 3.4.
 
@@ -90,7 +90,7 @@ A homologação já tem as migrations 45 e 46 e as Edge Functions novas.
    a chave do Google). Antes, o botão falhava sem mensagem nenhuma.
 5. **Senha forte** (precisa do B1): na tela de login, **Esqueci minha senha** com o seu e-mail; abra
    o link recebido e tente a senha `Senha@123456`. Deve ser **recusada** por aparecer em vazamentos.
-   Depois use uma senha sua, com 12 caracteres ou mais.
+   Depois use uma senha sua, com 8 caracteres ou mais, com letras e números.
 6. **Somente leitura:** entre com um usuário de papel `leitura` e confira que ele não altera nada.
 
 O que eu já testei no banco da homologação (e não dá para ver no painel sem o motor agendado):
