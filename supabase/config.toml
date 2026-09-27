@@ -1,0 +1,16 @@
+# Configuração do Supabase CLI. Usada pelo CI (banco vazio com todas as migrations) e na
+# publicação das Edge Functions. Não altera nada nos projetos remotos por si só.
+project_id = "infoxtec-escalas"
+
+[db]
+major_version = 17
+
+# verify_jwt fixado aqui para a publicação não depender de lembrar a opção na linha de comando
+[functions.documento-ocr]
+verify_jwt = true
+
+[functions.voz-escala]
+verify_jwt = false   # chamada pela Twilio e pelo motor; protegida por token e assinatura
+
+[functions.webhook-evolution]
+verify_jwt = false   # chamada pela Evolution; protegida por token conferido no banco

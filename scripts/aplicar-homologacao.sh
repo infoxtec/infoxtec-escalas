@@ -14,14 +14,14 @@ echo "== Branch: $(git branch --show-current)"
 echo "== Migrations no repositorio: $(ls supabase/migrations/*.sql | wc -l)"
 echo
 
-npx supabase link --project-ref "$DEV"
+npx --yes supabase@2.118.0 link --project-ref "$DEV"
 [ "$(cat supabase/.temp/project-ref)" = "$DEV" ] || { echo "O link nao ficou na homologacao. Nada foi aplicado."; exit 1; }
 
 echo
 echo "== Situacao das migrations (Local = repositorio, Remote = homologacao)"
-npx supabase migration list
+npx --yes supabase@2.118.0 migration list
 echo
-npx supabase db push
+npx --yes supabase@2.118.0 db push
 
 echo
 echo "Pronto. Teste no painel local:  cd web && npm run dev -- --host"

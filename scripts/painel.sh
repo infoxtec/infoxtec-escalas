@@ -38,7 +38,7 @@ case "$acao" in
     # dependências novas (depois de um git pull): instala antes de subir
     if [[ ! -d node_modules || package-lock.json -nt node_modules ]]; then
       echo "Instalando dependências..."
-      npm install --no-audit --no-fund
+      npm ci --no-audit --no-fund   # ci: instala exatamente o lock, sem reescrever o package-lock.json
       touch node_modules
     fi
     if ! grep -q "\"dev:$modo\"" package.json; then

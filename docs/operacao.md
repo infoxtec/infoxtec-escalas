@@ -157,11 +157,49 @@ where jobid = (select jobid from cron.job where jobname = 'dispatcher-whatsapp')
 order by start_time desc limit 10;
 ```
 
+Desde a migration 45, o aviso também vai para os telefones de `alerta_tecnico_telefones`, e o
+motor manda um sinal por minuto ao monitor externo (healthchecks.io), que avisa por e-mail e
+Telegram quando o sinal para (motor parado, Supabase fora ou pausado) ou chega como falha
+(Evolution recusando envios). Ver decisão 34 e `docs/roteiro-producao.md`.
+
+## Evolution fora do ar: contingência manual
+
+Quando o monitor avisar que a Evolution está falhando, ou os técnicos não receberem:
+
+1. Na Evolution, conferir se a instância está conectada (seção acima) e reconectar pelo QR Code.
+2. Enquanto não voltar, avisar a escala de amanhã por ligação ou por um WhatsApp manual, a partir
+   da aba Agenda (filtro do dia seguinte).
+3. Quando voltar, o motor reenvia sozinho o que ficou em `falha`, dentro de `max_tentativas`.
+   Confira na aba Operação as escalas que ficaram sem resposta.
+
+## Backup
+
+Diário e gratuito, pelo GitHub Actions (`.github/workflows/backup.yml`, etapa 18): cópia completa
+do banco de produção (papéis, estrutura e dados, sem `webhook_eventos`), criptografada com a senha
+`BACKUP_SENHA`, guardada 30 dias como artefato do GitHub (aba **Actions → Backup da produção**).
+Todo dia 1, `.github/workflows/restauracao.yml` restaura a cópia mais recente num banco temporário e
+confere as contagens; se falhar, o GitHub manda e-mail.
+
+**Guardar a `BACKUP_SENHA` fora do GitHub** (gerenciador de senhas). Sem ela, a cópia não abre.
+
+Para restaurar de verdade (desastre), numa máquina com o Supabase CLI:
+
+```bash
+gpg --decrypt producao-AAAAMMDD-HHMM.tar.gz.gpg > copia.tar.gz   # pede a BACKUP_SENHA
+mkdir copia && tar -xzf copia.tar.gz -C copia
+psql "<conexão do projeto novo>" --single-transaction -v ON_ERROR_STOP=1 \
+  -f copia/roles.sql -f copia/schema.sql -c 'set session_replication_role = replica' -f copia/data.sql
+```
+
+**Fora do backup:** os arquivos do bucket `documentos` (Storage). Enquanto não houver cópia
+automática, baixe o bucket pelo painel do Supabase uma vez por mês.
+
 ## Limpeza periódica
 
 Automática desde a migration 39: `fn_limpeza_logs()` roda todo dia às 03h17, agendada por
 `supabase/setup/cron.sql`. Apaga o log de webhook com mais de 30 dias, os alertas com mais de 90 e
-o histórico do `pg_cron` com mais de 7. Para rodar na hora:
+o histórico do `pg_cron` com mais de 7 e, desde a migration 45, o conteúdo enviado
+(`payload_envio`) das notificações com mais de 90 dias. Para rodar na hora:
 
 ```sql
 select fn_limpeza_logs();

@@ -41,7 +41,8 @@ cd web && npm ci && npm run build   # checagem de tipos + build; precisa passar 
 npx supabase migration new 39_descricao   # nova migration (numeração segue a última)
 ```
 
-Não há testes automatizados ainda.
+O CI (`.github/workflows/ci.yml`) roda em todo pull request: build do painel, `deno check` das
+Edge Functions, todas as migrations num banco vazio e `plpgsql_check`. Precisa estar verde antes do merge.
 
 ## Regras do banco
 

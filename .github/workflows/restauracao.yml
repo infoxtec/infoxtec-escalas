@@ -1,0 +1,69 @@
+# Teste mensal de restauração (etapa 18): pega o backup mais recente, abre com a senha e restaura
+# num banco temporário dentro do próprio GitHub Actions. Os dados nunca vão para a homologação.
+# Falhou = o backup não serve; o GitHub avisa o responsável por e-mail.
+name: Teste de restauração do backup
+
+on:
+  schedule:
+    - cron: '17 9 1 * *'   # dia 1 de cada mês, 06:17 em Salvador
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  restaurar:
+    runs-on: ubuntu-latest
+    # segredos só existem no ambiente producao-backup, liberado apenas para a branch main
+    environment: producao-backup
+    steps:
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb  # v1.7.3
+        with:
+          version: 2.118.0
+      - name: Baixar o backup mais recente
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run=$(gh run list -R "$GITHUB_REPOSITORY" --workflow backup.yml --status success -L 1 --json databaseId -q '.[0].databaseId')
+          if [ -z "$run" ]; then echo "::error::Nenhum backup com sucesso encontrado"; exit 1; fi
+          gh run download "$run" -R "$GITHUB_REPOSITORY" -n backup-producao -D backup
+          ls -la backup
+      - name: Abrir o backup
+        env:
+          SENHA: ${{ secrets.BACKUP_SENHA }}
+        run: |
+          arquivo=$(ls backup/*.gpg | head -1)
+          gpg --batch --yes --pinentry-mode loopback --decrypt --passphrase-fd 3 --output copia.tar.gz "$arquivo" 3<<<"$SENHA"
+          mkdir copia && tar -xzf copia.tar.gz -C copia && ls -la copia
+      - name: Banco temporário vazio
+        run: |
+          mkdir vazio && cd vazio && supabase init --force >/dev/null && supabase db start
+      - name: Restaurar
+        env:
+          PGPASSWORD: postgres
+        run: |
+          # VERBOSITY=terse e stderr em arquivo: um erro de COPY não despeja a linha (dados pessoais) no log
+          if ! psql "postgresql://postgres@127.0.0.1:54322/postgres" --single-transaction -q \
+                 -v ON_ERROR_STOP=1 -v VERBOSITY=terse \
+                 -f copia/roles.sql -f copia/schema.sql \
+                 -c 'set session_replication_role = replica' -f copia/data.sql > /dev/null 2> erro.log; then
+            echo "::error::Restauração falhou: $(grep -m1 -oE 'ERROR: +[^:]+' erro.log || echo 'erro sem código')"
+            exit 1
+          fi
+          echo "Restauração sem erros"
+      - name: Conferir contagens
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -c "
+            select 'tecnicos' tabela, count(*) from tecnicos union all
+            select 'locais', count(*) from locais union all
+            select 'escalas', count(*) from escalas union all
+            select 'notificacoes', count(*) from notificacoes union all
+            select 'documentos', count(*) from documentos union all
+            select 'painel_usuarios', count(*) from painel_usuarios union all
+            select 'backlog_itens', count(*) from backlog_itens"
+          n=$(psql "postgresql://postgres@127.0.0.1:54322/postgres" -At -c "select count(*) from escalas")
+          if [ "$n" -eq 0 ]; then echo "::error::Backup restaurado sem nenhuma escala"; exit 1; fi
+          echo "Restauração conferida: $n escalas"

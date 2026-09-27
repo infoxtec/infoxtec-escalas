@@ -156,3 +156,19 @@ passo claro.
 Se o piloto mostrar que muita gente digita 2 e o motivo só aparece depois, aí a IA ganha valor:
 ela colhe o motivo na hora. Nesse momento, Telnyx ou Twilio ConversationRelay entram como troca
 de camada, aproveitando tudo o que já estiver construído.
+
+## Assinatura da Twilio (etapa 12, 27/09)
+
+A `voz-escala` confere, além do token na URL, a assinatura `X-Twilio-Signature` de toda chamada que
+vem da Twilio (HMAC-SHA1 com o `TWILIO_AUTH_TOKEN` sobre a URL pública `voz_url` e os parâmetros).
+
+Começa em **observação**: assinatura inválida só vai para o log. Depois de algumas ligações reais,
+conferir no log da função (Supabase → Edge Functions → voz-escala → Logs) que só aparece
+`assinatura da Twilio ok`. Então ligar o bloqueio:
+
+```bash
+npx --yes supabase@2.118.0 secrets set TWILIO_ASSINATURA=obrigatoria --project-ref zpckrxydqqmmcrphrkxz
+```
+
+Se aparecer `assinatura da Twilio invalida` com ligações legítimas, não ligue o bloqueio: o endereço
+em `voz_url` não é o mesmo que a Twilio chama. Traga o log.

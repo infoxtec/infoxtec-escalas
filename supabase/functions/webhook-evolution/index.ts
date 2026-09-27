@@ -11,6 +11,9 @@ const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, {
   idle_timeout: 20,
 });
 
+// mensagens de texto e botões têm poucos KB; mídia em base64 pode chegar a alguns MB
+const CORPO_MAX_BYTES = 5 * 1024 * 1024;
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -23,9 +26,15 @@ Deno.serve(async (req: Request) => {
   const token = new URL(req.url).searchParams.get("token") ?? "";
   if (!token) return json({ ok: false, erro: "token ausente" }, 401);
 
+  if (Number(req.headers.get("content-length") ?? 0) > CORPO_MAX_BYTES) {
+    return json({ ok: false, erro: "payload grande demais" }, 413);
+  }
+
   let payload: Record<string, unknown>;
   try {
-    payload = await req.json();
+    const bruto = await req.text();
+    if (bruto.length > CORPO_MAX_BYTES) return json({ ok: false, erro: "payload grande demais" }, 413);
+    payload = JSON.parse(bruto);
   } catch {
     return json({ ok: false, erro: "json invalido" }, 400);
   }
@@ -36,7 +45,7 @@ Deno.serve(async (req: Request) => {
   try {
     // sql.json envia o objeto como jsonb uma unica vez (sem dupla serializacao)
     const rows = await sql`
-      select fn_webhook_evolution(${token}, ${sql.json(payload)}) as resultado
+      select fn_webhook_evolution(${token}, ${sql.json(payload as Parameters<typeof sql.json>[0])}) as resultado
     `;
     return json({ ok: true, resultado: rows[0]?.resultado ?? null });
   } catch (err) {

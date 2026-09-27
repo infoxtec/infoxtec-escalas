@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Button, ErrorBox, Field, Input, SuccessBox } from '../components/ui'
 import { supabase } from '../lib/supabase'
+import { SENHA_MINIMA, senhaVazada } from '../lib/senha'
 
 function Moldura({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
@@ -93,9 +94,13 @@ export function DefinirSenha({ convite, onPronto }: { convite: boolean; onPronto
   const salvar = async (e: FormEvent) => {
     e.preventDefault()
     setErro(null)
-    if (senha.length < 8) return setErro('A senha precisa ter pelo menos 8 caracteres.')
+    if (senha.length < SENHA_MINIMA) return setErro(`A senha precisa ter pelo menos ${SENHA_MINIMA} caracteres.`)
     if (senha !== confirma) return setErro('As senhas não conferem.')
     setBusy(true)
+    if (await senhaVazada(senha)) {
+      setBusy(false)
+      return setErro('Esta senha aparece em vazamentos de dados conhecidos. Escolha outra.')
+    }
     const { error } = await supabase.auth.updateUser({ password: senha })
     setBusy(false)
     if (error) setErro(error.message)
@@ -105,7 +110,7 @@ export function DefinirSenha({ convite, onPronto }: { convite: boolean; onPronto
   return (
     <Moldura titulo={convite ? 'Bem-vindo! Crie sua senha' : 'Crie uma nova senha'}>
       <form onSubmit={salvar} className="space-y-3">
-        <Field label="Nova senha" hint="Mínimo de 8 caracteres."><Input type="password" autoComplete="new-password" value={senha} onChange={e => setSenha(e.target.value)} autoFocus /></Field>
+        <Field label="Nova senha" hint={`Mínimo de ${SENHA_MINIMA} caracteres. Senhas que já vazaram na internet são recusadas.`}><Input type="password" autoComplete="new-password" value={senha} onChange={e => setSenha(e.target.value)} autoFocus /></Field>
         <Field label="Repita a senha"><Input type="password" autoComplete="new-password" value={confirma} onChange={e => setConfirma(e.target.value)} /></Field>
         {erro && <ErrorBox>{erro}</ErrorBox>}
         <Button type="submit" className="w-full" disabled={busy}>{busy ? 'Salvando...' : 'Salvar senha'}</Button>
