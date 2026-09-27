@@ -11,7 +11,7 @@ A análise que originou a lista está em [analise-topologia.md](analise-topologi
 |---|---|---|
 | Máquina Linux no Mac | Onde você roda o painel, os comandos do Supabase e os scripts | Pronta |
 | Homologação | Projeto Supabase `infoxtec-escalas-dev` (`oruwnlxyvznpigbpjjbx`), com dados fictícios, sem WhatsApp nem ligações reais | Pronta, com as migrations 01 a 46 e as três Edge Functions |
-| Produção | Projeto Supabase `infoxtec-escalas` (`zpckrxydqqmmcrphrkxz`) + painel na Vercel | Painel 3.3 publicado (merge do PR #2); migration 44 aguardando o `aplicar-producao.sh` |
+| Produção | Projeto Supabase `infoxtec-escalas` (`zpckrxydqqmmcrphrkxz`) + painel na Vercel | Migrations 01 a 46, as três Edge Functions e o painel 3.4.1 (27/09) |
 | Repositório | GitHub `infoxtec/infoxtec-escalas`. A `main` é o que vale para a produção | `main` igual à produção desde o merge do PR #1 (26/09) |
 
 ## Regras combinadas (26/09)
@@ -86,20 +86,20 @@ As etapas estão em ordem. Dentro de cada bloco, uma etapa só começa quando a 
 
 ### Bloco 3: banco (cada uma é uma migration: homologação, teste, produção)
 
-- [ ] **7. Alerta de motor parado.** *Painel 3.3 na produção desde o merge do PR #2; falta aplicar a migration 44 e agendar o `vigia-motor` (roteiro, parte A).* Se o motor não rodar com sucesso por mais de 5 minutos, os supervisores recebem aviso, e a aba Operação mostra a última execução.
+- [x] **7. Alerta de motor parado.** *Na produção desde 27/09: migration 44 e agendamento `vigia-motor`.* Se o motor não rodar com sucesso por mais de 5 minutos, os supervisores recebem aviso, e a aba Operação mostra a última execução.
       *Teste na homologação:* simular falha do motor e ver o alerta registrado.
       *Passo manual na produção, depois do script:* no SQL Editor da produção, rodar a linha `vigia-motor` de `supabase/setup/cron.sql`. Sem ela o alerta nunca dispara; a aba Operação avisa quando o vigia não está agendado.
-- [ ] **8. Validação dos parâmetros (`config`).** *Homologação: pronto em 27/09 (PR #3); falta a produção, pelo [roteiro](roteiro-producao.md).* Gravar um valor inválido (por exemplo, texto em `max_tentativas`) passa a ser recusado, em vez de quebrar o motor.
-- [ ] **9. Limpeza do legado.** *Homologação: pronto em 27/09 (PR #3); falta a produção, pelo [roteiro](roteiro-producao.md).* Remover as funções da bancada de teste (`fn_teste_wa_*`) e o índice duplicado `idx_notif_wa`.
-- [ ] **10. Fechar escalas passadas e liberar o horário da recusa.** *Homologação: pronto em 27/09 (PR #3); falta a produção, pelo [roteiro](roteiro-producao.md).* Decidido em 27/09 (decisões 30 e 31): confirmada vira concluída 5 minutos depois do término previsto; recusa libera o horário e o técnico volta para "sem escala".
+- [x] **8. Validação dos parâmetros (`config`).** *Na produção desde 27/09 (PR #3).* Gravar um valor inválido (por exemplo, texto em `max_tentativas`) passa a ser recusado, em vez de quebrar o motor.
+- [x] **9. Limpeza do legado.** *Na produção desde 27/09 (PR #3).* Remover as funções da bancada de teste (`fn_teste_wa_*`) e o índice duplicado `idx_notif_wa`.
+- [x] **10. Fechar escalas passadas e liberar o horário da recusa.** *Na produção desde 27/09 (PR #3).* Decidido em 27/09 (decisões 30 e 31): confirmada vira concluída 5 minutos depois do término previsto; recusa libera o horário e o técnico volta para "sem escala".
       *Teste:* escala confirmada que terminou há mais de 5 minutos aparece como concluída; criar uma escala no mesmo horário de uma recusada é aceito.
-- [ ] **10b. Robustez do banco** (análise global, 27/09). *Homologação: pronto em 27/09 (PR #3); falta a produção, pelo [roteiro](roteiro-producao.md).* Índices nas chaves estrangeiras (excluir técnico com 260 escalas: de 3,5 s para 0,04 s), trava contra motor em dobro, apagar o conteúdo enviado das notificações depois de 90 dias.
-- [ ] **10c. Avisos técnicos por dois caminhos** (decisão 34). *Homologação: pronto em 27/09 (PR #3); falta a produção, pelo [roteiro](roteiro-producao.md).* WhatsApp pela Evolution para os supervisores e para David Cerqueira (motor parado, banco perto do limite) e monitor externo gratuito (healthchecks.io) por e-mail e Telegram para quando a Evolution ou o Supabase caem.
+- [x] **10b. Robustez do banco** (análise global, 27/09). *Na produção desde 27/09 (PR #3).* Índices nas chaves estrangeiras (excluir técnico com 260 escalas: de 3,5 s para 0,04 s), trava contra motor em dobro, apagar o conteúdo enviado das notificações depois de 90 dias.
+- [ ] **10c. Avisos técnicos por dois caminhos** (decisão 34). *WhatsApp de aviso técnico na produção desde 27/09 (PR #3); falta criar o monitor no healthchecks.io ([roteiro](roteiro-producao.md), D5).* WhatsApp pela Evolution para os supervisores e para David Cerqueira (motor parado, banco perto do limite) e monitor externo gratuito (healthchecks.io) por e-mail e Telegram para quando a Evolution ou o Supabase caem.
 
 ### Bloco 4: segurança das Edge Functions
 
-- [ ] **11. `documento-ocr` valida o login por conta própria**, sem depender só da configuração de publicação. *Homologação: pronto em 27/09 (PR #3); falta a produção, pelo [roteiro](roteiro-producao.md).* Corrigido junto: o botão de leitura na nuvem falhava sempre no navegador (faltava CORS) e a chave do Google podia vazar numa mensagem de erro.
-- [ ] **12. `voz-escala` confere a assinatura da Twilio** (`X-Twilio-Signature`) em vez de confiar só no token da URL. *Homologação: pronto em 27/09 (PR #3); falta a produção, pelo [roteiro](roteiro-producao.md).* Começa em observação; o bloqueio é ligado depois de conferir o log ([telefonia.md](telefonia.md)). **Prazo:** ligar o bloqueio depois de 10 ligações reais com `assinatura da Twilio ok` no log, no máximo 30 dias após a publicação; até lá a proteção continua sendo só o token.
+- [x] **11. `documento-ocr` valida o login por conta própria**, sem depender só da configuração de publicação. *Na produção desde 27/09 (PR #3).* Corrigido junto: o botão de leitura na nuvem falhava sempre no navegador (faltava CORS) e a chave do Google podia vazar numa mensagem de erro.
+- [ ] **12. `voz-escala` confere a assinatura da Twilio** (`X-Twilio-Signature`) em vez de confiar só no token da URL. *Na produção desde 27/09, em observação; falta ligar o bloqueio.* Começa em observação; o bloqueio é ligado depois de conferir o log ([telefonia.md](telefonia.md)). **Prazo:** ligar o bloqueio depois de 10 ligações reais com `assinatura da Twilio ok` no log, no máximo 30 dias após a publicação; até lá a proteção continua sendo só o token.
 - [ ] **13. Trocar a biblioteca `xlsx`** da importação de planilhas, que tem vulnerabilidade alta sem correção no npm. *A versão corrigida (0.20.3) só existe no site da SheetJS, bloqueado na rede do ambiente do Claude; ver roteiro, parte D.*
       *Teste:* importar a mesma planilha antes e depois.
 
@@ -107,7 +107,7 @@ Edge Function não é migration: é publicada com `npx supabase functions deploy
 
 ### Bloco 5: proteção automática
 
-- [ ] **14. CI no GitHub.** *Criado em 27/09 (`.github/workflows/ci.yml`); passa a valer com o merge do PR #3.* Em todo pull request: compilar o painel, reaplicar todas as migrations num banco vazio e rodar o `plpgsql_check`. Pega sozinho os erros que nesta análise foram encontrados à mão.
+- [x] **14. CI no GitHub.** *Valendo desde o merge do PR #3 (27/09).* Em todo pull request: compilar o painel, reaplicar todas as migrations num banco vazio e rodar o `plpgsql_check`. Pega sozinho os erros que nesta análise foram encontrados à mão.
 - [ ] **15. Testes automáticos das regras críticas** (pgTAP): fuso do motor, jornada CLT, permissões por papel, habilidades.
 
 ### Bloco 6: infraestrutura sem custo
@@ -163,4 +163,5 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 | 26/09 | Vercel: Preview e Development na homologação | Configurado | Production sem alteração |
 | 26/09 | Migration 44 + painel 3.3: alerta de motor parado, logomarca, painel em segundo plano | Aplicada e testada pelo Claude; teste conjunto pendente | Aguardando sua ordem |
 | 27/09 | Merge do PR #2: painel 3.3 (alerta de motor, logomarca) | Não se aplica | Painel publicado; migration 44 pendente |
-| 27/09 | Migrations 45 e 46, Edge Functions, CI, backup, painel 3.4 (etapas 8 a 12, 14, 18, 10b, 10c) | Aplicadas e testadas pelo Claude; teste conjunto pendente | Aguardando o [roteiro](roteiro-producao.md) |
+| 27/09 | Migrations 45 e 46, Edge Functions, CI, backup, painel 3.4 (etapas 8 a 12, 14, 18, 10b, 10c) | Aplicadas e testadas; teste conjunto aprovado | Aplicadas pelo responsável (migrations 44 a 46, Edge Functions, `vigia-motor`) e conferidas |
+| 27/09 | Painel 3.4.1: sessão não cai mais sozinha (decisão 35, PR #4) | Testado em navegador com duas abas | Publicado |
