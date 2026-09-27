@@ -44,7 +44,9 @@ jobs:
           PGPASSWORD: postgres
         run: |
           # VERBOSITY=terse e stderr em arquivo: um erro de COPY não despeja a linha (dados pessoais) no log
-          if ! psql "postgresql://postgres@127.0.0.1:54322/postgres" --single-transaction -q \
+          # supabase_admin: o superusuário do banco temporário; o postgres não pode aplicar os
+          # parâmetros dos papéis (ALTER ROLE ... SET log_min_messages) que vêm no roles.sql
+          if ! psql "postgresql://supabase_admin@127.0.0.1:54322/postgres" --single-transaction -q \
                  -v ON_ERROR_STOP=1 -v VERBOSITY=terse \
                  -f copia/roles.sql -f copia/schema.sql \
                  -c 'set session_replication_role = replica' -f copia/data.sql > /dev/null 2> erro.log; then
