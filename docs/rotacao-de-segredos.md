@@ -2,8 +2,9 @@
 
 **Por que este documento existe:** entre **21/09/2026 01:31** (migration 07, que criou `fn_segredo`) e
 **21/09/2026 19:52:28** (migration 12, que revogou `EXECUTE`), a função que lê o Vault era executável
-por `anon` — a chave publicável, que fica no navegador por design. **Não há registro de que os
-segredos criados nessa janela tenham sido trocados.** Este é o roteiro para fechar isso.
+por `anon` — a chave publicável, que fica no navegador por design. A apuração de **27/09** mostrou que
+**uma** credencial esteve de fato nessa janela (`EVOLUTION_API_KEY`, por 3 h 14 min) e que uma segunda
+ficou na margem de segundos (`WEBHOOK_TOKEN`). Este é o roteiro para fechar isso.
 
 Quem executa: **o responsável**, no SQL Editor da produção, no painel da Evolution e no console da
 Twilio. Nada aqui é migration.
@@ -28,11 +29,44 @@ select name,
 Se a consulta for negada, o mesmo inventário está em **Project Settings → Vault** no painel.
 
 **Como ler o resultado:** `created_at` anterior a 21/09 19:52 = criado enquanto a leitura do Vault era
-pública. `updated_at` maior que `created_at` = já foi trocado alguma vez.
+pública. `updated_at` maior que `created_at` = já foi trocado alguma vez. **Atenção à ordem do CASE:**
+um segredo criado depois da correção e depois reajustado aparece como "já rotacionado" — o que importa
+é a data de criação.
+
+### Resultado da apuração — 27/09/2026
+
+| Segredo | Criado (Bahia) | Situação real |
+|---|---|---|
+| `EVOLUTION_API_KEY` | 21/09 13:38 | **EXPOSTO — rotacionar.** Ficou 3 h 14 min na janela (criado às 16:38 UTC, revogado às 19:52 UTC) |
+| `WEBHOOK_TOKEN` | 21/09 16:52 | **Margem de 5,8 segundos** depois do carimbo da migration 12. Rotacionar por precaução (§1) |
+| `VOZ_TOKEN` | 23/09 00:15 | Nunca exposto — nasceu dois dias depois da correção |
+| `TWILIO_ACCOUNT_SID` | 23/09 01:00 | Nunca exposto; e **não é rotável** (identificador) |
+| `TWILIO_AUTH_TOKEN` | 23/09 01:00 | Nunca exposto |
+| `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` | — | **Não existem no Vault** (nem o `GOOGLE_VISION_KEY`, porque o OCR na nuvem nunca foi ligado) |
+
+### Conclusão: o resgate é de **dois** segredos
+
+O escopo caiu de "seis credenciais" para **duas**, e as duas são baratas:
+
+1. **`EVOLUTION_API_KEY` — rotacionar hoje.** Foi a única credencial comprovadamente exposta, e o que
+   ela dá a quem a tem é mais do que enviar mensagem: é **operar a instância do WhatsApp** (estado da
+   conexão, envio e leitura pela API da Evolution). Não há como saber se alguém a leu naquelas 3 h 14;
+   há como tornar a leitura inútil.
+2. **`WEBHOOK_TOKEN` — rotacionar por precaução.** A margem é de 5,8 segundos contra o **carimbo do
+   arquivo** da migration 12 — e o carimbo não é a hora em que ela foi aplicada. Se a aplicação
+   demorou alguns minutos, o token ficou exposto nesse intervalo. O custo de rotacionar é de 15
+   minutos; o de não rotacionar é uma credencial que permite forjar eventos.
+
+**As demais rotações (§5, §6) deixam de ser resgate e passam a ser higiene e continuidade** — devem
+entrar no calendário, não na urgência.
 
 ---
 
 ## 1. Inventário e o que cada rotação arrasta
+
+Situação apurada em 27/09: **só `EVOLUTION_API_KEY` esteve comprovadamente exposto**;
+`WEBHOOK_TOKEN` entra por precaução. Os demais nasceram depois da correção — a rotação deles é
+preventiva.
 
 | Segredo | Onde vive | Quem lê | Rotável? | O que pode quebrar |
 |---|---|---|---|---|
@@ -68,7 +102,9 @@ select count(*) as ligacoes_em_curso from ligacoes where status in ('criada','di
 
 ## 3. Fase 1 — sem impacto funcional (15 minutos)
 
-**3.1 Apagar os segredos órfãos da bancada antiga**
+**3.1 Órfãos da bancada antiga — conferido em 27/09: não existem no Vault**
+
+Nada a fazer. Se um dia forem criados por engano, o comando é:
 
 ```sql
 delete from vault.secrets
@@ -97,9 +133,13 @@ select fn_evo_get('/instance/connectionState/' || fn_config('evolution_instancia
 select * from fn_http_resposta(<numero>);
 ```
 
-**Esperado:** `{"instance":{"instanceName":"infoxtec","state":"open"}}` — e a limpeza da resposta
-depois de conferir (`delete from net._http_response where id = <numero>;`), porque ela guarda a chave
-na URL.
+**Esperado:** `{"instance":{"instanceName":"infoxtec","state":"open"}}`. A chave viaja no **cabeçalho**
+(`apikey`), não na URL — então a resposta **não** a carrega. Ainda assim, apague o registro depois de
+conferir (`delete from net._http_response where id = <numero>;`) para não deixar rastro de consulta.
+
+> **Cuidado que não se aplica aqui, mas se aplica ao `WEBHOOK_TOKEN`:** no passo 4.3 a limpeza é
+> **obrigatória**, porque a resposta do `/webhook/set/` devolve a configuração gravada — **com o token
+> na URL**. É a diferença entre higiene e vazamento.
 
 ---
 
@@ -148,7 +188,10 @@ de volta no Vault, reaponte a Evolution e o sistema volta como estava.
 
 ---
 
-## 5. Fase 3 — Twilio e voz (20 minutos)
+## 5. Fase 3 — Twilio e voz (20 minutos) · higiene, não resgate
+
+A apuração mostrou que `TWILIO_AUTH_TOKEN`, `TWILIO_ACCOUNT_SID` e `VOZ_TOKEN` **nasceram depois da
+correção** — não há exposição a reparar. Esta fase entra no calendário semestral.
 
 **5.1 Rotacionar `TWILIO_AUTH_TOKEN` com dois tokens (sem janela)**
 
@@ -188,7 +231,11 @@ rotação em si.
 
 ---
 
-## 6. Fase 4 — o que exige cuidado (30 minutos)
+## 6. Fase 4 — senha do banco e backup (30 minutos) · higiene, não resgate
+
+A senha do banco **já foi rotacionada em 27/09** (junto com o desligamento do Retool), e `BACKUP_SENHA`
+nunca esteve na janela exposta (não vive no Vault). O valor desta fase é **fechar a lacuna do
+`PRODUCAO_DB_URL`** e deixar o procedimento escrito para a próxima vez.
 
 **6.1 Senha do banco**
 
@@ -252,10 +299,15 @@ necessário para a primeira vez.
 
 ## 9. Checklist final
 
-- [ ] Baseline rodado e guardado (§0)
-- [ ] Segredos órfãos `WHATSAPP_*` apagados
+**Resgate (o que fecha a janela exposta):**
+
+- [x] Baseline rodado em 27/09 — resultado na §0
+- [x] Órfãos `WHATSAPP_*` conferidos: **não existem** no Vault
 - [ ] `EVOLUTION_API_KEY` rotacionada e envio verificado
 - [ ] `WEBHOOK_TOKEN` rotacionado nos 3 passos + resposta com o token apagada + webhook verificado com resposta real
+
+**Higiene (calendário semestral, sem exposição a reparar):**
+
 - [ ] `TWILIO_AUTH_TOKEN` rotacionado com token secundário e ligação verificada
 - [ ] `VOZ_TOKEN` rotacionado e ligação verificada
 - [ ] Senha do banco rotacionada + `PRODUCAO_DB_URL` atualizado + backup e Edge Functions testados

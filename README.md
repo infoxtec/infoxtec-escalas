@@ -42,6 +42,8 @@ são lembrados da escala do dia seguinte, com prazo às 18h.
 
 ## Materiais por área
 
+**O que falta fazer, com ID para escolher onde atuar: [Painel de temas](docs/painel-de-temas.md).**
+
 Três áreas concentram as análises e as decisões. Cada documento responde a uma pergunta diferente.
 
 ### Segurança e LGPD
