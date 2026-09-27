@@ -58,12 +58,12 @@ flowchart LR
 ## Personas no DeepSeek Harness (DSH)
 
 Desde 27/09 o time também existe para o DSH, que roda na estação Linux com o repositório como
-workspace. O conteúdo é o mesmo dos sete papéis acima, em outro formato:
+workspace. O conteúdo é o mesmo dos sete papéis do Claude Code, em outro formato:
 
 | Peça | Onde fica | Como é usada |
 |---|---|---|
 | Regras do time e fluxo de decisão | `AGENTS.md`, na raiz | carregado em toda sessão, junto com o `CLAUDE.md` |
-| Os sete papéis | `.dsh/skills/<papel>/SKILL.md` | carregados sob demanda, pelo nome da skill |
+| Os sete papéis (mais o Comercial, que só existe aqui) | `.dsh/skills/<papel>/SKILL.md` | carregados sob demanda, pelo nome da skill |
 
 **O `CLAUDE.md` continua sendo a regra que vence** nos dois ambientes; o `AGENTS.md` só acrescenta o
 time e o fluxo. As skills trazem, além do papel, o estado real que a persona precisa conhecer —
