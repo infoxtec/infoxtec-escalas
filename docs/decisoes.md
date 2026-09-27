@@ -319,3 +319,29 @@ Edições da mesma escala têm intervalo mínimo de 2 minutos, e escala de teste
 fora do npm. O arquivo oficial foi baixado pelo GitHub Actions e guardado em
 `web/vendor/xlsx-0.20.3.tgz`, forma recomendada pela própria SheetJS. O build não depende mais do
 site deles. Para atualizar, trocar o arquivo e rodar `npm install file:vendor/<arquivo>`.
+
+## 39. Documento não entra no fluxo da escala; o atestado é do módulo de ponto
+
+**Decisão (responsável, 27/09):** a negação da escala **não pede nem aceita documento**. O técnico
+informa o motivo por número (1 a 5) e, se quiser, o detalhe por texto — nada mais. O upload de
+**atestado médico, com janela de 48 horas**, é requisito do **módulo de ponto**, que ainda não
+começou, e **não** da gestão de escala.
+
+**Por quê:** no momento da recusa o trabalhador não tem documento em mãos. Pedir anexo ali criaria
+atrito e um caminho a mais para dado de saúde circular sem necessidade. O atestado pertence ao
+registro de jornada, onde a ausência é justificada — não ao planejamento da escala.
+
+**Consequência 1 — não há nada a remover.** Esse fluxo nunca existiu. O que existe hoje é o upload de
+NR, CNH e ASO **pelo painel**, feito por admin/gestor (`web/src/lib/api.ts:113`), e a recusa gravando
+apenas `ocorrencias.motivo` e `detalhe` (migration 47). A decisão vale como **proibição de construir**:
+nem agora, nem quando o módulo de ponto chegar, o anexo entra no caminho da escala.
+
+**Consequência 2 — o que continua aberto não é o fluxo, é o acesso.** O motivo `saude` e os documentos
+(NR, CNH, ASO) seguem visíveis ao papel `leitura` — é o achado **SEG-03**, independente desta decisão.
+Eliminar o fluxo de anexo **reduz o desenho**, não fecha o vazamento.
+
+**Consequência 3 — o módulo de ponto nasce com um requisito de acesso.** Quando o atestado passar a
+ser enviado pelo trabalhador, ele **não pode** cair na visibilidade dos documentos atuais, que é
+`admin` + `gestor`: isso daria a qualquer gestor de operação acesso a atestado alheio. O módulo
+precisa de uma classe de visibilidade própria (proposta: papel `rh`), que é o mesmo caminho do RBAC
+com escopo da etapa de acesso por área. Fica registrado agora para não virar retrabalho depois.
