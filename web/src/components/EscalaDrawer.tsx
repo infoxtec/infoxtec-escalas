@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Calendar, Clock, ExternalLink, FileText, MapPin, Moon, Phone, SendHorizonal, Trash2, User } from 'lucide-react'
-import { Button, Confirm, ErrorBox, Sheet, SuccessBox, useToast } from './ui'
+import { Button, Confirm, ErrorBox, Field, Input, Modal, Select, Sheet, SuccessBox, Textarea, useToast } from './ui'
 import { api, erroMsg } from '../lib/api'
 import {
   descricaoJornada, ENVIO_LABEL, formatDate, formatDateTime, formatTime, LIGACAO_LABEL, PRIORIDADE_LABEL, SEMAFORO_CLASSES, STATUS_LABEL,
 } from '../lib/types'
-import type { EscalaPainel, Ligacao, LinhaTempo, StatusEscala } from '../lib/types'
+import type { EscalaEdicao, EscalaPainel, Ligacao, LinhaTempo, Local, StatusEscala, Tecnico } from '../lib/types'
 
 const PRIORIDADE_BADGE: Record<string, string> = {
   baixa: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
@@ -18,15 +18,17 @@ const EVENTO_LABEL: Record<string, string> = {
   criada: 'Escala criada', status_alterado: 'Status alterado', mensagem_enviada: 'Mensagem enviada',
   entregue_no_aparelho: 'Entregue no aparelho', lida: 'Lida', supervisor_acionado: 'Supervisor acionado',
   reenvio_manual: 'Reenvio manual', resposta_confirmacao: 'Técnico confirmou', resposta_problema: 'Técnico informou problema',
-  resposta_motivo: 'Técnico detalhou o problema', resposta_texto_livre: 'Técnico escreveu uma mensagem',
+  resposta_motivo: 'Técnico informou o motivo', escala_editada: 'Escala editada',
+  substituida: 'Técnico substituído', substitui: 'Substitui escala recusada', resposta_texto_livre: 'Técnico escreveu uma mensagem',
 }
 
 type Acao =
   | { tipo: 'status'; status: StatusEscala; label: string; destrutiva?: boolean; texto: string }
   | { tipo: 'reenviar' } | { tipo: 'remover' } | { tipo: 'ligar' }
 
-export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEditar }: {
+export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEditar, tecnicos = [], locais = [] }: {
   escala: EscalaPainel | null; open: boolean; onClose: () => void; onRefresh: () => void; podeEditar: boolean
+  tecnicos?: Tecnico[]; locais?: Local[]
 }) {
   const toast = useToast()
   const [timeline, setTimeline] = useState<LinhaTempo[] | null>(null)
@@ -35,6 +37,9 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
   const [busy, setBusy] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [sucesso, setSucesso] = useState<string | null>(null)
+  // backlog 065: editar e substituir tecnico
+  const [edicao, setEdicao] = useState<EscalaEdicao | null>(null)
+  const [substituto, setSubstituto] = useState<string | null>(null)
 
   const carregarTimeline = useCallback(async (id: string) => {
     setTimeline(null)
@@ -49,6 +54,30 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
   }, [open, escala?.id, carregarTimeline])
 
   if (!escala) return null
+
+  const abrirEdicao = async () => {
+    setErro(null)
+    try { setEdicao(await api.escalaEdicao(escala.id)) } catch (e) { setErro(erroMsg(e)) }
+  }
+  const salvarEdicao = async () => {
+    if (!edicao) return
+    setBusy(true); setErro(null)
+    try {
+      const r = await api.editarEscala({ id: edicao.id, data_servico: edicao.data_servico, hora_inicio: edicao.hora_inicio,
+        local_id: edicao.local_id ?? '', descricao_tarefa: edicao.descricao_tarefa })
+      toast(!r.alterada ? 'Nada mudou.' : r.nova_confirmacao ? 'Escala alterada. O técnico recebeu de novo e precisa confirmar.' : 'Escala alterada.')
+      setEdicao(null); onRefresh(); void carregarTimeline(escala.id)
+    } catch (e) { setErro(erroMsg(e)); setEdicao(null) } finally { setBusy(false) }
+  }
+  const salvarSubstituto = async () => {
+    if (!substituto) return
+    setBusy(true); setErro(null)
+    try {
+      await api.substituirTecnico(escala.id, substituto)
+      toast('Nova escala criada para o técnico escolhido. Ela sai pelo WhatsApp em até 1 minuto.')
+      setSubstituto(null); onRefresh(); onClose()
+    } catch (e) { setErro(erroMsg(e)); setSubstituto(null) } finally { setBusy(false) }
+  }
 
   const executar = async () => {
     if (!acao) return
@@ -83,6 +112,7 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
   const podeExecucao = ['agendada', 'notificada', 'confirmada', 'reagendada'].includes(s)
   const podeConcluir = s === 'em_execucao'
   const podeCancelar = !['cancelada', 'concluida'].includes(s)
+  const podeEditarEscala = ['rascunho', 'agendada', 'notificada', 'confirmada'].includes(s)
   const envioSaiu = escala.status_envio === 'enviada' || escala.status_envio === 'enfileirada'
 
   return (
@@ -145,6 +175,8 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ações</p>
               <div className="flex flex-wrap gap-2">
+                {podeEditarEscala && <Button size="sm" variant="outline" disabled={busy} onClick={() => void abrirEdicao()}>Editar</Button>}
+                {s === 'recusada' && <Button size="sm" variant="outline" disabled={busy} onClick={() => setSubstituto('')}>Substituir técnico</Button>}
                 {podeLiberar && <Button size="sm" variant="outline" disabled={busy}
                   onClick={() => setAcao({ tipo: 'status', status: 'agendada', label: 'Liberar envio', texto: 'A escala sai pelo WhatsApp em até 1 minuto.' })}>Liberar envio</Button>}
                 {podeReenviar && <Button size="sm" variant="outline" disabled={busy} onClick={() => setAcao({ tipo: 'reenviar' })}>
@@ -235,6 +267,40 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
         </>}
         {acao?.tipo === 'status' && <p>{acao.texto}</p>}
       </Confirm>
+
+      <Modal open={!!edicao} onClose={() => { if (!busy) setEdicao(null) }} title="Editar escala"
+        footer={<><Button variant="outline" disabled={busy} onClick={() => setEdicao(null)}>Cancelar</Button>
+          <Button disabled={busy} onClick={() => void salvarEdicao()}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
+        {edicao && <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Data"><Input type="date" value={edicao.data_servico} onChange={e => setEdicao({ ...edicao, data_servico: e.target.value })} /></Field>
+            <Field label="Hora"><Input type="time" value={edicao.hora_inicio} onChange={e => setEdicao({ ...edicao, hora_inicio: e.target.value })} /></Field>
+          </div>
+          <Field label="Local">
+            <Select value={edicao.local_id ?? ''} onChange={e => setEdicao({ ...edicao, local_id: e.target.value || null })}>
+              <option value="">Local a confirmar</option>
+              {locais.filter(l => l.ativo || l.id === edicao.local_id).map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
+            </Select>
+          </Field>
+          <Field label="Tarefa"><Textarea rows={3} value={edicao.descricao_tarefa} onChange={e => setEdicao({ ...edicao, descricao_tarefa: e.target.value })} /></Field>
+          {['notificada', 'confirmada'].includes(edicao.status) && <p className="text-xs text-muted-foreground">
+            Mudar data, hora ou local reenvia a escala e o técnico precisa confirmar de novo. Mudar só a tarefa apenas avisa o técnico.</p>}
+        </div>}
+      </Modal>
+
+      <Modal open={substituto !== null} onClose={() => { if (!busy) setSubstituto(null) }} title="Substituir técnico"
+        footer={<><Button variant="outline" disabled={busy} onClick={() => setSubstituto(null)}>Cancelar</Button>
+          <Button disabled={busy || !substituto} onClick={() => void salvarSubstituto()}>{busy ? 'Criando...' : 'Criar escala'}</Button></>}>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">Cria uma escala igual (mesmo dia, hora, local e tarefa) para outro técnico. A recusada fica no histórico.</p>
+          <Field label="Novo técnico">
+            <Select value={substituto ?? ''} onChange={e => setSubstituto(e.target.value)}>
+              <option value="">Escolha...</option>
+              {tecnicos.filter(t => t.ativo && t.nome !== escala.tecnico).map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+            </Select>
+          </Field>
+        </div>
+      </Modal>
     </>
   )
 }
