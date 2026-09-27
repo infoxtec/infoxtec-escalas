@@ -14,6 +14,11 @@ function gravarAtividade(t: number) {
   try { localStorage.setItem(CHAVE_ATIVIDADE, String(t)) } catch { /* sem storage: vale so a aba */ }
 }
 
+/** Login conta como atividade: nenhuma aba pode encerrar uma sessao que acabou de comecar. */
+export function registrarAtividade() {
+  gravarAtividade(Date.now())
+}
+
 /** Desconecta o usuario apos N minutos sem nenhuma interacao em nenhuma aba do painel. */
 export function useInatividade(aoExpirar: () => void, minutos = MINUTOS_INATIVIDADE) {
   const ultimo = useRef(Date.now())
