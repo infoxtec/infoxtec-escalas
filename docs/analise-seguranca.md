@@ -152,7 +152,7 @@ cron 7. Todo o resto cresce para sempre.
 | L5 | **Excluir técnico deixa os arquivos no bucket** — o metadado cai em cascata, o objeto não. O direito de eliminação não se cumpre para ASO/NR | Alta |
 | L6 | **Exclusão definitiva apaga demais e registra de menos:** remove escalas, mensagens e auditoria (pode conflitar com guarda de registro trabalhista), sem *legal hold*; `log_exclusoes` guarda só contagem e UUID | Média |
 | L7 | **Após excluir o técnico, telefone e conteúdo continuam no `webhook_eventos` por até 30 dias** | Média |
-| L8 | **Transferências a terceiros sem registro de base legal:** Google Vision (imagem de ASO ao exterior), Twilio, **VPS da Evolution em `evo.vluma.com.br` — domínio de terceiro que não aparece em nenhum documento**, GitHub Actions (cópia cifrada da produção) e Vercel | Média |
+| L8 | **Transferências a terceiros sem registro de base legal:** Google Vision (imagem de ASO ao exterior), Twilio, **Oracle Cloud** (onde roda a Evolution própria desde 28/09 — decisão 43: deixou de ser servidor de terceiro e passou a ser infraestrutura nossa, mas o provedor entra no registro), GitHub Actions (cópia cifrada da produção) e Vercel | Média |
 | L9 | **O Storage fica fora do backup** — a guarda de 5 anos depende de bucket sem cópia | Média |
 | L10 | **Consentimento frágil:** `opt_in` é booleano + data, sem texto, versão ou canal; revogar não registra a revogação; **`fn_remover_escala` envia mensagem sem checar `opt_in`** (a coluna é lida e ignorada); os avisos técnicos vão para telefones que não têm cadastro de consentimento; não existe caminho de "parar" para o técnico | Média |
 | L11 | **Sem trilha de leitura/download de documento** (prevista no item 015) | Média |
@@ -210,7 +210,7 @@ MFA e cadastro público ligados nos dois projetos · expiração de sessão e po
 assinatura da Twilio já foi ligada · papel do banco usado por `SUPABASE_DB_URL` nas Edge Functions ·
 ACLs de `net.*` e permissões reais de `anon`/`authenticated` (nada foi medido no banco) · conteúdo do
 bucket (arquivos órfãos) · validade da constraint `documentos_origem_coerente` · titularidade de
-`evo.vluma.com.br` · se algum segredo herdado já foi rotacionado.
+o endereço e a hospedagem do servidor Evolution vigente (`config.evolution_url`, trocado em 28/09) · se algum segredo herdado já foi rotacionado.
 
 ## 8. Fontes
 

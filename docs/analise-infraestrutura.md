@@ -23,7 +23,7 @@ com mitigação parcial; **P2** = higiene. (Não é o "P0 veta merge" da persona
 | **Supabase produção** `zpckrxydqqmmcrphrkxz` (sa-east-1) | Postgres + pg_cron + pg_net + Vault + Storage + Auth + 3 Edge Functions | R$ 0 | Banco 500 MB; Storage 1 GB; egress 5 GB/mês; **2 projetos por conta**; pausa por inatividade; 8 MB por arquivo |
 | **Supabase homologação** `oruwnlxyvznpigbpjjbx` | mesmo stack, dados fictícios | R$ 0 (ocupa a 2ª vaga) | sem cron e sem segredos reais |
 | **Painel React** | Vercel Hobby, Root Directory `web` | R$ 0 | **Hobby proíbe uso comercial** |
-| **Evolution API 2.4** | VPS própria, `evo.vluma.com.br` | **não está no repositório** | canal não oficial: risco de bloqueio do número |
+| **Evolution própria** | Servidor da Infoxtec na Oracle Cloud (São Paulo, `VM.Standard.E2.1.Micro`), Evolution 2.4.0-rc2, endereço `sslip.io` derivado do IP — vigente em `config.evolution_url`. Desde 28/09, decisão 43 | `infra/evolution/` no repositório; o servidor em si, não | canal não oficial: risco de bloqueio do número. **O endereço depende do IP** — se ele mudar, o `evolution_url` muda junto (tema INF-14) |
 | **Twilio (URA)** | Edge Function + Twilio | R$ 0,24 por ligação de 40 s; < R$ 20/mês com 10 técnicos | tetos por config: 2/escala, 2/execução, 45 min |
 | **Google Vision (OCR)** | desligado hoje | 1.000 páginas/mês, exige faturamento | sem chave, o botão só avisa |
 | **GitHub Actions** | CI + backup diário + restauração mensal | R$ 0 | minutos e artefatos não estão no repositório |
