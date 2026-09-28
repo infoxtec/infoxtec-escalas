@@ -101,6 +101,7 @@ módulo de ponto vai precisar para o atestado — um trabalho serve aos dois.
 | S16 | Link do Drive não é revalidado e `app_registrar_documento` aceita qualquer `caminho`, sem conferir se o objeto existe ou se é do técnico informado | `migration 37:117-122` |
 | S17 | Token do webhook comparado dentro do SQL (`is distinct from`), não em tempo constante | `migration 12:287` |
 | S18 | Sem secret scanning no CI (já registrado na análise de infraestrutura) | `.github/workflows` |
+| S19 | **`net._http_response` é uma cópia invisível:** guarda o corpo de toda resposta HTTP — o JID (telefone) de quem recebeu mensagem e, na chamada de configuração do webhook, **a URL com o token dentro**. Não aparece em nenhum inventário nem em nenhuma limpeza do projeto; o único limite é o TTL padrão da extensão `pg_net`, que o projeto **nunca configurou** | `migration 07:4` (extensão) · leituras em `migration 45:89` e outras · `docs/operacao.md:126-127` (apagar a resposta do webhook) |
 
 ---
 
@@ -135,6 +136,8 @@ módulo de ponto vai precisar para o atestado — um trabalho serve aos dois.
 | Ligações: telefone, dígito, duração, preço | `ligacoes` | **indefinido** | — |
 | Conteúdo enviado nas mensagens | `notificacoes.payload_envio` | 90 dias | o resto da linha fica |
 
+| Corpo das respostas HTTP | `net._http_response` (extensão `pg_net`) | **TTL padrão da extensão, não configurado** | telefone (JID) de quem recebeu mensagem, id da mensagem e, na chamada que registra o webhook, **o token na URL** |
+
 **Só quatro prazos existem**: log de webhook 30 dias, conteúdo enviado 90, alertas 90, histórico do
 cron 7. Todo o resto cresce para sempre.
 
@@ -157,6 +160,7 @@ cron 7. Todo o resto cresce para sempre.
 | L13 | **Transparência imprecisa na tela:** o texto afirma "o documento não é enviado a nenhum servidor" ao lado do botão que o envia ao Google | Média |
 | L14 | **Minimização:** o OCR devolve 400 caracteres do documento e o painel não usa | Baixa |
 | L15 | **CPF previsto na decisão 32** aumenta a coleta e exige base legal registrada antes | Baixa |
+| L16 | **`net._http_response` fora do inventário e da retenção** (S19): decide-se por omissão, não por política. Qualquer TTL precisa ser **maior que os 5 minutos** que o motor espera pela resposta, senão a notificação vira `falha` por `timeout` (`migration 45:90-96`) | Média |
 
 ### 4.3 O que dá para afirmar com honestidade
 
