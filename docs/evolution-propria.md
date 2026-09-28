@@ -215,6 +215,17 @@ conectada até a parte F, então o sistema volta como estava.
   QR Code. Logo depois de conectar, a primeira mensagem pode não sair até a sincronização terminar
   (`recv ... chats` no log); o `stream:error 515` logo após o pareamento é normal.
 
+### Evolution 2.4 em produção (28/09, tarde)
+
+- A v2.3.7 entrega botões como **"visualização única"** (decisão 4). A `2.4.0-rc2` corrige e foi
+  posta em produção depois do teste lado a lado (`infra/evolution/teste-v24.sh`): container
+  `evolution24`, banco `evolution24`, o Caddy (`Caddyfile.teste`) aponta o endereço principal
+  para ela. `usar_botoes = true` de novo; escala de teste enviada em 26 s e confirmada.
+- A 2.4 exige **ativação de licença** no primeiro acesso ao Manager (`/manager/login`).
+- A 2.3.7 (`evolution`) continua no ar como volta: trocar `evolution24` por `evolution` no
+  `Caddyfile.teste` e `docker exec evolution-caddy-1 caddy reload --config /etc/caddy/Caddyfile`.
+  Depois de alguns dias estável: parar a 2.3.7 e consolidar o compose numa só versão.
+
 ## Operação do servidor
 
 | Tarefa | Comando (dentro do servidor, em `~/infoxtec-escalas/infra/evolution`) |

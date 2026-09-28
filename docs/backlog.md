@@ -473,6 +473,28 @@ com a referência exata da cadeia de chamadas.
 
 ---
 
+## 071. Evolution própria na Oracle Cloud — ENTREGUE (28/09/2026, em produção)
+
+**Problema:** a Evolution rodava num servidor de terceiros (`evo.vluma.com.br`), sem controle da
+chave-mestra; a chave tinha ficado exposta em 21/09 (SEG-01).
+**Entrega:** servidor Oracle Always Free (E2.1.Micro, São Paulo), `https://163-176-68-206.sslip.io`,
+instância `infoxtec` no número 71 4101-9605. Chave-mestra e token do webhook novos (fecha SEG-01 e
+SEG-02). Versão 2.4.0-rc2, porque a 2.3.7 entrega botões como "visualização única". Roteiro e lições
+em `docs/evolution-propria.md`; decisão 43.
+**Aceite verificado:** escala de teste enviada 26 s depois de criada, com botões, e confirmada.
+
+## 072. Confirmação de entrega (✓✓) na Evolution 2.4 — dívida
+
+Os `messages.update` chegam, mas retornam `status_atualizados: 0`: a notificação fica em "enviada".
+Hipótese: o id da mensagem ou o JID (sem o nono dígito, `557181776307@s.whatsapp.net`) mudou de formato
+na 2.4. Investigar na homologação com um evento real; não afeta a confirmação da escala.
+
+## 073. Desligar a Evolution antiga e consolidar o servidor — dívida
+
+Parte F: desconectar o aparelho da vluma no celular da empresa. Depois de alguns dias estável,
+parar a 2.3.7 (`evolution`), transformar a `evolution24` no serviço único do `docker-compose.yml` e
+atualizar `infra/evolution/` (imagem 2.4, sem o `Caddyfile.teste`).
+
 ## Plano Diretor Comercial do Trilha
 
 **Pedido em 27/09/2026.** Guarda-chuva comercial do produto, registrado no grupo `saas` do Roadmap.
