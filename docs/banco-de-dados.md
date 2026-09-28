@@ -1,7 +1,8 @@
 # Banco de dados
 
-19 tabelas, 7 views, 92 funções (41 delas são a API `app_*`), 5 gatilhos e 1 agendamento.
-Tudo versionado em `supabase/migrations` (01 a 35).
+23 tabelas, 8 views, 110 funções (53 delas são a API `app_*`), 7 gatilhos e 1 agendamento.
+Tudo versionado em `supabase/migrations` (01 a 49 — 6.592 linhas), e a produção está na 49 (28/09).
+Os números vêm da leitura do código em [analise-codigo.md](analise-codigo.md); quando divergirem daqui, o código manda.
 
 ## Modelo
 

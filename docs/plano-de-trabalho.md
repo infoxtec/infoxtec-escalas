@@ -10,9 +10,9 @@ A análise que originou a lista está em [analise-topologia.md](analise-topologi
 | Peça | O que é | Situação |
 |---|---|---|
 | Máquina Linux no Mac | Onde você roda o painel, os comandos do Supabase e os scripts | Pronta |
-| Homologação | Projeto Supabase `infoxtec-escalas-dev` (`oruwnlxyvznpigbpjjbx`), com dados fictícios, sem WhatsApp nem ligações reais | Pronta, com as migrations 01 a 46 e as três Edge Functions |
-| Produção | Projeto Supabase `infoxtec-escalas` (`zpckrxydqqmmcrphrkxz`) + painel na Vercel | Migrations 01 a 46, as três Edge Functions e o painel 3.4.1 (27/09) |
-| Repositório | GitHub `infoxtec/infoxtec-escalas`. A `main` é o que vale para a produção | `main` igual à produção desde o merge do PR #1 (26/09) |
+| Homologação | Projeto Supabase `infoxtec-escalas-dev` (`oruwnlxyvznpigbpjjbx`), com dados fictícios, sem WhatsApp nem ligações reais | Pronta, com as migrations 01 a 48 e as três Edge Functions. **Falta a 49**, que foi direto para a produção em 28/09 |
+| Produção | Projeto Supabase `infoxtec-escalas` (`zpckrxydqqmmcrphrkxz`) + painel na Vercel | **Migrations 01 a 49** (28/09), as três Edge Functions e o painel 3.5.1 |
+| Repositório | GitHub `infoxtec/infoxtec-escalas`. A `main` é o que vale para a produção | `main` igual à produção desde 28/09 (migrations 01 a 49) |
 
 ## Regras combinadas (26/09)
 
@@ -148,8 +148,8 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 
 ### Bloco 9: produto (análise global de 27/09, aprovado pelo responsável)
 
-- [ ] **24. Motivo de recusa estruturado e tempo de resposta** (backlog 064). *Homologação: pronto em 27/09 (migration 47, painel 3.5, PR #12); falta a produção.* (fase 0 de [agente-ia.md](agente-ia.md)). Base dos indicadores: sem ela, cada semana é dado perdido.
-- [ ] **25. Editar e reagendar escala** (backlog 065). *Homologação: pronto em 27/09 (migration 47, painel 3.5, PR #12); falta a produção.*, com "substituir técnico" depois de uma recusa. Hoje é preciso cancelar e criar de novo.
+- [x] **24. Motivo de recusa estruturado e tempo de resposta** (backlog 064). *Na produção desde 28/09 (migrations 47 e 48, painel 3.5, PR #12) — e o motivo de saúde saiu do sistema na migration 49 (decisão 40).* (fase 0 de [agente-ia.md](agente-ia.md)). Base dos indicadores: sem ela, cada semana é dado perdido.
+- [x] **25. Editar e reagendar escala** (backlog 065). *Na produção desde 28/09 (migrations 47 e 48, painel 3.5, PR #12)*, com "substituir técnico" depois de uma recusa.
 
 ## Registro
 
@@ -169,3 +169,5 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 | 27/09 | Painel 3.4.2: senha 8 com letras e números (etapa 6) e xlsx 0.20.3 (etapa 13) | Testado (importação xlsx, xls e csv) | Publicado (PR #8) |
 | 27/09 | Retool desligado (etapa 16): senha do banco trocada, conexão apagada | Não se aplica | Conferido |
 | 27/09 | Migrations 47 e 48 + painel 3.5: motivo de recusa (064) e editar/substituir escala (065) | Aplicada e testada; plpgsql_check zero | Aguardando ordem |
+| 28/09 | Migrations 47, 48 e 49 na produção (o script aplicou as três de uma vez) | Sem teste conjunto prévio: aplicado direto pelo responsável, a pedido, com as duas consultas de dependência do tipo conferidas antes | **Produção em 01 a 49** |
+| 28/09 | Migration 49 + painel 3.5.1: sem motivo de saúde na recusa (decisão 40) e sem vínculo por Google Drive (decisão 41) | Pendente o teste de ponta a ponta no painel | Produção; **falta aplicar a 49 na homologação** |

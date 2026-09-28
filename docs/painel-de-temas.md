@@ -21,7 +21,7 @@ marca-se aqui.
 | **INF-02** | Criar o monitor no healthchecks.io e preencher `monitor_ping_url` | responsável | 15 min |
 | **INF-05** | Rodar o backup à mão e conferir se `PRODUCAO_DB_URL` está em dia | responsável | 5 min |
 | **SEG-13** | Corrigir o inventário de segredos em `docs/seguranca.md` | Claude | 20 min |
-| **SEG-03 + SEG-14 (parte 1)** | Aplicar a **migration 49** na homologação e testar: motivo sem saúde e sem Drive | responsável | 15 min |
+| **Convergência dos ambientes** | Aplicar a **migration 49 na homologação** — a produção já está em 49 e a homologação parou em 48 | responsável | 15 min |
 | **DEV-01 + DEV-02** | PR dos defeitos: enviar `tipo`/`teste` e blindar a tela contra erro de render | Claude | 1 h |
 
 ---
@@ -67,8 +67,8 @@ marca-se aqui.
 |---|---|---|---|---|---|
 | **SEG-01** | `EVOLUTION_API_KEY` exposta por 3 h 14 na janela da migration 12 | **C** | torna inútil a leitura da chave | responsável | 10 min |
 | **SEG-02** | `WEBHOOK_TOKEN` criado 5,8 s depois do carimbo da correção | **C** | fecha a incerteza da margem | responsável | 15 min |
-| **SEG-03** | ~~Papel `leitura` recebe motivo de saúde cru~~ — **fechado pela decisão 40**: o motivo de saúde saiu do sistema (migration 49) | — | — | — | — |
-| **SEG-14** | Papel `leitura` enxerga `caminho`/`url` dos documentos (NR, CNH e **ASO**). A decisão 41 tirou o caminho do link direto do Drive; resta o nome e a existência dos arquivos | **C** | o documento pessoal deixa de aparecer para quem só lê | responsável + Claude | 2 h |
+| **SEG-03** | ~~Papel `leitura` recebe motivo de saúde cru~~ — **fechado e em produção em 28/09** (decisão 40, migration 49): o motivo de saúde saiu do sistema | — | — | — | — |
+| **SEG-14** | Papel `leitura` enxerga `caminho`/`url` dos documentos (NR, CNH e **ASO**). A decisão 41 tirou o caminho do link direto do Drive (**parte 1 em produção em 28/09**); resta o nome e a existência dos arquivos, e a limpeza dos vínculos antigos | **C** | o documento pessoal deixa de aparecer para quem só lê | responsável + Claude | 2 h |
 | **SEG-04** | Sem MFA nas contas administrativas | **C** | é a primeira pergunta de qualquer cliente | responsável | 15 min |
 | **SEG-05** | Tokens do webhook e da URA na query string; assinatura da Twilio em observação | **C** | tira o segredo do log de terceiros | Claude | 1 dia |
 | **SEG-06** | Hardening incompleto: *sequences* e *default privileges* fora do `revoke` | M | fecha a migration 39 | Claude | 1 h |
