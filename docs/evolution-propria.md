@@ -10,7 +10,7 @@ prontos em `infra/evolution/`.
 | Parte | O quê | Quem | Tempo |
 |---|---|---|---|
 | A | Criar o servidor na Oracle | responsável | 20 min |
-| B | DNS do subdomínio | responsável | 5 min (+ propagação) |
+| B | Endereço pelo IP (sslip.io), sem DNS | responsável | 2 min |
 | C | Instalar e subir a Evolution | responsável, colando comandos | 20 min |
 | D | Conectar o número e testar, **sem mexer no sistema** | responsável | 10 min |
 | E | Virada do sistema para a Evolution nova (produção) | responsável | 15 min, depois das 21h |
@@ -32,19 +32,32 @@ prontos em `infra/evolution/`.
 
 Se a Oracle disser "out of capacity" para Ampere, tente outra *availability domain* ou mais tarde.
 
-## B. DNS
+## B. Endereço (sem DNS próprio)
 
-No painel do domínio `infoxtec.com.br`, crie um registro **A**:
+Decisão de 28/09: usar o **IP público da Oracle**, sem subdomínio da Infoxtec por enquanto. Como a
+chave da Evolution não pode trafegar sem criptografia, o endereço usa o **sslip.io**, serviço
+gratuito que transforma o IP num nome com HTTPS automático:
 
-| Nome | Tipo | Valor |
-|---|---|---|
-| `whatsapp` | A | *IP público da Oracle* |
+| IP público da Oracle | Endereço da Evolution |
+|---|---|
+| `150.230.10.25` (exemplo) | `150-230-10-25.sslip.io` |
 
-Confira no seu Linux (deve devolver o IP):
+Troque os pontos do seu IP por traços e acrescente `.sslip.io`. **Esse é o `DOMINIO` do `.env`** e,
+com `https://` na frente, o `evolution_url` da parte E. Nos comandos abaixo, onde estiver
+`ENDERECO`, use esse nome.
+
+**Não deixe o IP mudar:** não use *Terminate* na instância. Se possível, em *Networking → Reserved
+public IPs*, reserve o IP atual. Se um dia ele mudar, basta trocar o `DOMINIO`, rodar
+`docker compose up -d` e atualizar o `evolution_url`.
+
+Confira no seu Linux (deve devolver o seu IP):
 
 ```bash
-getent hosts whatsapp.infoxtec.com.br
+getent hosts ENDERECO
 ```
+
+Para usar `whatsapp.infoxtec.com.br` no futuro: registro **A** no DNS apontando para o IP, trocar o
+`DOMINIO` e o `evolution_url`. Nada mais muda.
 
 ## C. Instalar (no seu Linux, entrando no servidor)
 
@@ -71,12 +84,15 @@ git clone https://github.com/infoxtec/infoxtec-escalas.git
 cd infoxtec-escalas/infra/evolution
 cp .env.exemplo .env
 
-# 5. gerar a chave-mestra e a senha do Postgres (anote a chave no gerenciador de senhas)
+# 5. o seu endereço (troque ENDERECO, ex.: 150-230-10-25.sslip.io)
+sed -i "s/^DOMINIO=.*/DOMINIO=ENDERECO/" .env
+
+# 6. gerar a chave-mestra e a senha do Postgres (anote a chave no gerenciador de senhas)
 sed -i "s/^AUTHENTICATION_API_KEY=.*/AUTHENTICATION_API_KEY=$(openssl rand -hex 32)/" .env
 sed -i "s/^POSTGRES_SENHA=.*/POSTGRES_SENHA=$(openssl rand -hex 24)/" .env
 grep AUTHENTICATION_API_KEY .env     # copie esta chave para o gerenciador de senhas
 
-# 6. subir
+# 7. subir
 docker compose up -d
 docker compose ps                    # os 4 serviços "running"
 ```
@@ -84,7 +100,7 @@ docker compose ps                    # os 4 serviços "running"
 O repositório é privado: se o `git clone` pedir senha, use um *Personal Access Token* do GitHub, ou
 copie a pasta `infra/evolution` do seu Linux com `scp -i CHAVE -r infra/evolution ubuntu@IP:~/`.
 
-**Conferir:** abra `https://whatsapp.infoxtec.com.br/manager` no navegador. Deve abrir o Manager da
+**Conferir:** abra `https://ENDERECO/manager` no navegador. Deve abrir o Manager da
 Evolution com cadeado (HTTPS). Entre com a chave-mestra.
 
 ## D. Conectar o número e testar (o sistema continua na Evolution antiga)
@@ -97,7 +113,7 @@ Evolution com cadeado (HTTPS). Entre com a chave-mestra.
 4. **Teste de envio** para o seu próprio celular (no seu Linux, trocando CHAVE, INSTANCIA e o número):
 
 ```bash
-curl -s -X POST "https://whatsapp.infoxtec.com.br/message/sendText/INSTANCIA" \
+curl -s -X POST "https://ENDERECO/message/sendText/INSTANCIA" \
   -H "apikey: CHAVE" -H "Content-Type: application/json" \
   -d '{"number":"5571981776307","text":"Teste da Evolution própria da Infoxtec"}'
 ```
@@ -123,11 +139,11 @@ Supabase.
 **E2. Apontar para o servidor novo** — SQL Editor da **produção**:
 
 ```sql
-update config set valor = 'https://whatsapp.infoxtec.com.br' where chave = 'evolution_url';
+update config set valor = 'https://ENDERECO' where chave = 'evolution_url';
 select chave, valor from config where chave = 'evolution_url';
 ```
 
-*Esperado:* uma linha com `https://whatsapp.infoxtec.com.br`.
+*Esperado:* uma linha com `https://ENDERECO` (o seu endereço sslip.io).
 
 **E3. Gravar a chave nova no Vault** — no seu Linux, com o script que já existe (a chave é pedida na
 tela, sem aparecer, e o script confirma a conexão com a Evolution):
