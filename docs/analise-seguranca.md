@@ -39,6 +39,29 @@ Foi o que permitiu vender o desenho como "banco fechado" com evidência.
 | S1 | **Dado de saúde entregue ao papel `leitura`:** `app_indicadores_resposta` devolve o motivo cru (`saude`) e autoriza `admin, gestor, leitura`. A migration 48 trocou **só o rótulo** exibido; o valor continua no JSON | `migration 47:274,278`; `migration 48:11` | Ou o `leitura` não vê motivo, ou a tabela de papéis assume que ele vê — é decisão, não código |
 | S2 | **Documentos pessoais acessíveis ao papel `leitura`:** `app_documentos` devolve `caminho` **e `url`**, e a tela abre o link do Drive sem checar `podeEditar` — contradiz "só admin e gestor acessam" e a própria tabela de papéis | `api.ts:98`; `migration 37:140-152`; `DocumentosArquivos.tsx:102,182` | Mesma decisão do S1, mais o gate na tela |
 
+#### Escopo do S1 e do S2, depois da decisão 39 (27/09)
+
+A decisão 39 fechou uma parte do desenho: **a negação da escala não pede nem aceita documento** (o
+técnico informa o motivo por número e, opcionalmente, o detalhe em texto), e o **atestado médico com
+janela de 48 horas** é requisito do **módulo de ponto**, não da escala. Esse fluxo de anexo **nunca
+existiu no código** — a decisão vale como proibição de construir.
+
+Isso reduz o desenho, mas **não fecha o vazamento**: o que o S1 e o S2 apontam é o acesso do papel
+`leitura` a dado de saúde **que já existe** — o motivo `saude` gravado em `ocorrencias` e os arquivos
+NR, CNH e **ASO** enviados pelo painel. São dois caminhos distintos, nenhum deles de anexo na recusa.
+
+#### Como fechar o SEG-03 — três opções
+
+| Opção | O que é | Custo | Quando |
+|---|---|---|---|
+| **A · imediata** | `app_indicadores_resposta` deixa de devolver o motivo cru ao papel `leitura` (devolve só o rótulo agregado) e `app_documentos` deixa de devolver `caminho`/`url` para ele, com a tela escondendo o botão de abrir | uma migration (2 funções) + 1 ajuste de tela | agora |
+| **B · destino** | criar o papel **`rh`** para o dado de saúde; `leitura` passa a ser leitura operacional (escala, local, indicadores agregados) | parte do RBAC com escopo (`DEV-05`) | junto com o acesso por área |
+| **C · transitória, sem código** | não convidar ninguém para `leitura` enquanto A ou B não entram — é possível porque o painel tem 3 usuários hoje | zero | hoje, como regra |
+
+**Recomendação:** **A agora** (fecha o vazamento nesta semana), **B como destino** dentro do acesso por
+área, **C como regra transitória** até A estar em produção. E o mesmo papel `rh` é o que o módulo de
+ponto vai precisar para o atestado — um trabalho serve aos dois.
+
 ### P1
 
 | # | Achado | Onde |
