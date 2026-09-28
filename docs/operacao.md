@@ -2,6 +2,58 @@
 
 Consultas para rodar no **SQL Editor** do Supabase. Todas são leitura, salvo onde indicado.
 
+## Conferência depois de um merge
+
+Cinco alvos, cada um com o seu comando. Serve para responder "o que está no ar agora?" sem depender
+da memória de ninguém.
+
+**1. O repositório recebeu o merge?**
+
+```bash
+cd ~/infoxtec-escalas && git checkout main && git pull && git log --oneline -3
+```
+
+Esperado: o commit do merge no topo, e `git status` limpo.
+
+**2. O banco da produção está na migration mais nova?**
+
+No SQL Editor da produção (a versão é o prefixo do nome do arquivo da migration):
+
+```sql
+select version, name
+  from supabase_migrations.schema_migrations
+ order by version desc
+ limit 5;
+```
+
+Esperado: a maior versão igual ao arquivo mais recente de `supabase/migrations/`.
+
+**3. O painel publicado é o que está na `main`?**
+
+Abra https://infoxtec-escalas.vercel.app e confira a **versão no rodapé** — ela tem que bater com
+`__APP_VERSION__` em `web/vite.config.ts`. Se não bater, a Vercel não publicou.
+
+**4. O painel de controle está atualizado?**
+
+Ele não é publicado: é arquivo, lido do repositório.
+
+```bash
+cd ~/infoxtec-escalas && git pull && xdg-open docs/painel-de-controle.html
+```
+
+**5. O quadro do backlog está como você deixou?**
+
+```bash
+cd ~/infoxtec-escalas && ./scripts/backlog-conferir.sh
+```
+
+Mostra o quadro por coluna e quem está travando a tabela (precisa de `psql` e da conexão em
+`~/.infoxtec/producao.env`). Para ler sem instalar nada, o mesmo `select` no SQL Editor resolve —
+`select` não espera lock.
+
+**Quando um `update` no SQL Editor travar:** é bloqueio de tabela, e o editor não tem limite de
+espera. Veja "Tabela travada" no fim deste documento.
+
 ## Saúde do sistema (comece por aqui)
 
 ```sql
@@ -162,6 +214,25 @@ motor manda um sinal por minuto ao monitor externo (healthchecks.io), que avisa 
 Telegram quando o sinal para (motor parado, Supabase fora ou pausado) ou chega como falha
 (Evolution recusando envios). Ver decisão 34 e `docs/roteiro-producao.md`.
 
+**Confirme que o monitor está ligado** — sem isso, nada avisa quando o motor para:
+
+```sql
+select chave, valor from config where chave = 'monitor_ping_url';
+```
+
+Se `valor` voltar vazio, o monitor está desligado e a única vigilância é o aviso pelo WhatsApp, que
+depende do próprio canal que pode estar quebrado. É o tema **INF-02** no painel de controle. Para
+ligar: crie o check no healthchecks.io (período de 5 minutos, carência de 5) e grave o endereço:
+
+```sql
+update config
+   set valor = 'https://hc-ping.com/COLE-A-UUID-DO-CHECK'
+ where chave = 'monitor_ping_url'
+returning chave, valor;
+```
+
+O gatilho da migration 45 recusa valor que não comece com `https://`.
+
 ## Evolution fora do ar: contingência manual
 
 Quando o monitor avisar que a Evolution está falhando, ou os técnicos não receberem:
@@ -224,3 +295,46 @@ Número não oficial pode ser bloqueado. Reduza o risco:
 - Peça a cada técnico novo que salve o número e mande um "oi" antes do primeiro envio.
 
 Se o número cair, a operação para. Não há plano B automático.
+
+## Tabela travada (um UPDATE que não termina)
+
+O SQL Editor do Supabase **não tem limite de espera**: um `update` que encontra a tabela bloqueada por
+outra sessão fica parado indefinidamente, sem erro. Quase sempre é uma aba antiga com transação aberta.
+
+Veja quem está com a tabela presa:
+
+```sql
+select l.pid,
+       case when l.granted then 'SEGURA' else 'ESPERA' end as situacao,
+       l.mode, a.state,
+       coalesce((now() - a.xact_start)::text, '—') as tempo,
+       left(regexp_replace(coalesce(a.query,''), '\s+', ' ', 'g'), 70) as consulta
+  from pg_locks l
+  join pg_stat_activity a on a.pid = l.pid
+ where l.relation = 'backlog_itens'::regclass
+ order by l.granted, l.pid;
+```
+
+Se não aparecer nada, veja as sessões acordadas:
+
+```sql
+select pid, state, wait_event_type, wait_event, coalesce((now() - xact_start)::text, '—') as tempo,
+       left(regexp_replace(coalesce(query,''), '\s+', ' ', 'g'), 70) as consulta
+  from pg_stat_activity
+ where datname = current_database() and pid <> pg_backend_pid() and state <> 'idle'
+ order by xact_start nulls first;
+```
+
+Encerre quem está atrapalhando (troque o `12345` pelo `pid`):
+
+```sql
+select pg_cancel_backend(12345);
+```
+
+```sql
+select pg_terminate_backend(12345);
+```
+
+**Para escrever sem risco de travar**, use `./scripts/backlog-conferir.sh` como referência: por `psql`,
+com `lock_timeout` de 5s — se a tabela estiver presa, ele falha em 5 segundos dizendo quem prende, em
+vez de esperar para sempre.
