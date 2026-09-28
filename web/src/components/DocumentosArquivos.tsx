@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Download, ExternalLink, FileText, HardDrive, Link2, Loader2, Paperclip, ScanLine, Trash2 } from 'lucide-react'
+import { Download, FileText, HardDrive, Loader2, Paperclip, ScanLine, Trash2 } from 'lucide-react'
 import { Button, Confirm, ErrorBox, Field, Input, Modal, Select, useToast } from './ui'
 import {
   abrirDocumento, api, enviarDocumento, erroMsg, lerValidadePorOCR, removerDocumento,
@@ -9,21 +9,16 @@ import { formatDate, formatDateTime } from '../lib/types'
 import type { Documento, Tecnico, TipoDocumento } from '../lib/types'
 
 const MAX_MB = 8
-type Origem = 'storage' | 'drive'
 
 interface Formulario {
-  origem: Origem
   tecnico: string
   tipoDocumento: string
   validade: string
   arquivo: File | null
-  url: string
-  nome: string
 }
 
-/** Item 10: documentos em armazenamento privado, com leitura da validade feita no
- *  proprio navegador. O vinculo por link do Google Drive foi descontinuado (decisao 41);
- *  vinculos antigos continuam listados e legiveis, mas nao se cria mais nenhum. */
+/** Item 10: documentos em armazenamento privado do bucket, com a leitura da validade
+ *  feita no proprio navegador. */
 export default function DocumentosArquivos({ tecnicos, tiposDoc, podeEditar, aoMudar }: {
   tecnicos: Tecnico[]; tiposDoc: TipoDocumento[]; podeEditar: boolean; aoMudar?: () => Promise<void>
 }) {
@@ -47,9 +42,9 @@ export default function DocumentosArquivos({ tecnicos, tiposDoc, podeEditar, aoM
 
   const comValidade = useMemo(() => tiposDoc.filter(d => d.ativo), [tiposDoc])
 
-  const abrirForm = (origem: Origem) => {
+  const abrirForm = () => {
     setErroForm(null); setProgresso(0)
-    setForm({ origem, tecnico: '', tipoDocumento: '', validade: '', arquivo: null, url: '', nome: '' })
+    setForm({ tecnico: '', tipoDocumento: '', validade: '', arquivo: null })
   }
 
   /** Leitura local: o documento nao sai do navegador. */
@@ -72,7 +67,7 @@ export default function DocumentosArquivos({ tecnicos, tiposDoc, podeEditar, aoM
     if (!form || !f) return
     if (f.size > MAX_MB * 1024 * 1024) { setErroForm(`Arquivo acima de ${MAX_MB} MB.`); return }
     setErroForm(null)
-    setForm({ ...form, arquivo: f, nome: f.name })
+    setForm({ ...form, arquivo: f })
     await lerValidade(f)
   }
 
@@ -95,7 +90,7 @@ export default function DocumentosArquivos({ tecnicos, tiposDoc, podeEditar, aoM
 
   const abrir = async (d: Documento) => {
     try {
-      const url = d.origem === 'drive' ? d.url! : await abrirDocumento(d.caminho!)
+      const url = await abrirDocumento(d.caminho!)
       window.open(url, '_blank', 'noopener')
     } catch (e) { setErro(erroMsg(e)) }
   }
@@ -114,7 +109,7 @@ export default function DocumentosArquivos({ tecnicos, tiposDoc, podeEditar, aoM
         <p className="text-sm font-semibold">Arquivos ({lista.length})</p>
         {podeEditar && (
           <div className="flex gap-2">
-            <Button size="sm" onClick={() => abrirForm('storage')}>
+            <Button size="sm" onClick={abrirForm}>
               <Paperclip className="h-4 w-4" /> Enviar arquivo
             </Button>
           </div>
@@ -149,16 +144,14 @@ export default function DocumentosArquivos({ tecnicos, tiposDoc, podeEditar, aoM
                   </button>
                 </td>
                 <td className="px-3 py-2.5 text-xs">
-                  {d.origem === 'drive'
-                    ? <span className="inline-flex items-center gap-1 text-muted-foreground"><Link2 className="h-3 w-3" /> Google Drive</span>
-                    : <span className="inline-flex items-center gap-1 text-muted-foreground"><HardDrive className="h-3 w-3" /> Privado</span>}
+                  <span className="inline-flex items-center gap-1 text-muted-foreground"><HardDrive className="h-3 w-3" /> Privado</span>
                 </td>
                 <td className="px-3 py-2.5 font-mono text-xs">{d.validade ? formatDate(d.validade) : '—'}</td>
                 <td className="px-3 py-2.5 text-xs text-muted-foreground">{formatDateTime(d.created_at)} · {d.enviado_por}</td>
                 <td className="px-3 py-2.5 text-right">
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="icon" aria-label="Abrir" onClick={() => void abrir(d)}>
-                      {d.origem === 'drive' ? <ExternalLink className="h-3.5 w-3.5" /> : <Download className="h-3.5 w-3.5" />}
+                      <Download className="h-3.5 w-3.5" />
                     </Button>
                     {podeEditar && <Button variant="ghost" size="icon" aria-label="Excluir" className="text-destructive hover:bg-destructive/10" onClick={() => setAlvo(d)}><Trash2 className="h-3.5 w-3.5" /></Button>}
                   </div>
@@ -223,7 +216,7 @@ export default function DocumentosArquivos({ tecnicos, tiposDoc, podeEditar, aoM
                 onChange={e => setForm({ ...form, validade: e.target.value })} />
             </Field>
 
-            {form.origem === 'storage' && form.arquivo && !lendo && (
+            {form.arquivo && !lendo && (
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => void lerValidade(form.arquivo!)} disabled={enviando}>
                   <ScanLine className="h-3.5 w-3.5" /> Ler de novo
@@ -247,9 +240,7 @@ export default function DocumentosArquivos({ tecnicos, tiposDoc, podeEditar, aoM
       <Confirm open={!!alvo} title="Excluir documento" confirmLabel="Excluir" destructive busy={enviando}
         onCancel={() => setAlvo(null)} onConfirm={() => void excluir()}>
         <p>
-          {alvo?.origem === 'drive'
-            ? <>O vínculo com <strong className="text-foreground">{alvo?.nome_arquivo}</strong> sai do painel. O arquivo continua no seu Google Drive.</>
-            : <>O arquivo <strong className="text-foreground">{alvo?.nome_arquivo}</strong> de {alvo?.tecnico} será apagado do armazenamento.</>}
+          <>O arquivo <strong className="text-foreground">{alvo?.nome_arquivo}</strong> de {alvo?.tecnico} será apagado do armazenamento.</>
         </p>
         <p>A validade cadastrada para o técnico não é alterada.</p>
       </Confirm>

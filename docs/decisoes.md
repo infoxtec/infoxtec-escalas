@@ -381,3 +381,24 @@ e o botão saiu da tela. **Vínculos já existentes continuam listados e legíve
 dado sem decisão — a limpeza desses vínculos é decisão pendente e está no painel (SEG-14).
 
 **Substitui** a decisão 17 na parte do vínculo por link.
+
+## 42. O modo Drive sai do código, não só da tela
+
+**Decisão (responsável, 28/09):** com o arquivo removido do Drive, o vínculo deixa de existir também
+na estrutura: a **migration 50** apaga as linhas com `origem = 'drive'` (informando a contagem no log),
+recria `vw_documentos_expirados` sem as duas colunas, simplifica `app_registrar_documento`,
+`app_excluir_documento` e `app_documentos`, e **derruba as colunas `documentos.origem` e
+`documentos.url`**, junto das restrições que as citavam.
+
+**Por quê:** deixar a coluna viva sem uso é o padrão que a própria análise do código apontou como
+dívida (12 colunas mortas no tema DEV-10). Uma coluna que existe convida a ser usada de novo por
+engano, e a decisão 41 existe justamente para não haver mais esse caminho.
+
+**Plano de volta:** as duas colunas não carregam informação — depois do passo 1, `url` é sempre nula
+e `origem` é sempre `'storage'`. Reverter é uma migration que recria as colunas e as funções a partir
+da definição da 49. Está escrito no cabeçalho da 50.
+
+**Ordem de aplicação:** o painel que não usa mais os campos é publicado **antes** (merge do pull
+request, publica na Vercel) — é a decisão 24 lida ao contrário: campo que sai do banco só sai depois
+de o painel parar de pedi-lo. Na prática o painel antigo não quebraria (o teste `d.origem === 'drive'`
+simplesmente seria falso), mas a ordem certa é painel primeiro.

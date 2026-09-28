@@ -42,7 +42,7 @@ erDiagram
 | `tipos_atividade` | Tipos de serviço (CFTV, fibra, link...) | Ligado à escala por `escalas.tipo_atividade_id` |
 | `tipo_atividade_requisitos` | Habilidades exigidas por tipo | Define quem é apto |
 | `ligacoes` | Uma linha por ligação da URA | `call_sid` da Twilio, tecla digitada, duração e custo |
-| `documentos` | Arquivos de NR, CNH e ASO | `origem`: sempre `storage` (bucket privado). `drive` foi descontinuado na migration 49 (decisão 41); linhas antigas continuam legíveis |
+| `documentos` | Arquivos de NR, CNH e ASO | Sem as colunas `origem` e `url`: a migration 50 (decisão 42) removeu o vínculo por link. Todo documento vive no bucket privado |
 | `backlog_itens` | Backlog do produto exibido na aba Roadmap | Grupos backlog, entrega e dívida; coluna do Kanban e posição |
 
 ### Status da escala

@@ -27,11 +27,12 @@ fique registrada por quem a executou.
 | Modo | Onde fica | Quem controla o acesso | Retencao |
 |---|---|---|---|
 | **Enviar arquivo** | bucket privado do Supabase | papel no painel (admin/gestor), link de 2 min | automatica: 5 anos apos o desligamento |
-| ~~**Vincular do Drive**~~ | descontinuado na migration 49 (decisao 41) | — | — |
 
-O modo Drive e util quando a documentacao ja esta organizada la. A contrapartida e que o painel
-deixa de controlar quem abre: se o arquivo estiver como "qualquer pessoa com o link", ele e
-acessivel fora do sistema. Para documento pessoal, o modo bucket e o mais seguro.
+**O vinculo por link do Google Drive nao existe mais**: saiu da tela na decisao 41 (migration 49) e
+da estrutura na decisao 42 (migration 50, que derrubou as colunas `origem` e `url` de `documentos`).
+A contrapartida do modo antigo era perder o controle de quem abre — se o arquivo estivesse como
+"qualquer pessoa com o link", ele ficava acessivel fora do sistema. Para documento pessoal, o bucket
+e o unico caminho.
 
 ## OCR (opcional)
 

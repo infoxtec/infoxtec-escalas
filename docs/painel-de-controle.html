@@ -122,13 +122,14 @@ const DOCS = [
 ];
 
 const CONCLUIDOS = [
-  ["SEG-03","Motivo de saúde fora do sistema","28/09 — decisão 40, migration 49 (enum, <code>fn_motivo_rotulo</code>, <code>fn_wh_mensagem</code>). Em produção."],
-  ["SEG-14 (parte 1)","Vínculo por link do Google Drive descontinuado","28/09 — decisão 41, migration 49 (<code>app_registrar_documento</code>) e painel 3.5.1. Em produção."],
-  ["SEG-13","Inventário de segredos do <code>seguranca.md</code> corrigido","28/09 — este painel. Retool e xlsx marcados como resolvidos; cinco segredos reais listados."],
-  ["Etapa 24","Motivo de recusa estruturado (backlog 064)","28/09 — migrations 47 e 48 em produção, junto com a 49."],
-  ["Etapa 25","Editar e reagendar escala (backlog 065)","28/09 — migrations 47 e 48 em produção."],
-  ["D4","Cabeçalho do <code>banco-de-dados.md</code> desatualizado","28/09 — agora 23 tabelas, 8 views, 110 funções, 01 a 49."],
-  ["Backlog","Itens 005, 010, 011, 012, 013, 064 e 065 para <code>feito</code>; 002 e 003 para <code>revisao</code>","28/09 — SQL em <code>supabase/setup/backlog-concluidos.sql</code> (você roda no SQL Editor)."]
+["SEG-14 (parte 2)","Vínculo por Google Drive removido da estrutura","28/09 — decisão 42, migration 50: apaga os vínculos, recria a view e três funções e derruba as colunas <code>origem</code> e <code>url</code>. Painel 3.5.2."],
+["SEG-03","Motivo de saúde fora do sistema","28/09 — decisão 40, migration 49 (enum, <code>fn_motivo_rotulo</code>, <code>fn_wh_mensagem</code>). Em produção."],
+["SEG-14 (parte 1)","Vínculo por link do Google Drive descontinuado","28/09 — decisão 41, migration 49 (<code>app_registrar_documento</code>) e painel 3.5.1. Em produção."],
+["SEG-13","Inventário de segredos do <code>seguranca.md</code> corrigido","28/09 — este painel. Retool e xlsx marcados como resolvidos; cinco segredos reais listados."],
+["Etapa 24","Motivo de recusa estruturado (backlog 064)","28/09 — migrations 47 e 48 em produção, junto com a 49."],
+["Etapa 25","Editar e reagendar escala (backlog 065)","28/09 — migrations 47 e 48 em produção."],
+["D4","Cabeçalho do <code>banco-de-dados.md</code> desatualizado","28/09 — agora 23 tabelas, 8 views, 110 funções, 01 a 49."],
+["Backlog","Itens 005, 010, 011, 012, 013, 064 e 065 para <code>feito</code>; 002 e 003 para <code>revisao</code>","28/09 — SQL em <code>supabase/setup/backlog-concluidos.sql</code> (você roda no SQL Editor)."]
 ];
 
 const TAREFAS = [
@@ -168,7 +169,7 @@ const TAREFAS = [
 ["SEG-10","M","Segurança","Expurgo de documento sem executor e arquivo órfão","A guarda de 5 anos e o direito de eliminação são declaração, não processo.","<b>Onde:</b> documentos.tecnico_id on delete cascade (migration 32:8) · vw_documentos_expirados (migration 32:47-52) · app_documentos_expirados (migration 32:81) · supabase/setup/documentos.md:22-23","Claude","3 dias","analise-seguranca.md §4.2 L4 · L5"],
 ["SEG-11","M","Segurança","Sem trilha de acesso a documento","Não há como responder quem abriu o ASO.","<b>Onde:</b> docs/backlog.md:367-385 (item 015) · docs/plano-comercial.md:365 · docs/analise-backlog.md:141 · app_documentos (migration 37:140)","Claude","3 dias","analise-seguranca.md §4.2 L11"],
 ["SEG-12","M","Segurança","Transferências a terceiros sem registro de base legal","Google Vision, Twilio, VPS da Evolution, GitHub e Vercel — nenhum com base registrada.","<b>Onde:</b> docs/analise-seguranca.md:152 · docs/plano-comercial.md:348 · docs/plano-de-trabalho.md:147","responsável","1 h","analise-seguranca.md §4.2 L8"],
-["SEG-14","C","Segurança","Papel leitura enxerga nome e existência dos documentos","Quem só lê descobre que aquele técnico tem ASO. A parte 1 (Drive) já caiu.","<b>Onde:</b> web/src/lib/api.ts:98 · app_documentos (migration 37:140-153; devolve url e caminho em 37:147) · app_registrar_documento (migration 49:299-301) · docs/decisoes.md:369-381 (decisão 41) · web/src/components/DocumentosArquivos.tsx:126-136","responsável + Claude","2 h","analise-seguranca.md §2 S2"],
+["SEG-14","C","Segurança","Papel leitura enxerga nome e existência dos documentos","Quem só lê descobre que aquele técnico tem ASO. O vínculo por link externo já foi eliminado por completo (migrations 49 e 50); resta o acesso do papel leitura ao caminho e ao nome do arquivo.","<b>Onde:</b> app_documentos (migration 50:86-99) · web/src/lib/api.ts:98 · web/src/components/DocumentosArquivos.tsx (abrir) · opções A/B/C em analise-seguranca.md §2","responsável + Claude","2 h","analise-seguranca.md §2 S2"],
 ["COM-01","C","Comercial","Decidir o canal oficial do WhatsApp","Sem isso não se vende a terceiros: o canal atual é não oficial.","<b>Onde:</b> docs/plano-comercial.md:121 (G1) · docs/plano-comercial.md:374 (item 023) · docs/analise-backlog.md:155 · decisão 33 (docs/decisoes.md:265-271)","responsável","decisão","plano-comercial.md §4 G1 · §13"],
 ["COM-02","C","Comercial","Preço, mínimo mensal e política de desconto","Proposta deixa de ser caso a caso — e o piso tem tributo dentro.","<b>Onde:</b> docs/plano-comercial.md:394 (§14 item 2) · docs/plano-comercial.md:125 (G5) · docs/plano-comercial.md:234-237 (§8) · docs/analise-backlog.md:157","responsável","decisão","plano-comercial.md §14 item 2 · §7 · §8"],
 ["COM-03","C","Comercial","Contrato e anexo de tratamento de dados","É o que permite assinar — portão G3.","<b>Onde:</b> docs/plano-comercial.md:123 (G3) · docs/plano-comercial.md:346 · docs/seguranca-homologacao.md:28-35 (bloco 2) · docs/analise-backlog.md:164","responsável + jurídico","1 semana","plano-comercial.md §4 G3"],

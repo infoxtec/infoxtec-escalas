@@ -72,7 +72,7 @@ marca-se aqui.
 | **SEG-01** | `EVOLUTION_API_KEY` exposta por 3 h 14 na janela da migration 12 | **C** | torna inútil a leitura da chave | responsável | 10 min |
 | **SEG-02** | `WEBHOOK_TOKEN` criado 5,8 s depois do carimbo da correção | **C** | fecha a incerteza da margem | responsável | 15 min |
 | **SEG-03** | ~~Papel `leitura` recebe motivo de saúde cru~~ — **fechado e em produção em 28/09** (decisão 40, migration 49): o motivo de saúde saiu do sistema | — | — | — | — |
-| **SEG-14** | Papel `leitura` enxerga `caminho`/`url` dos documentos (NR, CNH e **ASO**). A decisão 41 tirou o caminho do link direto do Drive (**parte 1 em produção em 28/09**); resta o nome e a existência dos arquivos, e a limpeza dos vínculos antigos | **C** | o documento pessoal deixa de aparecer para quem só lê | responsável + Claude | 2 h |
+| **SEG-14** | Papel `leitura` enxerga `caminho` e o nome dos documentos (NR, CNH e **ASO**). O vínculo por Drive saiu da tela (decisão 41) e da estrutura (decisão 42, migration 50) — **parte 2 concluída em 28/09**; resta o acesso do papel `leitura` | **C** | o documento pessoal deixa de aparecer para quem só lê | responsável + Claude | 2 h |
 | **SEG-04** | Sem MFA nas contas administrativas | **C** | é a primeira pergunta de qualquer cliente | responsável | 15 min |
 | **SEG-05** | Tokens do webhook e da URA na query string; assinatura da Twilio em observação | **C** | tira o segredo do log de terceiros | Claude | 1 dia |
 | **SEG-06** | Hardening incompleto: *sequences* e *default privileges* fora do `revoke` | M | fecha a migration 39 | Claude | 1 h |
