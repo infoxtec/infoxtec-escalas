@@ -1,0 +1,69 @@
+# Evolution API própria da Infoxtec (docs/evolution-propria.md).
+# Tudo no mesmo servidor: Evolution, Postgres e Redis só na rede interna; o Caddy é a única porta
+# para fora (80/443), com HTTPS automático. Valores sensíveis ficam no arquivo .env (fora do Git).
+services:
+  evolution:
+    image: ${EVOLUTION_IMAGEM}
+    restart: unless-stopped
+    depends_on: [postgres, redis]
+    env_file: .env
+    environment:
+      SERVER_URL: https://${DOMINIO}
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://evolution:${POSTGRES_SENHA}@postgres:5432/evolution?schema=public
+      DATABASE_CONNECTION_CLIENT_NAME: infoxtec
+      # minimização (LGPD): guarda a sessão, não guarda conversa, contato nem chat
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "false"
+      DATABASE_SAVE_MESSAGE_UPDATE: "false"
+      DATABASE_SAVE_DATA_CONTACTS: "false"
+      DATABASE_SAVE_DATA_CHATS: "false"
+      DATABASE_SAVE_DATA_LABELS: "false"
+      DATABASE_SAVE_DATA_HISTORIC: "false"
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://redis:6379/6
+      CACHE_REDIS_PREFIX_KEY: evolution
+      CACHE_LOCAL_ENABLED: "false"
+      DEL_INSTANCE: "false"
+      WEBHOOK_GLOBAL_ENABLED: "false"
+      LOG_LEVEL: ERROR,WARN
+      LANGUAGE: pt-BR
+      CONFIG_SESSION_PHONE_CLIENT: Infoxtec Escalas
+      CONFIG_SESSION_PHONE_NAME: Chrome
+    volumes:
+      - evolution_instancias:/evolution/instances
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: ${POSTGRES_SENHA}
+      POSTGRES_DB: evolution
+    volumes:
+      - postgres_dados:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_dados:/data
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [evolution]
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMINIO: ${DOMINIO}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_dados:/data
+
+volumes:
+  evolution_instancias:
+  postgres_dados:
+  redis_dados:
+  caddy_dados:

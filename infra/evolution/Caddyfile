@@ -1,0 +1,5 @@
+# HTTPS automático (Let's Encrypt) para o domínio do .env; só a Evolution fica exposta.
+{$DOMINIO} {
+	encode gzip
+	reverse_proxy evolution:8080
+}
