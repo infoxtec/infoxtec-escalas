@@ -402,3 +402,15 @@ da definição da 49. Está escrito no cabeçalho da 50.
 request, publica na Vercel) — é a decisão 24 lida ao contrário: campo que sai do banco só sai depois
 de o painel parar de pedi-lo. Na prática o painel antigo não quebraria (o teste `d.origem === 'drive'`
 simplesmente seria falso), mas a ordem certa é painel primeiro.
+
+## 43. Evolution própria, na Oracle Cloud Always Free
+
+**Decisão (responsável, 28/09):** a Evolution sai do servidor de terceiros (`evo.vluma.com.br`), onde
+não havia controle da chave, para um servidor da Infoxtec na Oracle Cloud Always Free (sem custo,
+decisão 29). O Linux do Mac continua só para desenvolvimento: produção precisa de máquina ligada
+24 h, com IP público.
+**Como:** Docker com Evolution, Postgres e Redis internos e Caddy com HTTPS (`infra/evolution/`);
+roteiro em `docs/evolution-propria.md`. A Evolution não guarda conversas, contatos nem chats
+(minimização). A virada gera chave e token de webhook novos, o que fecha `SEG-01` e `SEG-02`.
+**Consequência:** a Infoxtec passa a cuidar do servidor (atualização mensal, versão fixa da imagem);
+o monitor externo (`INF-02`) vira pré-requisito prático.

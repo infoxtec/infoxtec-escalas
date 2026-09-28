@@ -115,6 +115,7 @@ Edge Function não é migration: é publicada com `npx supabase functions deploy
 Regra (decisão 29): nenhuma assinatura paga. Cada item abaixo usa só planos gratuitos.
 
 - [x] **16. Desligar o Retool.** *Concluída em 27/09: senha do banco de produção trocada e conexão `infoxtec-escalas` apagada no Retool (conferido). O Retool não alcança mais o banco; os apps antigos que restam lá não têm dados.*
+- [ ] **17a. Evolution própria na Oracle Cloud (decisão 43).** *Arquivos e roteiro prontos em 28/09 (`infra/evolution/`, [evolution-propria.md](evolution-propria.md)); falta o responsável criar o servidor e fazer a virada.* Fecha `SEG-01` e `SEG-02`.
 - [ ] **17. Painel no Cloudflare Pages (gratuito).** O plano gratuito da Vercel proíbe uso comercial; o do Cloudflare Pages permite, também publica a `main` sozinho e tem preview por branch.
       *Como:* criar o projeto no Cloudflare ligado ao GitHub (pasta `web`, comando `npm run build`, saída `dist`), cadastrar as variáveis de produção e de preview, converter os cabeçalhos de segurança do `vercel.json` para o arquivo `_headers`, e atualizar os endereços de login no Supabase.
       *Teste:* o painel abre no endereço novo, com login, e a Vercel só é desligada depois de uma semana rodando em paralelo.
@@ -173,3 +174,4 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 | 28/09 | Migration 49 + painel 3.5.1: sem motivo de saúde na recusa (decisão 40) e sem vínculo por Google Drive (decisão 41) | Pendente o teste de ponta a ponta no painel | Produção; **falta aplicar a 49 na homologação** |
 | 28/09 | Convergência dos ambientes: a migration 49 chegou à homologação | Não se aplica | Homologação em 49, igual à produção |
 | 28/09 | Migration 50 + painel 3.5.2: o modo Drive sai da estrutura — colunas, view e três funções (decisão 42) | Testado: selo "Privado", envio e abertura de arquivo, e as duas consultas de verificação | **Produção e homologação em 01 a 50** |
+| 28/09 | Evolution própria: `infra/evolution/` e roteiro (decisão 43) | Não se aplica | Aguardando o servidor na Oracle |
