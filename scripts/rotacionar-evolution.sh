@@ -67,9 +67,15 @@ Falta a string de conexao da producao. Ela nao fica no repositorio (e segredo).
 Pegue em: painel do Supabase -> projeto infoxtec-escalas -> Connect -> Session pooler.
 A senha e a do banco, guardada no gerenciador de senhas.
 
+Nao digite a senha em comando nenhum: ela ficaria no historico do shell. Cole a string com o
+comando abaixo, que le sem eco e nao guarda o que foi digitado:
+
   mkdir -p ~/.infoxtec && chmod 700 ~/.infoxtec
-  printf '%s\n' "PRODUCAO_DB_URL='postgresql://postgres.zpckrxydqqmmcrphrkxz:SUA_SENHA@aws-0-REGIAO.pooler.supabase.com:5432/postgres'" > $ARQ_CONEXAO
-  chmod 600 $ARQ_CONEXAO
+  read -rsp 'Cole a string de conexao (nao aparece na tela): ' URL && \
+    printf '%s\n' "PRODUCAO_DB_URL='$URL'" > $ARQ_CONEXAO && chmod 600 $ARQ_CONEXAO && unset URL
+
+A string completa (com a senha no lugar de [YOUR-PASSWORD]) esta no painel do Supabase, em
+Connect -> Session pooler. Confira a regiao no que ele mostra - nao invente.
 FIM
   exit 1
 fi
