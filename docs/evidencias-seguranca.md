@@ -120,7 +120,7 @@ de exclusões **sem nome nem telefone**.
 | 1 | Há autenticação? | Supabase Auth, e-mail e senha; cadastro público desligado; sessão encerra após 30 min de inatividade | config dos projetos + `docs/seguranca.md` | **MFA ainda não está ligado** (em implantação) |
 | 2 | Há controle de acesso por papel? | `admin`, `gestor` e `leitura`, em `painel_usuarios`; conferido no banco em cada chamada | Q5 | o papel `leitura` ainda vê a **existência** dos documentos (SEG-14, em correção). O motivo de saúde **deixou de existir** em 28/09 (decisão 40) |
 | 3 | O banco é acessível direto pela API? | **Não.** RLS ligado nas 23 tabelas, sem políticas, e privilégios revogados | Q1 e Q2 | — |
-| 4 | As permissões são mínimas? | Só as funções `app_*` são executáveis pelo usuário logado | Q3 | o `revoke` não cobre *sequences* nem *default privileges* — em correção |
+| 4 | As permissões são mínimas? | Só as funções `app_*` são executáveis pelo usuário logado; privilégios de tabela e os padrão de tabela e de função estão revogados | Q3 | as **`sequences` não são revogadas** em nenhuma migration — em correção (SEG-06) |
 | 5 | Como os documentos são protegidos? | Bucket privado, sem URL pública, **link assinado de 2 minutos**, política por papel. Desde 28/09 **não existe vínculo por link externo** (Drive descontinuado, decisão 41): acesso e retenção ficam sob controle do sistema | Q4 | não há trilha de quem abriu; o expurgo é manual |
 | 6 | Há trilha de auditoria? | Sim: quem mudou o quê e quando, em `escala_eventos`, mais registro de exclusões | Q6 | não há exportação pronta (item 018 do backlog) |
 | 7 | Há criptografia? | Em trânsito (TLS) e em repouso, pela infraestrutura | documentação do Supabase | é do **provedor**; não é controle nosso |
