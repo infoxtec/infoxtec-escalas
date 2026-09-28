@@ -105,6 +105,7 @@ supabase/
   setup/                      config por ambiente, cron e segredos (rodar uma vez)
   seed.sql                    dados fictícios para desenvolvimento
 scripts/                      aplicar-homologacao.sh e aplicar-producao.sh (migrations com travas)
+                              backlog-atualizar.sh (quadro do backlog, com limite de espera)
 docs/                         a documentação da tabela acima
 ```
 
