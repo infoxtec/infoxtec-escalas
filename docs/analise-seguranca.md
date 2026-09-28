@@ -9,6 +9,17 @@ Como ler: severidade **P0** = explorável hoje com impacto alto ou dado pessoal 
 **P1** = risco real com mitigação parcial; **P2** = higiene. O que depende de painel, conta ou VPS está
 em §7 e **não foi verificado**.
 
+> **Atualização de 28/09/2026 — o que mudou depois desta auditoria:**
+> - **S1 fechado, e em produção:** o motivo de saúde saiu do sistema (decisão 40, migration 49). Não
+>   existe mais dado de saúde no aceite de escala.
+> - **S2 reduzido e renomeado para SEG-14:** o vínculo por link do Google Drive foi descontinuado
+>   (decisão 41, migration 49 e painel 3.5.1) — caiu o pior caminho, o do link que abria direto.
+> - **Escopo do resgate apurado no próprio Vault:** eram cinco segredos, e só dois importam —
+>   `EVOLUTION_API_KEY` (exposta 3 h 14 em 21/09) e `WEBHOOK_TOKEN` (precaução). `VOZ_TOKEN`,
+>   `TWILIO_ACCOUNT_SID` e `TWILIO_AUTH_TOKEN` nasceram depois da correção; os órfãos `WHATSAPP_*`
+>   não existem. O roteiro está em [rotacao-de-segredos.md](rotacao-de-segredos.md).
+> - **A fila do §6 continua válida**, com SEG-01 e SEG-02 na frente.
+
 ---
 
 ## 1. As camadas de controle (o que existe)

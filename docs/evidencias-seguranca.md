@@ -112,17 +112,20 @@ de exclusões **sem nome nem telefone**.
 
 ## 3. Respostas prontas para o questionário
 
+> **Revisado em 28/09/2026**, depois das decisões 40 (sem motivo de saúde) e 41 (sem vínculo por
+> Drive). O que mudou está nas linhas 2, 5 e 9.
+
 | # | Pergunta típica do cliente | Resposta | Prova | Ressalva honesta |
 |---|---|---|---|---|
 | 1 | Há autenticação? | Supabase Auth, e-mail e senha; cadastro público desligado; sessão encerra após 30 min de inatividade | config dos projetos + `docs/seguranca.md` | **MFA ainda não está ligado** (em implantação) |
-| 2 | Há controle de acesso por papel? | `admin`, `gestor` e `leitura`, em `painel_usuarios`; conferido no banco em cada chamada | Q5 | papel `leitura` vê documentos e o motivo de saúde — **em revisão** |
+| 2 | Há controle de acesso por papel? | `admin`, `gestor` e `leitura`, em `painel_usuarios`; conferido no banco em cada chamada | Q5 | o papel `leitura` ainda vê a **existência** dos documentos (SEG-14, em correção). O motivo de saúde **deixou de existir** em 28/09 (decisão 40) |
 | 3 | O banco é acessível direto pela API? | **Não.** RLS ligado nas 23 tabelas, sem políticas, e privilégios revogados | Q1 e Q2 | — |
 | 4 | As permissões são mínimas? | Só as funções `app_*` são executáveis pelo usuário logado | Q3 | o `revoke` não cobre *sequences* nem *default privileges* — em correção |
-| 5 | Como os documentos são protegidos? | Bucket privado, sem URL pública, **link assinado de 2 minutos**, política por papel | Q4 | não há trilha de quem abriu; o expurgo é manual |
+| 5 | Como os documentos são protegidos? | Bucket privado, sem URL pública, **link assinado de 2 minutos**, política por papel. Desde 28/09 **não existe vínculo por link externo** (Drive descontinuado, decisão 41): acesso e retenção ficam sob controle do sistema | Q4 | não há trilha de quem abriu; o expurgo é manual |
 | 6 | Há trilha de auditoria? | Sim: quem mudou o quê e quando, em `escala_eventos`, mais registro de exclusões | Q6 | não há exportação pronta (item 018 do backlog) |
 | 7 | Há criptografia? | Em trânsito (TLS) e em repouso, pela infraestrutura | documentação do Supabase | é do **provedor**; não é controle nosso |
 | 8 | Há backup? | Diário, cifrado AES-256, 30 dias, com teste de restauração mensal | `.github/workflows/backup.yml` e `restauracao.yml` | **cobre só o schema `public`** (não Auth, Vault, cron) e **não cobre os arquivos** — em correção |
-| 9 | Há política de retenção? | Quatro prazos automáticos (log 30 d, conteúdo enviado 90 d, alertas 90 d, cron 7 d) e guarda declarada de documentos | `fn_limpeza_logs`; `docs/analise-seguranca.md` §4.1 | o expurgo dos documentos **não roda sozinho** — em correção |
+| 9 | Há política de retenção? | Quatro prazos automáticos (log 30 d, conteúdo enviado 90 d, alertas 90 d, cron 7 d) e guarda declarada de documentos. Sem o Drive, **a guarda volta a ser executável pelo sistema** | `fn_limpeza_logs`; `docs/analise-seguranca.md` §4.1 | o expurgo dos documentos **não roda sozinho** — em correção (SEG-10) |
 | 10 | Quem são os subprocessadores? | Supabase (banco), Vercel (painel), GitHub (cópia de segurança), Twilio (voz), Evolution em VPS própria (WhatsApp) e Google (OCR, hoje desligado) | `docs/analise-seguranca.md` §4.2 (L8) | as transferências **não têm registro formal de base legal** |
 | 11 | Há plano de resposta a incidente? | **Ainda não** está formalizado | bloco 2 de `docs/seguranca-homologacao.md` | é item aberto, com dono e prazo a definir |
 | 12 | Quem tem acesso ao ambiente de produção? | Uma pessoa, com credenciais em gerenciador de senhas | `docs/analise-infraestrutura.md` §2 | **MFA nas contas administrativas** ainda não |

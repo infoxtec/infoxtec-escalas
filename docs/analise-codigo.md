@@ -9,6 +9,13 @@ alterado, nenhum build rodado.
 48 chaves de `config` em migrations + 3 em `supabase/setup/config.sql` · painel com **4.564 linhas**
 em 28 arquivos · **377 linhas** nas 3 Edge Functions.
 
+> **Atualização de 28/09/2026:** três achados desta auditoria foram resolvidos depois dela — o **dado
+> de saúde entregue ao papel `leitura`** (S1, pela remoção do motivo de saúde, decisão 40), o **modo
+> Drive** (L12, descontinuado na decisão 41) e o **cabeçalho desatualizado do `banco-de-dados.md`**
+> (D4, corrigido: agora diz 23 tabelas, 8 views, 110 funções, 01 a 49). O defeito **C1** — `tipo` e
+> `teste` coletados e nunca enviados — **continua aberto**, e é o tema DEV-01 no
+> [painel de controle](painel-de-controle.html).
+
 > **Correção de número:** `docs/banco-de-dados.md` diz 5 gatilhos; são **7**. Não é o pior erro do
 > documento — ver §1.5.
 

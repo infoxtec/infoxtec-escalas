@@ -3,6 +3,10 @@
 O que falta fazer no Trilha, por área, com **ID para escolher onde atuar**. O responsável aponta o ID
 e o trabalho começa por ele.
 
+> **Versão interativa, com a referência exata de cada tema e o controle de quem corrige (Deep ou
+> Claude): [`painel-de-controle.html`](painel-de-controle.html).** Abra no navegador — as escolhas
+> ficam salvas localmente e o botão *Copiar seleção* devolve a lista pronta para colar aqui.
+
 **Severidade:** **C** = crítico (perda de dado, parada silenciosa, dado pessoal exposto ou bloqueia
 venda) · **M** = médio (risco com mitigação, ou dívida que atrapalha a expansão).
 
@@ -78,7 +82,7 @@ marca-se aqui.
 | **SEG-10** | Expurgo de documentos sem executor e arquivo órfão ao excluir técnico | M | direito de eliminação deixa de ser declaração | Claude | 3 dias |
 | **SEG-11** | Sem trilha de acesso a documento (item 015 do backlog) | M | responde "quem abriu o ASO" | Claude | 3 dias |
 | **SEG-12** | Transferências a terceiros sem registro de base legal | M | fecha a parte de LGPD do contrato | responsável | 1 h |
-| **SEG-13** | `docs/seguranca.md` com inventário de segredos errado | M | documento deixa de enganar | Claude | 20 min |
+| **SEG-13** | ~~`docs/seguranca.md` com inventário de segredos errado~~ — **corrigido em 28/09**: cinco segredos reais, rotação pendente marcada e Retool/xlsx como resolvidos | — | — | — | — |
 
 ## Comercial
 

@@ -411,15 +411,16 @@ Esforço: M. Depende do item 15 para a confirmação visual do tipo.
 
 ---
 
-## 064. Motivo de recusa estruturado
+## 064. Motivo de recusa estruturado — ENTREGUE (28/09/2026, em produção)
 
 **Problema:** quando o técnico responde 2 (não vai), a recusa fica sem motivo. A tabela
 `ocorrencias` já tem o campo `motivo` (transporte, conflito de agenda, falta de material, outro —
 saúde saiu do sistema na migration 49, decisão 40), mas ele nunca era preenchido; o que chega é texto livre em `detalhe`, que não dá para somar.
 
-**Escopo:** depois do "2", o WhatsApp pergunta o motivo numa lista numerada (1 Saúde, 2 Transporte,
-3 Conflito de agenda, 4 Falta de material, 5 Outro). O número vai para `ocorrencias.motivo`; o
-detalhe escrito continua opcional. O sistema também grava o tempo entre o envio e a resposta.
+**Escopo entregue:** depois do "2", o WhatsApp pergunta o motivo numa lista numerada — **1 Transporte,
+2 Conflito de agenda, 3 Falta de material, 4 Outro** (o motivo de saúde saiu na migration 49, decisão
+40). O número vai para `ocorrencias.motivo`; o detalhe escrito continua opcional. O sistema também
+grava o tempo entre o envio e a resposta.
 
 **Critérios de aceite:**
 - Dado um técnico que respondeu 2, quando ele responde 3, então a ocorrência fica com motivo
@@ -432,9 +433,17 @@ detalhe escrito continua opcional. O sistema também grava o tempo entre o envio
 a escala) e 007 (predição). Cada semana sem ele é histórico perdido. Esforço: P (cerca de 1 dia).
 Etapa 24 do plano de trabalho.
 
+**Entregue em 28/09/2026, em produção:** migration 47 (`fn_wh_mensagem` e
+`app_indicadores_resposta`), painel 3.5 e migration 49 (remoção do motivo de saúde). No quadro, o item
+vai para a coluna **`feito`**, com `entregue_em = 2026-09-28`.
+
+**Uma pendência que fica registrada aqui e vive no painel de temas:** o indicador de tempo de resposta
+(`app_indicadores_resposta`) calcula a mediana por consulta a cada abertura da aba — sem índice
+dedicado. É o tema **INF-07** (medição) e não bloqueia o item.
+
 ---
 
-## 065. Editar e reagendar escala
+## 065. Editar e reagendar escala — ENTREGUE (28/09/2026, em produção)
 
 **Problema:** para trocar horário, local ou técnico, o gestor precisa cancelar e criar de novo.
 Depois de uma recusa, não há atalho para escalar outro técnico no mesmo horário. O status
@@ -453,6 +462,14 @@ técnico; a substituição cancela a do técnico anterior com aviso e cria a do 
 
 **Decidido em 27/09:** editar uma escala confirmada pede nova confirmação do técnico só se mudar
 data, hora ou local; mudar só a tarefa não pede. Esforço: M. Etapa 25 do plano de trabalho.
+
+**Entregue em 28/09/2026, em produção:** migrations 47 e 48 (`app_editar_escala`,
+`app_escala_edicao`, `app_substituir_tecnico`, `fn_edicao_permitida`) e painel 3.5. No quadro, o item
+vai para a coluna **`feito`**, com `entregue_em = 2026-09-28`.
+
+**Um defeito conhecido que sobra:** `app_substituir_tecnico` falha quando a escala **já começou** —
+`fn_validar_inicio` exige início pelo menos 5 minutos à frente. É o tema **DEV-04** no painel de temas,
+com a referência exata da cadeia de chamadas.
 
 ---
 
