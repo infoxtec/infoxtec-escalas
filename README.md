@@ -167,6 +167,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Painel 3.5: motivo de recusa por número, editar escala e substituir técnico (homologação, 27/09)
 - [x] Migrations 47 a 49 na produção: motivo de recusa, editar e substituir escala (28/09)
 - [x] Sem motivo de saúde na recusa e sem vínculo por Google Drive: decisões 40 e 41, migration 49 e painel 3.5.1 (28/09)
+- [x] Migration 50 e painel 3.5.2: o modo Drive sai da estrutura — colunas `origem` e `url`, view e três funções (decisão 42); produção e homologação em 01 a 50 (28/09)
 - [x] Painel de controle interno: 47 temas pendentes com referência exata e as avaliações de segurança, infraestrutura e código atualizadas (28/09)
 - [ ] Próximas etapas: ver [docs/plano-de-trabalho.md](docs/plano-de-trabalho.md)
 - [ ] Fluxo por pull request com CI (ver [docs/fluxo-de-desenvolvimento.md](docs/fluxo-de-desenvolvimento.md))

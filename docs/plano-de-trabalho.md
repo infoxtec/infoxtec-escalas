@@ -10,9 +10,9 @@ A análise que originou a lista está em [analise-topologia.md](analise-topologi
 | Peça | O que é | Situação |
 |---|---|---|
 | Máquina Linux no Mac | Onde você roda o painel, os comandos do Supabase e os scripts | Pronta |
-| Homologação | Projeto Supabase `infoxtec-escalas-dev` (`oruwnlxyvznpigbpjjbx`), com dados fictícios, sem WhatsApp nem ligações reais | Pronta, com as migrations 01 a 48 e as três Edge Functions. **Falta a 49**, que foi direto para a produção em 28/09 |
-| Produção | Projeto Supabase `infoxtec-escalas` (`zpckrxydqqmmcrphrkxz`) + painel na Vercel | **Migrations 01 a 49** (28/09), as três Edge Functions e o painel 3.5.1 |
-| Repositório | GitHub `infoxtec/infoxtec-escalas`. A `main` é o que vale para a produção | `main` igual à produção desde 28/09 (migrations 01 a 49) |
+| Homologação | Projeto Supabase `infoxtec-escalas-dev` (`oruwnlxyvznpigbpjjbx`), com dados fictícios, sem WhatsApp nem ligações reais | **Migrations 01 a 50** e as três Edge Functions — igual à produção desde 28/09 |
+| Produção | Projeto Supabase `infoxtec-escalas` (`zpckrxydqqmmcrphrkxz`) + painel na Vercel | **Migrations 01 a 50** (28/09), as três Edge Functions e o painel 3.5.2 |
+| Repositório | GitHub `infoxtec/infoxtec-escalas`. A `main` é o que vale para a produção | `main` igual à produção e à homologação desde 28/09 (migrations 01 a 50) |
 
 ## Regras combinadas (26/09)
 
@@ -171,3 +171,5 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 | 27/09 | Migrations 47 e 48 + painel 3.5: motivo de recusa (064) e editar/substituir escala (065) | Aplicada e testada; plpgsql_check zero | Aguardando ordem |
 | 28/09 | Migrations 47, 48 e 49 na produção (o script aplicou as três de uma vez) | Sem teste conjunto prévio: aplicado direto pelo responsável, a pedido, com as duas consultas de dependência do tipo conferidas antes | **Produção em 01 a 49** |
 | 28/09 | Migration 49 + painel 3.5.1: sem motivo de saúde na recusa (decisão 40) e sem vínculo por Google Drive (decisão 41) | Pendente o teste de ponta a ponta no painel | Produção; **falta aplicar a 49 na homologação** |
+| 28/09 | Convergência dos ambientes: a migration 49 chegou à homologação | Não se aplica | Homologação em 49, igual à produção |
+| 28/09 | Migration 50 + painel 3.5.2: o modo Drive sai da estrutura — colunas, view e três funções (decisão 42) | Testado: selo "Privado", envio e abertura de arquivo, e as duas consultas de verificação | **Produção e homologação em 01 a 50** |

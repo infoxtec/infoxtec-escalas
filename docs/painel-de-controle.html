@@ -66,12 +66,31 @@
 <body>
 <header>
   <h1>Painel de controle — Trilha</h1>
-  <div class="sub">Infoxtec Tecnologia e Serviços Ltda · controle interno de correções · atualizado em 28/09/2026</div>
+  <div class="sub">Infoxtec Tecnologia e Serviços Ltda · controle interno de correções · atualizado em 28/09/2026 · produção e homologação na migration <b>50</b>, painel <b>3.5.2</b></div>
   <div class="aviso"><b>Este não é o produto.</b> É o controle de manutenção: o que falta corrigir, onde exatamente no código, e quem corrige (Deep ou Claude). Suas escolhas ficam salvas neste navegador.</div>
 </header>
 
 <main>
   <div class="contadores" id="contadores"></div>
+
+  <h2>Estado dos ambientes</h2>
+  <div class="docs">
+    <div class="doc">
+      <h4>Produção <span class="tag">zpckrxydqqmmcrphrkxz</span></h4>
+      <p>Migrations <b>01 a 50</b> · três Edge Functions · painel 3.5.2</p>
+      <span class="quando">Conferir: <code>select count(*) from supabase_migrations.schema_migrations where version = '20260928020000';</code> → <b>1</b></span>
+    </div>
+    <div class="doc">
+      <h4>Homologação <span class="tag">oruwnlxyvznpigbpjjbx</span></h4>
+      <p>Migrations <b>01 a 50</b> · igual à produção desde 28/09</p>
+      <span class="quando">Conferir: a mesma consulta, no projeto de homologação</span>
+    </div>
+    <div class="doc">
+      <h4>Painel no ar</h4>
+      <p>Versão <b>3.5.2</b> — o número aparece no rodapé do painel</p>
+      <span class="quando">Conferir: se o rodapé mostrar outra versão, a Vercel não publicou</span>
+    </div>
+  </div>
 
   <h2>Avaliações atualizadas</h2>
   <div class="docs" id="docs"></div>
@@ -111,17 +130,19 @@
 
 <script>
 const DOCS = [
-  ["Análise de segurança e LGPD","analise-seguranca.md","Riscos por severidade, inventário de dados pessoais, retenção, vetos e fila.","Atualizada: S1 fechado (decisão 40) e S2 reduzido para SEG-14 (decisão 41)."],
-  ["Análise de infraestrutura","analise-infraestrutura.md","Onde roda, capacidade, backup, restauração, observabilidade e 31 achados.","Atualizada: produção em 01 a 49; os P0 seguem abertos."],
-  ["Análise do código","analise-codigo.md","Banco, painel e Edge Functions: números medidos, duplicação, defeitos e 35 achados.","Atualizada: S1 e Drive resolvidos, D4 corrigido, C1 continua aberto."],
-  ["Evidências para o cliente","evidencias-seguranca.md","Seis consultas de prova e doze respostas prontas para questionário.","Atualizada: linhas 2, 5 e 9 mudaram com as decisões 40 e 41."],
-  ["Rotação de segredos","rotacao-de-segredos.md","Inventário do Vault, cinco fases de troca e o que pode quebrar.","Atualizada: escopo apurado — só dois segredos a rotacionar."],
-  ["Plano comercial","plano-comercial.md","O que se vende, para quem, a que preço, portões e metas até 30/12/2026.","Matriz de capacidade ajustada ao que mudou."],
-  ["Painel de temas","painel-de-temas.md","A mesma lista desta página, em Markdown, dentro do repositório.","SEG-03 fechado; SEG-14 criado."],
-  ["Segurança (referência rápida)","seguranca.md","Camadas, papéis, segredos, LGPD e riscos conhecidos.","Revisado em 28/09: inventário de segredos e riscos atualizados."]
+["Análise de segurança e LGPD","analise-seguranca.md","Riscos por severidade, inventário de dados pessoais, retenção, vetos e fila.","Atualizada: S1 fechado (decisão 40), S2 reduzido a SEG-14 e o modo Drive resolvido (decisão 42)."],
+["Análise de infraestrutura","analise-infraestrutura.md","Onde roda, capacidade, backup, restauração, observabilidade e 31 achados.","Atualizada: produção e homologação em 01 a 50; os P0 seguem abertos."],
+["Análise do código","analise-codigo.md","Banco, painel e Edge Functions: números medidos, duplicação, defeitos e 35 achados.","Atualizada: S1 e Drive resolvidos, D4 corrigido, C1 continua aberto (DEV-01)."],
+["Evidências para o cliente","evidencias-seguranca.md","Seis consultas de prova e doze respostas prontas para questionário.","Atualizada: linhas 2, 5 e 9 mudaram com as decisões 40 e 41."],
+["Rotação de segredos","rotacao-de-segredos.md","Inventário do Vault, cinco fases de troca e o que pode quebrar.","Atualizada: escopo apurado — só dois segredos a rotacionar."],
+["Plano comercial","plano-comercial.md","O que se vende, para quem, a que preço, portões e metas até 30/12/2026.","Matriz de capacidade ajustada ao que mudou."],
+["Painel de temas","painel-de-temas.md","A mesma lista desta página, em Markdown, dentro do repositório.","SEG-03 fechado; SEG-14 com a parte 1 (tela) e a 2 (estrutura) concluídas."],
+["Segurança (referência rápida)","seguranca.md","Camadas, papéis, segredos, LGPD e riscos conhecidos.","Revisado em 28/09: inventário de segredos e riscos atualizados."]
 ];
 
 const CONCLUIDOS = [
+["Migration 50 · 28/09","Modo Drive fora da estrutura — em produção","Apaga os vínculos, recria a view e três funções e derruba as colunas <code>origem</code> e <code>url</code> de <code>documentos</code> (decisão 42, PR #25). Painel 3.5.2. Produção e homologação em 01 a 50."],
+["Convergência · 28/09","Produção e homologação no mesmo ponto","A migration 49 chegou à homologação depois de passar pela produção: os dois ambientes estão em 01 a 50."],
 ["SEG-14 (parte 2)","Vínculo por Google Drive removido da estrutura","28/09 — decisão 42, migration 50: apaga os vínculos, recria a view e três funções e derruba as colunas <code>origem</code> e <code>url</code>. Painel 3.5.2."],
 ["SEG-03","Motivo de saúde fora do sistema","28/09 — decisão 40, migration 49 (enum, <code>fn_motivo_rotulo</code>, <code>fn_wh_mensagem</code>). Em produção."],
 ["SEG-14 (parte 1)","Vínculo por link do Google Drive descontinuado","28/09 — decisão 41, migration 49 (<code>app_registrar_documento</code>) e painel 3.5.1. Em produção."],
