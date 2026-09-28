@@ -25,7 +25,6 @@ marca-se aqui.
 | **INF-02** | Criar o monitor no healthchecks.io e preencher `monitor_ping_url` | responsável | 15 min |
 | **INF-05** | Rodar o backup à mão e conferir se `PRODUCAO_DB_URL` está em dia | responsável | 5 min |
 | **SEG-13** | Corrigir o inventário de segredos em `docs/seguranca.md` | Claude | 20 min |
-| **Convergência dos ambientes** | Aplicar a **migration 49 na homologação** — a produção já está em 49 e a homologação parou em 48 | responsável | 15 min |
 | **DEV-01 + DEV-02** | PR dos defeitos: enviar `tipo`/`teste` e blindar a tela contra erro de render | Claude | 1 h |
 
 ---
