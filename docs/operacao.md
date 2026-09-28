@@ -214,7 +214,8 @@ motor manda um sinal por minuto ao monitor externo (healthchecks.io), que avisa 
 Telegram quando o sinal para (motor parado, Supabase fora ou pausado) ou chega como falha
 (Evolution recusando envios). Ver decisão 34 e `docs/roteiro-producao.md`.
 
-**Confirme que o monitor está ligado** — sem isso, nada avisa quando o motor para:
+**O monitor está ligado desde 28/09/2026** (período de 5 minutos, carência de 5, no healthchecks.io).
+Confirme de tempo em tempo — se `valor` voltar vazio, o monitor está desligado:
 
 ```sql
 select chave, valor from config where chave = 'monitor_ping_url';
