@@ -435,7 +435,7 @@ Etapa 24 do plano de trabalho.
 
 **Entregue em 28/09/2026, em produção:** migration 47 (`fn_wh_mensagem` e
 `app_indicadores_resposta`), painel 3.5 e migration 49 (remoção do motivo de saúde). No quadro, o item
-vai para a coluna **`feito`**, com `entregue_em = 2026-09-28`.
+está na coluna **`feito`** (cartão movido em 27/09).
 
 **Uma pendência que fica registrada aqui e vive no painel de temas:** o indicador de tempo de resposta
 (`app_indicadores_resposta`) calcula a mediana por consulta a cada abertura da aba — sem índice
@@ -465,7 +465,7 @@ data, hora ou local; mudar só a tarefa não pede. Esforço: M. Etapa 25 do plan
 
 **Entregue em 28/09/2026, em produção:** migrations 47 e 48 (`app_editar_escala`,
 `app_escala_edicao`, `app_substituir_tecnico`, `fn_edicao_permitida`) e painel 3.5. No quadro, o item
-vai para a coluna **`feito`**, com `entregue_em = 2026-09-28`.
+está na coluna **`feito`** (cartão movido em 27/09).
 
 **Um defeito conhecido que sobra:** `app_substituir_tecnico` falha quando a escala **já começou** —
 `fn_validar_inicio` exige início pelo menos 5 minutos à frente. É o tema **DEV-04** no painel de temas,
