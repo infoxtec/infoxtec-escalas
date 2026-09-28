@@ -201,6 +201,20 @@ conectada até a parte F, então o sistema volta como estava.
 
 ---
 
+## Como foi instalado (28/09) e lições
+
+- **Servidor:** Oracle São Paulo, `VM.Standard.E2.1.Micro` (1 GB, x86): a Ampere A1 estava sem capacidade.
+  Endereço `https://163-176-68-206.sslip.io`, pasta `~/evolution` no servidor (não o repositório).
+- **Instalação pelo Linux local:** `bash infra/evolution/instalar-evolution.sh IP CHAVE_SSH micro` (ou
+  `ampere`). Ele copia `evolution-micro.sh` (sem Redis, 2 GB de swap) ou `evolution-cloud-init.sh`
+  para o servidor e roda. Colar o script como cloud-init no console da Oracle deu erro de formato.
+- **Portas:** o assistente de VCN só libera a 22; as regras de entrada 80 e 443 são obrigatórias.
+- **Instância:** criar com integração **WHATSAPP-BAILEYS**. O canal "Evolution" do Manager aceita o
+  envio, responde `open` e não entrega nada.
+- **Pareamento na v2.3.7:** exige `CONFIG_SESSION_PHONE_VERSION` no `.env` (já no `.env.exemplo`) e
+  QR Code. Logo depois de conectar, a primeira mensagem pode não sair até a sincronização terminar
+  (`recv ... chats` no log); o `stream:error 515` logo após o pareamento é normal.
+
 ## Operação do servidor
 
 | Tarefa | Comando (dentro do servidor, em `~/infoxtec-escalas/infra/evolution`) |
