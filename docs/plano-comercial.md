@@ -556,7 +556,8 @@ portaria que regulamenta o art. 74 da CLT
    hipótese, não referência de mercado. Um levantamento com fonte é o próximo passo natural, e não
    foi feito.
 3. **Custo da VPS da Evolution** não está no repositório.
-4. **Titularidade do domínio `evo.vluma.com.br`**, usado como endereço da Evolution, não está
+4. **Titularidade do domínio da Evolution** (era `evo.vluma.com.br`; o servidor mudou em 28/09, decisão
+43 — confirme a titularidade do endereço novo), usado como endereço da Evolution, não está
    documentada — relevante para o anexo de tratamento de dados.
 5. Disponibilidade de nome e domínio: foi feito apenas um teste de DNS, que **não é prova** de
    disponibilidade (ver `docs/marca.md`, §8).

@@ -403,6 +403,36 @@ request, publica na Vercel) — é a decisão 24 lida ao contrário: campo que s
 de o painel parar de pedi-lo. Na prática o painel antigo não quebraria (o teste `d.origem === 'drive'`
 simplesmente seria falso), mas a ordem certa é painel primeiro.
 
+## 43. O canal do WhatsApp passa para um servidor Evolution novo
+
+**Decisão (responsável, 28/09):** há um servidor Evolution novo em operação, e o sistema passa a
+apontar para ele. Não é só trocar a chave: o **webhook precisa ser registrado no servidor novo**,
+senão a resposta do técnico nunca chega ao sistema — e o sintoma é silencioso, porque as escalas
+continuam saindo.
+
+**O que muda, exatamente:**
+
+| Onde | O quê |
+|---|---|
+| `config.evolution_url` | o endereço base do servidor novo (sem barra no final; **o gatilho de `config` não valida esta chave**) |
+| `config.evolution_instancia` | se o nome da instância mudou (no servidor antigo era `infoxtec`) |
+| Vault, `EVOLUTION_API_KEY` | a chave da **instância** do servidor novo |
+| Webhook | `fn_evo_post('/webhook/set/…')` no servidor novo, com o `WEBHOOK_TOKEN` na URL — e apagar a resposta depois, porque ela guarda o token |
+
+**Roteiro completo:** `docs/operacao.md`, seção "Trocar o servidor da Evolution".
+
+**Efeito colateral bom:** a chave exposta em 21/09 (tema SEG-01) **deixa de existir**, porque a chave
+do servidor novo é nova por definição. O SEG-01 vira parte desta migração, e deixa de ser uma rotação
+isolada — desde que a migração aconteça. Se o servidor novo não entrar em uso, a rotação continua
+necessária.
+
+**Caminho de volta:** o servidor antigo continua existindo. Gravar de volta o `evolution_url` e a chave
+antiga devolve o sistema ao estado anterior — é a vantagem desta migração sobre a rotação pura.
+
+**Fica pendente para o registro de LGPD:** onde o servidor novo está hospedado (provedor e país). A
+transferência a terceiros em `analise-seguranca.md` §4.2 (L8) cita o endereço antigo e precisa mudar
+quando isso for sabido.
+
 ## 43. Evolution própria, na Oracle Cloud Always Free
 
 **Decisão (responsável, 28/09):** a Evolution sai do servidor de terceiros (`evo.vluma.com.br`), onde
