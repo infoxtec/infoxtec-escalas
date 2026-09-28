@@ -281,94 +281,23 @@ O `pg_cron` roda 1.440 vezes por dia e o histórico cresce rápido no plano grat
 
 ## Trocar o servidor da Evolution (migração do canal)
 
-Vale quando o endereço da Evolution muda — servidor novo, VPS nova ou provedor novo. **Não é só a
-chave:** o webhook precisa ser registrado no servidor novo, senão a resposta do técnico no WhatsApp
-nunca chega ao sistema, e o sintoma é silencioso (as escalas saem, ninguém responde).
+**O roteiro completo está em [`evolution-propria.md`](evolution-propria.md)** — §E (a virada, com o
+plano de volta) e §F (desligar o servidor antigo). Ele nasceu da migração de 28/09, quando a Evolution
+saiu de um servidor de terceiros e passou para um servidor da Infoxtec na Oracle Cloud (decisão 43).
 
-**Antes de começar, no servidor novo:** instância criada, WhatsApp conectado (QR lido) e a chave da
-**instância** em mãos (não a global). Anote também os valores atuais, eles são o seu caminho de volta:
+O resumo do que muda, e o que se esquece:
 
-```sql
-select chave, valor from config where chave in ('evolution_url', 'evolution_instancia', 'webhook_url');
-```
+| Onde | O quê |
+|---|---|
+| `config.evolution_url` | o endereço do servidor novo. **O gatilho de `config` não valida esta chave** — uma barra a mais no fim quebra o envio em silêncio |
+| `config.evolution_instancia` | se o nome da instância mudou |
+| Vault, `EVOLUTION_API_KEY` | a chave da instância nova |
+| **Webhook** | `fn_evo_post('/webhook/set/…')` **no servidor novo**. Sem isso, a resposta do técnico nunca chega — e o sintoma é silencioso, porque as escalas continuam saindo |
+| `net._http_response` | apagar a resposta do `/webhook/set/`, que guarda a URL com o token |
 
-**1. Apontar o endereço** — sem barra no final. O gatilho de `config` **não valida** esta chave, então
-um caractere a mais quebra o envio em silêncio:
-
-```sql
-set lock_timeout = '5s';
-
-update config
-   set valor = 'https://ENDERECO-DO-SERVIDOR-NOVO'
- where chave = 'evolution_url'
-returning chave, valor;
-```
-
-**2. Se o nome da instância mudou** no servidor novo (no antigo era `infoxtec`):
-
-```sql
-update config
-   set valor = 'NOME-DA-INSTANCIA'
- where chave = 'evolution_instancia'
-returning chave, valor;
-```
-
-**3. Gravar a chave da instância nova** — pelo script, que pede a chave sem eco e confere na Evolution:
-
-```bash
-./scripts/rotacionar-evolution.sh --aplicar
-```
-
-Ou pelo SQL Editor:
-
-```sql
-select vault.update_secret(
-  (select id from vault.secrets where name = 'EVOLUTION_API_KEY'),
-  'COLE_A_CHAVE_DA_INSTANCIA_NOVA') is not null as gravado;
-```
-
-**4. A instância está conectada?** Esperado `"state":"open"`:
-
-```sql
-select fn_evo_get('/instance/connectionState/' || fn_config('evolution_instancia'));
-```
-
-```sql
-select status, left(coalesce(corpo,''), 120) as corpo, erro from fn_http_resposta(<numero acima>);
-```
-
-**5. Registrar o webhook no servidor novo — este é o passo que se esquece:**
-
-```sql
-select fn_evo_post('/webhook/set/' || fn_config('evolution_instancia'),
-  jsonb_build_object('webhook', jsonb_build_object(
-    'enabled', true,
-    'url', fn_config('webhook_url') || '?token=' || fn_segredo('WEBHOOK_TOKEN'),
-    'byEvents', false, 'base64', false,
-    'events', jsonb_build_array('MESSAGES_UPSERT','MESSAGES_UPDATE')))) as numero_da_requisicao;
-```
-
-A resposta dessa chamada guarda a **URL com o token dentro** — apague:
-
-```sql
-delete from net._http_response where id = <numero_da_requisicao>;
-```
-
-**6. Teste de ponta a ponta.** Envie uma escala de teste pelo painel, responda `1` do WhatsApp do
-técnico e confira que o evento chegou:
-
-```sql
-select recebido_em at time zone 'America/Bahia' as quando, evento, left(resultado, 80) as resultado
-  from webhook_eventos order by recebido_em desc limit 3;
-```
-
-**Se der errado, o caminho de volta é o de ida:** grave de volta os valores que você anotou no começo
-(`evolution_url` e a chave antiga) e o sistema volta ao servidor anterior. É a vantagem desta migração
-sobre a rotação de chave pura: o servidor antigo continua existindo como plano B — enquanto existir.
-
-**Depois de estabilizar:** atualize o inventário em `docs/rotacao-de-segredos.md` §7, a linha do
-`analise-infraestrutura.md` §2 e a transferência a terceiros em `analise-seguranca.md` §4.2 (L8) — se o
-servidor novo estiver em outro provedor ou país, isso muda o registro de LGPD.
+**Operação do servidor** (no servidor, em `~/infoxtec-escalas/infra/evolution`): `docker compose ps`,
+`docker compose logs --tail 100 evolution`, troca da chave-mestra, troca da imagem e
+`apt upgrade` uma vez por mês — a tabela está em `evolution-propria.md`.
 
 ## Trocar a chave da Evolution
 

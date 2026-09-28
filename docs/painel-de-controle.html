@@ -90,6 +90,11 @@
       <p>Versão <b>3.5.2</b> — o número aparece no rodapé do painel</p>
       <span class="quando">Conferir: se o rodapé mostrar outra versão, a Vercel não publicou</span>
     </div>
+    <div class="doc">
+      <h4>Servidor Evolution <span class="tag">próprio, Oracle Cloud</span></h4>
+      <p>Evolution 2.4.0-rc2 na <code>VM.Standard.E2.1.Micro</code> (São Paulo) · endereço em <code>config.evolution_url</code> (sslip.io)</p>
+      <span class="quando">Conferir: <code>select fn_evo_get('/instance/connectionState/' || fn_config('evolution_instancia'));</code> → <b>"state":"open"</b> · rotina em <code>evolution-propria.md</code></span>
+    </div>
   </div>
 
   <h2>Avaliações atualizadas</h2>
@@ -141,6 +146,7 @@ const DOCS = [
 ];
 
 const CONCLUIDOS = [
+["SEG-01 e SEG-02","Chave da Evolution e token do webhook trocados","28/09 — a virada para o servidor próprio gerou chave e token novos (decisão 43). Fecha a janela de exposição de 21/09, a única comprovada."],
 ["INF-02","Monitor externo ligado (healthchecks.io)","28/09 — check com período de 5 min e carência de 5; endereço gravado em <code>config.monitor_ping_url</code>. Prova: dois pings seguidos com corpo <code>OK</code> em <code>net._http_response</code>. Falta o teste do alarme (apagar o valor por 10 min e ver o e-mail chegar)."],
 ["Migration 50 · 28/09","Modo Drive fora da estrutura — em produção","Apaga os vínculos, recria a view e três funções e derruba as colunas <code>origem</code> e <code>url</code> de <code>documentos</code> (decisão 42, PR #25). Painel 3.5.2. Produção e homologação em 01 a 50."],
 ["Convergência · 28/09","Produção e homologação no mesmo ponto","A migration 49 chegou à homologação depois de passar pela produção: os dois ambientes estão em 01 a 50."],
@@ -155,7 +161,8 @@ const CONCLUIDOS = [
 ];
 
 const TAREFAS = [
-["INF-13","C","Infraestrutura","Apontar o sistema para o servidor Evolution novo","Servidor novo em operacao desde 28/09. Nao e so a chave: o webhook precisa ser registrado no servidor novo, senao a resposta do tecnico nunca chega - e o sintoma e silencioso, porque as escalas continuam saindo.","<b>Onde:</b> config.evolution_url e config.evolution_instancia (sem validacao no gatilho, migration 45:344-352) · Vault EVOLUTION_API_KEY · webhook: fn_evo_post(&#39;/webhook/set/&#39;...) em docs/operacao.md · roteiro completo em operacao.md secao \"Trocar o servidor da Evolution\" · decisao 43","responsável + Claude","1 h","operacao.md"],
+["INF-13","M","Infraestrutura","Consolidar a Evolution numa só versão","A produção roda a 2.4.0-rc2 (container evolution24, banco evolution24) e a 2.3.7 segue no ar como volta, apontada pelo Caddyfile.teste. Depois de alguns dias estável, a 2.3.7 para e o compose fica numa versão só — senão a volta vira a configuração permanente, sem ninguém decidir.","<b>Onde:</b> infra/evolution/docker-compose.yml · infra/evolution/Caddyfile · docs/evolution-propria.md (seção \"Evolution 2.4 em produção\") · no servidor: <code>docker compose ps</code>","Claude + responsável","1 h","evolution-propria.md"],
+["INF-14","M","Infraestrutura","O endereço da Evolution depende do IP (sslip.io)","O endereço é um sslip.io derivado do IP público do servidor Oracle: não há domínio próprio. Se o IP mudar — parada e religamento da VM, IP efêmero — o config.evolution_url para de resolver e o envio quebra. O monitor (INF-02) avisa, porque a Evolution falhando manda /fail, mas o conserto é manual.","<b>Onde:</b> config.evolution_url · docs/evolution-propria.md §B (\"Endereço, sem DNS próprio\") · IP público da instância no console da Oracle","responsável","30 min","evolution-propria.md"],
 ["INF-01","C","Infraestrutura","Arquivos de documento fora de qualquer cópia","Os 5 anos de guarda declarada não têm rede: o bucket não entra em nenhum backup.","<b>Onde:</b> .github/workflows/backup.yml:9 · .github/workflows/backup.yml:48-50 · docs/operacao.md:194-195 · supabase/setup/documentos.md:14-16","responsável + Claude","2 h","analise-infraestrutura.md §8 P0 #1"],
 ["INF-03","C","Infraestrutura","O backup não devolve o sistema","supabase db dump exclui auth, storage e extensions: restaura e ninguém loga. O teste confere 7 contagens de public.","<b>Onde:</b> .github/workflows/backup.yml:48-50 · .github/workflows/restauracao.yml:57-71 · docs/operacao.md:177-181","Claude + responsável","4 h","analise-infraestrutura.md §4.1 · §8 P1 #3"],
 ["INF-04","C","Infraestrutura","Restauração sem o passo de default privileges","Restaurar sem revogar pode devolver anon e authenticated com privilégio no projeto novo.","<b>Onde:</b> docs/operacao.md:185-192 · .github/workflows/restauracao.yml:49-52","Claude + responsável","30 min","analise-infraestrutura.md §4.2 · §8 P1 #4"],
@@ -180,8 +187,6 @@ const TAREFAS = [
 ["DEV-11","M","Dev","Edge Functions sem _shared e sem timeout de banco","Duplicação e conexão que pode pendurar sem diagnóstico.","<b>Onde:</b> supabase/functions/webhook-evolution/index.ts:6-15 · supabase/functions/voz-escala/index.ts:17-22 · supabase/functions/documento-ocr/index.ts:8-14","Claude","1 dia","analise-codigo.md §2.7 · §3.4 F12"],
 ["DEV-12","M","Dev","Sem modelo de projeto/atividade","Trava Kanban, Gantt e Curva S — o módulo M4 começa do zero.","<b>Onde:</b> backlog_itens.depende_de (migration 26:12) · escalas.tipo_atividade_id (migration 19:43) · web/src/components/Kanban.tsx:44 · docs/plano-comercial.md:488-497","Claude","G","analise-codigo.md §1.6 · §3.3 B6"],
 ["DEV-13","M","Dev","Ponto sem registro de jornada","O cálculo existe, o registro não — e há decisão regulatória pendente.","<b>Onde:</b> fn_calcular_jornada (migration 17:17) · fn_concluir_escalas (migration 45:33-50) · docs/decisoes.md:323-347 (decisão 39) · docs/plano-comercial.md:442-468","responsável + Claude","G","analise-codigo.md §1.6 · §3.3 B7"],
-["SEG-01","C","Segurança","Rotacionar EVOLUTION_API_KEY","Foi a unica credencial comprovadamente exposta: 3 h 14 min em 21/09. A chave do servidor novo e nova por definicao, entao a migracao (INF-13) resolve este tema - desde que a migracao aconteca. Se o servidor novo nao entrar em uso, a rotacao continua necessaria.","<b>Onde:</b> docs/rotacao-de-segredos.md:40 · docs/rotacao-de-segredos.md:20 · fn_segredo (migration 07:7-11) · migration 12:4","responsável","10 min","analise-seguranca.md §3 · rotacao-de-segredos.md §0"],
-["SEG-02","C","Segurança","Rotacionar WEBHOOK_TOKEN","Criado 5,8 s depois do carimbo da correção: a margem não é prova.","<b>Onde:</b> docs/rotacao-de-segredos.md:41 · docs/rotacao-de-segredos.md:146-187 · migration 12:4","responsável","15 min","analise-seguranca.md §3 · rotacao-de-segredos.md §0"],
 ["SEG-04","C","Segurança","Sem MFA nas contas administrativas","É a primeira pergunta de qualquer questionário de cliente.","<b>Onde:</b> docs/seguranca-homologacao.md:22 · docs/plano-comercial.md:82 · docs/plano-comercial.md:107","responsável","15 min","analise-seguranca.md §2 S6"],
 ["SEG-05","C","Segurança","Tokens em query string e assinatura da Twilio em observação","O segredo aparece no log da Evolution, do proxy e da Twilio; o callback não é conferido.","<b>Onde:</b> supabase/functions/webhook-evolution/index.ts:26 · supabase/functions/voz-escala/index.ts:127 · supabase/functions/voz-escala/index.ts:22 · supabase/functions/voz-escala/index.ts:93-98 · supabase/setup/segredos.md:17 · docs/plano-de-trabalho.md:102","Claude","1 dia","analise-seguranca.md §2 S3 · S4 · S5"],
 ["SEG-06","M","Segurança","Hardening incompleto: sequences e default privileges","O revoke cobre tabelas, views e os privilégios padrão de tabela e de função — mas NENHUMA migration revoga as sequences.","<b>Onde:</b> migration 39:108-109 (tabelas, views e default privileges de tabela) · migration 12:5 (funções) · nenhuma migration revoga sequences · migration 19 e migration 32 (app_* sem o laço de permissões)","Claude","1 h","analise-seguranca.md §2 S13"],
@@ -209,7 +214,8 @@ const CHAVE = "trilha-painel-v1";
 // Estado semeado: o que ja esta decidido aparece marcado no primeiro acesso. O que voce clicar
 // depois fica salvo no navegador e vence o padrao.
 const PADRAO = {
-  "SEG-01": { quem: "Claude", proxima: true }
+  "DEV-01": { quem: "Claude", proxima: true },
+  "DEV-02": { quem: "Claude", proxima: true }
 };
 let estado = Object.assign({}, PADRAO, JSON.parse(localStorage.getItem(CHAVE) || "{}"));
 const salvar = () => localStorage.setItem(CHAVE, JSON.stringify(estado));
