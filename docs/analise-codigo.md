@@ -326,8 +326,8 @@ acesso por área, o investimento com maior retorno não é tela: é **teste de b
 **Segurança.** Nesta auditoria de código não há achado novo de segurança — os que existem estão na
 análise de infraestrutura e na revisão anterior. Registro dois pontos que voltam aqui por outro
 caminho: a **duplicação da regra de validade** em duas linguagens (a Edge Function e o navegador podem
-divergir sobre a data que "aprova" um documento) e o **dado de saúde entregue ao papel `leitura`**,
-que continua aberto.
+divergir sobre a data que "aprova" um documento). O **motivo de saúde** saiu do sistema na migration
+49 (decisão 40); o que continua aberto é o **acesso do papel `leitura` aos documentos** (SEG-14).
 
 ## 6. Limites desta análise
 

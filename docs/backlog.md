@@ -414,8 +414,8 @@ Esforço: M. Depende do item 15 para a confirmação visual do tipo.
 ## 064. Motivo de recusa estruturado
 
 **Problema:** quando o técnico responde 2 (não vai), a recusa fica sem motivo. A tabela
-`ocorrencias` já tem o campo `motivo` (saúde, falta de material, conflito de agenda, transporte,
-outro), mas ele nunca é preenchido; o que chega é texto livre em `detalhe`, que não dá para somar.
+`ocorrencias` já tem o campo `motivo` (transporte, conflito de agenda, falta de material, outro —
+saúde saiu do sistema na migration 49, decisão 40), mas ele nunca era preenchido; o que chega é texto livre em `detalhe`, que não dá para somar.
 
 **Escopo:** depois do "2", o WhatsApp pergunta o motivo numa lista numerada (1 Saúde, 2 Transporte,
 3 Conflito de agenda, 4 Falta de material, 5 Outro). O número vai para `ocorrencias.motivo`; o

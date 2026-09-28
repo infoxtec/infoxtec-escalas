@@ -27,7 +27,7 @@ fique registrada por quem a executou.
 | Modo | Onde fica | Quem controla o acesso | Retencao |
 |---|---|---|---|
 | **Enviar arquivo** | bucket privado do Supabase | papel no painel (admin/gestor), link de 2 min | automatica: 5 anos apos o desligamento |
-| **Vincular do Drive** | Google Drive da Infoxtec | permissao do proprio Drive | manual |
+| ~~**Vincular do Drive**~~ | descontinuado na migration 49 (decisao 41) | — | — |
 
 O modo Drive e util quando a documentacao ja esta organizada la. A contrapartida e que o painel
 deixa de controlar quem abre: se o arquivo estiver como "qualquer pessoa com o link", ele e

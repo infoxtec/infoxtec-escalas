@@ -345,3 +345,39 @@ ser enviado pelo trabalhador, ele **não pode** cair na visibilidade dos documen
 `admin` + `gestor`: isso daria a qualquer gestor de operação acesso a atestado alheio. O módulo
 precisa de uma classe de visibilidade própria (proposta: papel `rh`), que é o mesmo caminho do RBAC
 com escopo da etapa de acesso por área. Fica registrado agora para não virar retrabalho depois.
+
+## 40. Não existe motivo de saúde na recusa da escala
+
+**Decisão (responsável, 27/09):** o aceite de escala **não tem motivo de saúde em lugar nenhum**. O
+técnico que responde "2" escolhe entre **1 Transporte, 2 Conflito de agenda, 3 Falta de material e
+4 Outro**. O valor `saude` sai do enum `ocorrencia_motivo` (migration 49) e o rótulo "Motivo pessoal"
+deixa de existir, porque não há mais o que rotular.
+
+**Por quê:** era o único dado de saúde do fluxo de escala, existia apenas para explicar uma recusa e
+obrigava a LGPD a acompanhar dado sensível (art. 11) num lugar onde ele não é necessário. Eliminar o
+motivo é mais barato e mais seguro do que classificar quem pode vê-lo.
+
+**Consequência 1 — o vazamento do motivo fecha por desenho.** O papel `leitura` deixa de ter qualquer
+contato com dado de saúde pela recusa. O achado S1 da análise de segurança deixa de existir.
+
+**Consequência 2 — o atestado fica só no módulo de ponto**, com janela de 48 h e visibilidade própria
+(decisão 39). Nada de saúde no caminho da escala.
+
+**Ocorrências antigas:** as que tinham `saude` viram `outro`, com a contagem registrada no log da
+migration. Não há exclusão de dado.
+
+## 41. Vínculo de documento por link do Google Drive: descontinuado
+
+**Decisão (responsável, 27/09):** o painel **não oferece mais** a opção de vincular documento por link
+do Google Drive. Todo documento passa a ser enviado como arquivo para o bucket privado (PDF, JPG ou
+PNG, até 8 MB), aberto por link assinado de 2 minutos.
+
+**Por quê:** no modo Drive o acesso e a retenção saem do controle do sistema — quem manda é a permissão
+do Drive, que muitas vezes é "qualquer pessoa com o link". Isso furava as duas promessas do módulo:
+acesso restrito por papel e guarda definida.
+
+**Consequência:** `app_registrar_documento` recusa `origem = 'drive'` com mensagem clara (migration 49)
+e o botão saiu da tela. **Vínculos já existentes continuam listados e legíveis**, para não sumir com
+dado sem decisão — a limpeza desses vínculos é decisão pendente e está no painel (SEG-14).
+
+**Substitui** a decisão 17 na parte do vínculo por link.

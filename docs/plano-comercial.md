@@ -72,7 +72,7 @@ Estado: **entregue** (em produção) · **homologação** (pronto, faltando prod
 |---|---|---|---|
 | **Escalas e agenda** | Criar para um ou vários técnicos, editar, reagendar, substituir técnico, cancelar, status com semáforo, importar planilha | Entregue | — |
 | **Confirmação por WhatsApp** | Mensagem com botões "Ciente, confirmado" / "Tenho um problema" e alternativa 1/2; reenvio a cada 30 min até 3×; escalonamento ao supervisor; janela de envio 06:00–21:00 | Entregue | **Canal não oficial** (seção 4, G1) |
-| **Motivo da recusa** | Depois do "2", o técnico escolhe o motivo por número (saúde, transporte, conflito de agenda, falta de material, outro) e o detalhe por texto | Homologação (migration 47; PR #12) | Falta aplicar em produção |
+| **Motivo da recusa** | Depois do "2", o técnico escolhe o motivo por número (transporte, conflito de agenda, falta de material, outro — saúde saiu na migration 49, decisão 40) e o detalhe por texto | Homologação (migration 47; PR #12) | Falta aplicar em produção |
 | **Alerta de prazo** | Às 16h o supervisor recebe a escala do dia seguinte; às 18h, o que ficou sem resposta; lista de técnicos sem escala | Entregue | — |
 | **Jornada CLT** | Término previsto calculado (8h + 1h de intervalo, adicional noturno, Súmula 60), conclusão automática 5 min após o término | Entregue | **Não é parecer jurídico**; a regra deve ser validada pelo RH (decisão 7) |
 | **Habilidades e aptidão** | Catálogo, nível por técnico, requisitos por tipo de atividade; aviso de quem não atende | Entregue | O aviso **não bloqueia** a escala: quem monta decide |
@@ -476,7 +476,7 @@ dados. Hoje existem só `admin`, `gestor` e `leitura` — insuficiente. O que fa
 | Área | Precisa ver | Não pode ver |
 |---|---|---|
 | RH | documentos e vencimentos de todos, ponto e jornada, dados cadastrais | a operação do dia a dia (escala, tarefa, projeto) além do necessário |
-| Operações | escala, programação, alocação, atividades e projetos | detalhe de saúde do ASO; motivo de saúde da recusa |
+| Operações | escala, programação, alocação, atividades e projetos | detalhe de saúde do ASO. (O motivo de saúde da recusa deixou de existir na migration 49) |
 | Gestor imediato | a própria equipe: escala, confirmação, documentos **do seu time**, pendências | outras equipes; dados de RH do resto da empresa |
 | Trabalhador | a própria escala e o próprio comprovante | qualquer dado de terceiro |
 
