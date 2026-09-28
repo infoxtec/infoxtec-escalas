@@ -126,8 +126,8 @@ export async function enviarDocumento(p: {
   }
 }
 
-/** O vinculo por link do Google Drive foi descontinuado (decisao 41): o painel manda
- *  sempre o arquivo para o bucket, e o banco recusa origem 'drive'. */
+/** Abre o documento por link assinado de 2 minutos. Todo documento vive no bucket
+ *  privado: o vinculo por link externo saiu do sistema na decisao 41 (migration 50). */
 export async function abrirDocumento(caminho: string): Promise<string> {
   const { data, error } = await supabase.storage.from('documentos').createSignedUrl(caminho, 120)
   if (error || !data) throw new Error('Não foi possível abrir o documento.')
@@ -136,7 +136,6 @@ export async function abrirDocumento(caminho: string): Promise<string> {
 
 export async function removerDocumento(id: string): Promise<void> {
   const caminho = await api.excluirDocumento(id)
-  // documento do Drive nao tem arquivo nosso para apagar
   if (caminho) await supabase.storage.from('documentos').remove([caminho])
 }
 

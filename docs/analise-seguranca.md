@@ -153,7 +153,7 @@ cron 7. Todo o resto cresce para sempre.
 | L9 | **O Storage fica fora do backup** — a guarda de 5 anos depende de bucket sem cópia | Média |
 | L10 | **Consentimento frágil:** `opt_in` é booleano + data, sem texto, versão ou canal; revogar não registra a revogação; **`fn_remover_escala` envia mensagem sem checar `opt_in`** (a coluna é lida e ignorada); os avisos técnicos vão para telefones que não têm cadastro de consentimento; não existe caminho de "parar" para o técnico | Média |
 | L11 | **Sem trilha de leitura/download de documento** (prevista no item 015) | Média |
-| L12 | **Modo Drive tira acesso e retenção do sistema** — link "qualquer pessoa" não é expurgado | Média |
+| L12 | ~~**Modo Drive tira acesso e retenção do sistema**~~ — **resolvido**: o vínculo saiu da tela (decisão 41) e da estrutura (decisão 42, migration 50) | — |
 | L13 | **Transparência imprecisa na tela:** o texto afirma "o documento não é enviado a nenhum servidor" ao lado do botão que o envia ao Google | Média |
 | L14 | **Minimização:** o OCR devolve 400 caracteres do documento e o painel não usa | Baixa |
 | L15 | **CPF previsto na decisão 32** aumenta a coleta e exige base legal registrada antes | Baixa |
