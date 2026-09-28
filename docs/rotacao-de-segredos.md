@@ -114,28 +114,44 @@ returning name;
 
 Se a permissão for negada, apague pelo painel (**Project Settings → Vault**).
 
-**3.2 Rotacionar `EVOLUTION_API_KEY`** (procedimento já existente em `docs/operacao.md`)
+**3.2 Rotacionar `EVOLUTION_API_KEY`** — tema **SEG-01**. Há script, com ensaio:
 
-1. No Manager da Evolution: gerar/regenerar a chave da **instância** (não a global).
-2. No SQL Editor:
+```bash
+./scripts/rotacionar-evolution.sh --conferir   # estado atual: a chave no Vault e a conexão da Evolution
+./scripts/rotacionar-evolution.sh --ensaiar    # troca por um valor de teste, confere e DESFAZ
+./scripts/rotacionar-evolution.sh --aplicar    # grava a chave nova (pedida na tela, sem eco)
+```
+
+O valor **nunca é impresso**: o script mostra só a **impressão digital** (md5) e o tamanho. A chave
+nova é lida com eco desligado, então não fica no histórico do shell nem na lista de processos.
+
+**Por que ensaiar antes.** O `--ensaiar` grava um valor de teste no Vault, lê de volta e faz
+`rollback` — e **confere que voltou**, comparando a impressão digital. Se a digital mudar depois do
+rollback, ele para e avisa: significa que `vault.update_secret` não é transacional nesta versão, e o
+ensaio acabou de evitar uma troca pela metade.
+
+**O que não tem volta.** A chave da instância no Manager é **invalidada** quando você gera outra. Não
+existe "restaurar a antiga" — se algo der errado, o caminho é **gerar outra e repetir o `--aplicar`**.
+Por isso a janela é curta: gere no Manager e aplique no mesmo minuto.
+
+**Pelo SQL Editor** (se preferir; uma instrução por vez, com limite de espera):
 
 ```sql
+set lock_timeout = '5s';
+set statement_timeout = '30s';
+
 select vault.update_secret(
   (select id from vault.secrets where name = 'EVOLUTION_API_KEY'),
-  'COLE_A_CHAVE_NOVA_AQUI');
+  'COLE_A_CHAVE_NOVA_AQUI') is not null as gravado;
 ```
 
-3. Verificar o envio de ponta a ponta:
+**Verificação** (o script faz sozinho): `fn_evo_get('/instance/connectionState/' || fn_config('evolution_instancia'))`
+e a leitura de `fn_http_resposta(<numero>)` — esperado `status 200` e `"state":"open"`. A chave viaja no
+**cabeçalho** (`apikey`), não na URL, então a resposta não a carrega; ainda assim, apague o registro
+depois de conferir (`delete from net._http_response where id = <numero>;`).
 
-```sql
-select fn_evo_get('/instance/connectionState/' || fn_config('evolution_instancia'));
--- alguns segundos depois, com o número devolvido acima:
-select * from fn_http_resposta(<numero>);
-```
-
-**Esperado:** `{"instance":{"instanceName":"infoxtec","state":"open"}}`. A chave viaja no **cabeçalho**
-(`apikey`), não na URL — então a resposta **não** a carrega. Ainda assim, apague o registro depois de
-conferir (`delete from net._http_response where id = <numero>;`) para não deixar rastro de consulta.
+**Ponta a ponta, depois:** envie uma mensagem de teste pelo painel (reenviar uma escala ou "Ligar
+agora") e confirme que saiu. É a prova de que a Evolution aceitou a chave nova.
 
 > **Cuidado que não se aplica aqui, mas se aplica ao `WEBHOOK_TOKEN`:** no passo 4.3 a limpeza é
 > **obrigatória**, porque a resposta do `/webhook/set/` devolve a configuração gravada — **com o token
