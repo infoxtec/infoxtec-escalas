@@ -42,7 +42,9 @@ são lembrados da escala do dia seguinte, com prazo às 18h.
 
 ## Materiais por área
 
-**O que falta fazer, com ID para escolher onde atuar: [Painel de temas](docs/painel-de-temas.md).**
+**O que falta fazer, com ID para escolher onde atuar:** [Painel de temas](docs/painel-de-temas.md)
+(o texto) e **[Painel de controle](docs/painel-de-controle.html)** (a versão interativa, com a
+referência exata de cada tema no banco, no painel ou no script e o controle de quem corrige).
 
 Três áreas concentram as análises e as decisões. Cada documento responde a uma pergunta diferente.
 
@@ -165,6 +167,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Painel 3.5: motivo de recusa por número, editar escala e substituir técnico (homologação, 27/09)
 - [x] Migrations 47 a 49 na produção: motivo de recusa, editar e substituir escala (28/09)
 - [x] Sem motivo de saúde na recusa e sem vínculo por Google Drive: decisões 40 e 41, migration 49 e painel 3.5.1 (28/09)
+- [x] Painel de controle interno: 47 temas pendentes com referência exata e as avaliações de segurança, infraestrutura e código atualizadas (28/09)
 - [ ] Próximas etapas: ver [docs/plano-de-trabalho.md](docs/plano-de-trabalho.md)
 - [ ] Fluxo por pull request com CI (ver [docs/fluxo-de-desenvolvimento.md](docs/fluxo-de-desenvolvimento.md))
 - [ ] Desligar o painel Retool e remover as funções da bancada de teste

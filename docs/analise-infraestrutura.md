@@ -8,6 +8,12 @@ depende de painel, VPS, Vercel ou conta de terceiro — está listado na §10 e 
 Severidade: **P0** = perda definitiva de dado ou parada silenciosa sem mitigação; **P1** = risco alto
 com mitigação parcial; **P2** = higiene. (Não é o "P0 veta merge" da persona Segurança.)
 
+> **Atualização de 28/09/2026:** a produção passou de **01 a 46** para **01 a 49** (as migrations 47,
+> 48 e 49 foram aplicadas juntas, a pedido do responsável). A homologação ficou em **48** e a
+> convergência é o primeiro item do "hoje". Os **P0 desta análise seguem abertos** — bucket sem
+> cópia, monitor externo, composição do backup e o passo de *default privileges* na restauração. O
+> controle de cada um, com a referência exata, está no [painel de controle](painel-de-controle.html).
+
 ---
 
 ## 1. Inventário
