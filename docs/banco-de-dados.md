@@ -41,7 +41,7 @@ erDiagram
 | `tipos_atividade` | Tipos de serviço (CFTV, fibra, link...) | Ligado à escala por `escalas.tipo_atividade_id` |
 | `tipo_atividade_requisitos` | Habilidades exigidas por tipo | Define quem é apto |
 | `ligacoes` | Uma linha por ligação da URA | `call_sid` da Twilio, tecla digitada, duração e custo |
-| `documentos` | Arquivos de NR, CNH e ASO | `origem` = `storage` (bucket privado) ou `drive` (vínculo) |
+| `documentos` | Arquivos de NR, CNH e ASO | `origem`: sempre `storage` (bucket privado). `drive` foi descontinuado na migration 49 (decisão 41); linhas antigas continuam legíveis |
 | `backlog_itens` | Backlog do produto exibido na aba Roadmap | Grupos backlog, entrega e dívida; coluna do Kanban e posição |
 
 ### Status da escala
@@ -146,7 +146,7 @@ da janela de envio) e quando normaliza. `app_estado_motor` alimenta o quadro da 
 | `fn_motivo_rotulo(texto)` | Nome do motivo para mensagens e painel |
 | `app_indicadores_resposta(dias)` | Recusas por motivo e mediana do tempo entre o primeiro envio e a resposta (aba Operação) |
 | `app_escala_edicao(id)` / `app_editar_escala(p)` | Editar data, hora, local e tarefa. Mudou data, hora ou local de escala enviada: volta a aguardar resposta e reenvia. Só tarefa: avisa o técnico |
-| `fn_edicao_permitida` (migration 48) | Intervalo mínimo de 2 minutos entre edições da mesma escala; escala de teste não avisa o técnico; saúde aparece como "Motivo pessoal" |
+| `fn_edicao_permitida` (migration 48) | Intervalo mínimo de 2 minutos entre edições da mesma escala; escala de teste não avisa o técnico. Desde a migration 49 o motivo de saúde não existe (decisão 40) |
 | `app_substituir_tecnico(escala, tecnico)` | Escala recusada gera outra igual para o técnico escolhido; eventos `substituida`/`substitui` ligam as duas |
 
 ## Gatilhos em `escalas`

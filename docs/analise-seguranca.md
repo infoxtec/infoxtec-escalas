@@ -36,31 +36,34 @@ Foi o que permitiu vender o desenho como "banco fechado" com evidência.
 
 | # | Achado | Onde | Correção mínima |
 |---|---|---|---|
-| S1 | **Dado de saúde entregue ao papel `leitura`:** `app_indicadores_resposta` devolve o motivo cru (`saude`) e autoriza `admin, gestor, leitura`. A migration 48 trocou **só o rótulo** exibido; o valor continua no JSON | `migration 47:274,278`; `migration 48:11` | Ou o `leitura` não vê motivo, ou a tabela de papéis assume que ele vê — é decisão, não código |
-| S2 | **Documentos pessoais acessíveis ao papel `leitura`:** `app_documentos` devolve `caminho` **e `url`**, e a tela abre o link do Drive sem checar `podeEditar` — contradiz "só admin e gestor acessam" e a própria tabela de papéis | `api.ts:98`; `migration 37:140-152`; `DocumentosArquivos.tsx:102,182` | Mesma decisão do S1, mais o gate na tela |
+| S1 | ~~**Dado de saúde entregue ao papel `leitura`**~~ — **fechado por desenho** pela decisão 40: o motivo `saude` saiu do enum e do menu do WhatsApp (migration 49) | `migration 49` | — |
+| S2 | **Documentos pessoais acessíveis ao papel `leitura`:** `app_documentos` devolve `caminho` **e `url`**. A decisão 41 (Drive descontinuado) tirou o caminho do link direto; resta a exposição do nome e da existência dos arquivos. É o tema **SEG-14** | `api.ts:98`; `migration 37:140-152`; `DocumentosArquivos.tsx` | Ver as três opções abaixo |
 
-#### Escopo do S1 e do S2, depois da decisão 39 (27/09)
+#### Situação do S1 e do S2 depois das decisões 39, 40 e 41 (27/09)
 
-A decisão 39 fechou uma parte do desenho: **a negação da escala não pede nem aceita documento** (o
-técnico informa o motivo por número e, opcionalmente, o detalhe em texto), e o **atestado médico com
-janela de 48 horas** é requisito do **módulo de ponto**, não da escala. Esse fluxo de anexo **nunca
-existiu no código** — a decisão vale como proibição de construir.
+**S1 — fechado por desenho.** O motivo de saúde **saiu do sistema** (decisão 40): o enum
+`ocorrencia_motivo` não tem mais `saude`, o menu do WhatsApp passou a ter quatro opções (1 Transporte,
+2 Conflito de agenda, 3 Falta de material, 4 Outro) e o rótulo "Motivo pessoal" deixou de existir.
+Não há mais dado de saúde na recusa de escala, então não há o que proteger ali. As ocorrências antigas
+com `saude` viraram `outro` (migration 49, com a contagem registrada no log).
 
-Isso reduz o desenho, mas **não fecha o vazamento**: o que o S1 e o S2 apontam é o acesso do papel
-`leitura` a dado de saúde **que já existe** — o motivo `saude` gravado em `ocorrencias` e os arquivos
-NR, CNH e **ASO** enviados pelo painel. São dois caminhos distintos, nenhum deles de anexo na recusa.
+**S2 — continua aberto, com escopo menor.** O que resta é o papel `leitura` enxergando `caminho` e
+`url` dos documentos (NR, CNH e **ASO**) em `app_documentos`. A decisão 41 descontinuou o vínculo por
+link do Drive, o que removeu o pior caminho — o link que abria direto, sob a permissão do Drive. Para
+arquivo no bucket, o `leitura` vê o caminho, mas o link assinado exige admin/gestor: **falha fechado**.
+O que ainda expõe é o **nome e a existência** dos arquivos, e portanto a informação de que aquele
+técnico tem ASO. Virou o tema **SEG-14** no painel.
 
-#### Como fechar o SEG-03 — três opções
+#### Como fechar o SEG-14 — três opções
 
 | Opção | O que é | Custo | Quando |
 |---|---|---|---|
-| **A · imediata** | `app_indicadores_resposta` deixa de devolver o motivo cru ao papel `leitura` (devolve só o rótulo agregado) e `app_documentos` deixa de devolver `caminho`/`url` para ele, com a tela escondendo o botão de abrir | uma migration (2 funções) + 1 ajuste de tela | agora |
-| **B · destino** | criar o papel **`rh`** para o dado de saúde; `leitura` passa a ser leitura operacional (escala, local, indicadores agregados) | parte do RBAC com escopo (`DEV-05`) | junto com o acesso por área |
-| **C · transitória, sem código** | não convidar ninguém para `leitura` enquanto A ou B não entram — é possível porque o painel tem 3 usuários hoje | zero | hoje, como regra |
+| **A · imediata** | `app_documentos` deixa de devolver `caminho`/`url` para o papel `leitura`, com a tela escondendo o botão de abrir; ele continua vendo tipo, validade e situação | 1 migration + 1 ajuste de tela | esta semana |
+| **B · destino** | criar o papel **`rh`** para o dado de saúde; `leitura` vira leitura operacional (escala, local, indicadores agregados) | dentro do RBAC com escopo | junto com o acesso por área |
+| **C · transitória, sem código** | não convidar ninguém para `leitura` enquanto A ou B não entram — são 3 usuários hoje | zero | hoje, como regra |
 
-**Recomendação:** **A agora** (fecha o vazamento nesta semana), **B como destino** dentro do acesso por
-área, **C como regra transitória** até A estar em produção. E o mesmo papel `rh` é o que o módulo de
-ponto vai precisar para o atestado — um trabalho serve aos dois.
+**Recomendação:** A agora, B como destino, C como regra transitória. O mesmo papel `rh` é o que o
+módulo de ponto vai precisar para o atestado — um trabalho serve aos dois.
 
 ### P1
 

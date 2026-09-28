@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Download, ExternalLink, FileText, HardDrive, Link2, Loader2, Paperclip, ScanLine, Trash2 } from 'lucide-react'
 import { Button, Confirm, ErrorBox, Field, Input, Modal, Select, useToast } from './ui'
 import {
-  abrirDocumento, api, enviarDocumento, erroMsg, lerValidadePorOCR, removerDocumento, vincularDocumentoDrive,
+  abrirDocumento, api, enviarDocumento, erroMsg, lerValidadePorOCR, removerDocumento,
 } from '../lib/api'
 import { DESCRICAO_METODO, lerValidadeLocal } from '../lib/ocr'
 import { formatDate, formatDateTime } from '../lib/types'
@@ -21,8 +21,9 @@ interface Formulario {
   nome: string
 }
 
-/** Item 10: documentos em armazenamento privado ou vinculados ao Google Drive,
- *  com leitura da validade feita no proprio navegador. */
+/** Item 10: documentos em armazenamento privado, com leitura da validade feita no
+ *  proprio navegador. O vinculo por link do Google Drive foi descontinuado (decisao 41);
+ *  vinculos antigos continuam listados e legiveis, mas nao se cria mais nenhum. */
 export default function DocumentosArquivos({ tecnicos, tiposDoc, podeEditar, aoMudar }: {
   tecnicos: Tecnico[]; tiposDoc: TipoDocumento[]; podeEditar: boolean; aoMudar?: () => Promise<void>
 }) {
@@ -81,19 +82,11 @@ export default function DocumentosArquivos({ tecnicos, tiposDoc, podeEditar, aoM
     if (!form.tecnico) return setErroForm('Escolha o técnico.')
     setEnviando(true)
     try {
-      if (form.origem === 'storage') {
-        if (!form.arquivo) { setEnviando(false); return setErroForm('Selecione o arquivo.') }
-        await enviarDocumento({
-          tecnicoId: form.tecnico, tipoDocumentoId: form.tipoDocumento || null,
-          arquivo: form.arquivo, validade: form.validade || null,
-        })
-      } else {
-        if (!form.url.trim()) { setEnviando(false); return setErroForm('Cole o link do Google Drive.') }
-        await vincularDocumentoDrive({
-          tecnicoId: form.tecnico, tipoDocumentoId: form.tipoDocumento || null,
-          url: form.url, nome: form.nome, validade: form.validade || null,
-        })
-      }
+      if (!form.arquivo) { setEnviando(false); return setErroForm('Selecione o arquivo.') }
+      await enviarDocumento({
+        tecnicoId: form.tecnico, tipoDocumentoId: form.tipoDocumento || null,
+        arquivo: form.arquivo, validade: form.validade || null,
+      })
       toast('Documento registrado.')
       setForm(null); await carregar(); await aoMudar?.()
     } catch (e) { setErroForm(erroMsg(e)) }
@@ -121,9 +114,6 @@ export default function DocumentosArquivos({ tecnicos, tiposDoc, podeEditar, aoM
         <p className="text-sm font-semibold">Arquivos ({lista.length})</p>
         {podeEditar && (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => abrirForm('drive')}>
-              <Link2 className="h-4 w-4" /> Vincular do Drive
-            </Button>
             <Button size="sm" onClick={() => abrirForm('storage')}>
               <Paperclip className="h-4 w-4" /> Enviar arquivo
             </Button>
@@ -181,14 +171,13 @@ export default function DocumentosArquivos({ tecnicos, tiposDoc, podeEditar, aoM
 
       <p className="text-xs text-muted-foreground">
         <strong>Arquivo enviado:</strong> fica em armazenamento privado, criptografado, e abre por link temporário de 2 minutos —
-        só administrador e gestor acessam. <strong>Vinculado do Drive:</strong> o arquivo permanece no seu Drive e quem controla
-        o acesso é a permissão de lá; a guarda de 5 anos também passa a ser manual. A leitura da validade acontece
+        só administrador e gestor acessam. A leitura da validade acontece
         no seu navegador: o documento não é enviado a nenhum servidor. PDF com texto é lido na hora;
         PDF escaneado e fotos passam pelo reconhecimento de imagem.
       </p>
 
       <Modal open={!!form} onClose={() => { if (!enviando && !lendo) setForm(null) }} width="max-w-md"
-        title={form?.origem === 'drive' ? 'Vincular documento do Google Drive' : 'Enviar documento'}
+        title="Enviar documento"
         footer={<>
           <Button variant="outline" onClick={() => setForm(null)} disabled={enviando || lendo}>Cancelar</Button>
           <Button onClick={() => void salvar()} disabled={enviando || lendo}>{enviando ? 'Salvando...' : 'Salvar'}</Button>
@@ -211,29 +200,11 @@ export default function DocumentosArquivos({ tecnicos, tiposDoc, podeEditar, aoM
               </Select>
             </Field>
 
-            {form.origem === 'storage' ? (
-              <Field label="Arquivo *" hint={`PDF ou imagem, até ${MAX_MB} MB. A validade é lida no seu navegador, inclusive em PDF.`}>
-                <input type="file" accept=".pdf,.jpg,.jpeg,.png" disabled={enviando || lendo}
-                  onChange={e => void escolherArquivo(e.target.files?.[0] ?? null)}
-                  className="w-full text-sm file:mr-3 file:rounded-md file:border file:bg-background file:px-3 file:py-1.5 file:text-sm" />
-              </Field>
-            ) : (
-              <>
-                <Field label="Link do Google Drive *" hint="Abra o arquivo no Drive, clique em Compartilhar e copie o link.">
-                  <Input value={form.url} placeholder="https://drive.google.com/file/d/..." disabled={enviando}
-                    onChange={e => setForm({ ...form, url: e.target.value })} />
-                </Field>
-                <Field label="Nome do documento" hint="Como vai aparecer na lista.">
-                  <Input value={form.nome} placeholder="Ex: ASO 2026 — José Roberto" disabled={enviando}
-                    onChange={e => setForm({ ...form, nome: e.target.value })} />
-                </Field>
-                <Field label="Ler a validade de um arquivo (opcional)" hint="Escolha o mesmo PDF ou foto que está no Drive: é lido no navegador e não é enviado nem guardado.">
-                  <input type="file" accept=".pdf,.jpg,.jpeg,.png" disabled={enviando || lendo}
-                    onChange={e => { const f = e.target.files?.[0]; if (f) void lerValidade(f) }}
-                    className="w-full text-sm file:mr-3 file:rounded-md file:border file:bg-background file:px-3 file:py-1.5 file:text-sm" />
-                </Field>
-              </>
-            )}
+            <Field label="Arquivo *" hint={`PDF ou imagem, até ${MAX_MB} MB. A validade é lida no seu navegador, inclusive em PDF.`}>
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png" disabled={enviando || lendo}
+                onChange={e => void escolherArquivo(e.target.files?.[0] ?? null)}
+                className="w-full text-sm file:mr-3 file:rounded-md file:border file:bg-background file:px-3 file:py-1.5 file:text-sm" />
+            </Field>
 
             {lendo && (
               <div className="space-y-1">

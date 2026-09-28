@@ -126,16 +126,8 @@ export async function enviarDocumento(p: {
   }
 }
 
-/** Documento que fica no Google Drive: guardamos o vinculo, nao o arquivo. */
-export async function vincularDocumentoDrive(p: {
-  tecnicoId: string; tipoDocumentoId: string | null; url: string; nome: string; validade: string | null
-}): Promise<string> {
-  return api.registrarDocumento({
-    tecnico_id: p.tecnicoId, tipo_documento_id: p.tipoDocumentoId, origem: 'drive',
-    url: p.url.trim(), nome_arquivo: p.nome.trim() || 'Documento no Drive', validade: p.validade,
-  })
-}
-
+/** O vinculo por link do Google Drive foi descontinuado (decisao 41): o painel manda
+ *  sempre o arquivo para o bucket, e o banco recusa origem 'drive'. */
 export async function abrirDocumento(caminho: string): Promise<string> {
   const { data, error } = await supabase.storage.from('documentos').createSignedUrl(caminho, 120)
   if (error || !data) throw new Error('Não foi possível abrir o documento.')

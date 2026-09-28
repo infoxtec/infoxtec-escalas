@@ -228,7 +228,7 @@ você confirmar**. Arquivos sem documento ou sem validade ficam de fora do envio
 amarelo.
 
 Abaixo da lista fica a seção **Arquivos**, com tudo o que já foi enviado — anexar um por vez,
-vincular do Google Drive, abrir e excluir.
+enviar, abrir e excluir. O vínculo por link do Google Drive foi descontinuado (decisão 41).
 
 ### Habilidades
 
