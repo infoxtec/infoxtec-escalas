@@ -17,7 +17,7 @@ IMAGEM_TESTE="evoapicloud/evolution-api:2.4.0-rc2"   # mais recente publicada em
 DOMINIO=$(grep -oP '^DOMINIO=\K.*' .env)
 TESTE="teste.$DOMINIO"                                 # o sslip.io resolve subdominios para o mesmo IP
 INST="teste24"
-dc() { sudo docker compose -f docker-compose.yml -f docker-compose.teste.yml "$@"; }
+dc() { sudo IMAGEM_TESTE="$IMAGEM_TESTE" TESTE="$TESTE" docker compose -f docker-compose.yml -f docker-compose.teste.yml "$@"; }
 
 case "${1:-}" in
 subir)
