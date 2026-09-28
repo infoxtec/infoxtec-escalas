@@ -90,7 +90,7 @@ módulo de ponto vai precisar para o atestado — um trabalho serve aos dois.
 | S10 | **Corpo sem `content-length` é lido inteiro antes da checagem** (o 413 vem depois do `await req.text()`) | `webhook-evolution:29-36`; `documento-ocr:65-80` |
 | S11 | **`monitor_ping_url` em `config`, texto puro** (é credencial de escrita no monitor); validação só exige `https://`, e `voz_url`/`twilio_caller_id` não são validados | `migration 45:25,347` |
 | S12 | **26 funções sem `set search_path`** (22 na definição vigente) contra o que afirma a documentação. Hoje não explorável, mas frágil | `docs/seguranca.md:25` |
-| S13 | **Hardening incompleto:** o `revoke` da 39 cobre tabelas, **não sequences nem default privileges**; duas migrations criam `app_*` sem o laço de permissões | `migration 39:105-107`; `19`; `32` |
+| S13 | **Hardening incompleto:** o `revoke` da 39 cobre tabelas, views e os *default privileges* de **tabela** (39:108-109) — **as `sequences` não são revogadas em nenhuma migration**; e duas migrations criam `app_*` sem o laço de permissões | `migration 39:108-109` (e `12:5` para funções); `19`; `32` |
 | S14 | **Dados pessoais versionados:** e-mail e nome do admin inicial e **telefone celular real** como default de `alerta_tecnico_telefones` | `migration 14:19`; `migration 45:24` |
 | S15 | **Erro interno devolvido ao chamador** em `voz-escala` (`erro: msg`) — o mesmo já foi corrigido no OCR | `voz-escala:187` |
 
@@ -176,7 +176,7 @@ cron 7. Todo o resto cresce para sempre.
    dado pessoal exposto, proteção desligada e hardening incompleto.
 2. **Restaurar sem revogar os *default privileges*** (ver `analise-infraestrutura.md` §4.2): restaurar
    sem esse passo pode devolver `anon` e `authenticated` com privilégio no projeto novo — a mesma
-   classe de falha da migration 39.
+   classe de falha da migration 39, que é justamente a migration que faz esse `revoke` na linha 109.
 3. **Seguir o `db push` cru** documentado em dois lugares: contorna a confirmação escrita e deixa o
    link apontado para a produção.
 4. **Dado pessoal novo** (CPF, foto, biometria, geolocalização) sem finalidade, base legal e prazo.
@@ -194,7 +194,7 @@ cron 7. Todo o resto cresce para sempre.
 | 2 | **Decidir o que `leitura` vê** (S1 e S2) e aplicar | é dado de saúde exposto |
 | 3 | **Ligar o bloqueio da assinatura da Twilio** (S5) e tirar os tokens da query string (S3, S4) | prazo de 30 dias já registrado |
 | 4 | **MFA + CSP** | fecha o caminho mais provável de comprometimento de conta |
-| 5 | **Fechar o hardening** (S13): sequences e *default privileges* | uma migration pequena |
+| 5 | **Fechar o hardening** (S13): revogar as `sequences` | uma migration pequena |
 | 6 | **Retenção e expurgo** (L3, L4) e **arquivo órfão na exclusão** (L5) | é o débito legal do módulo de documentos |
 | 7 | **Inventário, aviso e canal do titular** (L1) | pré-requisito das etapas 20 e 21 |
 
