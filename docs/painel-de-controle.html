@@ -205,17 +205,24 @@ const TAREFAS = [
 ];
 
 const CHAVE = "trilha-painel-v1";
-let estado = JSON.parse(localStorage.getItem(CHAVE) || "{}");
+// Estado semeado: o que ja esta decidido aparece marcado no primeiro acesso. O que voce clicar
+// depois fica salvo no navegador e vence o padrao.
+const PADRAO = {
+  "SEG-01": { quem: "Claude", proxima: true }
+};
+let estado = Object.assign({}, PADRAO, JSON.parse(localStorage.getItem(CHAVE) || "{}"));
 const salvar = () => localStorage.setItem(CHAVE, JSON.stringify(estado));
-const get = id => estado[id] || { quem: "", feito: false };
+const get = id => Object.assign({ quem: "", feito: false, proxima: false }, estado[id] || {});
 
 function renderContadores(){
   const c = {total:TAREFAS.length, crit:TAREFAS.filter(t=>t[1]==="C").length};
   const deep = TAREFAS.filter(t=>get(t[0]).quem==="Deep").length;
   const claude = TAREFAS.filter(t=>get(t[0]).quem==="Claude").length;
   const feito = TAREFAS.filter(t=>get(t[0]).feito).length;
+  const proximas = TAREFAS.filter(t=>get(t[0]).proxima && !get(t[0]).feito).map(t=>t[0]);
   document.getElementById("contadores").innerHTML =
-    [["Temas pendentes",c.total],["Críticos",c.crit],["Para o Deep",deep],["Para o Claude",claude],["Concluídos",feito]]
+    [["Temas pendentes",c.total],["Críticos",c.crit],["Para o Deep",deep],["Para o Claude",claude],
+     ["▶ Próxima" + (proximas.length===1?"":"s"), proximas.join(" ") || "—"],["Concluídos",feito]]
     .map(([r,v])=>`<div class="cont"><b>${v}</b><span>${r}</span></div>`).join("");
   document.getElementById("contPend").textContent = `${TAREFAS.length - feito} em aberto`;
 }
@@ -273,6 +280,7 @@ function render(){
             <option value="Deep"${e.quem==="Deep"?" selected":""}>Deep</option>
             <option value="Claude"${e.quem==="Claude"?" selected":""}>Claude</option>
           </select></label>
+        <label><input type="checkbox" ${e.proxima?"checked":""} onchange="setProxima('${id}', this.checked)"> ▶ próxima</label>
         <label><input type="checkbox" ${e.feito?"checked":""} onchange="setFeito('${id}', this.checked)"> feito</label>
       </div></div>`;
   }).join("") || `<p class="tag">Nenhum tema com esses filtros.</p>`;
@@ -280,6 +288,7 @@ function render(){
 
 function setQuem(id,v){ estado[id] = Object.assign(get(id), {quem:v}); salvar(); render(); }
 function setFeito(id,v){ estado[id] = Object.assign(get(id), {feito:v}); salvar(); render(); }
+function setProxima(id,v){ estado[id] = Object.assign(get(id), {proxima:v}); salvar(); render(); }
 
 function limpar(){
   if(!confirm("Limpar todas as suas escolhas (responsável e feito)?")) return;
@@ -300,6 +309,8 @@ function copiarSelecao(){
   const L = [];
   L.push("Painel de controle — Trilha (28/09/2026)");
   L.push("");
+  const proximas = TAREFAS.filter(t=>get(t[0]).proxima && !get(t[0]).feito).map(t=>t[0]);
+  L.push(`Próximas (${proximas.length}): ${proximas.join(", ") || "—"}`);
   L.push(`Para o Deep (${porQuem("Deep").length}): ${porQuem("Deep").join(", ") || "—"}`);
   L.push(`Para o Claude (${porQuem("Claude").length}): ${porQuem("Claude").join(", ") || "—"}`);
   L.push(`Concluídos (${feito.length}): ${feito.join(", ") || "—"}`);

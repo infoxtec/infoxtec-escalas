@@ -106,6 +106,7 @@ supabase/
   seed.sql                    dados fictícios para desenvolvimento
 scripts/                      aplicar-homologacao.sh e aplicar-producao.sh (migrations com travas)
                               backlog-conferir.sh (quadro do backlog e travas, com limite de espera)
+                              rotacionar-evolution.sh (rotação da chave da Evolution, com ensaio)
 docs/                         a documentação da tabela acima
 ```
 
