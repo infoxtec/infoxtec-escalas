@@ -48,8 +48,11 @@ não oficial.
    roteiro (`scripts/aplicar-producao.sh`). A única exceção é o registro no backlog.
 5. **Nunca editar migration existente.** Mudança de banco é arquivo novo.
 6. **Nada direto na `main`.** Branch e pull request, sempre. O CI precisa ficar verde.
-7. **Número medido vale mais que opinião.** Preferir medição em homologação, em transação desfeita.
-8. **Sem assinatura paga** (decisão 29). Custo por uso ou plano pago só com aprovação — e usar o
+7. **SQL sempre com o comando.** Persona que traz instrução de banco entrega o bloco pronto para
+   executar, com o projeto (produção ou homologação) e o resultado esperado — nunca descrição em
+   texto nem fragmento para montar. É a regra prática da exigência do responsável em 28/09.
+8. **Número medido vale mais que opinião.** Preferir medição em homologação, em transação desfeita.
+9. **Sem assinatura paga** (decisão 29). Custo por uso ou plano pago só com aprovação — e usar o
    produto comercialmente já força essa conversa (Vercel Hobby, limites do plano gratuito do
    Supabase).
 
