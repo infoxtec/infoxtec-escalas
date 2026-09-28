@@ -21,7 +21,6 @@ marca-se aqui.
 
 | ID | Tema | Quem | Tempo |
 |---|---|---|---|
-| **SEG-01** | Rotacionar `EVOLUTION_API_KEY` (a única credencial comprovadamente exposta) | responsável | 10 min |
 | **INF-02** | Criar o monitor no healthchecks.io e preencher `monitor_ping_url` | responsável | 15 min |
 | **INF-05** | Rodar o backup à mão e conferir se `PRODUCAO_DB_URL` está em dia | responsável | 5 min |
 | **SEG-13** | Corrigir o inventário de segredos em `docs/seguranca.md` | Claude | 20 min |
@@ -68,8 +67,8 @@ marca-se aqui.
 
 | ID | Tema | Sev | O que resolve | Quem | Esforço |
 |---|---|---|---|---|---|
-| **SEG-01** | `EVOLUTION_API_KEY` exposta por 3 h 14 na janela da migration 12 | **C** | torna inútil a leitura da chave | responsável | 10 min |
-| **SEG-02** | `WEBHOOK_TOKEN` criado 5,8 s depois do carimbo da correção | **C** | fecha a incerteza da margem | responsável | 15 min |
+| ~~**SEG-01**~~ | **Concluído 28/09** (chave nova na Evolution própria). `EVOLUTION_API_KEY` exposta por 3 h 14 na janela da migration 12 | **C** | torna inútil a leitura da chave | responsável | 10 min |
+| ~~**SEG-02**~~ | **Concluído 28/09** (token novo na virada). `WEBHOOK_TOKEN` criado 5,8 s depois do carimbo da correção | **C** | fecha a incerteza da margem | responsável | 15 min |
 | **SEG-03** | ~~Papel `leitura` recebe motivo de saúde cru~~ — **fechado e em produção em 28/09** (decisão 40, migration 49): o motivo de saúde saiu do sistema | — | — | — | — |
 | **SEG-14** | Papel `leitura` enxerga `caminho` e o nome dos documentos (NR, CNH e **ASO**). O vínculo por Drive saiu da tela (decisão 41) e da estrutura (decisão 42, migration 50) — **parte 2 concluída em 28/09**; resta o acesso do papel `leitura` | **C** | o documento pessoal deixa de aparecer para quem só lê | responsável + Claude | 2 h |
 | **SEG-04** | Sem MFA nas contas administrativas | **C** | é a primeira pergunta de qualquer cliente | responsável | 15 min |

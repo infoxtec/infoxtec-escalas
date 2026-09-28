@@ -414,3 +414,8 @@ roteiro em `docs/evolution-propria.md`. A Evolution não guarda conversas, conta
 (minimização). A virada gera chave e token de webhook novos, o que fecha `SEG-01` e `SEG-02`.
 **Consequência:** a Infoxtec passa a cuidar do servidor (atualização mensal, versão fixa da imagem);
 o monitor externo (`INF-02`) vira pré-requisito prático.
+**Como ficou (28/09, executado):** a Ampere A1 estava sem capacidade em São Paulo; o servidor é uma
+`VM.Standard.E2.1.Micro` (1 GB), sem Redis e com swap. A v2.3.7 entrega botões como "visualização
+única" (decisão 4), então a produção roda a `2.4.0-rc2`, que corrige isso mas **exige ativação de
+licença** no Manager (condição comercial a confirmar com a Evolution Foundation). A 2.3.7 ficou no ar
+como volta até a consolidação (backlog 073).
