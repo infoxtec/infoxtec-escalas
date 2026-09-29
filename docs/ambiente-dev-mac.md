@@ -171,6 +171,66 @@ Sem o linger, serviço de usuário só roda com sessão aberta. Se algum dia vol
 
 Para desfazer: `./scripts/ambiente-dev.sh desinstalar`.
 
+## Depois de reiniciar o computador
+
+**O passo 3 é uma vez só.** Depois dele os serviços sobem sozinhos, e este roteiro encolhe para os
+passos 1, 4 e 5.
+
+**1. No Mac: OrbStack e a máquina Linux no ar.** Se o OrbStack não abriu sozinho, abra-o. Se a máquina
+`dev` não voltou, no terminal do Mac: `orb start dev`.
+
+**2. Dentro do Linux, atualize o repositório:**
+
+```bash
+cd ~/infoxtec-escalas && git checkout main && git pull
+```
+
+**3. Instale os serviços (uma vez só):**
+
+```bash
+./scripts/ambiente-dev.sh instalar
+```
+
+Liga `painel-dev` e `dsh-web` e já sobe os dois. **A partir daqui, todo reinício é automático** — os
+passos 2 e 3 só voltam quando você quiser atualizar o código.
+
+**4. Confira:**
+
+```bash
+./scripts/ambiente-dev.sh status
+```
+
+Esperado: painel na 5173, harness na 3080, e os dois serviços como `habilitado, active`.
+
+**5. No navegador do Mac:**
+
+- painel na **homologação**: http://localhost:5173
+- harness: o endereço **com token** que o serviço imprime no log:
+
+```bash
+journalctl --user -u dsh-web -n 40 | grep -i http
+```
+
+O endereço pode mudar quando o serviço reinicia — confira o atual em vez de usar um favorito antigo.
+
+### Se algo não subir
+
+```bash
+systemctl --user status painel-dev dsh-web    # o que falhou, e por quê
+journalctl --user -u painel-dev -n 30         # o log do painel
+```
+
+Se o `git pull` trouxe dependências novas (o `package-lock.json` mudou), o painel pode subir com a
+versão antiga do `node_modules`. O caminho:
+
+```bash
+cd ~/infoxtec-escalas/web && npm ci && systemctl --user restart painel-dev
+```
+
+**Se você rodar `instalar` com um harness já aberto à mão**, o `dsh-web` falha com *address already in
+use*: a porta 3080 está ocupada. Ou reinicie a máquina, ou pare o manual antes
+(`./scripts/ambiente-dev.sh parar harness` — ele pede a palavra `HARNESS`, porque isso encerra a sessão).
+
 ## O que só se resolve no Mac (OrbStack)
 
 **Esta máquina Linux é convidada do OrbStack, e o OrbStack roda no macOS.** Nada aqui dentro consegue
