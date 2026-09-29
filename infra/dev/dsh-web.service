@@ -1,0 +1,17 @@
+[Unit]
+Description=Harness (DeepSeek Harness) em http://127.0.0.1:3080
+Documentation=file:%h/infoxtec-escalas/docs/ambiente-dev-mac.md
+After=network-online.target
+
+[Service]
+Type=simple
+# Roda de dentro do repositório para carregar AGENTS.md e CLAUDE.md do projeto
+WorkingDirectory=%h/infoxtec-escalas
+ExecStart=/bin/bash -lc 'exec npm exec @deepseek-ai/dsh web'
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

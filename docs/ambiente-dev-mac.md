@@ -127,6 +127,68 @@ O painel local é para teste. O painel sempre no ar, sem depender do Mac, é o d
 em https://infoxtec-escalas.vercel.app e, para a homologação, o endereço de *preview* que aparece no
 pull request.
 
+## Subir tudo com um comando
+
+Um comando sobe o painel e o harness:
+
+```bash
+cd ~/infoxtec-escalas
+./scripts/ambiente-dev.sh iniciar            # painel (5173) + harness (3080)
+./scripts/ambiente-dev.sh iniciar producao   # painel apontando para a produção (dados reais)
+./scripts/ambiente-dev.sh status             # o que está no ar, em que porta
+./scripts/ambiente-dev.sh parar painel       # para o painel
+```
+
+O painel continua sendo cuidado pelo `scripts/painel.sh` (instala dependências novas, cuida do pid e
+do log); este script acrescenta o harness e o diagnóstico dos dois juntos.
+
+**`parar harness` encerra a sessão que você estiver usando** — o script pede a palavra `HARNESS` para
+confirmar, e não para o painel junto.
+
+## Sem interação humana: serviços do systemd
+
+Para o painel e o harness subirem sozinhos quando a máquina Linux liga, sem ninguém abrir terminal:
+
+```bash
+./scripts/ambiente-dev.sh instalar       # instala e já sobe os dois
+./scripts/ambiente-dev.sh status         # confere
+journalctl --user -u dsh-web -f          # log do harness
+systemctl --user restart painel-dev      # reiniciar só o painel
+```
+
+O que ele faz: liga `infra/dev/painel-dev.service` e `infra/dev/dsh-web.service` em
+`~/.config/systemd/user/`, habilita e inicia. Os dois **reiniciam sozinhos** se caírem
+(`Restart=on-failure`), e o log vai para o journal — melhor que um `nohup` sem supervisão.
+
+**Funciona sem login**, porque o *linger* do usuário está ligado:
+
+```bash
+loginctl show-user macbookair -p Linger      # Linger=yes
+```
+
+Sem o linger, serviço de usuário só roda com sessão aberta. Se algum dia voltar a `no`:
+`sudo loginctl enable-linger macbookair`.
+
+Para desfazer: `./scripts/ambiente-dev.sh desinstalar`.
+
+## O que só se resolve no Mac (OrbStack)
+
+**Esta máquina Linux é convidada do OrbStack, e o OrbStack roda no macOS.** Nada aqui dentro consegue
+iniciá-lo: se ele não estiver no ar, as portas 5173 e 3080 não aparecem no navegador do Mac, mesmo
+com os dois serviços rodando perfeitamente nesta máquina.
+
+No Mac:
+
+1. **OrbStack → Settings → Start at login** — para o OrbStack abrir sozinho.
+2. Confirme que a máquina **`dev`** volta sozinha. O OrbStack religa as máquinas que estavam rodando
+   quando ele fechou; se não voltar, `orb start dev` no terminal do Mac resolve — e dá para criar um
+   item de login do macOS que rode esse comando.
+3. As portas chegam ao Mac pelo encaminhamento do próprio OrbStack: o `localhost` do Mac aponta para
+   o `127.0.0.1` desta máquina. Não há redirecionamento a configurar.
+
+**A divisão:** o Mac liga o OrbStack e esta máquina; os serviços do systemd cuidam de tudo o que roda
+dentro dela. Uma coisa não substitui a outra.
+
 ## Problemas encontrados na primeira montagem
 
 | Mensagem | Causa | Solução |
