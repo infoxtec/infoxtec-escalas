@@ -279,13 +279,37 @@ select fn_limpeza_logs();
 
 O `pg_cron` roda 1.440 vezes por dia e o histórico cresce rápido no plano gratuito.
 
+## Trocar o servidor da Evolution (migração do canal)
+
+**O roteiro completo está em [`evolution-propria.md`](evolution-propria.md)** — §E (a virada, com o
+plano de volta) e §F (desligar o servidor antigo). Ele nasceu da migração de 28/09, quando a Evolution
+saiu de um servidor de terceiros e passou para um servidor da Infoxtec na Oracle Cloud (decisão 43).
+
+O resumo do que muda, e o que se esquece:
+
+| Onde | O quê |
+|---|---|
+| `config.evolution_url` | o endereço do servidor novo. **O gatilho de `config` não valida esta chave** — uma barra a mais no fim quebra o envio em silêncio |
+| `config.evolution_instancia` | se o nome da instância mudou |
+| Vault, `EVOLUTION_API_KEY` | a chave da instância nova |
+| **Webhook** | `fn_evo_post('/webhook/set/…')` **no servidor novo**. Sem isso, a resposta do técnico nunca chega — e o sintoma é silencioso, porque as escalas continuam saindo |
+| `net._http_response` | apagar a resposta do `/webhook/set/`, que guarda a URL com o token |
+
+**Operação do servidor** (no servidor, em `~/infoxtec-escalas/infra/evolution`): `docker compose ps`,
+`docker compose logs --tail 100 evolution`, troca da chave-mestra, troca da imagem e
+`apt upgrade` uma vez por mês — a tabela está em `evolution-propria.md`.
+
 ## Trocar a chave da Evolution
 
-```sql
-select vault.update_secret(
-  (select id from vault.secrets where name = 'EVOLUTION_API_KEY'),
-  'NOVA_CHAVE_AQUI');
+Se o que mudou foi o **servidor**, comece por "Trocar o servidor da Evolution" acima: além da chave, o
+webhook precisa ser registrado de novo. Se é só a chave, use o script — ele pede o valor sem eco,
+confere na Evolution e ensina a limpar o rastro:
+
+```bash
+./scripts/rotacionar-evolution.sh --aplicar
 ```
+
+Passo a passo completo, com o ensaio e o que não tem volta: `docs/rotacao-de-segredos.md` §3.2.
 
 ## Sinais de alerta no WhatsApp
 

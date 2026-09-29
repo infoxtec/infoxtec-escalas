@@ -145,6 +145,10 @@ select chave, valor from config where chave = 'evolution_url';
 
 *Esperado:* uma linha com `https://ENDERECO` (o seu endereço sslip.io).
 
+> **Cuidado que o banco não avisa:** o gatilho de `config` valida várias chaves, mas **não valida
+> `evolution_url`** (migration 45:344-352). Uma barra a mais no fim, ou um `http` sem `s`, passa sem
+> erro e quebra o envio em silêncio. Confira o valor depois de gravar.
+
 **E3. Gravar a chave nova no Vault** — no seu Linux, com o script que já existe (a chave é pedida na
 tela, sem aparecer, e o script confirma a conexão com a Evolution):
 
