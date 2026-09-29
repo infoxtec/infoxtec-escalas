@@ -1,0 +1,17 @@
+[Unit]
+Description=Painel do Trilha em desenvolvimento (vite, porta 5173)
+Documentation=file:%h/infoxtec-escalas/docs/ambiente-dev-mac.md
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/infoxtec-escalas/web
+# bash -lc para carregar o nvm e o PATH do usuário: o systemd começa com PATH mínimo
+ExecStart=/bin/bash -lc 'exec npx vite --mode homologacao --host --port 5173 --strictPort'
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
