@@ -419,3 +419,24 @@ o monitor externo (`INF-02`) vira pré-requisito prático.
 única" (decisão 4), então a produção roda a `2.4.0-rc2`, que corrige isso mas **exige ativação de
 licença** no Manager (gratuita, confirmado pelo responsável em 28/09). A 2.3.7 ficou no ar
 como volta até a consolidação (backlog 073).
+
+## 44. Trava de envio por ambiente, e nenhuma migration fora do repositório
+
+**O que aconteceu (28–29/09):** a trava de ambiente foi aplicada direto nos bancos, sem passar pelo
+repositório. Na produção entrou como `20260928235626_39_trava_de_envio_por_ambiente` (o "39" repete o
+número de outra migration); na homologação, como `20260929001258_trava_de_ambiente_homologacao`, com
+dados próprios daquele ambiente. O `db push` da produção passou a recusar a migration 51 porque o
+histórico não batia com o repositório.
+**Decisão:** a migration da produção entra no repositório com o conteúdo exato que foi aplicado
+(conferido: nenhuma migration posterior redefine as funções que ela troca). A da homologação **não**
+entra: ela grava `ambiente = homologacao` e um técnico de teste, e num `db push` para a produção
+bloquearia todos os envios. Na homologação ela sai só do histórico (`migration repair --status
+reverted`), mantendo os dados.
+**O que a trava faz:** `fn_pode_enviar(telefone)` libera tudo quando `config.ambiente = 'producao'`;
+em homologação, só técnico com `perfil_teste` ou número em `telefones_homologacao`. `fn_evo_post` e
+`fn_preparar_ligacao` consultam a trava antes de enviar ou ligar; `app_config` passa a devolver
+`ambiente`.
+**Regra reforçada, para o Claude e para o DeepSeek:** estrutura e funções só pelo ciclo do `CLAUDE.md`
+— arquivo no repositório, homologação, revisão do `seguranca`, PR, e só então
+`scripts/aplicar-producao.sh`. Aplicar SQL direto num banco, mesmo que correto, quebra o `db push` de
+todo mundo depois.

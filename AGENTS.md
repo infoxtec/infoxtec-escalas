@@ -46,6 +46,8 @@ não oficial.
 3. **Português** em parecer, documento, comentário, mensagem de commit e nome de branch.
 4. **Produção é intocável.** `zpckrxydqqmmcrphrkxz` só com o comando explícito do responsável e pelo
    roteiro (`scripts/aplicar-producao.sh`). A única exceção é o registro no backlog.
+   **Nunca aplicar migration ou função direto num banco** (nem na homologação) sem o arquivo no
+   repositório: quebra o `db push` de todos depois (decisão 44, 29/09).
 5. **Nunca editar migration existente.** Mudança de banco é arquivo novo.
 6. **Nada direto na `main`.** Branch e pull request, sempre. O CI precisa ficar verde.
 7. **SQL sempre com o comando.** Persona que traz instrução de banco entrega o bloco pronto para

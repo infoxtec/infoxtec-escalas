@@ -150,6 +150,13 @@ da janela de envio) e quando normaliza. `app_estado_motor` alimenta o quadro da 
 | `fn_edicao_permitida` (migration 48) | Intervalo mínimo de 2 minutos entre edições da mesma escala; escala de teste não avisa o técnico. Desde a migration 49 o motivo de saúde não existe (decisão 40) |
 | `app_substituir_tecnico(escala, tecnico)` | Escala recusada gera outra igual para o técnico escolhido; eventos `substituida`/`substitui` ligam as duas |
 
+### Migration 20260928235626 (28/09): trava de envio por ambiente (decisão 44)
+
+`config.ambiente` (`producao` | `homologacao`) e `config.telefones_homologacao`. `fn_pode_enviar(telefone)`
+libera tudo em produção; em homologação, só técnico com `perfil_teste` ou número liberado.
+`fn_evo_post` (toda saída de WhatsApp) e `fn_preparar_ligacao` (URA) consultam a trava; `app_config`
+devolve `ambiente`.
+
 ### Migration 51 (29/09): Administração do Sistema > Checklist
 
 | Objeto | O que faz |
