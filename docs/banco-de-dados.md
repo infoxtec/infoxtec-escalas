@@ -150,6 +150,17 @@ da janela de envio) e quando normaliza. `app_estado_motor` alimenta o quadro da 
 | `fn_edicao_permitida` (migration 48) | Intervalo mínimo de 2 minutos entre edições da mesma escala; escala de teste não avisa o técnico. Desde a migration 49 o motivo de saúde não existe (decisão 40) |
 | `app_substituir_tecnico(escala, tecnico)` | Escala recusada gera outra igual para o técnico escolhido; eventos `substituida`/`substitui` ligam as duas |
 
+### Migration 51 (29/09): Administração do Sistema > Checklist
+
+| Objeto | O que faz |
+|---|---|
+| `saude_testes` | Registro dos testes ao vivo da Evolution (`req_id` do pg_net, erro, quem testou em `criado_por` = e-mail do admin). RLS ligado, sem políticas. Guarda só os 20 mais recentes. |
+| `app_checklist_testar()` | Só admin. Enfileira `connectionState` na Evolution pelo pg_net e registra o teste. Recusa um novo teste antes de 10 s. |
+| `app_checklist_saude()` | Só admin. Devolve itens `{grupo, item, estado ok/atencao/falha/info, detalhe}`: banco (tamanho, última migration), motor, cron, pg_net, configuração e conexão da Evolution, webhook, envios, escalas vencidas sem envio, notificações e webhook com erro, credenciais e ligações da Twilio. Só contagens, datas e nomes de segredos (nunca valores); da resposta da Evolution sai só o código HTTP e o `state`. |
+
+GitHub e Vercel não passam pelo banco: o painel lê as páginas públicas de status (Statuspage) e mostra a
+versão publicada.
+
 ## Gatilhos em `escalas`
 
 | Gatilho | O que faz |

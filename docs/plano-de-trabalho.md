@@ -177,3 +177,4 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 | 28/09 | Evolution própria: `infra/evolution/` e roteiro (decisão 43) | Não se aplica | Aguardando o servidor na Oracle |
 | 28/09 | Evolution própria no ar (E2.1.Micro, sem Redis) e número conectado; parte D concluída | Envio de teste entregue | Falta a virada (parte E) |
 | 28/09 | Virada da produção (parte E): SEG-01 e SEG-02 fechados; Evolution 2.4.0-rc2 com botões | Escala de teste enviada em 26 s e confirmada | Falta parte F (desligar a vluma) e consolidar o servidor |
+| 29/09 | Migration 51 + painel 3.6.0: Administração do Sistema > Checklist (saúde de Evolution, Supabase, tabelas, Twilio, GitHub, Vercel) | Homologação: plpgsql_check zero, 13 itens, limite de 10 s; revisão do `seguranca` sem bloqueio | Aguardando teste conjunto e ordem |

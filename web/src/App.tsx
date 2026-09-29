@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { Award, CalendarDays, LayoutGrid, Loader2, LogOut, MapPin, Rocket, ShieldCheck, Users } from 'lucide-react'
+import { Award, CalendarDays, LayoutGrid, Settings, Loader2, LogOut, MapPin, Rocket, ShieldCheck, Users } from 'lucide-react'
 import { Button, ErrorBox } from './components/ui'
 import { configurado, supabase, tipoDoLink } from './lib/supabase'
 
@@ -19,8 +19,9 @@ import UsuariosPage from './pages/UsuariosPage'
 import OperacaoPage from './pages/OperacaoPage'
 import HabilidadesPage from './pages/HabilidadesPage'
 import RoadmapPage from './pages/RoadmapPage'
+import AdminPage from './pages/AdminPage'
 
-type Aba = 'agenda' | 'operacao' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios' | 'roadmap'
+type Aba = 'agenda' | 'operacao' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios' | 'roadmap' | 'admin'
 
 function Centro({ children }: { children: ReactNode }) {
   return <div className="flex min-h-screen items-center justify-center p-6 text-sm text-muted-foreground">{children}</div>
@@ -108,6 +109,7 @@ function Painel({ email }: { email: string }) {
     ...(papel === 'admin' ? [
       { id: 'usuarios' as Aba, label: 'Usuários', icone: <ShieldCheck className="h-4 w-4" /> },
       { id: 'roadmap' as Aba, label: 'Roadmap', icone: <Rocket className="h-4 w-4" /> },
+      { id: 'admin' as Aba, label: 'Administração do Sistema', icone: <Settings className="h-4 w-4" /> },
     ] : []),
   ]
 
@@ -156,6 +158,7 @@ function Painel({ email }: { email: string }) {
         {aba === 'locais' && <LocaisPage locais={locais} recarregar={recarregarCadastros} podeEditar={podeEditar} />}
         {aba === 'usuarios' && papel === 'admin' && <UsuariosPage />}
         {aba === 'roadmap' && papel === 'admin' && <RoadmapPage podeEditar />}
+        {aba === 'admin' && papel === 'admin' && <AdminPage />}
       </main>
     </div>
   )

@@ -158,6 +158,10 @@ export interface EscalaEdicao {
   local_id: string | null; descricao_tarefa: string; status: StatusEscala
 }
 
+export type EstadoSaude = 'ok' | 'atencao' | 'falha' | 'info'
+export interface ItemSaude { grupo: string; item: string; estado: EstadoSaude; detalhe: string }
+export interface ChecklistSaude { gerado_em: string; evolution_url: string | null; itens: ItemSaude[] }
+
 export interface EstadoMotor {
   ultima_execucao_ok: string; minutos: number; limite_min: number; em_dia: boolean
   alerta_ativo: boolean; motor_agendado: boolean; vigia_agendado: boolean
