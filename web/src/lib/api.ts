@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, IndicadoresResposta, EscalaEdicao,
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao,
 } from './types'
 
 function traduzir(msg: string): string {
@@ -19,6 +19,8 @@ async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
 export const api = {
   meuAcesso: () => rpc<Acesso>('app_meu_acesso'),
   estadoMotor: () => rpc<EstadoMotor>('app_estado_motor'),
+  checklistSaude: () => rpc<ChecklistSaude>('app_checklist_saude'),
+  checklistTestar: () => rpc<{ enfileirado: boolean; recente?: boolean; erro: string | null }>('app_checklist_testar'),
   indicadoresResposta: (dias = 30) => rpc<IndicadoresResposta>('app_indicadores_resposta', { p_dias: dias }),
   escalaEdicao: (id: string) => rpc<EscalaEdicao>('app_escala_edicao', { p_escala: id }),
   editarEscala: (p: { id: string; data_servico: string; hora_inicio: string; local_id: string; descricao_tarefa: string }) =>

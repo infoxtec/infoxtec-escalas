@@ -150,6 +150,18 @@ da janela de envio) e quando normaliza. `app_estado_motor` alimenta o quadro da 
 | `fn_edicao_permitida` (migration 48) | Intervalo mínimo de 2 minutos entre edições da mesma escala; escala de teste não avisa o técnico. Desde a migration 49 o motivo de saúde não existe (decisão 40) |
 | `app_substituir_tecnico(escala, tecnico)` | Escala recusada gera outra igual para o técnico escolhido; eventos `substituida`/`substitui` ligam as duas |
 
+### Migration 51 (29/09): Administração do Sistema > Checklist
+
+| Objeto | O que faz |
+|---|---|
+| `saude_testes` | Registro das consultas ao vivo (`alvo` = `evolution` ou `status_*`, `req_id` do pg_net, erro, quem testou em `criado_por` = e-mail do admin). RLS ligado, sem políticas. Guarda as 100 linhas mais recentes (20 testes). |
+| `app_checklist_testar()` | Só admin. Enfileira pelo pg_net o `connectionState` da Evolution e as quatro páginas públicas de status (Supabase, Twilio, GitHub, Vercel). Dentro de 10 s do último teste, não repete (`recente: true`). |
+| `app_checklist_saude()` | Só admin. Devolve itens `{grupo, item, estado ok/atencao/falha/info, detalhe}`: banco (tamanho, última migration), motor, cron, pg_net, configuração e conexão da Evolution, webhook, envios, escalas vencidas sem envio, notificações e webhook com erro, credenciais e ligações da Twilio. Só contagens, datas e nomes de segredos (nunca valores); da resposta da Evolution sai só o código HTTP e o `state`. |
+
+Todas as consultas externas saem do banco: o navegador do admin só fala com o Supabase. Das páginas de
+status lê-se só `status.indicator` e `status.description`. O painel acrescenta, sem rede, a versão
+publicada e o link do GitHub Actions.
+
 ## Gatilhos em `escalas`
 
 | Gatilho | O que faz |
