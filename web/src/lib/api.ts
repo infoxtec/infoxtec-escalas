@@ -20,7 +20,7 @@ export const api = {
   meuAcesso: () => rpc<Acesso>('app_meu_acesso'),
   estadoMotor: () => rpc<EstadoMotor>('app_estado_motor'),
   checklistSaude: () => rpc<ChecklistSaude>('app_checklist_saude'),
-  checklistTestar: () => rpc<{ enfileirado: boolean; erro: string | null }>('app_checklist_testar'),
+  checklistTestar: () => rpc<{ enfileirado: boolean; recente?: boolean; erro: string | null }>('app_checklist_testar'),
   indicadoresResposta: (dias = 30) => rpc<IndicadoresResposta>('app_indicadores_resposta', { p_dias: dias }),
   escalaEdicao: (id: string) => rpc<EscalaEdicao>('app_escala_edicao', { p_escala: id }),
   editarEscala: (p: { id: string; data_servico: string; hora_inicio: string; local_id: string; descricao_tarefa: string }) =>

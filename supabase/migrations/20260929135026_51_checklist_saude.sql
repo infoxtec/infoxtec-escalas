@@ -1,7 +1,8 @@
 -- 51. Administração do Sistema > Checklist: estado de saúde da plataforma num só lugar.
 -- Só leitura de metadados e contagens (nenhum dado de técnico sai daqui), só para admin.
--- O teste ao vivo da Evolution vai pelo pg_net: app_checklist_testar() enfileira a chamada e
--- app_checklist_saude() lê a resposta na atualização seguinte.
+-- Tudo passa pelo banco: app_checklist_testar() enfileira pelo pg_net o teste da Evolution e a
+-- leitura das páginas públicas de status (Supabase, Twilio, GitHub, Vercel); app_checklist_saude()
+-- lê as respostas. O navegador do admin não fala com nenhum serviço externo.
 
 create table if not exists saude_testes (
   id         bigserial primary key,
@@ -25,7 +26,8 @@ declare
 begin
   perform app_exigir(array['admin']);
   if exists (select 1 from saude_testes where criado_em > now() - interval '10 seconds') then
-    return jsonb_build_object('enfileirado', false, 'erro', 'Aguarde alguns segundos entre um teste e outro.');
+    -- teste recente: não repete a chamada externa, só devolve o que já está sendo lido
+    return jsonb_build_object('enfileirado', false, 'recente', true, 'erro', null);
   end if;
   begin
     v_req := fn_evo_get('/instance/connectionState/' || fn_config('evolution_instancia'));
@@ -33,8 +35,17 @@ begin
     v_erro := left(sqlerrm, 200);
   end;
   insert into saude_testes (alvo, req_id, erro, criado_por) values ('evolution', v_req, v_erro, app_email());
-  -- guarda só os 20 testes mais recentes
-  delete from saude_testes where id not in (select id from saude_testes order by id desc limit 20);
+
+  -- páginas públicas de status (Atlassian Statuspage): sem chave, só o campo status.indicator é lido
+  insert into saude_testes (alvo, req_id, criado_por)
+  select alvo, net.http_get(url := url, timeout_milliseconds := 5000), app_email()
+    from (values ('status_supabase', 'https://status.supabase.com/api/v2/status.json'),
+                 ('status_twilio',   'https://status.twilio.com/api/v2/status.json'),
+                 ('status_github',   'https://www.githubstatus.com/api/v2/status.json'),
+                 ('status_vercel',   'https://www.vercel-status.com/api/v2/status.json')) as t(alvo, url);
+
+  -- guarda só os 20 testes mais recentes (5 linhas por teste)
+  delete from saude_testes where id not in (select id from saude_testes order by id desc limit 100);
   return jsonb_build_object('enfileirado', v_req is not null, 'erro', v_erro);
 end $$;
 
@@ -56,6 +67,7 @@ declare
   v_teste  saude_testes;
   v_resp   record;
   v_estado text;
+  v_st     record;
   v_mb     int;
   v_lim_mb int := coalesce(fn_config_int('banco_alerta_mb'), 400);
 begin
@@ -105,7 +117,7 @@ begin
   select * into v_teste from saude_testes where alvo = 'evolution' order by id desc limit 1;
   if v_teste.id is null then
     v_itens := v_itens || jsonb_build_object('grupo', 'Evolution (WhatsApp)', 'item', 'Conexão da instância',
-      'estado', 'info', 'detalhe', 'Ainda não testada. Use "Testar Evolution agora".');
+      'estado', 'info', 'detalhe', 'Ainda não testada. Use "Testar agora".');
   elsif v_teste.erro is not null then
     v_itens := v_itens || jsonb_build_object('grupo', 'Evolution (WhatsApp)', 'item', 'Conexão da instância',
       'estado', 'falha', 'detalhe', format('Teste de %s não saiu: %s', to_char(v_teste.criado_em at time zone v_fuso, 'DD/MM HH24:MI'), v_teste.erro));
@@ -179,7 +191,34 @@ begin
     'detalhe', case when v_m = 0 then 'Nenhuma ligação nos últimos 7 dias.'
                     else format('%s ligações, %s sem sucesso. Última em %s.', v_m, v_n, to_char(v_ts at time zone v_fuso, 'DD/MM HH24:MI')) end);
 
-  return jsonb_build_object('gerado_em', now(), 'evolution_url', fn_config('evolution_url'), 'itens', v_itens);
+  -- ---------------------------------------------------------------- Páginas públicas de status
+  for v_st in select * from (values
+      ('status_supabase', 'Supabase', 'Página de status do Supabase'),
+      ('status_twilio',   'Twilio (ligações)', 'Página de status da Twilio'),
+      ('status_github',   'GitHub', 'Página de status do GitHub'),
+      ('status_vercel',   'Vercel', 'Página de status da Vercel')) as t(alvo, grupo, item)
+  loop
+    v_estado := null; v_txt := null;
+    -- sem linha, o "select into" deixa as variáveis nulas: nada sobra da volta anterior do laço
+    select * into v_teste from saude_testes where alvo = v_st.alvo order by id desc limit 1;
+    select status_code, content into v_resp from net._http_response where id = v_teste.req_id;
+    begin
+      v_estado := v_resp.content::jsonb #>> '{status,indicator}';
+      v_txt    := left(v_resp.content::jsonb #>> '{status,description}', 80);
+    exception when others then
+      v_estado := null;
+    end;
+    v_itens := v_itens || jsonb_build_object('grupo', v_st.grupo, 'item', v_st.item,
+      'estado', case v_estado when 'none' then 'ok' when 'minor' then 'atencao'
+                              when 'major' then 'falha' when 'critical' then 'falha' else 'info' end,
+      'detalhe', case when v_teste.id is null then 'Ainda não consultada. Use "Testar agora".'
+                      when v_estado = 'none' then 'Todos os sistemas operando.'
+                      when v_estado is not null then coalesce(v_txt, 'Incidente em andamento.')
+                      when v_resp is null then 'Aguardando resposta ou resposta expirada; teste de novo.'
+                      else format('Não foi possível ler a página (HTTP %s).', coalesce(v_resp.status_code::text, '-')) end);
+  end loop;
+
+  return jsonb_build_object('gerado_em', now(), 'itens', v_itens);
 end $$;
 
 do $$

@@ -160,7 +160,7 @@ export interface EscalaEdicao {
 
 export type EstadoSaude = 'ok' | 'atencao' | 'falha' | 'info'
 export interface ItemSaude { grupo: string; item: string; estado: EstadoSaude; detalhe: string }
-export interface ChecklistSaude { gerado_em: string; evolution_url: string | null; itens: ItemSaude[] }
+export interface ChecklistSaude { gerado_em: string; itens: ItemSaude[] }
 
 export interface EstadoMotor {
   ultima_execucao_ok: string; minutos: number; limite_min: number; em_dia: boolean

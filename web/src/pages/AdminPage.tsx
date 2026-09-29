@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertTriangle, CheckCircle2, ExternalLink, Info, Loader2, RefreshCw, XCircle, Zap } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ExternalLink, Info, Loader2, RefreshCw, XCircle } from 'lucide-react'
 import { Button, ErrorBox } from '../components/ui'
 import { api, erroMsg } from '../lib/api'
 import type { ChecklistSaude, EstadoSaude, ItemSaude } from '../lib/types'
@@ -29,77 +29,38 @@ export default function AdminPage() {
   )
 }
 
-// Páginas públicas de status (Atlassian Statuspage), lidas pelo navegador: nenhuma chave envolvida
-const STATUS_EXTERNOS = [
-  { grupo: 'Supabase', nome: 'Status do Supabase', api: 'https://status.supabase.com/api/v2/status.json', site: 'https://status.supabase.com' },
-  { grupo: 'Twilio (ligações)', nome: 'Status da Twilio', api: 'https://status.twilio.com/api/v2/status.json', site: 'https://status.twilio.com' },
-  { grupo: 'GitHub', nome: 'Status do GitHub', api: 'https://www.githubstatus.com/api/v2/status.json', site: 'https://www.githubstatus.com' },
-  { grupo: 'Vercel', nome: 'Status da Vercel', api: 'https://www.vercel-status.com/api/v2/status.json', site: 'https://www.vercel-status.com' },
-]
 const REPO = 'https://github.com/infoxtec/infoxtec-escalas'
+const GRUPOS = ['Supabase', 'Evolution (WhatsApp)', 'Erros em tabelas', 'Twilio (ligações)', 'GitHub', 'Vercel']
+const espera = (ms: number) => new Promise(ok => setTimeout(ok, ms))
 
-async function lerStatus(url: string): Promise<{ estado: EstadoSaude; detalhe: string }> {
-  try {
-    const r = await fetch(url, { signal: AbortSignal.timeout(8000) })
-    const j = await r.json()
-    const ind: string = j?.status?.indicator ?? 'unknown'
-    const desc: string = j?.status?.description ?? ''
-    const estado: EstadoSaude = ind === 'none' ? 'ok' : ind === 'minor' ? 'atencao' : ind === 'unknown' ? 'info' : 'falha'
-    return { estado, detalhe: ind === 'none' ? 'Todos os sistemas operando.' : desc || 'Situação desconhecida.' }
-  } catch {
-    return { estado: 'info', detalhe: 'Não foi possível consultar a página de status agora.' }
-  }
-}
-
-async function lerEvolution(base: string): Promise<{ estado: EstadoSaude; detalhe: string }> {
-  try {
-    const r = await fetch(base.replace(/\/+$/, '') + '/', { signal: AbortSignal.timeout(8000) })
-    const j = await r.json().catch(() => ({}))
-    return r.ok
-      ? { estado: 'ok', detalhe: `Servidor respondendo${j?.version ? ` (versão ${j.version})` : ''}.` }
-      : { estado: 'falha', detalhe: `Servidor respondeu HTTP ${r.status}.` }
-  } catch {
-    return { estado: 'falha', detalhe: 'Servidor não respondeu ao navegador (fora do ar ou bloqueado).' }
-  }
-}
-
+// Toda verificação é feita pelo banco (app_checklist_saude); a tela só desenha a lista.
 function Checklist() {
   const [dados, setDados] = useState<ChecklistSaude | null>(null)
-  const [externos, setExternos] = useState<ItemSaude[]>([])
-  const [carregando, setCarregando] = useState(false)
-  const [testando, setTestando] = useState(false)
+  const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
   const carregar = useCallback(async () => {
-    setCarregando(true); setErro(null)
-    try {
-      const d = await api.checklistSaude()
-      setDados(d)
-      const lidos = await Promise.all(STATUS_EXTERNOS.map(async s => ({ grupo: s.grupo, item: s.nome, ...(await lerStatus(s.api)) })))
-      const extras: ItemSaude[] = [
-        ...(d.evolution_url ? [{ grupo: 'Evolution (WhatsApp)', item: 'Servidor (visto pelo navegador)', ...(await lerEvolution(d.evolution_url)) }] : []),
-        ...lidos,
-        { grupo: 'Vercel', item: 'Painel publicado', estado: 'ok', detalhe: `Esta página está no ar: versão ${__APP_VERSION__}, build ${__APP_BUILD__}.` },
-        { grupo: 'GitHub', item: 'CI e backup diário', estado: 'info', detalhe: 'O repositório é privado: confira as execuções no GitHub Actions (link ao lado).' },
-      ]
-      setExternos(extras)
-    } catch (e) { setErro(erroMsg(e)) } finally { setCarregando(false) }
+    try { setDados(await api.checklistSaude()) } catch (e) { setErro(erroMsg(e)) }
   }, [])
 
-  useEffect(() => { void carregar() }, [carregar])
-
-  const testar = async () => {
-    setTestando(true)
+  // "Testar agora": o banco enfileira as consultas externas; as respostas chegam em segundos
+  const testar = useCallback(async () => {
+    setOcupado(true); setErro(null)
     try {
       const r = await api.checklistTestar()
       if (r.erro) setErro(r.erro)
-      await new Promise(ok => setTimeout(ok, 4000))   // o pg_net responde em segundo plano
+      await espera(4000)
       await carregar()
-    } catch (e) { setErro(erroMsg(e)) } finally { setTestando(false) }
-  }
+    } catch (e) { setErro(erroMsg(e)) } finally { setOcupado(false) }
+  }, [carregar])
 
-  const itens = [...(dados?.itens ?? []), ...externos]
-  const grupos = ['Supabase', 'Evolution (WhatsApp)', 'Erros em tabelas', 'Twilio (ligações)', 'GitHub', 'Vercel']
+  useEffect(() => { void carregar().then(testar) }, [carregar, testar])
+
+  const itens: ItemSaude[] = [
+    ...(dados?.itens ?? []),
+    { grupo: 'Vercel', item: 'Painel publicado', estado: 'ok', detalhe: `Esta página está no ar: versão ${__APP_VERSION__}, build ${__APP_BUILD__}.` },
+    { grupo: 'GitHub', item: 'CI e backup diário', estado: 'info', detalhe: 'O repositório é privado: confira as execuções no GitHub Actions (link ao lado).' },
+  ]
   const contagem = (e: EstadoSaude) => itens.filter(i => i.estado === e).length
 
   return (
@@ -110,19 +71,16 @@ function Checklist() {
         <Resumo estado="falha" n={contagem('falha')} rotulo="falha" />
         <div className="flex-1" />
         {dados && <span className="text-xs text-muted-foreground">Atualizado às {new Date(dados.gerado_em).toLocaleTimeString('pt-BR')}</span>}
-        <Button variant="outline" size="sm" onClick={testar} disabled={testando || carregando}>
-          {testando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />} Testar Evolution agora
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => void carregar()} disabled={carregando}>
-          {carregando ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Atualizar
+        <Button variant="outline" size="sm" onClick={() => void testar()} disabled={ocupado}>
+          {ocupado ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Testar agora
         </Button>
       </div>
       {erro && <ErrorBox>{erro}</ErrorBox>}
-      {!dados && carregando && <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin" /></div>}
+      {!dados && <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin" /></div>}
       <div className="grid gap-4 lg:grid-cols-2">
-        {grupos.map(g => {
+        {GRUPOS.map(g => {
           const doGrupo = itens.filter(i => i.grupo === g)
-          if (!doGrupo.length) return null
+          if (!dados || !doGrupo.length) return null
           return (
             <section key={g} className="rounded-lg border bg-card">
               <header className="flex items-center justify-between border-b px-4 py-2">
