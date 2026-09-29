@@ -230,6 +230,40 @@ conectada até a parte F, então o sistema volta como estava.
   `Caddyfile.teste` e `docker exec evolution-caddy-1 caddy reload --config /etc/caddy/Caddyfile`.
   Depois de alguns dias estável: parar a 2.3.7 e consolidar o compose numa só versão.
 
+## Higiene pendente no servidor novo (conferido em 28/09)
+
+Varredura feita de fora, com `curl`, sem autenticação:
+
+| Verificação | Resultado | Leitura |
+|---|---|---|
+| `https://<endereço>/` | `200`, `"version":"2.4.0"` | **no ar**, e a 2.4 é a que responde |
+| `/instance/connectionState/<instância>` sem chave | **`401 Unauthorized`** | a API exige a chave — postura correta |
+| `http://<endereço>/` | **`308` → `https://`** | não serve nada em texto puro |
+| `/manager/login` | **`200`** | **a interface de administração está aberta para a internet** |
+
+**O que está certo:** a API da instância exige chave, e o HTTP redireciona para HTTPS. O webhook e o
+motor continuam funcionando.
+
+**O que merece decisão — o Manager público.** A interface de administração da Evolution é o alvo de
+maior valor do servidor: quem entra controla a instância e vê a chave. Ela precisa ficar aberta para
+você, mas **não precisa ficar aberta para o mundo**. Opções, da mais forte para a mais simples:
+
+1. **Restringir `/manager*` no Caddy** por IP de origem (`@manager path /manager*` + `remote_ip`).
+   Funciona bem se o seu IP for fixo; com IP dinâmico, vira manutenção.
+2. **Basic auth no Caddy** só para `/manager*`, por cima do login da Evolution.
+3. **Senha forte + a ativação de licença** que a 2.4 já exige — o mínimo aceitável.
+
+A API (`/instance/*`, `/message/*`) **precisa** continuar pública: é o Supabase que chama, e o IP de
+saída dele não é fixo. Ou seja, a restrição é por caminho, não por servidor.
+
+**Duas sobras de configuração da fase de teste** (cosméticas, mas confundem):
+
+- `CLIENT_NAME` do `.env` está **`teste24`** — é o que a API anuncia na raiz. Vale trocar para o nome
+  do produto ou da instância.
+- O campo `manager` que a API anuncia vem como **`http://…`**, embora o servidor redirecione para
+  HTTPS. É o `SERVER_URL` do `.env` desatualizado: a interface funciona, mas os links que ela gera
+  saem em `http`.
+
 ## Operação do servidor
 
 | Tarefa | Comando (dentro do servidor, em `~/infoxtec-escalas/infra/evolution`) |
