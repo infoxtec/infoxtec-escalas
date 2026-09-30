@@ -258,7 +258,7 @@ saída dele não é fixo. Ou seja, a restrição é por caminho, não por servid
 
 **Duas sobras de configuração da fase de teste** (cosméticas, mas confundem):
 
-- `CLIENT_NAME` do `.env` está **`teste24`** — é o que a API anuncia na raiz. Vale trocar para o nome
+- `CLIENT_NAME` está **`teste24`** e **deve ficar assim**: é a chave com que a instância foi gravada no banco; trocar para outro nome faz a Evolution listar zero instâncias (visto em 30/09, na consolidação) — é o que a API anuncia na raiz. Vale trocar para o nome
   do produto ou da instância.
 - O campo `manager` que a API anuncia vem como **`http://…`**, embora o servidor redirecione para
   HTTPS. É o `SERVER_URL` do `.env` desatualizado: a interface funciona, mas os links que ela gera

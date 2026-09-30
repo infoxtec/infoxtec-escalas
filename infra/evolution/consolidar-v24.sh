@@ -45,7 +45,9 @@ services:
       DATABASE_ENABLED: "true"
       DATABASE_PROVIDER: postgresql
       DATABASE_CONNECTION_URI: postgresql://evolution:${POSTGRES_SENHA}@postgres:5432/evolution24?schema=public
-      DATABASE_CONNECTION_CLIENT_NAME: infoxtec
+      # a instância foi criada no teste com este nome de cliente; a Evolution só lista as instâncias
+      # do próprio clientName, então trocar este valor "esconde" a instância (visto em 30/09)
+      DATABASE_CONNECTION_CLIENT_NAME: teste24
       # minimizacao (LGPD): guarda a sessao, nao guarda conversa, contato nem chat
       DATABASE_SAVE_DATA_INSTANCE: "true"
       DATABASE_SAVE_DATA_NEW_MESSAGE: "false"
