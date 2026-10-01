@@ -440,3 +440,14 @@ em homologação, só técnico com `perfil_teste` ou número em `telefones_homol
 — arquivo no repositório, homologação, revisão do `seguranca`, PR, e só então
 `scripts/aplicar-producao.sh`. Aplicar SQL direto num banco, mesmo que correto, quebra o `db push` de
 todo mundo depois.
+
+## 45. WhatsApp em dois canais no SaaS: Evolution e API oficial da Meta
+
+**Decisão (responsável, 01/10):** complementa a decisão 33. Na operação da Infoxtec, o canal continua
+sendo a **Evolution**, e o responsável aceita o risco (biblioteca não oficial, possibilidade de
+bloqueio do número). Quando o Trilha virar SaaS, ele **nasce com os dois canais prontos e integrados**,
+Evolution e API oficial da Meta, e **cada cliente escolhe** qual usar, com ciência e aceite registrados do
+risco da Evolution.
+**Consequência:** o envio precisa de uma camada de canal por cliente (hoje `fn_evo_post` é a porta
+única); entra junto com o multi-tenant (backlog 029). Backlog 027 e 023 deixam de ser "migração" e
+passam a ser a fase SaaS. O custo da API da Meta é do cliente que a escolher.
