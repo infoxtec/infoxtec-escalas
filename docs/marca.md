@@ -11,21 +11,28 @@ CNPJ 04.309.223/0001-96, empresa de pequeno porte (EPP), tributada pelo lucro pr
 
 > # Trilha
 >
-> ### Toda jornada deixa uma trilha.
+> ### Trilha. O caminho para o sucesso.
 >
 > **Do documento à obra, tudo registrado.**
 >
 > *Escalas, ponto, documentos e projetos das equipes de campo, na mesma base.*
 
-Três camadas, para três usos diferentes:
+Camadas, cada uma para um uso (assinatura, grito e chamada decididos pelo responsável em 01/10/2026):
 
 | Camada | Texto | Onde é usada |
 |---|---|---|
-| **Assinatura** | *Toda jornada deixa uma trilha.* | marca, site, abertura de proposta |
+| **Assinatura** | *Trilha. O caminho para o sucesso.* | marca, site, abertura de proposta |
+| **Grito** | *Quem tem Trilha escolheu o melhor caminho.* | redes, anúncios, eventos |
+| **Chamada para ação** | *Abra caminho com o Trilha.* | botões, fechamento de proposta |
 | **Mote** | *Do documento à obra, tudo registrado.* | proposta, apresentação comercial |
 | **Descritor** | *Escalas, ponto, documentos e projetos das equipes de campo, na mesma base.* | quem precisa saber o que é em uma linha |
 
 **Módulos:** *Trilha Escala* · *Trilha Ponto* · *Trilha Documentos* · *Trilha Projetos*.
+
+**Leitura da marca (01/10/2026).** Trilha não é o rastro que fica para trás: é **a base da jornada, o
+caminho que guia ao resultado**. A Infoxtec é uma empresa jovem que percorre a própria trilha com
+força, competência e coragem. A assinatura anterior (*Toda jornada deixa uma trilha*) saiu por ser
+passiva e olhar para trás; "sucesso" substitui "resultado" porque resultado pode ser bom ou ruim.
 
 ## 2. Por que Trilha (o motor semântico)
 

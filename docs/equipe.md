@@ -1,6 +1,6 @@
 # Equipe do projeto (subagentes do Claude Code)
 
-Sete papéis, definidos em `.claude/agents/`. Cada um é um especialista que o Claude Code aciona
+Oito papéis, definidos em `.claude/agents/`. Cada um é um especialista que o Claude Code aciona
 pelo nome. Nenhum deles substitui o responsável: decisões de negócio, aprovação de entrega e tudo
 o que toca a produção são dele.
 
@@ -15,6 +15,7 @@ o que toca a produção são dele.
 | **Fullstack** | `fullstack.md` | Painel React, `api.ts`, Edge Functions, experiência do usuário | Regra de negócio no navegador; produção |
 | **Infra/BD** | `infra-bd.md` | Desempenho, capacidade, cron, backup, CI, hospedagem, scripts, observabilidade | Mudar regra de negócio |
 | **Segurança** | `seguranca.md` | Revisão antes do merge, LGPD, segredos, permissões, dependências | Aprovar o próprio código; relaxar regra para caber no prazo |
+| **Marca e Comercial** | `marca.md` | Estratégia de marca, assinatura, grito, chamada para ação, narrativa, tom de voz, posicionamento, proposta comercial; análise crítica com embasamento | Decidir preço, SLA ou garantia; afirmar capacidade sem lastro na matriz |
 
 ## Como o trabalho anda entre os papéis
 
