@@ -169,6 +169,12 @@ Todas as consultas externas saem do banco: o navegador do admin só fala com o S
 status lê-se só `status.indicator` e `status.description`. O painel acrescenta, sem rede, a versão
 publicada e o link do GitHub Actions.
 
+### Migration 52 (30/09): índices das chaves estrangeiras
+
+Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `documentos`,
+`tecnico_documentos` e `tipo_atividade_documentos` em `tipo_documento_id`; `tecnico_habilidades` e
+`tipo_atividade_requisitos` em `habilidade_id`. Só estrutura.
+
 ## Gatilhos em `escalas`
 
 | Gatilho | O que faz |
