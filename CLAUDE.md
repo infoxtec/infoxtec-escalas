@@ -30,7 +30,7 @@ Subagentes do projeto em `.claude/agents/`, carregados sozinhos em toda sessão.
 quando o assunto for da especialidade: `cto` (arquitetura e decisões), `po` (backlog e critérios de
 aceite), `scrum-master` (próxima etapa e roteiro de teste), `dev-banco` (migrations e funções),
 `fullstack` (painel e Edge Functions), `infra-bd` (desempenho, cron, hospedagem, backup),
-`seguranca` (revisão antes do merge e LGPD). Toda mudança de banco ou de Edge Function passa pela
+`seguranca` (revisão antes do merge e LGPD), `marca` (estratégia de marca, identidade verbal e comercial). Toda mudança de banco ou de Edge Function passa pela
 revisão do `seguranca` antes do pull request.
 Papéis, fluxo entre eles e regras comuns: `docs/equipe.md`.
 
