@@ -139,6 +139,13 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 
 - [ ] ~~**22. WhatsApp pela API oficial da Meta.**~~ *Fora do plano (decisão 33, 27/09): a Evolution continua; mitigação na etapa 10c e na contingência de `operacao.md`.*
 - [ ] **23. Início da escala como instante (`timestamptz`)**, eliminando a classe de erro de fuso na raiz.
+- [ ] **24. Esquema privado: só as funções `app_*` expostas na API** (backlog 074). Tabelas e funções
+  `fn_*` saem do `public` para um esquema `interno`, que a API não expõe. Defesa em profundidade e
+  requisito de maturidade para o SaaS comercial e para certificação. Roteiro: (1) inventário de
+  dependências (funções, views, gatilhos, cron, Edge Functions, `search_path`); (2) migration que move e
+  ajusta o `search_path` das `app_*` para `public, interno, extensions`; (3) homologação com teste
+  completo do painel, do motor e do webhook, mais o `plpgsql_check`; (4) revisão do `seguranca`; (5)
+  produção fora da janela de envio. Fazer antes ou junto do multi-tenant (backlog 029).
 
 ### Pendências da revisão de segurança do PR #3 (baixas)
 
@@ -180,3 +187,4 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 | 29/09 | Migration 51 + painel 3.6.0: Administração do Sistema > Checklist (saúde de Evolution, Supabase, tabelas, Twilio, GitHub, Vercel) | Homologação: plpgsql_check zero, 13 itens, limite de 10 s; revisão do `seguranca` sem bloqueio | Aguardando teste conjunto e ordem |
 | 30/09 | Consolidação do servidor Evolution (backlog 073): 2.4 única, 2.3.7 e aparelhos antigos desligados | Checklist open, escala de teste enviada e confirmada | Concluído; falta a limpeza e o reinício do servidor |
 | 30/09 | Migration 52: índices das 5 chaves estrangeiras; homologação alinhada à produção (trava 20260928235626) | Homologação: plpgsql_check zero; linter sem chave estrangeira sem índice | Aguardando merge e aplicação na produção |
+| 01/10 | Planejada a etapa 24 (esquema privado, backlog 074) | Não se aplica | Na fila |
