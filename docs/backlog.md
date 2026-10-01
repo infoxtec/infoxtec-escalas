@@ -495,6 +495,19 @@ Parte F: desconectar o aparelho da vluma no celular da empresa. Depois de alguns
 parar a 2.3.7 (`evolution`), transformar a `evolution24` no serviço único do `docker-compose.yml` e
 atualizar `infra/evolution/` (imagem 2.4, sem o `Caddyfile.teste`).
 
+## 074. Esquema privado: só as funções `app_*` expostas na API — planejado (P1)
+
+**Problema:** hoje tabelas e funções internas ficam no `public`, o esquema que a API do Supabase
+expõe. Estão protegidas (RLS ligado e sem política, permissões revogadas, `app_exigir` em toda
+`app_*`), mas a proteção depende de nenhuma dessas camadas falhar.
+**Proposta:** mover tabelas e `fn_*` para um esquema `interno`, não exposto; no `public` ficam só as
+`app_*`. Um erro futuro de permissão ou de RLS deixa de expor dado.
+**Por que agora:** é requisito de maturidade para vender como serviço e para certificação (superfície
+de API mínima, controle de acesso em camadas), e fica mais barato antes do multi-tenant (029).
+**Aceite:** o linter não lista tabela nem `fn_*` no esquema exposto; o painel, o motor e o webhook
+funcionam iguais; `plpgsql_check` zero; as migrations rodam do zero no CI.
+**Esforço:** G. Etapa 24 do plano.
+
 ## Plano Diretor Comercial do Trilha
 
 **Pedido em 27/09/2026.** Guarda-chuva comercial do produto, registrado no grupo `saas` do Roadmap.
