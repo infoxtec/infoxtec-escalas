@@ -22,7 +22,7 @@ Camadas, cada uma para um uso (assinatura, grito e chamada decididos pelo respon
 | Camada | Texto | Onde é usada |
 |---|---|---|
 | **Assinatura** | *Trilha. O caminho para o sucesso.* | marca, site, abertura de proposta |
-| **Grito** | *Quem tem Trilha tem destino certo!* | redes, anúncios, eventos |
+| **Grito** | *Quem tem Trilha escolheu o melhor caminho.* | redes, anúncios, eventos |
 | **Chamada para ação** | *Abra caminho com o Trilha.* | botões, fechamento de proposta |
 | **Mote** | *Do documento à obra, tudo registrado.* | proposta, apresentação comercial |
 | **Descritor** | *Escalas, ponto, documentos e projetos das equipes de campo, na mesma base.* | quem precisa saber o que é em uma linha |
