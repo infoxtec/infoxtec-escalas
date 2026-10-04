@@ -2,7 +2,7 @@
 
 Gestão de escalas da equipe técnica de campo, com envio e confirmação pelo WhatsApp.
 
-O produto se chama **Trilha** — *toda jornada deixa uma trilha*. Este repositório é o módulo de
+O produto se chama **Trilha** (assinatura em definição). Este repositório é o módulo de
 escalas e documentos, que é a base dele; a visão comercial (módulos, pacotes e preço) está no
 [Plano comercial](docs/plano-comercial.md) e a marca na [Marca](docs/marca.md).
 

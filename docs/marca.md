@@ -11,17 +11,20 @@ CNPJ 04.309.223/0001-96, empresa de pequeno porte (EPP), tributada pelo lucro pr
 
 > # Trilha
 >
-> ### Toda jornada deixa uma trilha.
->
 > **Do documento à obra, tudo registrado.**
 >
 > *Escalas, ponto, documentos e projetos das equipes de campo, na mesma base.*
 
-Três camadas, para três usos diferentes:
+**Estado (04/10/2026):** só o **nome Trilha** está aprovado pelo responsável. Assinatura, grito e
+chamada para ação estão **em definição**, com o especialista `marca`. A assinatura que constava aqui
+(*Toda jornada deixa uma trilha.*) **não foi aprovada** e não deve ser usada. Mote e descritor abaixo
+são propostas da persona Comercial, ainda sem aprovação.
+
+Camadas, cada uma para um uso:
 
 | Camada | Texto | Onde é usada |
 |---|---|---|
-| **Assinatura** | *Toda jornada deixa uma trilha.* | marca, site, abertura de proposta |
+| **Assinatura** | *em definição* | marca, site, abertura de proposta |
 | **Mote** | *Do documento à obra, tudo registrado.* | proposta, apresentação comercial |
 | **Descritor** | *Escalas, ponto, documentos e projetos das equipes de campo, na mesma base.* | quem precisa saber o que é em uma linha |
 
