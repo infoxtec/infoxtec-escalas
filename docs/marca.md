@@ -1,6 +1,7 @@
 # Marca
 
-Escrito em 27/09/2026 pela persona **Comercial**. **v4 — nome decidido pelo responsável: Trilha.**
+Escrito em 27/09/2026 pela persona **Comercial**; atualizado em 04/10/2026. **v5 — nome, assinatura,
+grito e logo aprovados pelo responsável** (decisão 46). Plano de branding na seção 11.
 
 O produto se chama **Trilha**. Desenvolvido e operado por **Infoxtec Tecnologia e Serviços Ltda** —
 CNPJ 04.309.223/0001-96, empresa de pequeno porte (EPP), tributada pelo lucro presumido.
@@ -9,9 +10,11 @@ CNPJ 04.309.223/0001-96, empresa de pequeno porte (EPP), tributada pelo lucro pr
 
 ## 1. O nome, e o que vem com ele
 
-> # Trilha
+> # ∴ Trilha ✓
 >
-> **Do documento à obra, tudo registrado.**
+> **Cada passo conta.**
+>
+> *Trilha em campo, operação em dia.*
 >
 > *Escalas, ponto, documentos e projetos das equipes de campo, na mesma base.*
 
@@ -117,7 +120,8 @@ mais vendável que a outra, porque é a única que se sustenta no segundo mês.
 |---|---|---|---|
 | v1 | Ciente | "a prova de que o time foi avisado" | recusado pelo responsável |
 | v2 | Farol | "Ninguém fica no escuro." | recusado: o escopo mudou |
-| v4 | **Trilha** | **"Do documento à obra, tudo registrado."** | **decidido em 27/09** |
+| v4 | **Trilha** | "Do documento à obra, tudo registrado." | nome decidido em 27/09; o mote segue como proposta |
+| v5 | **Trilha** | assinatura **"Cada passo conta."**, grito **"Trilha em campo, operação em dia."** | **aprovados em 04/10, com a logo** |
 
 **Por que "Ciente" era fraco** — e o erro foi meu: é **semidescritivo**, descreve a ação que o
 produto executa, o que o coloca na categoria mais fraca de proteção de marca ([WIPO](https://www.wipo.int/documents/d/business/docs-es-el-secreto-esta-en-la-marca-cl-es.pdf);
@@ -199,13 +203,20 @@ que entrega é a prova. Cada eixo ganha uma frase verificável no produto:
 
 ## 9. Identidade e aplicação
 
-- **Símbolo:** uma **trilha com marcos** — pontos ligados por um caminho. Não é pégada, não é mapa,
-  não é olho: é caminho registrado. Funciona em ícone pequeno e em favicon.
-- **Cor:** azul-petróleo (operação, confiança) com um **âmbar** reservado ao marco/estado — a mesma
-  lógica do semáforo de status que o painel já usa.
-- **Tipografia:** sem serifa, com número tabular nos horários — o produto é feito de horários.
-- **Onde aparece:** painel (cabeçalho e login), proposta, contrato, dossiê de conformidade e
-  assinatura da mensagem.
+Aprovada em 04/10/2026 (decisão 46); a descrição completa da logo está na seção 1.
+
+- **Símbolo:** o sinal **∴** em três pontos (verde, azul, amarelo): *portanto* — cada passo leva a
+  uma conclusão. Sozinho, é o ícone do navegador e o avatar.
+- **Logo:** ∴ à esquerda, **Trilha** em Montserrat azul, **check verde** depois do nome, assinatura
+  abaixo. Sem sombra, borda nem caixa. Arquivos: `web/public/trilha-logo.svg` e `trilha-icone.svg`.
+- **Cores:** azul `#2563eb` (marca, confiança), verde `#22c55e` (confirmado, em dia), amarelo
+  `#facc15` (atenção, o passo em andamento), cinza `#475569` (texto de apoio). É a mesma lógica do
+  semáforo de status do painel.
+- **Tipografia:** Montserrat (OFL, gratuita) na marca; no painel, a fonte do sistema com número
+  tabular nos horários — o produto é feito de horários.
+- **Onde já aparece (painel 3.7.0 e 3.8.0):** login com a logo completa, cabeçalho com ∴ Trilha ✓
+  Escala, ícone do navegador, tela principal com botões grandes por função.
+- **Ainda não aparece:** site, proposta, contrato, dossiê de conformidade, redes (seção 11).
 - **No WhatsApp, cuidado:** a mensagem chega ao trabalhador do cliente. A assinatura deve ser do
   **cliente contratante**, não do fornecedor — o técnico precisa saber quem o está convocando.
 - **Relação com a Infoxtec:** por ora **"Trilha, by Infoxtec"** — a marca existente dá confiança a
@@ -218,3 +229,23 @@ Ficam fora do nome, da assinatura e do material: "ponto", "checklist", "laudo", 
 "certificado", "oficial do WhatsApp", "monitoramento", "controle total".
 
 A Trilha promete **registrar o caminho** — e é exatamente isso que ela faz.
+
+## 11. Plano de branding — início (04/10/2026)
+
+Ordem sugerida pelo especialista `marca`; cada item só vira peça pública depois de aprovado pelo
+responsável. Toda afirmação de capacidade passa pela matriz de `docs/plano-comercial.md`.
+
+| # | Etapa | Estado | Depende de |
+|---|---|---|---|
+| 1 | Nome, assinatura, grito, logo, cores e fonte | **feito** (04/10) | — |
+| 2 | Marca no painel: login, cabeçalho, ícone, tela principal | **feito** (3.7.0 e 3.8.0, em produção) | 1 |
+| 3 | **Chamada para ação** — simples, sem duplo sentido, verbo no imperativo | próxima | — |
+| 4 | Kit da logo: versão em fundo escuro, monocromática, PNG para WhatsApp e redes, assinatura de e-mail | a fazer | 1 |
+| 5 | Guia rápido de marca (uma página: usos certos e errados, área de respiro, tamanho mínimo) | a fazer | 4 |
+| 6 | Modelo de proposta comercial com a identidade e a seção "O que não está incluso" | a fazer | 3, preço (COM-02) |
+| 7 | Página `infoxtec.com.br/trilha` e apresentação comercial | a fazer | 3, 6 (COM-04) |
+| 8 | Busca e depósito no INPI (classes 9 e 42) antes de a marca circular | a fazer, responsável | seção 7 (COM-06) |
+| 9 | Redes: perfil, avatar e as primeiras peças com o grito | depois | 4, 8 |
+
+O que não muda sem decisão do responsável: as frases aprovadas, a logo, as cores e a relação
+"Trilha, by Infoxtec" (seção 9).

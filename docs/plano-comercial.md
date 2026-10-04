@@ -4,7 +4,9 @@ Escrito em 27/09/2026 pela persona **Comercial** (Diretor Comercial e Branding),
 CTO e o PO já produziram no repositório. Substitui qualquer material de venda anterior.
 
 **Produto:** Trilha · *Cada passo conta.* — nome, narrativa e identidade em
-[`docs/marca.md`](marca.md).
+[`docs/marca.md`](marca.md). **Identidade aprovada em 04/10/2026** (decisão 46): assinatura
+*Trilha. Cada passo conta.*, grito *Trilha em campo, operação em dia.* e logo; a chamada para ação
+está em definição. O plano de branding (kit, proposta, site, INPI) está em `docs/marca.md` §11.
 **Empresa:** Infoxtec Tecnologia e Serviços Ltda — CNPJ 04.309.223/0001-96, EPP, lucro presumido.
 **Endereço do produto:** `www.infoxtec.com.br/trilha`.
 
@@ -329,7 +331,7 @@ dedicada (opção A).
 | "100% conforme à LGPD" | "Controle de acesso por papel, retenção definida para documentos, exclusão a pedido e trilha de auditoria. O que depende do contratante está no anexo de tratamento" |
 | "Jornada CLT garantida" | "Cálculo parametrizado e auditável; a validação jurídica é do RH do cliente" (decisão 7) |
 | "Plataforma completa de gestão de campo" | "Escalas, confirmação, conformidade documental e indicadores. Não fazemos ponto, checklist nem laudo hoje" |
-| "Funciona com qualquer número" | "Cada cliente usa um número dedicado; o canal atual é o WhatsApp Web automatizado e a migração para a API oficial está em curso" |
+| "Funciona com qualquer número" | "Cada cliente usa um número dedicado; o canal atual é o WhatsApp Web automatizado (Evolution) e, na versão SaaS, o cliente poderá escolher a API oficial da Meta" (decisão 45) |
 
 **Regra de ouro da proposta:** toda proposta tem a seção **"O que não está incluso"** com os itens da
 seção 3 que o cliente poderia razoavelmente esperar. A surpresa em 90 dias custa mais que a venda
@@ -532,7 +534,8 @@ técnico ativo (seção 6). Sem isso, "modular" vira promessa de folheto.
 
 O escopo ampliado mudou o brief, e o responsável decidiu: o produto se chama **Trilha** — a trilha da
 pessoa (documento → escala → ponto → obra) e a trilha de auditoria (a prova de cada passo).
-Assinatura, mote e narrativa em `docs/marca.md`.
+Em 04/10 aprovou a assinatura *Cada passo conta.*, o grito *Trilha em campo, operação em dia.* e a
+logo. Narrativa, mote (ainda proposta) e plano de branding em `docs/marca.md`.
 
 ---
 
