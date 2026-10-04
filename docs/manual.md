@@ -28,6 +28,12 @@ Quem tem login mas não está na lista de usuários vê a tela "Acesso não auto
 No topo direito aparecem seu nome e seu papel. O carimbo ao lado do título (ex.: `v1.4 · 22/09 16:40`)
 diz qual versão do painel está no ar — útil quando algo parece não ter atualizado.
 
+### Tela principal
+
+Depois de entrar, o painel abre na **tela principal**: um botão grande para cada função (Agenda,
+Operação, Técnicos, Locais, Habilidades e, para o administrador, Usuários, Roadmap e Checklist
+Sistema). Em cada tela, o botão **← Tela principal** volta para ela; clicar na logo também volta.
+
 ---
 
 ## 2. Agenda
@@ -266,6 +272,11 @@ O Roadmap é a fonte oficial do que está planejado: pedidos novos entram aqui c
 Duas visões: **Kanban** (padrão) e **Visão geral**. No Kanban, arraste o cartão entre Backlog,
 A fazer, Fazendo, Revisão e Feito. Ao cair em Feito, o item vira concluído e ganha a data de
 entrega; em Fazendo, vira em andamento. Clique no cartão para editar qualquer campo.
+
+## 9c. Checklist Sistema (só administrador)
+
+Estado de saúde da plataforma: Supabase, Evolution (WhatsApp), erros em tabelas, Twilio, GitHub e
+Vercel, cada item com ok, atenção ou falha. Ao abrir, a tela já testa tudo; **Testar agora** repete.
 
 ## 10. O que o técnico recebe
 

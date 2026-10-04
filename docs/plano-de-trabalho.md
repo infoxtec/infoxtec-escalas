@@ -189,3 +189,4 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 | 30/09 | Migration 52: índices das 5 chaves estrangeiras; homologação alinhada à produção (trava 20260928235626) | Homologação: plpgsql_check zero; linter sem chave estrangeira sem índice | Aguardando merge e aplicação na produção |
 | 01/10 | Planejada a etapa 24 (esquema privado, backlog 074) | Não se aplica | Na fila |
 | 04/10 | Painel 3.7.0: identidade da marca Trilha (logo, assinatura, grito; decisão 46) | Build e tela de login conferidos; só painel, sem banco | Aguardando merge (publica sozinho no Vercel) |
+| 04/10 | Painel 3.8.0: tela principal com botões grandes, Checklist Sistema, voltar em cada tela | Build e telas conferidos na homologação (login simulado) | Aguardando teste conjunto e merge |

@@ -4,7 +4,7 @@ import { Button, ErrorBox } from '../components/ui'
 import { api, erroMsg } from '../lib/api'
 import type { ChecklistSaude, EstadoSaude, ItemSaude } from '../lib/types'
 
-// Administração do Sistema. Hoje com uma seção só (Checklist); as próximas entram em SECOES.
+// Checklist Sistema. Hoje com uma seção só (Checklist); as próximas entram em SECOES.
 const SECOES = [{ id: 'checklist', label: 'Checklist' }] as const
 type Secao = typeof SECOES[number]['id']
 
@@ -13,16 +13,16 @@ export default function AdminPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <h1 className="text-lg font-semibold">Administração do Sistema</h1>
-        <span className="text-muted-foreground">›</span>
-        <div className="flex gap-1">
+        <h1 className="text-lg font-semibold">Checklist Sistema</h1>
+        {SECOES.length > 1 && <span className="text-muted-foreground">›</span>}
+        {SECOES.length > 1 && <div className="flex gap-1">
           {SECOES.map(s => (
             <button key={s.id} onClick={() => setSecao(s.id)}
               className={`rounded-md px-2.5 py-1 text-sm ${secao === s.id ? 'bg-muted font-medium' : 'text-muted-foreground hover:bg-muted'}`}>
               {s.label}
             </button>
           ))}
-        </div>
+        </div>}
       </div>
       {secao === 'checklist' && <Checklist />}
     </div>

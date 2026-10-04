@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { Award, CalendarDays, LayoutGrid, Settings, Loader2, LogOut, MapPin, Rocket, ShieldCheck, Users } from 'lucide-react'
+import { ArrowLeft, Award, CalendarDays, LayoutGrid, Settings, Loader2, LogOut, MapPin, Rocket, ShieldCheck, Users } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { Button, ErrorBox } from './components/ui'
 import { configurado, supabase, tipoDoLink } from './lib/supabase'
 
@@ -21,7 +22,7 @@ import HabilidadesPage from './pages/HabilidadesPage'
 import RoadmapPage from './pages/RoadmapPage'
 import AdminPage from './pages/AdminPage'
 
-type Aba = 'agenda' | 'operacao' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios' | 'roadmap' | 'admin'
+type Aba = 'inicio' | 'agenda' | 'operacao' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios' | 'roadmap' | 'admin'
 
 // Check verde da marca, que vem logo depois do nome (docs/marca.md)
 function CheckVerde() {
@@ -72,7 +73,7 @@ export default function App() {
 function Painel({ email }: { email: string }) {
   const [acesso, setAcesso] = useState<Acesso | null>(null)
   const [erro, setErro] = useState<string | null>(null)
-  const [aba, setAba] = useState<Aba>('agenda')
+  const [aba, setAba] = useState<Aba>('inicio')
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([])
   const [locais, setLocais] = useState<Local[]>([])
   const [tipos, setTipos] = useState<TipoAtividade[]>([])
@@ -110,16 +111,16 @@ function Painel({ email }: { email: string }) {
 
   const papel = acesso.papel
   const podeEditar = papel === 'admin' || papel === 'gestor'
-  const abas: { id: Aba; label: string; icone: ReactNode }[] = [
-    { id: 'agenda', label: 'Agenda', icone: <CalendarDays className="h-4 w-4" /> },
-    { id: 'operacao', label: 'Operação', icone: <LayoutGrid className="h-4 w-4" /> },
-    { id: 'tecnicos', label: 'Técnicos', icone: <Users className="h-4 w-4" /> },
-    { id: 'locais', label: 'Locais', icone: <MapPin className="h-4 w-4" /> },
-    { id: 'habilidades', label: 'Habilidades', icone: <Award className="h-4 w-4" /> },
+  const abas: { id: Aba; label: string; Icone: LucideIcon }[] = [
+    { id: 'agenda', label: 'Agenda', Icone: CalendarDays },
+    { id: 'operacao', label: 'Operação', Icone: LayoutGrid },
+    { id: 'tecnicos', label: 'Técnicos', Icone: Users },
+    { id: 'locais', label: 'Locais', Icone: MapPin },
+    { id: 'habilidades', label: 'Habilidades', Icone: Award },
     ...(papel === 'admin' ? [
-      { id: 'usuarios' as Aba, label: 'Usuários', icone: <ShieldCheck className="h-4 w-4" /> },
-      { id: 'roadmap' as Aba, label: 'Roadmap', icone: <Rocket className="h-4 w-4" /> },
-      { id: 'admin' as Aba, label: 'Administração do Sistema', icone: <Settings className="h-4 w-4" /> },
+      { id: 'usuarios' as Aba, label: 'Usuários', Icone: ShieldCheck },
+      { id: 'roadmap' as Aba, label: 'Roadmap', Icone: Rocket },
+      { id: 'admin' as Aba, label: 'Checklist Sistema', Icone: Settings },
     ] : []),
   ]
 
@@ -134,7 +135,7 @@ function Painel({ email }: { email: string }) {
       )}
       <header className="sticky top-0 z-40 border-b bg-card/90 backdrop-blur">
         <div className="mx-auto flex h-12 max-w-screen-2xl items-center gap-3 px-4">
-          <div className="flex shrink-0 items-center gap-2">
+          <button onClick={() => setAba('inicio')} title="Tela principal" className="flex shrink-0 items-center gap-2">
             <img src="/trilha-icone.svg" alt="" className="h-6 w-6" />
             <div className="hidden leading-tight sm:block">
               <p className="flex items-center gap-1 text-sm"><span className="font-[Montserrat] font-bold text-[#2563eb]">Trilha</span><CheckVerde /> <span className="font-medium text-muted-foreground">Escala</span></p>
@@ -143,16 +144,7 @@ function Painel({ email }: { email: string }) {
             <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground" title={`Build de ${__APP_BUILD__}`}>
               v{__APP_VERSION__} · {__APP_BUILD__}
             </span>
-          </div>
-          <div className="h-5 w-px bg-border" />
-          <nav className="flex gap-1 overflow-x-auto">
-            {abas.map(a => (
-              <button key={a.id} onClick={() => setAba(a.id)}
-                className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${aba === a.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>
-                {a.icone}<span className="hidden md:inline">{a.label}</span>
-              </button>
-            ))}
-          </nav>
+          </button>
           <div className="flex-1" />
           <div className="hidden text-right leading-tight sm:block">
             <p className="text-xs font-medium">{acesso.nome ?? email}</p>
@@ -163,6 +155,22 @@ function Painel({ email }: { email: string }) {
       </header>
       <main className="mx-auto w-full max-w-screen-2xl flex-1 px-4 py-5">
         {erro && <div className="mb-4"><ErrorBox>{erro}</ErrorBox></div>}
+        {aba === 'inicio' && (
+          <div className="mx-auto grid max-w-4xl grid-cols-2 gap-4 py-4 sm:grid-cols-3 lg:grid-cols-4">
+            {abas.map(a => (
+              <button key={a.id} onClick={() => setAba(a.id)}
+                className="flex aspect-square flex-col items-center justify-center gap-3 rounded-xl border bg-card p-4 text-center shadow-sm transition-colors hover:border-primary hover:bg-primary/5">
+                <a.Icone className="h-12 w-12 text-primary" strokeWidth={1.75} />
+                <span className="text-base font-semibold">{a.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {aba !== 'inicio' && (
+          <Button variant="outline" size="sm" className="mb-4" onClick={() => setAba('inicio')}>
+            <ArrowLeft className="h-4 w-4" /> Tela principal
+          </Button>
+        )}
         {aba === 'agenda' && <AgendaPage tecnicos={tecnicos} locais={locais} tipos={tipos} podeEditar={podeEditar} />}
         {aba === 'operacao' && <OperacaoPage />}
         {aba === 'habilidades' && <HabilidadesPage tecnicos={tecnicos} podeEditar={podeEditar} />}
