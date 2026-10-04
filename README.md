@@ -2,7 +2,7 @@
 
 Gestão de escalas da equipe técnica de campo, com envio e confirmação pelo WhatsApp.
 
-O produto se chama **Trilha** (assinatura em definição). Este repositório é o módulo de
+O produto se chama **Trilha** — *cada passo conta*. Este repositório é o módulo de
 escalas e documentos, que é a base dele; a visão comercial (módulos, pacotes e preço) está no
 [Plano comercial](docs/plano-comercial.md) e a marca na [Marca](docs/marca.md).
 
@@ -173,6 +173,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Painel de controle interno: 47 temas pendentes com referência exata e as avaliações de segurança, infraestrutura e código atualizadas (28/09)
 - [x] Evolution própria na Oracle Cloud, versão 2.4 com botões; produção virada e SEG-01/SEG-02 fechados (28/09)
 - [x] Migration 51 e painel 3.6.0: Administração do Sistema > Checklist, estado de saúde da plataforma (homologação, 29/09)
+- [x] Painel 3.7.0: marca Trilha no painel (logo, assinatura *Cada passo conta.*) e grito *Trilha em campo, operação em dia.* (04/10)
 - [ ] Próximas etapas: ver [docs/plano-de-trabalho.md](docs/plano-de-trabalho.md)
 - [ ] Fluxo por pull request com CI (ver [docs/fluxo-de-desenvolvimento.md](docs/fluxo-de-desenvolvimento.md))
 - [ ] Desligar o painel Retool e remover as funções da bancada de teste

@@ -15,18 +15,32 @@ CNPJ 04.309.223/0001-96, empresa de pequeno porte (EPP), tributada pelo lucro pr
 >
 > *Escalas, ponto, documentos e projetos das equipes de campo, na mesma base.*
 
-**Estado (04/10/2026):** só o **nome Trilha** está aprovado pelo responsável. Assinatura, grito e
-chamada para ação estão **em definição**, com o especialista `marca`. A assinatura que constava aqui
-(*Toda jornada deixa uma trilha.*) **não foi aprovada** e não deve ser usada. Mote e descritor abaixo
-são propostas da persona Comercial, ainda sem aprovação.
+**Estado (04/10/2026):** aprovados pelo responsável o **nome Trilha**, a **assinatura** e o **grito**,
+com análise do especialista `marca` (PNL, psicologia de compra B2B, marketing). A chamada para ação está
+em definição. Mote e descritor abaixo são propostas da persona Comercial, ainda sem aprovação.
+A assinatura antiga (*Toda jornada deixa uma trilha.*) **não foi aprovada** e não deve ser usada.
+
+**Por que estas frases.** *Cada passo conta* tem duplo sentido: **importa** (valor do trabalho de
+cada técnico e gestor) e **é contado, registrado** (a prova de cada etapa, o diferencial do produto);
+é positiva, não promete resultado e fala com a aversão a risco do comprador. *Trilha em campo,
+operação em dia* traz o que a assinatura não tem — agilidade e conformidade: **em dia** é no ritmo
+**e** regularizado (documentos, ASO, NR); "em campo" diz para quem é. Com dois duplos sentidos na
+marca, o restante da comunicação deve ser simples e direto.
 
 Camadas, cada uma para um uso:
 
 | Camada | Texto | Onde é usada |
 |---|---|---|
-| **Assinatura** | *em definição* | marca, site, abertura de proposta |
+| **Assinatura** | *Trilha. Cada passo conta.* | marca, site, abertura de proposta, painel |
+| **Grito** | *Trilha em campo, operação em dia.* | redes, anúncios, eventos |
+| **Chamada para ação** | *em definição* | botões, fechamento de proposta |
 | **Mote** | *Do documento à obra, tudo registrado.* | proposta, apresentação comercial |
 | **Descritor** | *Escalas, ponto, documentos e projetos das equipes de campo, na mesma base.* | quem precisa saber o que é em uma linha |
+
+**Logo (04/10/2026):** `web/public/trilha-icone.svg` (símbolo) e `web/public/trilha-logo.svg` (símbolo
+com nome e assinatura). Três passos que sobem, cada um mais nítido (*cada passo conta*), terminando
+num check verde (*operação em dia*), sobre o azul-marinho da Infoxtec (`#0d1e3c`); verde `#22c55e`.
+O texto da logo completa usa fonte do sistema: para peças impressas, converter em curvas.
 
 **Módulos:** *Trilha Escala* · *Trilha Ponto* · *Trilha Documentos* · *Trilha Projetos*.
 

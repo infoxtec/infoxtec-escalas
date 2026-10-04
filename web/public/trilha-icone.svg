@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Trilha">
+  <!-- Trilha: passos que sobem (cada passo conta) e terminam no check (operação em dia) -->
+  <rect width="64" height="64" rx="14" fill="#0d1e3c"/>
+  <path d="M13 50 C 22 46, 26 40, 31 35 S 41 26, 46 22" fill="none" stroke="#ffffff" stroke-opacity=".18" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 7"/>
+  <circle cx="14" cy="49" r="4.5" fill="#ffffff" fill-opacity=".45"/>
+  <circle cx="24" cy="41" r="4.5" fill="#ffffff" fill-opacity=".7"/>
+  <circle cx="34" cy="33" r="4.5" fill="#ffffff"/>
+  <circle cx="47" cy="21" r="10" fill="#22c55e"/>
+  <path d="M42.2 21.2 l3.3 3.3 l6.3 -6.6" fill="none" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
