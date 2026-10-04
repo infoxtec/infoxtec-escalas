@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Sobe o ambiente de desenvolvimento inteiro com um comando.
 #
+#   ./scripts/ambiente-dev.sh tudo               sobe TUDO: painel homologação (5173) + painel produção (5174)
+#                                                + harness (3080) e confere o servidor da Evolution na Oracle
+#   ./scripts/ambiente-dev.sh servidor           entra no servidor da Oracle (SSH)
+#   ./scripts/ambiente-dev.sh servidor status    confere o servidor sem entrar: serviços, WhatsApp, memória
 #   ./scripts/ambiente-dev.sh iniciar            painel (vite) + harness (dsh web)
 #   ./scripts/ambiente-dev.sh iniciar producao   painel apontando para a produção (dados reais)
 #   ./scripts/ambiente-dev.sh status             o que está no ar, em que porta
@@ -24,6 +28,26 @@ modo="${2:-homologacao}"
 painel() { "$RAIZ/scripts/painel.sh" "$@"; }
 
 porta_aberta() { ss -tln 2>/dev/null | grep -q ":$1 "; }
+
+# Servidor da Evolution (Oracle). Para mudar, crie ~/.infoxtec-dev/servidor.env com
+# SERVIDOR_IP=... e CHAVE_SSH=... (fica fora do Git).
+SERVIDOR_IP="163.176.68.206"
+CHAVE_SSH="$HOME/.ssh/oracle.key"
+[ -f "$ESTADO/servidor.env" ] && . "$ESTADO/servidor.env"
+ssh_servidor() { ssh -i "$CHAVE_SSH" -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new "ubuntu@$SERVIDOR_IP" "$@"; }
+
+servidor_status() {
+  echo "== Servidor da Evolution (Oracle, $SERVIDOR_IP) =="
+  [ -f "$CHAVE_SSH" ] || { echo "Chave SSH não encontrada em $CHAVE_SSH."; return 1; }
+  # A chave-mestra é lida e usada dentro do servidor; nunca passa por esta máquina
+  ssh_servidor -o BatchMode=yes 'cd ~/evolution 2>/dev/null || { echo "pasta ~/evolution não encontrada"; exit 1; }
+    sudo docker compose ps --format "{{.Service}}: {{.State}}"
+    CHAVE=$(grep -oP "^AUTHENTICATION_API_KEY=\K.*" .env)
+    D=$(grep -oP "^DOMINIO=\K.*" .env)
+    printf "WhatsApp: "; curl -s -m 8 "https://$D/instance/connectionState/infoxtec" -H "apikey: $CHAVE" | grep -o "\"state\":\"[a-z]*\"" || echo "sem resposta"
+    free -h | awk "/Mem:/{print \"Memória livre: \" \$7}"
+    uptime -p' || echo "Não consegui entrar no servidor (rede, chave ou servidor desligado)."
+}
 
 # O harness roda de dentro desta pasta para carregar o AGENTS.md/CLAUDE.md do projeto.
 pidfile_harness="$ESTADO/harness.pid"
@@ -130,10 +154,18 @@ desinstalar() {
 }
 
 case "$acao" in
+  tudo)
+    echo "== Painel da homologação ==";  painel iniciar homologacao
+    echo; echo "== Painel da produção (dados reais) =="; painel iniciar producao
+    iniciar_harness
+    echo; status; echo; servidor_status ;;
+  servidor)
+    if [ "$alvo" = "status" ]; then servidor_status
+    else echo "Entrando no servidor. Para sair: exit"; ssh_servidor; fi ;;
   iniciar)  iniciar_painel; iniciar_harness; echo; status ;;
   status)   status ;;
   parar)    parar ;;
   instalar) instalar ;;
   desinstalar) desinstalar ;;
-  *) echo "Ação desconhecida: $acao (use iniciar, status, parar, instalar ou desinstalar)"; exit 1 ;;
+  *) echo "Ação desconhecida: $acao (use tudo, servidor, iniciar, status, parar, instalar ou desinstalar)"; exit 1 ;;
 esac
