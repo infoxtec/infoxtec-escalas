@@ -129,6 +129,18 @@ pull request.
 
 ## Subir tudo com um comando
 
+```bash
+cd ~/infoxtec-escalas && git pull
+./scripts/ambiente-dev.sh tudo               # painel homologação (5173) + painel produção (5174) + harness (3080) + servidor
+./scripts/ambiente-dev.sh servidor           # entra no servidor da Evolution (Oracle)
+./scripts/ambiente-dev.sh servidor status    # confere o servidor sem entrar: serviços, WhatsApp, memória
+```
+
+O endereço do servidor e a chave SSH têm padrão no script (`163.176.68.206`, `~/.ssh/oracle.key`).
+Se mudarem, crie `~/.infoxtec-dev/servidor.env` com `SERVIDOR_IP=` e `CHAVE_SSH=`; fica fora do Git.
+
+### Por partes
+
 Um comando sobe o painel e o harness:
 
 ```bash
