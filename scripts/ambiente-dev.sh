@@ -81,7 +81,7 @@ iniciar_harness() {
     echo "O harness não subiu em 15 s. Últimas linhas do log ($log_harness):"
     tail -n 15 "$log_harness" || true
     rm -f "$pidfile_harness"
-    exit 1
+    return 1
   fi
 }
 
@@ -155,9 +155,13 @@ desinstalar() {
 
 case "$acao" in
   tudo)
-    echo "== Painel da homologação ==";  painel iniciar homologacao
-    echo; echo "== Painel da produção (dados reais) =="; painel iniciar producao
-    iniciar_harness
+    # O que já estiver no ar (por exemplo pelos serviços do systemd) é mantido, e uma falha não
+    # impede os passos seguintes: no fim, o status mostra o que ficou de pé.
+    echo "== Painel da homologação =="
+    if porta_aberta 5173; then echo "Já está no ar em http://localhost:5173"; else painel iniciar homologacao || true; fi
+    echo; echo "== Painel da produção (dados reais) =="
+    if porta_aberta 5174; then echo "Já está no ar em http://localhost:5174"; else painel iniciar producao || true; fi
+    iniciar_harness || true
     echo; status; echo; servidor_status ;;
   servidor)
     if [ "$alvo" = "status" ]; then servidor_status
