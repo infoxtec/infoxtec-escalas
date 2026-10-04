@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Fonte da marca Trilha (Montserrat, licença OFL), servida pelo próprio painel: só o nome usa */
+@font-face { font-family: Montserrat; font-weight: 700; font-display: swap; src: url(/fontes/montserrat-700.woff2) format('woff2'); }
+
 :root {
   --background: 0 0% 100%;
   --foreground: 222 47% 11%;

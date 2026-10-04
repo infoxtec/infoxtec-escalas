@@ -11,19 +11,41 @@ CNPJ 04.309.223/0001-96, empresa de pequeno porte (EPP), tributada pelo lucro pr
 
 > # Trilha
 >
-> ### Toda jornada deixa uma trilha.
->
 > **Do documento à obra, tudo registrado.**
 >
 > *Escalas, ponto, documentos e projetos das equipes de campo, na mesma base.*
 
-Três camadas, para três usos diferentes:
+**Estado (04/10/2026):** aprovados pelo responsável o **nome Trilha**, a **assinatura**, o **grito** e a **logo**,
+com análise do especialista `marca` (PNL, psicologia de compra B2B, marketing). A chamada para ação está
+em definição. Mote e descritor abaixo são propostas da persona Comercial, ainda sem aprovação.
+A assinatura antiga (*Toda jornada deixa uma trilha.*) **não foi aprovada** e não deve ser usada.
+
+**Por que estas frases.** *Cada passo conta* tem duplo sentido: **importa** (valor do trabalho de
+cada técnico e gestor) e **é contado, registrado** (a prova de cada etapa, o diferencial do produto);
+é positiva, não promete resultado e fala com a aversão a risco do comprador. *Trilha em campo,
+operação em dia* traz o que a assinatura não tem — agilidade e conformidade: **em dia** é no ritmo
+**e** regularizado (documentos, ASO, NR); "em campo" diz para quem é. Com dois duplos sentidos na
+marca, o restante da comunicação deve ser simples e direto.
+
+Camadas, cada uma para um uso:
 
 | Camada | Texto | Onde é usada |
 |---|---|---|
-| **Assinatura** | *Toda jornada deixa uma trilha.* | marca, site, abertura de proposta |
+| **Assinatura** | *Trilha. Cada passo conta.* | marca, site, abertura de proposta, painel |
+| **Grito** | *Trilha em campo, operação em dia.* | redes, anúncios, eventos |
+| **Chamada para ação** | *em definição* | botões, fechamento de proposta |
 | **Mote** | *Do documento à obra, tudo registrado.* | proposta, apresentação comercial |
 | **Descritor** | *Escalas, ponto, documentos e projetos das equipes de campo, na mesma base.* | quem precisa saber o que é em uma linha |
+
+**Logo (04/10/2026, definida pelo responsável):** `web/public/trilha-logo.svg` (completa) e
+`web/public/trilha-icone.svg` (símbolo, usado como ícone do navegador). Leitura da esquerda para a direita:
+o sinal **∴** ("portanto": cada passo leva a uma conclusão) em três pontos — verde em cima, azul e
+amarelo embaixo —, o nome **Trilha** e o **check verde** (*operação em dia*); abaixo, a assinatura.
+Sem sombra, sem borda e sem caixa. Fonte **Montserrat** (licença OFL): geométrica e moderna, com
+proporções clássicas; peso 700 no nome e 500 na assinatura. Na logo as letras já estão em curvas, não
+dependem de fonte instalada; o painel serve a própria fonte em `web/public/fontes/`.
+Cores: azul `#2563eb` (nome e ponto), verde `#22c55e` (ponto e check), amarelo `#facc15` (ponto),
+cinza `#475569` (assinatura).
 
 **Módulos:** *Trilha Escala* · *Trilha Ponto* · *Trilha Documentos* · *Trilha Projetos*.
 

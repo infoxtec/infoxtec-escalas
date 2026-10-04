@@ -3,7 +3,7 @@
 Escrito em 27/09/2026 pela persona **Comercial** (Diretor Comercial e Branding), com os dados que o
 CTO e o PO já produziram no repositório. Substitui qualquer material de venda anterior.
 
-**Produto:** Trilha · *Toda jornada deixa uma trilha.* — nome, narrativa e identidade em
+**Produto:** Trilha · *Cada passo conta.* — nome, narrativa e identidade em
 [`docs/marca.md`](marca.md).
 **Empresa:** Infoxtec Tecnologia e Serviços Ltda — CNPJ 04.309.223/0001-96, EPP, lucro presumido.
 **Endereço do produto:** `www.infoxtec.com.br/trilha`.

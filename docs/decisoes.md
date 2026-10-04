@@ -451,3 +451,13 @@ risco da Evolution.
 **Consequência:** o envio precisa de uma camada de canal por cliente (hoje `fn_evo_post` é a porta
 única); entra junto com o multi-tenant (backlog 029). Backlog 027 e 023 deixam de ser "migração" e
 passam a ser a fase SaaS. O custo da API da Meta é do cliente que a escolher.
+
+## 46. Identidade da marca Trilha
+
+**Decisão (responsável, 04/10):** assinatura *Trilha. Cada passo conta.*; grito de campanha *Trilha em
+campo, operação em dia.*; logo com o sinal **∴** em três pontos (verde, azul e amarelo) à esquerda, o
+nome em **Montserrat** azul `#2563eb` e o **check verde** depois do nome, sem sombra, borda nem caixa.
+A chamada para ação segue em definição. Detalhes e razões em `docs/marca.md`.
+**Consequência:** o painel (3.7.0) usa a logo e a assinatura. A fonte é servida pelo próprio painel
+(`web/public/fontes/`), sem chamada ao Google Fonts: nenhum dado do usuário vai a terceiro só para
+desenhar o nome. Frase de marca nova só entra no repositório depois de aprovada pelo responsável.

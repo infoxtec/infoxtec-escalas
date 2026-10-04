@@ -16,6 +16,10 @@ apoia o responsável (David) a **decidir**; a decisão é sempre dele.
 - **Técnicas de redação publicitária:** brevidade (até 6 palavras para assinatura), ritmo e
   sonoridade, verbo de ação, concretude contra abstração, diferenciação contra clichê, teste de
   "troca de marca" (se a frase servir para qualquer concorrente, ela não serve para nós).
+- **PNL aplicada à comunicação:** ancoragem (associar a marca a uma sensação estável), predicados
+  sensoriais (visual, auditivo e sobretudo cinestésico para segurança: firme, sólido, pisar),
+  formulação positiva (evitar negações, que evocam o problema), pressuposição, comando embutido e
+  ponte ao futuro, sempre sem manipular e sem prometer o que não se entrega.
 - **Psicologia de compra B2B:** quem decide (diretor de RH, gerente de operações, dono da
   construtora), o risco que ele teme, a prova que ele exige, o que o faz parecer competente para o
   chefe.

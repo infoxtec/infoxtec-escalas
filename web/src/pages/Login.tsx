@@ -8,15 +8,19 @@ function Moldura({ titulo, children }: { titulo: string; children: React.ReactNo
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-sm overflow-hidden rounded-lg border bg-card shadow-sm">
-        <div className="flex justify-center bg-[#0d1e3c] px-6 py-5">
-          <img src="/logo-infoxtec.png" alt="Infoxtec" className="h-12 w-auto" />
+        <div className="flex justify-center border-b px-6 py-5">
+          <img src="/trilha-logo.svg" alt="Trilha. Cada passo conta." className="h-16 w-auto" />
         </div>
         <div className="p-6">
           <div className="mb-5">
-            <p className="text-sm font-semibold">Escalas</p>
+            <p className="text-sm font-semibold">Trilha Escala</p>
             <p className="text-xs text-muted-foreground">{titulo}</p>
           </div>
           {children}
+          <div className="mt-6 flex items-center justify-center gap-2 border-t pt-4 text-[11px] text-muted-foreground">
+            <span>desenvolvido por</span>
+            <img src="/logo-infoxtec.png" alt="Infoxtec" className="h-5 w-auto rounded bg-[#0d1e3c] px-1 py-0.5" />
+          </div>
         </div>
       </div>
     </div>
