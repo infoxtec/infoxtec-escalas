@@ -96,6 +96,8 @@ marca-se aqui.
 | **COM-08** | Migrar o painel para o Cloudflare Pages | M | permite uso comercial (liga com INF-12) | Claude | 4 h |
 | **COM-09** | Dossiê de conformidade exportável | M | é o que mais vende sozinho | Claude | 2 semanas |
 | **COM-10** | Validar preço e modelo com 3 clientes piloto (item **030**) | M | preço deixa de ser hipótese | responsável | 3 conversas |
+| **COM-11** | Chamada para ação da marca (`docs/marca.md` §11, etapa 3) | M | fecha a identidade verbal; destrava proposta e site | responsável + `marca` | decisão |
+| **COM-12** | Kit da logo e guia rápido de marca (§11, etapas 4 e 5) | B | logo pronta para WhatsApp, e-mail, redes e impresso | Claude | 1 dia |
 
 ---
 
