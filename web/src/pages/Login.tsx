@@ -8,10 +8,10 @@ function Moldura({ titulo, children }: { titulo: string; children: React.ReactNo
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-sm overflow-hidden rounded-lg border bg-card shadow-sm">
-        <div className="flex items-center justify-center gap-3 bg-[#0d1e3c] px-6 py-5 text-white">
+        <div className="flex items-center justify-center gap-3 bg-[#2563eb] px-6 py-5 text-white">
           <img src="/trilha-icone.svg" alt="" className="h-12 w-12" />
           <div className="leading-tight">
-            <p className="text-2xl font-extrabold tracking-tight">Trilha</p>
+            <p className="text-2xl font-extrabold tracking-tight">Trilha<span className="ml-0.5 text-[#4ade80]">∴</span></p>
             <p className="text-xs text-white/70">Cada passo conta.</p>
           </div>
         </div>

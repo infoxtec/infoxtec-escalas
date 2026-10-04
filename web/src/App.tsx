@@ -127,7 +127,7 @@ function Painel({ email }: { email: string }) {
           <div className="flex shrink-0 items-center gap-2">
             <img src="/trilha-icone.svg" alt="" className="h-7 w-7" />
             <div className="hidden leading-tight sm:block">
-              <p className="text-sm font-bold">Trilha <span className="font-medium text-muted-foreground">Escala</span></p>
+              <p className="text-sm font-bold">Trilha<span className="text-[#22c55e]">∴</span> <span className="font-medium text-muted-foreground">Escala</span></p>
               <p className="text-[10px] text-muted-foreground">Cada passo conta.</p>
             </div>
             <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground" title={`Build de ${__APP_BUILD__}`}>

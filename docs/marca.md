@@ -39,8 +39,11 @@ Camadas, cada uma para um uso:
 
 **Logo (04/10/2026):** `web/public/trilha-icone.svg` (símbolo) e `web/public/trilha-logo.svg` (símbolo
 com nome e assinatura). Três passos que sobem, cada um mais nítido (*cada passo conta*), terminando
-num check verde (*operação em dia*), sobre o azul-marinho da Infoxtec (`#0d1e3c`); verde `#22c55e`.
-O texto da logo completa usa fonte do sistema: para peças impressas, converter em curvas.
+num check verde (*operação em dia*), sobre **azul vibrante `#2563eb`**; verde `#22c55e`. Depois do nome,
+o sinal **∴** ("portanto") em verde: cada passo leva a uma conclusão. Na logo o ∴ é desenhado (três
+círculos), não depende de fonte. O texto usa fonte do sistema: para peças impressas, converter em curvas.
+**Opção em estudo, não aprovada:** `web/public/trilha-logo-cromado.svg`, versão cromada 3D em azul,
+para site, apresentação e redes; o painel continua com a versão plana.
 
 **Módulos:** *Trilha Escala* · *Trilha Ponto* · *Trilha Documentos* · *Trilha Projetos*.
 
