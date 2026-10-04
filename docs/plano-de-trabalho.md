@@ -191,3 +191,4 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 | 04/10 | Painel 3.7.0: identidade da marca Trilha (logo, assinatura, grito; decisão 46) | Build e tela de login conferidos; só painel, sem banco | Concluído: PR #50, publicado em 04/10 |
 | 04/10 | Painel 3.8.0: tela principal com botões grandes, Checklist Sistema, voltar em cada tela | Build e telas conferidos na homologação (login simulado); aprovado pelo responsável | Concluído: PR #51, publicado em 04/10 |
 | 04/10 | Documentação da marca v5, plano de branding (`docs/marca.md` §11), plano comercial e temas COM-11/12 | Não se aplica | Concluído |
+| 04/10 | Migrations **51** (Checklist Sistema) e **52** (índices) na produção | Confirmado pelo responsável | **Produção em 01 a 52**; a aba Checklist Sistema passa a funcionar |

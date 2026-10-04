@@ -56,6 +56,32 @@ flowchart LR
 - Quando faltar uma decisão de negócio, **perguntar ao responsável**, com opções e recomendação.
   Não supor.
 
+## Como os agentes atuam (combinado em 04/10/2026)
+
+Dois agentes escrevem neste repositório: o **Claude Code** (`.claude/agents/`) e o **DeepSeek Harness**
+(`.dsh/skills/`). O fluxo abaixo vale para os dois, e existe por causa do incidente de 28–29/09, quando
+uma migration foi aplicada direto nos bancos e travou a entrega seguinte (decisão 44).
+
+| # | Quem | O quê |
+|---|---|---|
+| 0 | agente | `git pull`, e ler `docs/plano-de-trabalho.md` e os PRs/branches abertos **antes** de começar |
+| 1 | agente | branch com o prefixo do autor (`dsh/…` ou `claude/…`) + os arquivos + os testes que não dependem de banco |
+| 2 | agente | **pull request em rascunho**, com o relatório: o que tocou, em qual ambiente e como desfazer, mais o roteiro de teste |
+| 3 | CI | roda sozinho — rascunho também dispara (o CI só dispara em PR e em push na `main`) |
+| 4 | outro agente | revisa — persona **segurança** com veto, quando for banco ou Edge Function |
+| 5 | autor | incorpora a revisão na mesma branch |
+| 6 | autor | marca como pronto: CI verde **e** revisão aprovada |
+| 7 | responsável | aplica na homologação pelo script, e testa |
+| 8 | responsável | merge, aplica na produção pelo script, e testa |
+
+**Os quatro invariantes, sem exceção:**
+
+1. **Nunca SQL em banco nenhum** — nem `select` de conferência, nem `migration repair`, nem `db pull`.
+   Precisa de informação do banco? Peça ao responsável, com o comando pronto e o motivo.
+2. **Nunca mergear**, mesmo com o escopo de token que permite.
+3. **Nunca na `main`** — branch e pull request sempre.
+4. **Todo pacote termina com o relatório** do passo 2.
+
 ## Personas no DeepSeek Harness (DSH)
 
 Desde 27/09 o time também existe para o DSH, que roda na estação Linux com o repositório como
