@@ -23,6 +23,16 @@ import AdminPage from './pages/AdminPage'
 
 type Aba = 'agenda' | 'operacao' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios' | 'roadmap' | 'admin'
 
+// Check verde da marca, que vem logo depois do nome (docs/marca.md)
+function CheckVerde() {
+  return (
+    <svg viewBox="0 0 40 40" className="h-3.5 w-3.5" aria-hidden="true">
+      <circle cx="20" cy="20" r="18" fill="#22c55e" />
+      <path d="M11.5 20.5l6 6l11-12" fill="none" stroke="#fff" strokeWidth="4.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 function Centro({ children }: { children: ReactNode }) {
   return <div className="flex min-h-screen items-center justify-center p-6 text-sm text-muted-foreground">{children}</div>
 }
@@ -125,9 +135,9 @@ function Painel({ email }: { email: string }) {
       <header className="sticky top-0 z-40 border-b bg-card/90 backdrop-blur">
         <div className="mx-auto flex h-12 max-w-screen-2xl items-center gap-3 px-4">
           <div className="flex shrink-0 items-center gap-2">
-            <img src="/trilha-icone.svg" alt="" className="h-7 w-7" />
+            <img src="/trilha-icone.svg" alt="" className="h-6 w-6" />
             <div className="hidden leading-tight sm:block">
-              <p className="text-sm font-bold">Trilha<span className="text-[#22c55e]">∴</span> <span className="font-medium text-muted-foreground">Escala</span></p>
+              <p className="flex items-center gap-1 text-sm"><span className="font-[Montserrat] font-bold text-[#2563eb]">Trilha</span><CheckVerde /> <span className="font-medium text-muted-foreground">Escala</span></p>
               <p className="text-[10px] text-muted-foreground">Cada passo conta.</p>
             </div>
             <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground" title={`Build de ${__APP_BUILD__}`}>

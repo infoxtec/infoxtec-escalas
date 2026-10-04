@@ -37,13 +37,15 @@ Camadas, cada uma para um uso:
 | **Mote** | *Do documento à obra, tudo registrado.* | proposta, apresentação comercial |
 | **Descritor** | *Escalas, ponto, documentos e projetos das equipes de campo, na mesma base.* | quem precisa saber o que é em uma linha |
 
-**Logo (04/10/2026):** `web/public/trilha-icone.svg` (símbolo) e `web/public/trilha-logo.svg` (símbolo
-com nome e assinatura). Três passos que sobem, cada um mais nítido (*cada passo conta*), terminando
-num check verde (*operação em dia*), sobre **azul vibrante `#2563eb`**; verde `#22c55e`. Depois do nome,
-o sinal **∴** ("portanto") em verde: cada passo leva a uma conclusão. Na logo o ∴ é desenhado (três
-círculos), não depende de fonte. O texto usa fonte do sistema: para peças impressas, converter em curvas.
-**Opção em estudo, não aprovada:** `web/public/trilha-logo-cromado.svg`, versão cromada 3D em azul,
-para site, apresentação e redes; o painel continua com a versão plana.
+**Logo (04/10/2026, definida pelo responsável):** `web/public/trilha-logo.svg` (completa) e
+`web/public/trilha-icone.svg` (símbolo, usado como ícone do navegador). Leitura da esquerda para a direita:
+o sinal **∴** ("portanto": cada passo leva a uma conclusão) em três pontos — verde em cima, azul e
+amarelo embaixo —, o nome **Trilha** e o **check verde** (*operação em dia*); abaixo, a assinatura.
+Sem sombra, sem borda e sem caixa. Fonte **Montserrat** (licença OFL): geométrica e moderna, com
+proporções clássicas; peso 700 no nome e 500 na assinatura. Na logo as letras já estão em curvas, não
+dependem de fonte instalada; o painel serve a própria fonte em `web/public/fontes/`.
+Cores: azul `#2563eb` (nome e ponto), verde `#22c55e` (ponto e check), amarelo `#facc15` (ponto),
+cinza `#475569` (assinatura).
 
 **Módulos:** *Trilha Escala* · *Trilha Ponto* · *Trilha Documentos* · *Trilha Projetos*.
 
