@@ -15,7 +15,7 @@ CNPJ 04.309.223/0001-96, empresa de pequeno porte (EPP), tributada pelo lucro pr
 >
 > *Escalas, ponto, documentos e projetos das equipes de campo, na mesma base.*
 
-**Estado (04/10/2026):** aprovados pelo responsável o **nome Trilha**, a **assinatura** e o **grito**,
+**Estado (04/10/2026):** aprovados pelo responsável o **nome Trilha**, a **assinatura**, o **grito** e a **logo**,
 com análise do especialista `marca` (PNL, psicologia de compra B2B, marketing). A chamada para ação está
 em definição. Mote e descritor abaixo são propostas da persona Comercial, ainda sem aprovação.
 A assinatura antiga (*Toda jornada deixa uma trilha.*) **não foi aprovada** e não deve ser usada.

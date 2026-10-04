@@ -1,6 +1,6 @@
 # Manual de uso
 
-Manual do painel **Infoxtec Escalas** — https://infoxtec-escalas.vercel.app
+Manual do painel **Trilha Escala** (Infoxtec) — https://infoxtec-escalas.vercel.app
 
 Cada seção descreve uma tela, o que cada botão faz e o efeito no sistema.
 
