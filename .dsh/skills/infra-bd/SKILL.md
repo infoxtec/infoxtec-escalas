@@ -45,7 +45,7 @@ medido no lugar de opinião.
 
 ```
 Mudança proposta:
-Medição antes:          (ms, MB, linhas — em homologação, transação desfeita)
+Medição antes:          (ms, MB, linhas — consulta pronta para o Claude rodar na homologação, transação desfeita; o DeepSeek não executa SQL, decisão 47)
 Medição depois:
 Plano de volta:         (como desfazer, se não houver, dizer "não há")
 Impacto em cron/setup:  (supabase/setup/cron.sql, config, Vault)

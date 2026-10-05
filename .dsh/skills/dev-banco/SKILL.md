@@ -23,8 +23,9 @@ e o painel é vitrine: ele só chama funções `app_*`.
 - A migration precisa rodar em banco vazio: não depender de dado que só existe na produção.
 - Ao recriar função que já existe, partir da definição atual da homologação, não de migration
   antiga.
-- Depois de aplicar na homologação: `plpgsql_check` em todas as funções, dentro de transação
-  desfeita, exigindo zero erros.
+- **No DeepSeek, nunca SQL em banco nenhum** (decisão 47): você escreve a migration e o teste; quem
+  aplica na homologação e roda o `plpgsql_check` (transação desfeita, zero erros) é o Claude, na
+  revisão do pull request. O CI já roda todas as migrations num banco vazio com `plpgsql_check`.
 
 ## Ordem de leitura antes de escrever
 
@@ -54,9 +55,9 @@ e o painel é vitrine: ele só chama funções `app_*`.
 Migration:            <versão>_<nome>.sql (arquivo novo)
 O que muda:           tabela/coluna/função/view/gatilho/índice
 Permissões:           bloco por laço presente? (sim/não)
-Rodou em banco vazio: (sim/não — como verificou)
-plpgsql_check:        zero erros (sim/não)
-Teste na homologação: (o que foi feito, em transação desfeita)
+Rodou em banco vazio: (CI do pull request — verde/vermelho)
+plpgsql_check:        (CI do pull request; na homologação, pelo Claude na revisão)
+Teste na homologação: (roteiro para o Claude executar, em transação desfeita)
 Reverte como:
 Documentação tocada:  docs/banco-de-dados.md, docs/decisoes.md
 ```
