@@ -40,8 +40,9 @@ decisão em `AGENTS.md` (que não substitui este arquivo — este vence). Há um
 marca, preço, pacote e pelas palavras da proposta, em `docs/plano-comercial.md` e `docs/marca.md`.
 Afirmação comercial só entra em proposta com lastro na matriz de capacidade daquele documento.
 
-O DeepSeek **nunca executa SQL** em banco nenhum, e todo pacote dele passa pela validação e revisão
-do Claude antes de seguir (decisão 47, protocolo em `docs/equipe.md`).
+O DeepSeek **nunca executa SQL que altere** — leitura para diagnóstico é permitida, sempre em
+transação somente-leitura — e todo pacote dele passa pela validação e revisão do Claude antes de
+seguir (decisão 47, protocolo em `docs/equipe.md`).
 
 ## Comandos
 
