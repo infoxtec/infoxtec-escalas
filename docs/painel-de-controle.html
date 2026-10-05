@@ -29,12 +29,14 @@
   .t{background:var(--card);border:1px solid var(--bd);border-left:3px solid var(--bd);border-radius:10px;padding:12px 14px}
   .t.c{border-left-color:var(--crit)}
   .t.m{border-left-color:var(--med)}
+  .t.b{border-left-color:var(--ok)}
   .t.feito{opacity:.5}
   .l1{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
   .id{font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--card2);border:1px solid var(--bd);border-radius:6px;padding:4px 7px;letter-spacing:.4px}
   .sev{font-size:10.5px;font-weight:700;letter-spacing:.5px;padding:3px 7px;border-radius:99px}
   .sev.C{background:rgba(255,93,93,.14);color:var(--crit);border:1px solid rgba(255,93,93,.35)}
   .sev.M{background:rgba(229,161,58,.14);color:var(--med);border:1px solid rgba(229,161,58,.35)}
+  .sev.B{background:rgba(63,185,80,.14);color:var(--ok);border:1px solid rgba(63,185,80,.35)}
   .tag{font-size:11px;color:var(--tx2)}
   .t h3{margin:2px 0 6px;font-size:14.5px}
   .oque{margin:0 0 9px;color:var(--tx2);font-size:13px}
@@ -66,7 +68,7 @@
 <body>
 <header>
   <h1>Painel de controle — Trilha</h1>
-  <div class="sub">Infoxtec Tecnologia e Serviços Ltda · controle interno de correções · atualizado em 28/09/2026 · produção e homologação na migration <b>50</b>, painel <b>3.5.2</b></div>
+  <div class="sub">Infoxtec Tecnologia e Serviços Ltda · controle interno de correções · atualizado em 04/10/2026 · produção e homologação na migration <b>52</b>, painel <b>3.8.0</b></div>
   <div class="aviso"><b>Este não é o produto.</b> É o controle de manutenção: o que falta corrigir, onde exatamente no código, e quem corrige (Deep ou Claude). Suas escolhas ficam salvas neste navegador.</div>
 </header>
 
@@ -77,22 +79,22 @@
   <div class="docs">
     <div class="doc">
       <h4>Produção <span class="tag">zpckrxydqqmmcrphrkxz</span></h4>
-      <p>Migrations <b>01 a 50</b> · três Edge Functions · painel 3.5.2</p>
+      <p>Migrations <b>01 a 52</b> · três Edge Functions · painel <b>3.8.0</b></p>
       <span class="quando">Conferir: <code>select count(*) from supabase_migrations.schema_migrations where version = '20260928020000';</code> → <b>1</b></span>
     </div>
     <div class="doc">
       <h4>Homologação <span class="tag">oruwnlxyvznpigbpjjbx</span></h4>
-      <p>Migrations <b>01 a 50</b> · igual à produção desde 28/09</p>
+      <p>Migrations <b>01 a 52</b> · igual à produção</p>
       <span class="quando">Conferir: a mesma consulta, no projeto de homologação</span>
     </div>
     <div class="doc">
       <h4>Painel no ar</h4>
-      <p>Versão <b>3.5.2</b> — o número aparece no rodapé do painel</p>
+      <p>Versão <b>3.8.0</b> — o número aparece no rodapé do painel</p>
       <span class="quando">Conferir: se o rodapé mostrar outra versão, a Vercel não publicou</span>
     </div>
     <div class="doc">
       <h4>Servidor Evolution <span class="tag">próprio, Oracle Cloud</span></h4>
-      <p>Evolution 2.4.0-rc2 na <code>VM.Standard.E2.1.Micro</code> (São Paulo) · endereço em <code>config.evolution_url</code> (sslip.io)</p>
+      <p>Evolution <b>2.4</b> na <code>VM.Standard.E2.1.Micro</code> (São Paulo) · endereço em <code>config.evolution_url</code> (sslip.io) · 2.3.7 desligada em 30/09</p>
       <span class="quando">Conferir: <code>select fn_evo_get('/instance/connectionState/' || fn_config('evolution_instancia'));</code> → <b>"state":"open"</b> · rotina em <code>evolution-propria.md</code></span>
     </div>
   </div>
@@ -141,11 +143,15 @@ const DOCS = [
 ["Evidências para o cliente","evidencias-seguranca.md","Seis consultas de prova e doze respostas prontas para questionário.","Atualizada: linhas 2, 5 e 9 mudaram com as decisões 40 e 41."],
 ["Rotação de segredos","rotacao-de-segredos.md","Inventário do Vault, cinco fases de troca e o que pode quebrar.","Atualizada: escopo apurado — só dois segredos a rotacionar."],
 ["Plano comercial","plano-comercial.md","O que se vende, para quem, a que preço, portões e metas até 30/12/2026.","Matriz de capacidade ajustada ao que mudou."],
-["Painel de temas","painel-de-temas.md","A mesma lista desta página, em Markdown, dentro do repositório.","SEG-03 fechado; SEG-14 com a parte 1 (tela) e a 2 (estrutura) concluídas."],
+["Painel de temas","painel-de-temas.md","A mesma lista desta página, em Markdown — <b>mexeu num, mexa no outro</b>.","SEG-03 fechado; SEG-14 com a parte 1 (tela) e a 2 (estrutura) concluídas."],
 ["Segurança (referência rápida)","seguranca.md","Camadas, papéis, segredos, LGPD e riscos conhecidos.","Revisado em 28/09: inventário de segredos e riscos atualizados."]
 ];
 
 const CONCLUIDOS = [
+["INF-13", "Consolidação da Evolution numa só versão", "30/09 — etapa 17a: a 2.4 é a única no ar; a 2.3.7 e os aparelhos antigos foram desligados (backlog 073)."],
+["Migration 52 · 30/09", "Índices nas cinco chaves estrangeiras", "O linter do Supabase deixa de apontar chave estrangeira sem índice. Aplicada na produção em 04/10."],
+["Painel 3.8.0 · 04/10", "Tela principal com botões grandes", "Home nova, botão de voltar em todas as telas e a aba renomeada para <b>Checklist Sistema</b> (PR #51)."],
+["Marca v5 · 04/10", "Nome, assinatura, grito e logo aprovados", "Decisão 46: <i>Trilha. Cada passo conta.</i> · grito <i>Trilha em campo, operação em dia.</i> · logo ∴ Trilha ✓ em Montserrat. CTA, mote e descritor seguem em aberto."],
 ["SEG-01 e SEG-02","Chave da Evolution e token do webhook trocados","28/09 — a virada para o servidor próprio gerou chave e token novos (decisão 43). Fecha a janela de exposição de 21/09, a única comprovada."],
 ["INF-02","Monitor externo ligado (healthchecks.io)","28/09 — check com período de 5 min e carência de 5; endereço gravado em <code>config.monitor_ping_url</code>. Prova: dois pings seguidos com corpo <code>OK</code> em <code>net._http_response</code>. Falta o teste do alarme (apagar o valor por 10 min e ver o e-mail chegar)."],
 ["Migration 50 · 28/09","Modo Drive fora da estrutura — em produção","Apaga os vínculos, recria a view e três funções e derruba as colunas <code>origem</code> e <code>url</code> de <code>documentos</code> (decisão 42, PR #25). Painel 3.5.2. Produção e homologação em 01 a 50."],
@@ -161,8 +167,9 @@ const CONCLUIDOS = [
 ];
 
 const TAREFAS = [
+["COM-11", "M", "Comercial", "Chamada para ação da marca", "A identidade verbal fica incompleta sem ela: é o que fecha proposta, site e anúncio. Assinatura e grito já foram aprovados; a chamada, não.", "<b>Onde:</b> docs/marca.md §11 (etapa 3 do plano de branding) · docs/painel-de-temas.md (COM-11)", "responsável + marca", "decisão", "marca.md"],
+["COM-12", "B", "Comercial", "Kit da logo e guia rápido de marca", "A logo está aprovada e em SVG no painel, mas ainda não existe o kit para WhatsApp, e-mail, redes e impresso.", "<b>Onde:</b> web/public/trilha-logo.svg e web/public/trilha-icone.svg · docs/marca.md §11 (etapas 4 e 5) · docs/painel-de-temas.md (COM-12)", "Claude", "1 dia", "marca.md"],
 ["SEG-16","M","Segurança","Manager da Evolution aberto para a internet","A interface de administração responde 200 sem autenticação nenhuma na porta pública (conferido em 28/09). É o alvo de maior valor do servidor: quem entra controla a instância e lê a chave. A API precisa continuar pública, porque é o Supabase que chama e o IP de saída dele não é fixo — então a restrição é por caminho (/manager*), não por servidor.","<b>Onde:</b> https://<endereço>/manager/login (200) · infra/evolution/Caddyfile (matcher por caminho) · docs/evolution-propria.md §\"Higiene pendente no servidor novo\" · a API da instância exige chave: conexãoState sem apikey devolve 401","responsável","30 min","evolution-propria.md"],
-["INF-13","M","Infraestrutura","Consolidar a Evolution numa só versão","A produção roda a 2.4.0-rc2 (container evolution24, banco evolution24) e a 2.3.7 segue no ar como volta, apontada pelo Caddyfile.teste. Depois de alguns dias estável, a 2.3.7 para e o compose fica numa versão só — senão a volta vira a configuração permanente, sem ninguém decidir.","<b>Onde:</b> infra/evolution/docker-compose.yml · infra/evolution/Caddyfile · docs/evolution-propria.md (seção \"Evolution 2.4 em produção\") · no servidor: <code>docker compose ps</code>","Claude + responsável","1 h","evolution-propria.md"],
 ["INF-14","M","Infraestrutura","O endereço da Evolution depende do IP (sslip.io)","O endereço é um sslip.io derivado do IP público do servidor Oracle: não há domínio próprio. Se o IP mudar — parada e religamento da VM, IP efêmero — o config.evolution_url para de resolver e o envio quebra. O monitor (INF-02) avisa, porque a Evolution falhando manda /fail, mas o conserto é manual.","<b>Onde:</b> config.evolution_url · docs/evolution-propria.md §B (\"Endereço, sem DNS próprio\") · IP público da instância no console da Oracle","responsável","30 min","evolution-propria.md"],
 ["INF-01","C","Infraestrutura","Arquivos de documento fora de qualquer cópia","Os 5 anos de guarda declarada não têm rede: o bucket não entra em nenhum backup.","<b>Onde:</b> .github/workflows/backup.yml:9 · .github/workflows/backup.yml:48-50 · docs/operacao.md:194-195 · supabase/setup/documentos.md:14-16","responsável + Claude","2 h","analise-infraestrutura.md §8 P0 #1"],
 ["INF-03","C","Infraestrutura","O backup não devolve o sistema","supabase db dump exclui auth, storage e extensions: restaura e ninguém loga. O teste confere 7 contagens de public.","<b>Onde:</b> .github/workflows/backup.yml:48-50 · .github/workflows/restauracao.yml:57-71 · docs/operacao.md:177-181","Claude + responsável","4 h","analise-infraestrutura.md §4.1 · §8 P1 #3"],
@@ -272,9 +279,9 @@ function render(){
   document.getElementById("lista").innerHTML = lista.map(t=>{
     const [id,sev,area,tema,oque,ref,quem,esforco,doc] = t;
     const e = get(id);
-    return `<div class="t ${sev==="C"?"c":"m"} ${e.feito?"feito":""}">
+    return `<div class="t ${sev==="C"?"c":sev==="M"?"m":"b"} ${e.feito?"feito":""}">
       <div class="l1"><span class="id">${id}</span>
-        <span class="sev ${sev}">${sev==="C"?"CRÍTICO":"MÉDIO"}</span>
+        <span class="sev ${sev}">${sev==="C"?"CRÍTICO":sev==="M"?"MÉDIO":"BAIXO"}</span>
         <span class="tag">${area}</span></div>
       <h3>${tema}</h3>
       <p class="oque">${oque}</p>

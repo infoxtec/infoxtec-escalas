@@ -8,7 +8,13 @@ e o trabalho começa por ele.
 > ficam salvas localmente e o botão *Copiar seleção* devolve a lista pronta para colar aqui.
 
 **Severidade:** **C** = crítico (perda de dado, parada silenciosa, dado pessoal exposto ou bloqueia
-venda) · **M** = médio (risco com mitigação, ou dívida que atrapalha a expansão).
+venda) · **M** = médio (risco com mitigação, ou dívida que atrapalha a expansão) · **B** = baixo
+(cosmético ou de conveniência).
+
+**Esta lista e o [`painel-de-controle.html`](painel-de-controle.html) são a mesma lista.** O Markdown é
+onde se escolhe e se marca; o HTML acrescenta a referência exata de cada tema e o controle de quem
+corrige. **Mexeu num, mexa no outro** — em 04/10 estavam divergindo (COM-11/12 só aqui, INF-13/14 e
+SEG-15/16 só lá).
 
 **Estado:** `[ ]` aberto · `[~]` em andamento · `[x]` feito. Este documento é vivo: fecha-se um tema,
 marca-se aqui.
@@ -21,10 +27,10 @@ marca-se aqui.
 
 | ID | Tema | Quem | Tempo |
 |---|---|---|---|
-| **INF-02** | Criar o monitor no healthchecks.io e preencher `monitor_ping_url` | responsável | 15 min |
+| **DEV-01 + DEV-02** | PR dos defeitos: enviar `tipo`/`teste` e blindar a tela contra erro de render (**a próxima** no painel HTML) | Claude | 1 h |
+| **SEG-16** | Fechar o Manager da Evolution para a internet (por caminho, no Caddy) | responsável | 30 min |
+| **INF-14** | IP reservado ou DNS próprio para o endereço da Evolution | responsável | 30 min |
 | **INF-05** | Rodar o backup à mão e conferir se `PRODUCAO_DB_URL` está em dia | responsável | 5 min |
-| **SEG-13** | Corrigir o inventário de segredos em `docs/seguranca.md` | Claude | 20 min |
-| **DEV-01 + DEV-02** | PR dos defeitos: enviar `tipo`/`teste` e blindar a tela contra erro de render | Claude | 1 h |
 
 ---
 
@@ -33,7 +39,7 @@ marca-se aqui.
 | ID | Tema | Sev | O que resolve | Quem | Esforço |
 |---|---|---|---|---|---|
 | **INF-01** | Arquivos de documento (ASO/NR) **fora de qualquer cópia**, com 5 anos de guarda declarada | **C** | tira do papel a retenção prometida | responsável + Claude | 2 h |
-| **INF-02** | Monitor externo (healthchecks.io) não criado | **C** | Supabase fora e Evolution caída deixam de ser invisíveis | responsável | 15 min |
+| **INF-02** | ~~Monitor externo (healthchecks.io)~~ — **ligado em 28/09**: check de 5 min com carência de 5, endereço em `config.monitor_ping_url`; dois pings com corpo `OK` conferidos | — | — | — | — |
 | **INF-03** | O backup **não devolve o sistema**: sem `auth`, Vault e cron; o teste confere 7 contagens | **C** | restauração que volta a funcionar, e não só os dados | Claude + responsável | 4 h |
 | **INF-04** | Restauração sem o passo de *default privileges* que a CLI exige | **C** | evita devolver `anon`/`authenticated` com privilégio | Claude + responsável | 30 min |
 | **INF-05** | `PRODUCAO_DB_URL` pode estar dessincronizado — backup falhando em silêncio | M | RPO deixa de ser indefinido | responsável | 5 min |
@@ -44,6 +50,8 @@ marca-se aqui.
 | **INF-10** | Aviso de motor parado só dentro da janela 06:00–21:00 | M | parada noturna para de ficar muda ~9 h | Claude | 1 h |
 | **INF-11** | Retenção só em 4 alvos; 6 tabelas crescem para sempre | M | prazos para escalas, respostas, ocorrências e ligações | responsável + Claude | 3 h |
 | **INF-12** | Vercel Hobby proíbe uso comercial | M | destrava vender sem risco de suspensão | Claude + responsável | 4 h |
+| **INF-13** | ~~Consolidar a Evolution numa só versão~~ — **concluído em 30/09** (etapa 17a): 2.4 única, 2.3.7 desligada e aparelhos antigos desconectados | — | — | — | — |
+| **INF-14** | O endereço da Evolution depende do IP (`sslip.io`) | M | IP reservado ou DNS próprio; hoje, IP novo = envio parado | responsável | 30 min |
 
 ## Dev
 
@@ -81,6 +89,8 @@ marca-se aqui.
 | **SEG-11** | Sem trilha de acesso a documento (item 015 do backlog) | M | responde "quem abriu o ASO" | Claude | 3 dias |
 | **SEG-12** | Transferências a terceiros sem registro de base legal | M | fecha a parte de LGPD do contrato | responsável | 1 h |
 | **SEG-13** | ~~`docs/seguranca.md` com inventário de segredos errado~~ — **corrigido em 28/09**: cinco segredos reais, rotação pendente marcada e Retool/xlsx como resolvidos | — | — | — | — |
+| **SEG-15** | Respostas HTTP guardadas fora de qualquer inventário (`net._http_response`) | M | decide-se o prazo em vez de herdar o de fábrica (6 h) | responsável + Claude | 1 h |
+| **SEG-16** | Manager da Evolution aberto para a internet | M | a interface de administração deixa de ser alvo público | responsável | 30 min |
 
 ## Comercial
 
