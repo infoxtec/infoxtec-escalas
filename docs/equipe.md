@@ -76,9 +76,10 @@ uma migration foi aplicada direto nos bancos e travou a entrega seguinte (decis�
 
 **Papéis no banco (decisão 47, cenário A, 05/10/2026):**
 
-- **DeepSeek Harness:** **nunca SQL em banco nenhum** — nem `select` de conferência, nem
-  `migration repair`, nem `db pull`. Precisa de informação do banco? Pede ao Claude ou ao
-  responsável, com o comando pronto e o motivo. Nenhum pacote do DeepSeek segue sem a **validação e a
+- **DeepSeek Harness:** **nunca SQL que altere** (autorizado pelo responsável em 05/10). **Leitura**
+  para diagnóstico é permitida, sempre em transação somente-leitura (`begin read only; … rollback;`),
+  e em produção só metadado: **dado de técnico não se lê**. Escrever, alterar estrutura ou função,
+  `migration repair` e `db pull`: **nunca**. Nenhum pacote do DeepSeek segue sem a **validação e a
   revisão do Claude** registradas no pull request.
 - **Claude Code:** segue o `CLAUDE.md` — aplica na homologação pelo script, roda o `plpgsql_check`,
   e grava direto na produção **só** o backlog (`backlog_itens`). Produção, fora isso, nunca.

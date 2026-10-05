@@ -23,7 +23,8 @@ e o painel é vitrine: ele só chama funções `app_*`.
 - A migration precisa rodar em banco vazio: não depender de dado que só existe na produção.
 - Ao recriar função que já existe, partir da definição atual da homologação, não de migration
   antiga.
-- **No DeepSeek, nunca SQL em banco nenhum** (decisão 47): você escreve a migration e o teste; quem
+- **No DeepSeek, nunca SQL que altere** (decisão 47): leitura em transação somente-leitura é
+  permitida para diagnóstico; escrita nunca. Você escreve a migration e o teste; quem
   aplica na homologação e roda o `plpgsql_check` (transação desfeita, zero erros) é o Claude, na
   revisão do pull request. O CI já roda todas as migrations num banco vazio com `plpgsql_check`.
 

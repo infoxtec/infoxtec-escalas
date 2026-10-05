@@ -471,3 +471,14 @@ consulta, e todo pacote dele só segue com a **validação e a revisão do Claud
 **Por quê:** o incidente de 28–29/09 (decisão 44) mostrou o custo de dois agentes mexendo no banco
 por caminhos diferentes; concentrar a homologação num agente só mantém o histórico de versões igual ao
 repositório. Protocolo em `docs/equipe.md`.
+
+**Atualizado em 05/10, por autorização do responsável:** o DeepSeek **pode consultar** os bancos —
+leitura, para diagnóstico — e continua **proibido de alterar** qualquer coisa, em qualquer ambiente.
+A leitura é sempre dentro de uma **transação somente-leitura** (`begin read only; … rollback;`), que é
+o próprio banco impondo o limite, e não a disciplina do agente. Duas medições de 05/10 ficam
+registradas porque a primeira tentativa não funcionou: `PGOPTIONS='-c
+default_transaction_read_only=on'` **não** é respeitado (a sessão abriu com
+`default_transaction_read_only = off`), enquanto `begin read only` devolve
+`transaction_read_only = on`. Seguem proibidos: escrever, alterar estrutura ou função, `migration
+repair`, `db pull` e despejar dados. Em produção, a leitura continua só de metadado — **dado de
+técnico não se lê** — e a alteração é do responsável, pelo script.
