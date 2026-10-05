@@ -461,3 +461,13 @@ A chamada para ação segue em definição. Detalhes e razões em `docs/marca.md
 **Consequência:** o painel (3.7.0) usa a logo e a assinatura. A fonte é servida pelo próprio painel
 (`web/public/fontes/`), sem chamada ao Google Fonts: nenhum dado do usuário vai a terceiro só para
 desenhar o nome. Frase de marca nova só entra no repositório depois de aprovada pelo responsável.
+
+## 47. Papéis dos agentes no banco (cenário A)
+
+**Decisão (responsável, 05/10):** o **DeepSeek Harness não executa SQL em banco nenhum**, nem
+consulta, e todo pacote dele só segue com a **validação e a revisão do Claude** no pull request. O
+**Claude Code** continua como no `CLAUDE.md`: aplica na homologação pelo script, roda o
+`plpgsql_check` e grava na produção só o backlog. Merge e produção são do responsável.
+**Por quê:** o incidente de 28–29/09 (decisão 44) mostrou o custo de dois agentes mexendo no banco
+por caminhos diferentes; concentrar a homologação num agente só mantém o histórico de versões igual ao
+repositório. Protocolo em `docs/equipe.md`.

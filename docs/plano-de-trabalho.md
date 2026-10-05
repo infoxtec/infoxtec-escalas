@@ -192,3 +192,4 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 | 04/10 | Painel 3.8.0: tela principal com botões grandes, Checklist Sistema, voltar em cada tela | Build e telas conferidos na homologação (login simulado); aprovado pelo responsável | Concluído: PR #51, publicado em 04/10 |
 | 04/10 | Documentação da marca v5, plano de branding (`docs/marca.md` §11), plano comercial e temas COM-11/12 | Não se aplica | Concluído |
 | 04/10 | Migrations **51** (Checklist Sistema) e **52** (índices) na produção | Confirmado pelo responsável | **Produção em 01 a 52**; a aba Checklist Sistema passa a funcionar |
+| 05/10 | Decisão 47 (cenário A): DeepSeek sem SQL e com revisão do Claude; protocolo dos agentes em `docs/equipe.md` | Revisão do Claude no PR #53 | Aguardando merge |

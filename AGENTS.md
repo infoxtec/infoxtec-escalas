@@ -48,6 +48,9 @@ não oficial.
    roteiro (`scripts/aplicar-producao.sh`). A única exceção é o registro no backlog.
    **Nunca aplicar migration ou função direto num banco** (nem na homologação) sem o arquivo no
    repositório: quebra o `db push` de todos depois (decisão 44, 29/09).
+   **No DeepSeek Harness, nunca SQL em banco nenhum** (decisão 47): a homologação é aplicada pelo
+   Claude, e todo pacote do DeepSeek passa pela validação e revisão do Claude antes de seguir.
+   Protocolo completo em `docs/equipe.md` ("Como os agentes atuam").
 5. **Nunca editar migration existente.** Mudança de banco é arquivo novo.
 6. **Nada direto na `main`.** Branch e pull request, sempre. O CI precisa ficar verde.
 7. **SQL sempre com o comando.** Persona que traz instrução de banco entrega o bloco pronto para

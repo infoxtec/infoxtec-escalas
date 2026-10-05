@@ -68,18 +68,26 @@ uma migration foi aplicada direto nos bancos e travou a entrega seguinte (decis�
 | 1 | agente | branch com o prefixo do autor (`dsh/…` ou `claude/…`) + os arquivos + os testes que não dependem de banco |
 | 2 | agente | **pull request em rascunho**, com o relatório: o que tocou, em qual ambiente e como desfazer, mais o roteiro de teste |
 | 3 | CI | roda sozinho — rascunho também dispara (o CI só dispara em PR e em push na `main`) |
-| 4 | outro agente | revisa — persona **segurança** com veto, quando for banco ou Edge Function |
+| 4 | **Claude** | revisa todo pacote do DeepSeek (e o `seguranca` com veto, quando for banco ou Edge Function); pacote do Claude é revisado pelo `seguranca` antes do PR |
 | 5 | autor | incorpora a revisão na mesma branch |
 | 6 | autor | marca como pronto: CI verde **e** revisão aprovada |
-| 7 | responsável | aplica na homologação pelo script, e testa |
+| 7 | Claude + responsável | Claude aplica na homologação pelo script e roda o `plpgsql_check`; os dois testam |
 | 8 | responsável | merge, aplica na produção pelo script, e testa |
 
-**Os quatro invariantes, sem exceção:**
+**Papéis no banco (decisão 47, cenário A, 05/10/2026):**
 
-1. **Nunca SQL em banco nenhum** — nem `select` de conferência, nem `migration repair`, nem `db pull`.
-   Precisa de informação do banco? Peça ao responsável, com o comando pronto e o motivo.
-2. **Nunca mergear**, mesmo com o escopo de token que permite.
-3. **Nunca na `main`** — branch e pull request sempre.
+- **DeepSeek Harness:** **nunca SQL em banco nenhum** — nem `select` de conferência, nem
+  `migration repair`, nem `db pull`. Precisa de informação do banco? Pede ao Claude ou ao
+  responsável, com o comando pronto e o motivo. Nenhum pacote do DeepSeek segue sem a **validação e a
+  revisão do Claude** registradas no pull request.
+- **Claude Code:** segue o `CLAUDE.md` — aplica na homologação pelo script, roda o `plpgsql_check`,
+  e grava direto na produção **só** o backlog (`backlog_itens`). Produção, fora isso, nunca.
+
+**Os invariantes, para os dois agentes:**
+
+1. **Nunca mergear**, mesmo com o escopo de token que permite. Merge é do responsável.
+2. **Nunca na `main`** — branch e pull request sempre.
+3. **Produção só pelo responsável**, com `scripts/aplicar-producao.sh` (exceção: backlog, pelo Claude).
 4. **Todo pacote termina com o relatório** do passo 2.
 
 ## Personas no DeepSeek Harness (DSH)
