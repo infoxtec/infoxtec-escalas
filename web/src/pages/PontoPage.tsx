@@ -12,7 +12,7 @@ const SITUACAO: Record<PontoHoje['situacao'], { label: string; cor: string }> = 
 }
 const CANAL: Record<string, string> = { app: 'App', whatsapp: 'WhatsApp', ura: 'Telefone' }
 
-// Ponto: acompanhamento online (hoje, atualiza sozinho) e histórico das marcações (backlog 090).
+// Registro de Ponto (submenu da Agenda): acompanhamento online (hoje, atualiza sozinho) e histórico das marcações (backlog 090).
 // As marcações são imutáveis; esta tela só lê. Docs: docs/modulo-registro-de-ponto/.
 export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leitura' }) {
   const hoje = hojeBahia()
@@ -65,7 +65,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-base font-semibold">Ponto</h2>
+          <h2 className="text-base font-semibold">Registro de Ponto</h2>
           <p className="text-xs text-muted-foreground">
             Marcações pelo app e pelo WhatsApp, na hora do servidor.{atualizado && ` Atualizado às ${atualizado}.`}
           </p>

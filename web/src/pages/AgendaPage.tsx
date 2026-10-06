@@ -1,11 +1,12 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertCircle, CalendarDays, CheckCircle, Clock, Columns3, Flame, Moon, Percent, Plus, RefreshCw, Upload, UserX } from 'lucide-react'
+import { AlertCircle, CalendarDays, CheckCircle, Clock, Columns3, Flame, Moon, Percent, Plus, RefreshCw, Timer, Upload, UserX } from 'lucide-react'
 import { Button, ErrorBox, Input, Select } from '../components/ui'
 import { SortableTh, useColumnWidths, useSortable } from '../components/SortableTh'
 import EscalaDrawer from '../components/EscalaDrawer'
 import NovaEscalaModal from '../components/NovaEscalaModal'
 import SemEscalaPanel from '../components/SemEscalaPanel'
+import PontoPage from './PontoPage'
 import { api, erroMsg } from '../lib/api'
 import {
   addDays, descricaoJornada, ENVIO_LABEL, formatDate, formatDateTime, formatTime, hojeBahia,
@@ -22,7 +23,7 @@ const RESPOSTA_LABEL: Record<string, string> = {
 
 const LARGURAS = { data: 100, hora: 125, tecnico: 190, local: 170, tarefa: 260, status: 140, envio: 120, resposta: 140 }
 
-export default function AgendaPage({ tecnicos, locais, tipos, podeEditar }: { tecnicos: Tecnico[]; locais: Local[]; tipos: TipoAtividade[]; podeEditar: boolean }) {
+export default function AgendaPage({ tecnicos, locais, tipos, podeEditar, papel }: { tecnicos: Tecnico[]; locais: Local[]; tipos: TipoAtividade[]; podeEditar: boolean; papel: 'admin' | 'gestor' | 'leitura' }) {
   const hoje = hojeBahia()
   const [inicio, setInicio] = useState(hoje)
   const [fim, setFim] = useState(addDays(hoje, 7))
@@ -35,7 +36,7 @@ export default function AgendaPage({ tecnicos, locais, tipos, podeEditar }: { te
   const [selecionada, setSelecionada] = useState<EscalaPainel | null>(null)
   const [nova, setNova] = useState<{ ids?: string[]; data?: string } | null>(null)
   const [versao, setVersao] = useState(0)
-  const [subtela, setSubtela] = useState<'escala' | 'nova' | 'pendentes' | 'importar'>('escala')
+  const [subtela, setSubtela] = useState<'escala' | 'nova' | 'pendentes' | 'importar' | 'ponto'>('escala')
   const [filtroCritica, setFiltroCritica] = useState(false)
 
   const carregar = useCallback(async () => {
@@ -95,7 +96,10 @@ export default function AgendaPage({ tecnicos, locais, tipos, podeEditar }: { te
         {podeEditar && aba('nova', 'Nova Escala', <Plus className="h-4 w-4" />)}
         {aba('pendentes', 'Técnicos sem Escala', <UserX className="h-4 w-4" />)}
         {podeEditar && aba('importar', 'Importar Escala', <Upload className="h-4 w-4" />)}
+        {aba('ponto', 'Registro de Ponto', <Timer className="h-4 w-4" />)}
       </div>
+
+      {subtela === 'ponto' && <PontoPage papel={papel} />}
 
       {subtela === 'nova' && podeEditar && (
         <NovaEscalaModal open embutido onClose={() => { setNova(null); setSubtela('escala') }}
