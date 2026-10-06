@@ -43,6 +43,7 @@ erDiagram
 | `tipo_atividade_requisitos` | Habilidades exigidas por tipo | Define quem é apto |
 | `ligacoes` | Uma linha por ligação da URA | `call_sid` da Twilio, tecla digitada, duração e custo |
 | `documentos` | Arquivos de NR, CNH e ASO | Sem as colunas `origem` e `url`: a migration 50 (decisão 42) removeu o vínculo por link. Todo documento vive no bucket privado |
+| `empresas` | Empregadoras e clientes (CNPJ) | Base do Módulo Registro de Ponto (migration 53) |
 | `backlog_itens` | Backlog do produto exibido na aba Roadmap | Grupos backlog, entrega e dívida; coluna do Kanban e posição |
 
 ### Status da escala
@@ -174,6 +175,65 @@ publicada e o link do GitHub Actions.
 Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `documentos`,
 `tecnico_documentos` e `tipo_atividade_documentos` em `tipo_documento_id`; `tecnico_habilidades` e
 `tipo_atividade_requisitos` em `habilidade_id`. Só estrutura.
+
+### Migration 53 (06/10): Módulo Registro de Ponto — cadastros-base (backlog 080, decisão 48)
+
+- **`empresas`** (nova, RLS sem políticas): CNPJ único com dígito verificador (`fn_cnpj_valido`),
+  razão social, cidade/UF, fuso (`America/Bahia`), `empregadora` (o ponto dos funcionários sai no
+  CNPJ dela). Funções `app_empresas` (todos os papéis) e `app_salvar_empresa` (admin, gestor).
+- **`tecnicos`**: `cpf` (dígito verificador por `fn_cpf_valido`, único), `matricula` (única por
+  empresa), `admissao`, `empresa_id`. **Minimização (revisão do `seguranca`):** a lista de
+  `app_tecnicos` nunca traz o CPF inteiro — admin e gestor recebem `***.982.247-**` (padrão gov.br,
+  sem os dígitos verificadores), leitura recebe nulo; o CPF inteiro só sai por `app_tecnico_cpf`
+  (admin, gestor), chamada ao abrir a ficha. `app_salvar_tecnico` ignora CPF mascarado e só altera um
+  campo novo quando ele vem no pedido. Corrige a data de desligamento, que a tela mandava e a função
+  ignorava. `app_salvar_local` passa a recusar link do Maps que não comece com `http(s)://`.
+- **`locais`**: `latitude`, `longitude` (as duas ou nenhuma), `raio_m` (20 a 5.000, padrão 200) e
+  `cliente_empresa_id`. A área é usada no ponto para sinalizar marcação fora do local.
+- Índices nas três chaves estrangeiras novas.
+
+### Migration 54 (06/10): Módulo Registro de Ponto — marcações (backlog 081, decisão 48)
+
+- **`ponto_marcacoes`** (RLS sem políticas): **só inclusão** — gatilhos recusam update, delete e
+  truncate (`fn_ponto_imutavel`). NSR sequencial por empresa sem lacuna (a linha de `ponto_nsr` fica
+  travada na transação), hora do servidor (`momento`), CPF do momento, tipo (entrada, saída e volta
+  do almoço, saída, início e fim de hora extra), canal (app, WhatsApp, URA), localização obrigatória
+  fora da URA, local de referência (o da escala de hoje; sem escala, o local com área mais perto),
+  distância e `dentro_area` (tolerância: precisão do aparelho, até 100 m). Fora da área é sinalizado,
+  nunca bloqueado. **Hash encadeado** (`fn_ponto_hash`, SHA-256 de todos os campos + hash anterior).
+- **Porta única garantida pelo banco** (revisão do `seguranca`): gatilho `before insert` recusa
+  marcação que não continue a cadeia (NSR seguinte, hash anterior, hash conferido, hora de agora);
+  `ponto_nsr` só avança de um em um; `anon`, `authenticated` e **`service_role`** sem nenhum acesso
+  direto às três tabelas. `origem` guarda só `msg_id`, `call_sid` e `app_versao` (até 2 KB) — nunca
+  o conteúdo da mensagem, porque a tabela não admite descarte antes do prazo.
+- **`ponto_ajustes`**: incluir ou desconsiderar, com motivo (mínimo 10 caracteres) e autor; também só
+  inclusão. A marcação original nunca muda.
+- **`fn_ponto_registrar`** (interna, sem acesso pelo painel): a porta única dos canais; devolve o
+  comprovante (NSR, empresa, CNPJ, nome, CPF, data, hora no fuso da empresa, tipo, local, código de
+  autenticação).
+- **`app_ponto_marcacoes`** (todos os papéis; leitura sem coordenadas, até 62 dias) e
+  **`app_ponto_verificar`** (admin: recalcula a cadeia e aponta lacuna ou hash adulterado).
+- Gatilho em `tecnicos`: técnico com marcação **não pode ser excluído** (guarda de 5 anos).
+- Nenhuma rotina de limpeza toca nestas tabelas. Descarte depois de 5 anos só por migration própria,
+  que desliga o gatilho de forma registrada.
+
+### Migration 55 (07/10): Módulo Registro de Ponto — login do funcionário (backlog 082, decisão 49)
+
+- **`ponto_codigos`** (código de 6 dígitos só como hash; origem WhatsApp ou gestor; tentativas),
+  **`ponto_sessoes`** (hash do token, 12 h, sessão única, `login_origem`), **`ponto_ciencias`**
+  (ciência do aviso de privacidade por versão) e **`ponto_acessos`** (pedidos e tentativas, com IP — `cf-connecting-ip` ou o último
+  endereço do `x-forwarded-for`, nunca o primeiro, que quem chama controla: base dos limites). RLS sem políticas; nenhum papel com acesso direto. Guarda (LGPD, em
+  `fn_limpeza_logs`): códigos 24 h, sessões 90 dias, acessos 30 dias.
+- Limites contra força bruta e disparo em massa: ver decisão 49. Com teto total estourado, só o
+  código do gestor entra, e os supervisores recebem aviso pelo WhatsApp (uma vez por hora,
+  `fn_ponto_alerta_teto`). O gestor que gerou o código fica na sessão e na marcação (`origem.gestor`, e-mail do gestor:
+  dado pessoal guardado 5 anos dentro do hash, com base legal na apuração de fraude no ponto). Erro de
+  login gasta só as tentativas do código de WhatsApp; o código do gestor passa por cima do bloqueio
+  por funcionário e continua sob os limites por IP e total. Parâmetros novos em `config`:
+  `ponto_max_codigos_hora` (60) e `ponto_max_erros_hora` (300).
+- API do funcionário (`anon`): `ponto_pedir_codigo`, `ponto_entrar`, `ponto_sair`, `ponto_eu`,
+  `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
+  `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
 ## Gatilhos em `escalas`
 

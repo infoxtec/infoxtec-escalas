@@ -186,6 +186,8 @@ Cadastro da equipe.
 | **Supervisor** | Recebe os alertas: recusa, falta de resposta, prazo das 18h e documentos vencidos |
 | **Autorização WhatsApp** | **Sem isso o sistema não envia nada para ele.** Registre o aceite antes de ligar |
 | **Data de desligamento** | Inicia a contagem de guarda dos documentos (5 anos) |
+| **CPF** | Identifica o funcionário no registro de ponto. Dado pessoal: só aparece inteiro na ficha de edição (administrador e gestor); o papel *somente leitura* não vê |
+| **Matrícula, Admissão, Empresa empregadora** | Dados do ponto. A matrícula não se repete dentro da mesma empresa |
 | **Habilidades** | Marque o que o técnico sabe fazer e o nível de cada uma. Documentos com validade ficam em Habilidades → Documentos |
 | **Perfil de teste** | Para homologação: recebe mensagens e ligações manuais normalmente, mas fica fora dos indicadores, do painel de pendências, dos alertas e das ligações automáticas |
 | Ativo | Inativo não aparece em novas escalas; o histórico é preservado |
@@ -203,6 +205,26 @@ desmarque **Ativo**.
 
 Nome, cliente, endereço, cidade, referência, contato no local e **link do Google Maps**, que vai
 dentro da mensagem do técnico. Locais inativos somem da seleção de novas escalas.
+
+**Área para o registro de ponto:** latitude, longitude e raio (em metros). O botão **Pegar do link**
+lê as coordenadas do link do Google Maps (o link precisa ter `@-12.97,-38.50`). A marcação de ponto
+feita fora do raio é sinalizada ao gestor, nunca bloqueada. **Empresa cliente** liga o local à empresa
+cadastrada em Empresas.
+
+## 7c. App do ponto (funcionário)
+
+O funcionário abre **`/ponto`** no celular (o mesmo endereço do painel, com `/ponto` no fim), digita o
+CPF e recebe um **código de 6 dígitos no WhatsApp**. Se o WhatsApp não chegar, o gestor gera o código na
+aba Técnicos, no botão da **chave** ao lado do técnico (vale 15 minutos, uma vez só). No primeiro
+acesso aparece o **aviso de privacidade**. Depois, botões grandes: Entrada, Saída para almoço, Volta do
+almoço, Saída, Início e Fim de hora extra — o próximo esperado fica destacado. Cada marcação pede a
+localização e mostra o **comprovante** (NSR, data, hora, empregador, local e código de autenticação).
+Fora da área do local, a marcação vale e o gestor é avisado. Um login novo encerra o anterior.
+
+## 7b. Empresas
+
+Empregadoras (os funcionários batem ponto no CNPJ delas) e clientes (donos dos locais). O CNPJ é
+conferido pelo dígito verificador. Base do Módulo Registro de Ponto.
 
 ---
 

@@ -174,6 +174,8 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Painel de controle interno: 47 temas pendentes com referência exata e as avaliações de segurança, infraestrutura e código atualizadas (28/09)
 - [x] Evolution própria na Oracle Cloud, versão 2.4 com botões; produção virada e SEG-01/SEG-02 fechados (28/09)
 - [x] Migration 51 e painel 3.6.0: Administração do Sistema > Checklist, estado de saúde da plataforma (homologação, 29/09)
+- [ ] Migration 55 e painel 3.10.0: app do ponto do funcionário em `/ponto` — CPF + código no WhatsApp (ou do gestor), sessão única, aviso de privacidade, comprovante (homologação, 07/10)
+- [ ] Migrations 53 e 54 e painel 3.9.0: Módulo Registro de Ponto, F1 — Empresas (CNPJ), CPF/matrícula do funcionário, área do local; marcações só de inclusão com NSR e hash encadeado (homologação, 06/10)
 - [x] Painel 3.8.0: tela principal com botões grandes; "Administração do Sistema" passa a ser **Checklist Sistema**; botão de voltar em cada tela (produção, 04/10)
 - [x] Painel 3.7.0: marca Trilha no painel — logo (∴ em verde, azul e amarelo, nome em Montserrat e check verde), assinatura *Cada passo conta.* — e grito *Trilha em campo, operação em dia.* (produção, decisão 46, 04/10)
 - [x] Marca v5 documentada e plano de branding iniciado: kit da logo, chamada para ação, proposta, site e INPI em `docs/marca.md` §11 (04/10)

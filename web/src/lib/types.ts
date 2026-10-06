@@ -68,12 +68,47 @@ export interface Tecnico {
   id: string; nome: string; telefone_e164: string; funcao: string; equipe: string | null
   is_supervisor: boolean; opt_in: boolean; opt_in_em: string | null; ativo: boolean
   perfil_teste: boolean; desligado_em: string | null; created_at: string
+  cpf: string | null; matricula: string | null; admissao: string | null; empresa_id: string | null
 }
 
 export interface Local {
   id: string; nome: string; cliente: string | null; endereco: string | null; cidade: string | null
   referencia: string | null; link_maps: string | null; contato_local: string | null
   telefone_contato: string | null; ativo: boolean; created_at: string
+  latitude: number | null; longitude: number | null; raio_m: number; cliente_empresa_id: string | null
+}
+
+export interface Empresa {
+  id: string; cnpj: string; razao_social: string; nome_fantasia: string | null; endereco: string | null
+  cidade: string; uf: string; fuso: string; empregadora: boolean; ativo: boolean; created_at: string
+}
+
+// Dígitos verificadores: a mesma regra de fn_cpf_valido / fn_cnpj_valido no banco
+export function cpfValido(v: string): boolean {
+  const c = v.replace(/\D/g, '')
+  if (!/^\d{11}$/.test(c) || /^(\d)\1{10}$/.test(c)) return false
+  const dv = (n: number) => { let s = 0; for (let i = 0; i < n; i++) s += +c[i] * (n + 1 - i); const r = (s * 10) % 11; return r === 10 ? 0 : r }
+  return dv(9) === +c[9] && dv(10) === +c[10]
+}
+export function cnpjValido(v: string): boolean {
+  const c = v.replace(/\D/g, '')
+  if (!/^\d{14}$/.test(c) || /^(\d)\1{13}$/.test(c)) return false
+  const dv = (n: number) => { const p = n === 12 ? [5,4,3,2,9,8,7,6,5,4,3,2] : [6,5,4,3,2,9,8,7,6,5,4,3,2]; let s = 0; for (let i = 0; i < n; i++) s += +c[i] * p[i]; const r = s % 11; return r < 2 ? 0 : 11 - r }
+  return dv(12) === +c[12] && dv(13) === +c[13]
+}
+export function formatCpf(v: string | null): string {
+  if (!v) return ''
+  const c = v.replace(/[^\d*]/g, '')
+  return c.length === 11 ? `${c.slice(0, 3)}.${c.slice(3, 6)}.${c.slice(6, 9)}-${c.slice(9)}` : v
+}
+export function formatCnpj(v: string): string {
+  const c = v.replace(/\D/g, '')
+  return c.length === 14 ? `${c.slice(0, 2)}.${c.slice(2, 5)}.${c.slice(5, 8)}/${c.slice(8, 12)}-${c.slice(12)}` : v
+}
+// Coordenadas a partir do link do Google Maps (formatos "@lat,lng" e "?q=lat,lng")
+export function coordenadasDoLink(link: string): { latitude: number; longitude: number } | null {
+  const m = link.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ?? link.match(/[?&](?:q|query|ll)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/)
+  return m ? { latitude: +(+m[1]).toFixed(6), longitude: +(+m[2]).toFixed(6) } : null
 }
 
 export interface UsuarioPainel {
@@ -273,4 +308,21 @@ export const PRIORIDADE_LABEL: Record<Prioridade, string> = { baixa: 'Baixa', no
 export const PAPEL_LABEL: Record<Papel, string> = { admin: 'Administrador', gestor: 'Gestor', leitura: 'Somente leitura' }
 export const ENVIO_LABEL: Record<string, string> = {
   enfileirada: 'enviando', enviada: 'enviada', entregue: 'entregue', lida: 'lida', falha: 'falha',
+}
+
+// Módulo Registro de Ponto: app do funcionário (/ponto)
+export type PontoTipo = 'entrada' | 'saida_almoco' | 'volta_almoco' | 'saida' | 'inicio_he' | 'fim_he'
+export interface PontoEu {
+  nome: string; empresa: string; ciente: boolean
+  hoje: { nsr: number; tipo: PontoTipo; hora: string; dentro_area: boolean | null }[]
+}
+export interface PontoMarcacao {
+  nsr: number; data: string; hora: string; tipo: PontoTipo; canal: string; local: string | null
+  dentro_area: boolean | null; autenticacao: string
+}
+export interface PontoComprovante {
+  marcacao_id: string; nsr: number; empresa: string; cnpj: string; trabalhador: string; cpf: string
+  data: string; hora: string; tipo: PontoTipo; canal: string; local: string | null
+  dentro_area: boolean | null; distancia_m: number | null; autenticacao: string
+  login_origem: 'whatsapp' | 'gestor' | null
 }

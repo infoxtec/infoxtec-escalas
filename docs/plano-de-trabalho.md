@@ -166,7 +166,7 @@ legalização corre em paralelo; nada vale como ponto oficial antes do parecer, 
 avaliação.
 
 - [ ] **26. Legalização** (076–079): parecer REP-P (Gabriel), convenção coletiva e folha (Andreia), e-CNPJ e INPI, atestado, aviso de privacidade, termo de uso, contrato.
-- [ ] **27. F1 Base de dados** (080–081): empresas, CPF e matrícula, local com área, marcações imutáveis com NSR.
+- [ ] **27. F1 Base de dados** (080–081): empresas, CPF e matrícula, local com área, marcações imutáveis com NSR. *Pacote 1 (080) na homologação em 06/10 (migration 53).* Pendências da revisão do `seguranca` (P3): decidir guarda e anonimização do CPF do desligado (com o Gabriel, item 076); registrar quem alterou CPF ou matrícula, sem gravar o valor (entra com o AFD, 085). Da revisão do pacote 2 (081): **âncora externa da cadeia** — guardar o último hash de cada empresa todo dia fora do Supabase, antes da produção do módulo; **comprovante por canal** — CPF inteiro só no app, mascarado no WhatsApp e na URA, e nunca registrar o comprovante em log (condição do pacote 3); quem chama `fn_ponto_registrar` tira o funcionário da sessão, do telefone conferido ou do PIN, nunca de parâmetro do cliente. Da revisão do pacote 3 (082), para decisão do responsável: **CAPTCHA** (Cloudflare Turnstile, gratuito até certo volume) no pedido de código se houver abuso, e **código de 8 dígitos**; e, P3, um `Content-Security-Policy` no `vercel.json` e servir `/ponto` em subdomínio próprio.
 - [ ] **28. F2 App web do funcionário** (082) e **F3 WhatsApp** (083).
 - [ ] **29. F4 Jornada e espelho** (084) e **F5 AFD e AEJ** (085).
 - [ ] **30. F6 URA de contingência e anti-fraude** (086–087).
@@ -207,3 +207,6 @@ avaliação.
 | 04/10 | Migrations **51** (Checklist Sistema) e **52** (índices) na produção | Confirmado pelo responsável | **Produção em 01 a 52**; a aba Checklist Sistema passa a funcionar |
 | 05/10 | Decisão 47 (cenário A): DeepSeek sem SQL e com revisão do Claude; protocolo dos agentes em `docs/equipe.md` | Revisão do Claude no PR #53 | Aguardando merge |
 | 06/10 | Módulo Registro de Ponto planejado: backlog 075 a 089, decisão 48, pasta `docs/modulo-registro-de-ponto/` | Não se aplica | Aprovado; legalização e F1 a iniciar |
+| 06/10 | Migration 53 + painel 3.9.0: Ponto pacote 1 (empresas, CPF/matrícula, área do local) | Homologação: plpgsql_check zero (97 funções), 14 testes de regra em transação desfeita | Aguardando teste conjunto e ordem |
+| 06/10 | Migration 54: Ponto pacote 2 (marcações imutáveis, NSR por empresa, hash encadeado, ajustes, fn_ponto_registrar) | Homologação: plpgsql_check zero, 14 testes em transação desfeita (NSR 1-2-3, cadeia íntegra, fora da área sinalizado, exclusão bloqueada) | Aguardando teste conjunto e ordem |
+| 07/10 | Migration 55 + painel 3.10.0: Ponto pacote 3 — login do funcionário (CPF + código), sessão única, app `/ponto` com comprovante; decisão 49 | Homologação: plpgsql_check zero, 16 testes do fluxo em transação desfeita; app testado no navegador com respostas simuladas (a rede deste ambiente não alcança o Supabase) | Aguardando teste conjunto e ordem |
