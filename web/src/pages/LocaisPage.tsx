@@ -1,11 +1,12 @@
-import { useState } from 'react'
-import { Columns3, Edit2, ExternalLink, Plus, RefreshCw } from 'lucide-react'
-import { Button, ErrorBox, Field, Input, Modal, ToggleRow } from '../components/ui'
+import { useEffect, useState } from 'react'
+import { Columns3, Crosshair, Edit2, ExternalLink, MapPin, Plus, RefreshCw } from 'lucide-react'
+import { Button, ErrorBox, Field, Input, Modal, Select, ToggleRow } from '../components/ui'
 import { PlainTh, SortableTh, useColumnWidths, useSortable } from '../components/SortableTh'
 import { api, erroMsg } from '../lib/api'
-import type { Local } from '../lib/types'
+import { coordenadasDoLink } from '../lib/types'
+import type { Empresa, Local } from '../lib/types'
 
-const NOVO: Partial<Local> = { nome: '', cliente: '', endereco: '', cidade: 'Salvador', referencia: '', link_maps: '', contato_local: '', telefone_contato: '', ativo: true }
+const NOVO: Partial<Local> = { nome: '', cliente: '', endereco: '', cidade: 'Salvador', referencia: '', link_maps: '', contato_local: '', telefone_contato: '', ativo: true, raio_m: 200 }
 
 export default function LocaisPage({ locais, recarregar, podeEditar }: {
   locais: Local[]; recarregar: () => Promise<void>; podeEditar: boolean
@@ -14,19 +15,29 @@ export default function LocaisPage({ locais, recarregar, podeEditar }: {
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [atualizando, setAtualizando] = useState(false)
+  const [empresas, setEmpresas] = useState<Empresa[]>([])
+  useEffect(() => { api.empresas().then(setEmpresas).catch(() => { /* cadastro funciona sem empresas */ }) }, [])
 
   const { sorted, thProps } = useSortable(locais, {
     nome: l => l.nome, cliente: l => l.cliente, endereco: l => l.endereco, cidade: l => l.cidade,
-    referencia: l => l.referencia, contato: l => l.contato_local, maps: l => !!l.link_maps, ativo: l => l.ativo,
+    referencia: l => l.referencia, contato: l => l.contato_local, maps: l => !!l.link_maps, area: l => l.latitude != null, ativo: l => l.ativo,
   }, { key: 'nome' })
-  const { col, total, restaurarTudo } = useColumnWidths('locais', { nome: 200, cliente: 150, endereco: 280, cidade: 110, referencia: 160, contato: 160, maps: 80, ativo: 80, acoes: 70 })
+  const { col, total, restaurarTudo } = useColumnWidths('locais', { nome: 200, cliente: 150, endereco: 280, cidade: 110, referencia: 160, contato: 160, maps: 80, area: 110, ativo: 80, acoes: 70 })
 
-  const set = (k: keyof Local, v: string | boolean) => setEdit(p => ({ ...p, [k]: v }))
+  const set = (k: keyof Local, v: string | boolean | number | null) => setEdit(p => ({ ...p, [k]: v }))
+  const num = (v: string) => v.trim() === '' ? null : Number(v.replace(',', '.'))
+  const doLink = () => {
+    const c = coordenadasDoLink(edit?.link_maps ?? '')
+    if (c) { setEdit(p => ({ ...p, ...c })); setErro(null) }
+    else setErro('O link não traz coordenadas. Abra o local no Google Maps, copie o link da barra de endereço (com "@-12.97,-38.50") ou digite latitude e longitude.')
+  }
 
   const salvar = async () => {
     if (!edit) return
     setErro(null)
     if (!edit.nome?.trim()) return setErro('Nome é obrigatório.')
+    if ((edit.latitude == null) !== (edit.longitude == null)) return setErro('Informe latitude e longitude juntas.')
+    if (edit.latitude != null && (isNaN(edit.latitude) || isNaN(edit.longitude as number))) return setErro('Latitude e longitude precisam ser números, ex.: -12.977749')
     setSalvando(true)
     try { await api.salvarLocal(edit); await recarregar(); setEdit(null) }
     catch (e) { setErro(erroMsg(e)) }
@@ -58,13 +69,14 @@ export default function LocaisPage({ locais, recarregar, podeEditar }: {
                 <SortableTh {...thProps('referencia')} {...col('referencia')}>Referência</SortableTh>
                 <SortableTh {...thProps('contato')} {...col('contato')}>Contato</SortableTh>
                 <SortableTh {...thProps('maps')} {...col('maps')} align="center">Maps</SortableTh>
+                <SortableTh {...thProps('area')} {...col('area')} align="center">Área do ponto</SortableTh>
                 <SortableTh {...thProps('ativo')} {...col('ativo')} align="center">Ativo</SortableTh>
                 <PlainTh {...col('acoes')} />
               </tr>
             </thead>
             <tbody>
               {sorted.length === 0 ? (
-                <tr><td colSpan={9} className="py-12 text-center text-muted-foreground">Nenhum local cadastrado</td></tr>
+                <tr><td colSpan={10} className="py-12 text-center text-muted-foreground">Nenhum local cadastrado</td></tr>
               ) : sorted.map(l => (
                 <tr key={l.id} className={`border-b last:border-0 hover:bg-muted/30 ${!l.ativo ? 'opacity-50' : ''}`}>
                   <td className="truncate px-3 py-2.5 font-medium" title={l.nome ?? ''}>{l.nome}</td>
@@ -74,6 +86,7 @@ export default function LocaisPage({ locais, recarregar, podeEditar }: {
                   <td className="truncate px-3 py-2.5 text-xs text-muted-foreground" title={l.referencia ?? ''}>{l.referencia ?? '—'}</td>
                   <td className="truncate px-3 py-2.5 text-xs" title={l.contato_local ?? ''}>{l.contato_local ? <div><p>{l.contato_local}</p>{l.telefone_contato && <p className="font-mono text-muted-foreground">{l.telefone_contato}</p>}</div> : '—'}</td>
                   <td className="px-3 py-2.5 text-center">{l.link_maps ? <a href={l.link_maps} target="_blank" rel="noopener noreferrer" className="inline-flex text-primary"><ExternalLink className="h-3.5 w-3.5" /></a> : <span className="text-xs text-muted-foreground">—</span>}</td>
+                  <td className="px-3 py-2.5 text-center text-xs">{l.latitude != null ? <span className="inline-flex items-center gap-1 text-primary" title={`${l.latitude}, ${l.longitude}`}><MapPin className="h-3.5 w-3.5" />{l.raio_m} m</span> : <span className="text-muted-foreground">—</span>}</td>
                   <td className="px-3 py-2.5 text-center"><span className={`inline-block h-2 w-2 rounded-full ${l.ativo ? 'bg-green-500' : 'bg-gray-400'}`} /></td>
                   <td className="px-3 py-2.5 text-right">{podeEditar && <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => { setEdit({ ...l }); setErro(null) }}><Edit2 className="h-3.5 w-3.5" /></Button>}</td>
                 </tr>
@@ -103,6 +116,24 @@ export default function LocaisPage({ locais, recarregar, podeEditar }: {
             <div className="grid grid-cols-2 gap-3">
               <Field label="Contato no local"><Input value={edit.contato_local ?? ''} onChange={e => set('contato_local', e.target.value)} disabled={salvando} /></Field>
               <Field label="Telefone do contato"><Input value={edit.telefone_contato ?? ''} onChange={e => set('telefone_contato', e.target.value)} disabled={salvando} /></Field>
+            </div>
+            <div className="space-y-3 rounded-md border p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Área para o registro de ponto</p>
+                <Button variant="outline" size="sm" onClick={doLink} disabled={salvando || !edit.link_maps}><Crosshair className="h-3.5 w-3.5" /> Pegar do link</Button>
+              </div>
+              <p className="text-xs text-muted-foreground">A marcação feita fora deste raio é sinalizada ao gestor, nunca bloqueada.</p>
+              <div className="grid grid-cols-3 gap-3">
+                <Field label="Latitude"><Input value={edit.latitude ?? ''} placeholder="-12.977749" disabled={salvando} onChange={e => set('latitude', num(e.target.value))} /></Field>
+                <Field label="Longitude"><Input value={edit.longitude ?? ''} placeholder="-38.501630" disabled={salvando} onChange={e => set('longitude', num(e.target.value))} /></Field>
+                <Field label="Raio (m)"><Input type="number" min={20} max={5000} value={edit.raio_m ?? 200} disabled={salvando} onChange={e => set('raio_m', Number(e.target.value) || 200)} /></Field>
+              </div>
+              <Field label="Empresa cliente">
+                <Select className="w-full" value={edit.cliente_empresa_id ?? ''} disabled={salvando} onChange={e => set('cliente_empresa_id', e.target.value || null)}>
+                  <option value="">—</option>
+                  {empresas.filter(e => e.ativo || e.id === edit.cliente_empresa_id).map(e => <option key={e.id} value={e.id}>{e.nome_fantasia || e.razao_social}</option>)}
+                </Select>
+              </Field>
             </div>
             {edit.id && <ToggleRow label="Ativo" checked={!!edit.ativo} onChange={v => set('ativo', v)} disabled={salvando} />}
             {erro && <ErrorBox>{erro}</ErrorBox>}

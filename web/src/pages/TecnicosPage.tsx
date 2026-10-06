@@ -4,8 +4,8 @@ import { Button, Confirm, ErrorBox, Field, Input, Select, Sheet, SuccessBox, Tog
 import { PlainTh, SortableTh, useColumnWidths, useSortable } from '../components/SortableTh'
 import { api, erroMsg } from '../lib/api'
 import { NIVEL_LABEL } from '../lib/types'
-import { telefoneValido } from '../lib/types'
-import type { Habilidade, Nivel, Tecnico, TecnicoHabilidade } from '../lib/types'
+import { cpfValido, formatCpf, telefoneValido } from '../lib/types'
+import type { Empresa, Habilidade, Nivel, Tecnico, TecnicoHabilidade } from '../lib/types'
 
 const NOVO: Partial<Tecnico> = { nome: '', telefone_e164: '', funcao: '', equipe: '', is_supervisor: false, opt_in: false, ativo: true, perfil_teste: false }
 
@@ -21,6 +21,8 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
   const [catalogo, setCatalogo] = useState<Habilidade[]>([])
   const [habilidades, setHabilidades] = useState<TecnicoHabilidade[]>([])
   const [skills, setSkills] = useState<{ habilidade_id: string; nivel: Nivel }[]>([])
+  const [empresas, setEmpresas] = useState<Empresa[]>([])
+  useEffect(() => { api.empresas().then(setEmpresas).catch(() => { /* cadastro funciona sem empresas */ }) }, [])
 
   const carregarHabilidades = useCallback(async () => {
     try {
@@ -31,7 +33,14 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
   useEffect(() => { void carregarHabilidades() }, [carregarHabilidades])
 
   const abrirEdicao = (t: Partial<Tecnico>) => {
-    setEdit(t)
+    // A lista traz o CPF mascarado (ou nada); o completo só vem agora, ao abrir a ficha. Até chegar,
+    // fica a máscara: se salvar antes, o banco ignora CPF com '*' e não apaga o que existe.
+    setEdit({ ...t, cpf: t.cpf ?? '' })
+    if (t.id) {
+      const id = t.id
+      api.tecnicoCpf(id).then(c => setEdit(p => p?.id === id ? { ...p, cpf: formatCpf(c) } : p))
+        .catch(() => setEdit(p => p?.id === id ? { ...p, cpf: t.cpf ?? '' } : p))
+    }
     setSkills(habilidades.filter(h => h.tecnico_id === t.id).map(h => ({ habilidade_id: h.habilidade_id, nivel: h.nivel })))
     setErro(null); setOk(null)
   }
@@ -57,6 +66,7 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
     if (!edit.nome?.trim()) return setErro('Nome é obrigatório.')
     if (!edit.funcao?.trim()) return setErro('Função é obrigatória.')
     if (!telefoneValido(edit.telefone_e164 ?? '')) return setErro('Telefone inválido: somente dígitos com código do país. Ex: 5571981776307')
+    if (edit.cpf && !edit.cpf.includes('*') && !cpfValido(edit.cpf)) return setErro('CPF inválido.')
     setSalvando(true)
     try {
       const id = await api.salvarTecnico(edit)
@@ -154,6 +164,25 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
             </Field>
             <Field label="Função *"><Input value={edit.funcao ?? ''} onChange={e => setEdit(p => ({ ...p, funcao: e.target.value }))} disabled={salvando} placeholder="Ex: Instalador, Cabista" /></Field>
             <Field label="Equipe"><Input value={edit.equipe ?? ''} onChange={e => setEdit(p => ({ ...p, equipe: e.target.value }))} disabled={salvando} /></Field>
+            <hr />
+            <div className="space-y-3">
+              <p className="text-sm font-medium">Dados para o ponto</p>
+              <p className="text-xs text-muted-foreground">Identificam o funcionário no registro de ponto (Portaria 671/2021). O CPF é dado pessoal: só aparece inteiro nesta ficha.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="CPF"><Input value={edit.cpf ?? ''} placeholder="000.000.000-00" maxLength={14} disabled={salvando}
+                  onChange={e => setEdit(p => ({ ...p, cpf: e.target.value }))} /></Field>
+                <Field label="Matrícula"><Input value={edit.matricula ?? ''} disabled={salvando} onChange={e => setEdit(p => ({ ...p, matricula: e.target.value }))} /></Field>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Admissão"><Input type="date" value={edit.admissao ?? ''} disabled={salvando} onChange={e => setEdit(p => ({ ...p, admissao: e.target.value || null }))} /></Field>
+                <Field label="Empresa empregadora">
+                  <Select className="w-full" value={edit.empresa_id ?? ''} disabled={salvando} onChange={e => setEdit(p => ({ ...p, empresa_id: e.target.value || null }))}>
+                    <option value="">—</option>
+                    {empresas.filter(e => e.empregadora && (e.ativo || e.id === edit.empresa_id)).map(e => <option key={e.id} value={e.id}>{e.nome_fantasia || e.razao_social}</option>)}
+                  </Select>
+                </Field>
+              </div>
+            </div>
             <hr />
             <ToggleRow label="Supervisor" description="Recebe os alertas quando um técnico recusa ou não responde."
               checked={!!edit.is_supervisor} onChange={v => setEdit(p => ({ ...p, is_supervisor: v }))} disabled={salvando} />

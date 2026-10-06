@@ -43,6 +43,7 @@ erDiagram
 | `tipo_atividade_requisitos` | Habilidades exigidas por tipo | Define quem é apto |
 | `ligacoes` | Uma linha por ligação da URA | `call_sid` da Twilio, tecla digitada, duração e custo |
 | `documentos` | Arquivos de NR, CNH e ASO | Sem as colunas `origem` e `url`: a migration 50 (decisão 42) removeu o vínculo por link. Todo documento vive no bucket privado |
+| `empresas` | Empregadoras e clientes (CNPJ) | Base do Módulo Registro de Ponto (migration 53) |
 | `backlog_itens` | Backlog do produto exibido na aba Roadmap | Grupos backlog, entrega e dívida; coluna do Kanban e posição |
 
 ### Status da escala
@@ -174,6 +175,22 @@ publicada e o link do GitHub Actions.
 Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `documentos`,
 `tecnico_documentos` e `tipo_atividade_documentos` em `tipo_documento_id`; `tecnico_habilidades` e
 `tipo_atividade_requisitos` em `habilidade_id`. Só estrutura.
+
+### Migration 53 (06/10): Módulo Registro de Ponto — cadastros-base (backlog 080, decisão 48)
+
+- **`empresas`** (nova, RLS sem políticas): CNPJ único com dígito verificador (`fn_cnpj_valido`),
+  razão social, cidade/UF, fuso (`America/Bahia`), `empregadora` (o ponto dos funcionários sai no
+  CNPJ dela). Funções `app_empresas` (todos os papéis) e `app_salvar_empresa` (admin, gestor).
+- **`tecnicos`**: `cpf` (dígito verificador por `fn_cpf_valido`, único), `matricula` (única por
+  empresa), `admissao`, `empresa_id`. **Minimização (revisão do `seguranca`):** a lista de
+  `app_tecnicos` nunca traz o CPF inteiro — admin e gestor recebem `***.982.247-**` (padrão gov.br,
+  sem os dígitos verificadores), leitura recebe nulo; o CPF inteiro só sai por `app_tecnico_cpf`
+  (admin, gestor), chamada ao abrir a ficha. `app_salvar_tecnico` ignora CPF mascarado e só altera um
+  campo novo quando ele vem no pedido. Corrige a data de desligamento, que a tela mandava e a função
+  ignorava. `app_salvar_local` passa a recusar link do Maps que não comece com `http(s)://`.
+- **`locais`**: `latitude`, `longitude` (as duas ou nenhuma), `raio_m` (20 a 5.000, padrão 200) e
+  `cliente_empresa_id`. A área é usada no ponto para sinalizar marcação fora do local.
+- Índices nas três chaves estrangeiras novas.
 
 ## Gatilhos em `escalas`
 

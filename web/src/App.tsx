@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { ArrowLeft, Award, CalendarDays, LayoutGrid, Settings, Loader2, LogOut, MapPin, Rocket, ShieldCheck, Users } from 'lucide-react'
+import { ArrowLeft, Award, Building2, CalendarDays, LayoutGrid, Settings, Loader2, LogOut, MapPin, Rocket, ShieldCheck, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button, ErrorBox } from './components/ui'
 import { configurado, supabase, tipoDoLink } from './lib/supabase'
@@ -21,8 +21,9 @@ import OperacaoPage from './pages/OperacaoPage'
 import HabilidadesPage from './pages/HabilidadesPage'
 import RoadmapPage from './pages/RoadmapPage'
 import AdminPage from './pages/AdminPage'
+import EmpresasPage from './pages/EmpresasPage'
 
-type Aba = 'inicio' | 'agenda' | 'operacao' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios' | 'roadmap' | 'admin'
+type Aba = 'inicio' | 'empresas' | 'agenda' | 'operacao' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios' | 'roadmap' | 'admin'
 
 // Check verde da marca, que vem logo depois do nome (docs/marca.md)
 function CheckVerde() {
@@ -117,6 +118,7 @@ function Painel({ email }: { email: string }) {
     { id: 'tecnicos', label: 'Técnicos', Icone: Users },
     { id: 'locais', label: 'Locais', Icone: MapPin },
     { id: 'habilidades', label: 'Habilidades', Icone: Award },
+    { id: 'empresas', label: 'Empresas', Icone: Building2 },
     ...(papel === 'admin' ? [
       { id: 'usuarios' as Aba, label: 'Usuários', Icone: ShieldCheck },
       { id: 'roadmap' as Aba, label: 'Roadmap', Icone: Rocket },
@@ -175,6 +177,7 @@ function Painel({ email }: { email: string }) {
         {aba === 'operacao' && <OperacaoPage />}
         {aba === 'habilidades' && <HabilidadesPage tecnicos={tecnicos} podeEditar={podeEditar} />}
         {aba === 'tecnicos' && <TecnicosPage tecnicos={tecnicos} recarregar={recarregarCadastros} podeEditar={podeEditar} podeExcluir={papel === 'admin'} />}
+        {aba === 'empresas' && <EmpresasPage podeEditar={podeEditar} />}
         {aba === 'locais' && <LocaisPage locais={locais} recarregar={recarregarCadastros} podeEditar={podeEditar} />}
         {aba === 'usuarios' && papel === 'admin' && <UsuariosPage />}
         {aba === 'roadmap' && papel === 'admin' && <RoadmapPage podeEditar />}

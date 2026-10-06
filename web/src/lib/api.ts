@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao,
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa,
 } from './types'
 
 function traduzir(msg: string): string {
@@ -61,6 +61,9 @@ export const api = {
 
   locais: () => rpc<Local[]>('app_locais'),
   salvarLocal: (l: Partial<Local>) => rpc<string>('app_salvar_local', { p: l }),
+  tecnicoCpf: (id: string) => rpc<string | null>('app_tecnico_cpf', { p_tecnico: id }),
+  empresas: () => rpc<Empresa[]>('app_empresas'),
+  salvarEmpresa: (e: Partial<Empresa>) => rpc<string>('app_salvar_empresa', { p: e }),
 
   pendencias: (data: string) => rpc<Pendencias>('app_pendencias', { p_data: data }),
   simularJornada: (hora: string) => rpc<Jornada>('app_simular_jornada', { p_inicio: hora }),
