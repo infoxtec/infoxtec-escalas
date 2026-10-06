@@ -15,6 +15,9 @@
 -- disparo de WhatsApp em massa); login pelo código do gestor fica marcado na sessão e na marcação, e
 -- o funcionário é avisado; código do gestor não é invalidado por pedido de WhatsApp nem herda erros
 -- anteriores; guarda de códigos (24 h), sessões (90 dias) e acessos (30 dias).
+-- Segunda rodada: IP pelo cf-connecting-ip ou pelo último endereço do x-forwarded-for; com o teto
+-- estourado, o código do gestor continua entrando e os supervisores são avisados; o gestor que gerou
+-- o código vai para a sessão e para a marcação.
 
 -- Tabelas -----------------------------------------------------------------------------------------
 
@@ -43,9 +46,11 @@ create table if not exists ponto_sessoes (
   encerrada_em  timestamptz,
   motivo        text,
   codigo_id     uuid,
+  criado_por    text,
   login_origem  text not null default 'whatsapp' check (login_origem in ('whatsapp', 'gestor'))
 );
 comment on table ponto_sessoes is 'Sessões do app do ponto. Uma ativa por funcionário: novo login encerra a anterior.';
+comment on column ponto_sessoes.criado_por is 'Gestor que gerou o código, quando o login foi por contingência: vai para a marcação (guarda de 5 anos).';
 comment on column ponto_sessoes.login_origem is 'gestor = entrou com código gerado no painel: fica registrado em cada marcação feita na sessão.';
 create index if not exists ponto_sessoes_tecnico_idx on ponto_sessoes (tecnico_id);
 alter table ponto_sessoes enable row level security;
@@ -92,12 +97,40 @@ returns text language sql volatile set search_path = public, extensions as $$
   select lpad((('x' || encode(gen_random_bytes(4), 'hex'))::bit(32)::bigint % 1000000)::text, 6, '0')
 $$;
 
--- IP de quem chama (primeiro endereço do x-forwarded-for que o Supabase repassa)
+-- IP de quem chama. Nunca o primeiro endereço do x-forwarded-for (quem chama escolhe): vale o
+-- cf-connecting-ip, que a borda do Supabase preenche, ou o último endereço, que o proxy acrescenta.
 create or replace function fn_ponto_ip()
 returns text language sql stable set search_path = public, extensions as $$
-  select nullif(trim(split_part(coalesce(
-    current_setting('request.headers', true)::json ->> 'x-forwarded-for', ''), ',', 1)), '')
+  with h as (select current_setting('request.headers', true)::json as j)
+  select coalesce(nullif(trim(j ->> 'cf-connecting-ip'), ''),
+                  nullif(trim((regexp_split_to_array(coalesce(j ->> 'x-forwarded-for', ''), ','))
+                    [array_length(regexp_split_to_array(coalesce(j ->> 'x-forwarded-for', ''), ','), 1)]), ''))
+    from h
 $$;
+
+-- Teto total atingido (ataque ou pico): avisa os supervisores pelo WhatsApp, no máximo uma vez por hora.
+create or replace function fn_ponto_alerta_teto(p_qual text)
+returns void language plpgsql volatile security definer set search_path = public, extensions as $$
+declare
+  s record;
+begin
+  insert into alertas_enviados (tipo, data_ref, enviado_em, enviado, detalhe)
+  values ('ponto_teto_' || p_qual || '_' || to_char(now() at time zone 'America/Bahia', 'HH24'),
+          (now() at time zone 'America/Bahia')::date, now(), true, jsonb_build_object('teto', p_qual))
+  on conflict do nothing;
+  if not found then return; end if;
+  raise warning 'app do ponto: teto de % por hora atingido', p_qual;
+  for s in select telefone_e164 from tecnicos where is_supervisor and ativo and opt_in and not perfil_teste loop
+    begin
+      perform fn_evo_post('/message/sendText/' || fn_config('evolution_instancia'),
+        jsonb_build_object('number', s.telefone_e164,
+          'text', 'Trilha Ponto: o limite de ' || case when p_qual = 'erros' then 'tentativas de login'
+                  else 'códigos por WhatsApp' end || ' por hora foi atingido (possível ataque). '
+                  || 'Enquanto durar, o funcionário entra com o código gerado pelo gestor no painel.'));
+    exception when others then null;
+    end;
+  end loop;
+end $$;
 
 -- Primeira linha de toda função ponto_*: devolve o funcionário da sessão ou recusa.
 create or replace function fn_ponto_sessao(p_token text)
@@ -136,7 +169,7 @@ begin
   end if;
   if (select count(*) from ponto_codigos where origem = 'whatsapp' and created_at > now() - interval '1 hour')
        >= coalesce(fn_config_int('ponto_max_codigos_hora'), 60) then
-    raise warning 'ponto_pedir_codigo: teto de códigos por hora atingido';
+    perform fn_ponto_alerta_teto('codigos');
     return v_resp;
   end if;
   if not fn_cpf_valido(v_cpf) then return v_resp; end if;
@@ -184,16 +217,18 @@ declare
   v_c      record;
   v_desde  timestamptz;
   v_token  text;
+  v_restrito boolean := false;
   v_erro   jsonb := jsonb_build_object('erro', 'Não foi possível entrar. Confira o CPF e o código, ou peça um código novo.');
 begin
+  -- Teto total ou do IP estourado: só o código do gestor entra (ninguém trava a empresa inteira)
   if (select count(*) from ponto_acessos where tipo = 'entrar_erro' and momento > now() - interval '1 hour')
        >= coalesce(fn_config_int('ponto_max_erros_hora'), 300) then
-    raise warning 'ponto_entrar: teto de erros por hora atingido, login suspenso';
-    return v_erro;
+    v_restrito := true;
+    perform fn_ponto_alerta_teto('erros');
   end if;
   if v_ip is not null and (select count(*) from ponto_acessos where ip = v_ip and tipo = 'entrar_erro'
                             and momento > now() - interval '1 hour') >= 20 then
-    return v_erro;
+    v_restrito := true;
   end if;
 
   select t.id, t.nome, e.razao_social, e.nome_fantasia into v_tec
@@ -217,7 +252,7 @@ begin
 
   select * into v_c from ponto_codigos
    where tecnico_id = v_tec.id and usado_em is null and expira_em > clock_timestamp() and tentativas < 5
-     and codigo_hash = fn_sha256(id::text || ':' || v_codigo)
+     and codigo_hash = fn_sha256(id::text || ':' || v_codigo) and (not v_restrito or origem = 'gestor')
    order by created_at desc limit 1 for update;
   if v_c.id is null then
     update ponto_codigos set tentativas = tentativas + 1,
@@ -231,8 +266,8 @@ begin
   update ponto_sessoes set encerrada_em = now(), motivo = 'novo login'
    where tecnico_id = v_tec.id and encerrada_em is null;
   v_token := encode(gen_random_bytes(32), 'hex');
-  insert into ponto_sessoes (tecnico_id, token_hash, expira_em, codigo_id, login_origem)
-  values (v_tec.id, fn_sha256(v_token), now() + interval '12 hours', v_c.id, v_c.origem);
+  insert into ponto_sessoes (tecnico_id, token_hash, expira_em, codigo_id, criado_por, login_origem)
+  values (v_tec.id, fn_sha256(v_token), now() + interval '12 hours', v_c.id, v_c.criado_por, v_c.origem);
   insert into ponto_acessos (tipo, ip, tecnico_id) values ('entrar_ok', v_ip, v_tec.id);
 
   return jsonb_build_object('token', v_token, 'nome', v_tec.nome,
@@ -283,10 +318,11 @@ returns jsonb language plpgsql volatile security definer set search_path = publi
 declare
   v_tec uuid := fn_ponto_sessao(p_token);
   v_login text;
+  v_gestor text;
 begin
-  select login_origem into v_login from ponto_sessoes where token_hash = fn_sha256(p_token);
+  select login_origem, criado_por into v_login, v_gestor from ponto_sessoes where token_hash = fn_sha256(p_token);
   return fn_ponto_registrar(v_tec, p_tipo, 'app', p_lat, p_lng, p_precisao,
-                            jsonb_build_object('app_versao', p_app_versao, 'login_origem', v_login));
+                            jsonb_build_object('app_versao', p_app_versao, 'login_origem', v_login, 'gestor', v_gestor));
 end $$;
 
 create or replace function ponto_minhas_marcacoes(p_token text, p_dias int default 7)
@@ -314,7 +350,8 @@ declare
   v_id    uuid := gen_random_uuid();
 begin
   v_email := app_exigir(array['admin','gestor']);
-  select id, nome, cpf, ativo, opt_in, telefone_e164 into v_tec from tecnicos where id = p_tecnico;
+  select t.id, t.nome, t.cpf, t.ativo, t.opt_in, t.telefone_e164, coalesce(e.fuso, 'America/Bahia') as fuso
+    into v_tec from tecnicos t left join empresas e on e.id = t.empresa_id where t.id = p_tecnico;
   if v_tec.id is null then raise exception 'Técnico não encontrado.'; end if;
   if not v_tec.ativo or v_tec.cpf is null then raise exception 'O técnico precisa estar ativo e com CPF cadastrado.'; end if;
   update ponto_codigos set expira_em = now() where tecnico_id = p_tecnico and usado_em is null and expira_em > now();
@@ -326,7 +363,7 @@ begin
       perform fn_evo_post('/message/sendText/' || fn_config('evolution_instancia'),
         jsonb_build_object('number', v_tec.telefone_e164,
           'text', 'Trilha Ponto: o seu gestor gerou um código de acesso ao seu ponto em ' ||
-                  to_char(now() at time zone 'America/Bahia', 'DD/MM HH24:MI') ||
+                  to_char(now() at time zone v_tec.fuso, 'DD/MM HH24:MI') ||
                   '. Se não foi a seu pedido, avise o RH.'));
     exception when others then
       raise warning 'app_ponto_gerar_codigo: aviso ao funcionário falhou (%)', sqlerrm;
@@ -407,7 +444,7 @@ begin
   -- origem: só identificadores técnicos do canal, nunca conteúdo
   select coalesce(jsonb_object_agg(k, left(v #>> '{}', 120)), '{}'::jsonb) into v_origem
     from jsonb_each(coalesce(p_origem, '{}'::jsonb)) e(k, v)
-   where k in ('msg_id', 'call_sid', 'app_versao', 'login_origem') and jsonb_typeof(v) <> 'null';
+   where k in ('msg_id', 'call_sid', 'app_versao', 'login_origem', 'gestor') and jsonb_typeof(v) <> 'null';
 
   v_m := row(gen_random_uuid(), v_emp.id, v_nsr, p_tecnico, v_tec.cpf, v_agora, p_tipo, p_canal, v_lat, v_lng,
              p_precisao, v_local_id, v_dist, v_dentro, v_escala, v_origem, v_ant, null)::ponto_marcacoes;

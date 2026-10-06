@@ -221,10 +221,12 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
 
 - **`ponto_codigos`** (código de 6 dígitos só como hash; origem WhatsApp ou gestor; tentativas),
   **`ponto_sessoes`** (hash do token, 12 h, sessão única, `login_origem`), **`ponto_ciencias`**
-  (ciência do aviso de privacidade por versão) e **`ponto_acessos`** (pedidos e tentativas, com IP:
-  base dos limites). RLS sem políticas; nenhum papel com acesso direto. Guarda (LGPD, em
+  (ciência do aviso de privacidade por versão) e **`ponto_acessos`** (pedidos e tentativas, com IP — `cf-connecting-ip` ou o último
+  endereço do `x-forwarded-for`, nunca o primeiro, que quem chama controla: base dos limites). RLS sem políticas; nenhum papel com acesso direto. Guarda (LGPD, em
   `fn_limpeza_logs`): códigos 24 h, sessões 90 dias, acessos 30 dias.
-- Limites contra força bruta e disparo em massa: ver decisão 49. Parâmetros novos em `config`:
+- Limites contra força bruta e disparo em massa: ver decisão 49. Com teto total estourado, só o
+  código do gestor entra, e os supervisores recebem aviso pelo WhatsApp (uma vez por hora,
+  `fn_ponto_alerta_teto`). O gestor que gerou o código fica na sessão e na marcação (`origem.gestor`). Parâmetros novos em `config`:
   `ponto_max_codigos_hora` (60) e `ponto_max_erros_hora` (300).
 - API do funcionário (`anon`): `ponto_pedir_codigo`, `ponto_entrar`, `ponto_sair`, `ponto_eu`,
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e

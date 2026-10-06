@@ -19,6 +19,9 @@ confirmar o local de trabalho e prevenir fraude (LGPD, art. 7º, IX — legítim
 avaliação registrada). Não coletamos foto, biometria nem dados do seu aparelho além do necessário
 para o registro.
 
+**Segurança do acesso:** o endereço de internet (IP) de cada pedido de código e de cada tentativa de
+entrada no app fica guardado por 30 dias, só para impedir tentativas de invasão.
+
 **Por quanto tempo:** 5 anos, prazo da prescrição trabalhista; depois os dados são eliminados.
 
 **Quem opera o sistema:** a **Infoxtec Tecnologia e Serviços Ltda**, CNPJ 04.309.223/0001-96, em nome
