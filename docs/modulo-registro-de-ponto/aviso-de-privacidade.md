@@ -17,7 +17,9 @@ momento da marcação**.
 **Localização:** coletada **somente quando você bate o ponto**, nunca de forma contínua. Serve para
 confirmar o local de trabalho e prevenir fraude (LGPD, art. 7º, IX — legítimo interesse, com
 avaliação registrada). Não coletamos foto, biometria nem dados do seu aparelho além do necessário
-para o registro.
+para o registro. Para mostrar ao gestor o **bairro e a cidade** da marcação, a localização
+**arredondada (cerca de 100 metros)**, sem o seu nome, CPF ou qualquer dado que identifique você, é
+consultada no serviço público do OpenStreetMap (Nominatim), que fica fora do Brasil (Reino Unido).
 
 **Segurança do acesso:** o endereço de internet (IP) de cada pedido de código e de cada tentativa de
 entrada no app fica guardado por 30 dias, só para impedir tentativas de invasão.

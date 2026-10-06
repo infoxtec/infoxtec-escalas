@@ -235,6 +235,14 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 58 (08/10): bairro e cidade das marcações (decisão 50)
+
+- **`ponto_geo`**: bairro, cidade e UF por coordenada arredondada em 3 casas (~110 m), vindos do
+  Nominatim/OpenStreetMap. RLS sem políticas. A marcação não muda.
+- **`fn_ponto_geo_processar`** (pg_cron a cada minuto, só na produção): lê as respostas, enfileira as
+  coordenadas novas e envia uma consulta por execução. Parâmetro `geocodificacao_url` (vazio desliga).
+- **`app_ponto_geo(de, até, técnico)`**: bairro e cidade de cada marcação do período, para o painel.
+
 ### Migration 57 (08/10): escala exige local
 
 - Gatilho **`trg_escalas_exige_local`** (`fn_escala_exige_local`): inserir escala sem local, ou
