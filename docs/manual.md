@@ -221,8 +221,9 @@ almoço, Saída, Início e Fim de hora extra — o próximo esperado fica destac
 localização e mostra o **comprovante** (NSR, data, hora, empregador, local e código de autenticação).
 Fora da área do local, a marcação vale e o gestor é avisado. Um login novo encerra o anterior.
 
-**Pelo WhatsApp** (número da Infoxtec): o funcionário escreve **ponto** e responde o número da marcação
-(ou escreve direto *entrada*, *almoço*, *volta*, *saída* ou *HE*). Depois manda a **localização atual**
+**Pelo WhatsApp** (número da Infoxtec): o funcionário escreve **ponto**, toca num dos **botões** (as três
+marcações mais prováveis) ou responde o número da marcação no menu (1 a 6; *0* cancela). Resposta que
+não é opção válida faz o menu voltar. Também pode escrever direto *entrada*, *almoço*, *volta*, *saída* ou *HE*. Depois manda a **localização atual**
 (📎 → Localização → *Enviar localização atual*) e recebe o comprovante. Lugar escolhido no mapa não
 vale. Quem marcou entrada e não saiu para o almoço recebe um lembrete amigável a partir do meio-dia.
 

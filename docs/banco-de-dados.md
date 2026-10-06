@@ -235,6 +235,17 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 59 (08/10): menu do ponto com botões e volta ao menu
+
+- **`fn_ponto_menu`** abre a conversa e manda o menu: até **3 botões** (limite do WhatsApp; as
+  marcações mais prováveis por **`fn_ponto_opcoes`**, a sugerida primeiro) e, no mesmo texto, o menu
+  numerado de 1 a 6 e *0* Cancelar — que vale sempre, mesmo se os botões não aparecerem
+  (`usar_botoes` = false manda só o texto).
+- **`fn_ponto_wh`** aceita a resposta de botão `ponto:<tipo>`; dentro da conversa, resposta inválida
+  volta para o menu (sem estender os 10 minutos) e *0*/cancelar encerra. Mensagem que cita outra,
+  botão de outro fluxo, resposta típica de escala (sim, ok, 1, 2, problema) e detalhe de ocorrência
+  aberta seguem para as escalas.
+
 ### Migration 58 (08/10): bairro e cidade das marcações (decisão 50)
 
 - **`ponto_geo`**: bairro, cidade e UF por coordenada arredondada em 3 casas (~110 m), vindos do
