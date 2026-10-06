@@ -242,12 +242,11 @@ begin
   -- uma tentativa por vez por funcionário: sem corrida entre requisições paralelas
   perform pg_advisory_xact_lock(hashtextextended(v_tec.id::text, 0));
 
-  -- erros contam a partir do último código do gestor (que serve justamente para destravar)
+  -- 10 erros na hora (contados depois do último código do gestor): só o código do gestor entra
   select max(created_at) into v_desde from ponto_codigos where tecnico_id = v_tec.id and origem = 'gestor';
   if (select count(*) from ponto_acessos where tecnico_id = v_tec.id and tipo = 'entrar_erro'
         and momento > greatest(now() - interval '1 hour', coalesce(v_desde, '-infinity'))) >= 10 then
-    insert into ponto_acessos (tipo, ip, tecnico_id) values ('entrar_erro', v_ip, v_tec.id);
-    return v_erro;
+    v_restrito := true;
   end if;
 
   select * into v_c from ponto_codigos
@@ -255,9 +254,11 @@ begin
      and codigo_hash = fn_sha256(id::text || ':' || v_codigo) and (not v_restrito or origem = 'gestor')
    order by created_at desc limit 1 for update;
   if v_c.id is null then
+    -- erro gasta as tentativas só do código de WhatsApp: ninguém esgota o código do gestor de fora
+    -- (ele vale 15 min e continua sob os limites por IP e total)
     update ponto_codigos set tentativas = tentativas + 1,
            expira_em = case when tentativas + 1 >= 5 then now() else expira_em end
-     where tecnico_id = v_tec.id and usado_em is null and expira_em > clock_timestamp();
+     where tecnico_id = v_tec.id and origem = 'whatsapp' and usado_em is null and expira_em > clock_timestamp();
     insert into ponto_acessos (tipo, ip, tecnico_id) values ('entrar_erro', v_ip, v_tec.id);
     return v_erro;
   end if;

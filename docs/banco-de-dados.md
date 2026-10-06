@@ -226,7 +226,10 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `fn_limpeza_logs`): códigos 24 h, sessões 90 dias, acessos 30 dias.
 - Limites contra força bruta e disparo em massa: ver decisão 49. Com teto total estourado, só o
   código do gestor entra, e os supervisores recebem aviso pelo WhatsApp (uma vez por hora,
-  `fn_ponto_alerta_teto`). O gestor que gerou o código fica na sessão e na marcação (`origem.gestor`). Parâmetros novos em `config`:
+  `fn_ponto_alerta_teto`). O gestor que gerou o código fica na sessão e na marcação (`origem.gestor`, e-mail do gestor:
+  dado pessoal guardado 5 anos dentro do hash, com base legal na apuração de fraude no ponto). Erro de
+  login gasta só as tentativas do código de WhatsApp; o código do gestor passa por cima do bloqueio
+  por funcionário e continua sob os limites por IP e total. Parâmetros novos em `config`:
   `ponto_max_codigos_hora` (60) e `ponto_max_erros_hora` (300).
 - API do funcionário (`anon`): `ponto_pedir_codigo`, `ponto_entrar`, `ponto_sair`, `ponto_eu`,
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
