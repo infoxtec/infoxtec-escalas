@@ -159,6 +159,19 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 - [x] **24. Motivo de recusa estruturado e tempo de resposta** (backlog 064). *Na produção desde 28/09 (migrations 47 e 48, painel 3.5, PR #12) — e o motivo de saúde saiu do sistema na migration 49 (decisão 40).* (fase 0 de [agente-ia.md](agente-ia.md)). Base dos indicadores: sem ela, cada semana é dado perdido.
 - [x] **25. Editar e reagendar escala** (backlog 065). *Na produção desde 28/09 (migrations 47 e 48, painel 3.5, PR #12)*, com "substituir técnico" depois de uma recusa.
 
+### Bloco 10: Módulo Registro de Ponto (backlog 075 a 089, decisão 48)
+
+Plano completo em [modulo-registro-de-ponto/plano.md](modulo-registro-de-ponto/plano.md). A
+legalização corre em paralelo; nada vale como ponto oficial antes do parecer, do INPI e de 30 dias de
+avaliação.
+
+- [ ] **26. Legalização** (076–079): parecer REP-P (Gabriel), convenção coletiva e folha (Andreia), e-CNPJ e INPI, atestado, aviso de privacidade, termo de uso, contrato.
+- [ ] **27. F1 Base de dados** (080–081): empresas, CPF e matrícula, local com área, marcações imutáveis com NSR.
+- [ ] **28. F2 App web do funcionário** (082) e **F3 WhatsApp** (083).
+- [ ] **29. F4 Jornada e espelho** (084) e **F5 AFD e AEJ** (085).
+- [ ] **30. F6 URA de contingência e anti-fraude** (086–087).
+- [ ] **31. F7 Avaliação de 30 dias na Infoxtec** (088) e **F8 venda** (089).
+
 ## Registro
 
 | Data | Etapa | Homologação | Produção |
@@ -193,3 +206,4 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 | 04/10 | Documentação da marca v5, plano de branding (`docs/marca.md` §11), plano comercial e temas COM-11/12 | Não se aplica | Concluído |
 | 04/10 | Migrations **51** (Checklist Sistema) e **52** (índices) na produção | Confirmado pelo responsável | **Produção em 01 a 52**; a aba Checklist Sistema passa a funcionar |
 | 05/10 | Decisão 47 (cenário A): DeepSeek sem SQL e com revisão do Claude; protocolo dos agentes em `docs/equipe.md` | Revisão do Claude no PR #53 | Aguardando merge |
+| 06/10 | Módulo Registro de Ponto planejado: backlog 075 a 089, decisão 48, pasta `docs/modulo-registro-de-ponto/` | Não se aplica | Aprovado; legalização e F1 a iniciar |
