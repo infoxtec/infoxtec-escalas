@@ -67,11 +67,12 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
     if (!data || !hora) return setErro('Informe data e hora de início.')
     if (dataNoPassado) return setErro('A data não pode ser anterior a hoje.')
     if (horaNoPassado) return setErro(`A escala precisa começar pelo menos 5 minutos à frente. O mais cedo hoje é ${horaMinima}.`)
+    if (!local) return setErro('Escolha o local. Escala sem local não é enviada.')
     if (!tarefa.trim()) return setErro('Descreva a tarefa.')
     setSalvando(true)
     try {
       const r = await api.criarEscalas({
-        tecnicos: ids, local: local || null, data, hora, tarefa: tarefa.trim(),
+        tecnicos: ids, local, data, hora, tarefa: tarefa.trim(),
         duracao: 480, prioridade, enviar, // duracao e recalculada pelo banco (jornada CLT)
       })
       onSuccess()
@@ -140,9 +141,9 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
               </div>
             </div>
           )}
-          <Field label="Local">
+          <Field label="Local *">
             <Select value={local} onChange={e => setLocal(e.target.value)} disabled={salvando} className="w-full">
-              <option value="">— a confirmar —</option>
+              <option value="" disabled>Escolha o local</option>
               {locais.filter(l => l.ativo).map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
             </Select>
           </Field>

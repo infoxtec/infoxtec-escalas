@@ -127,7 +127,7 @@ e só é permitido enquanto o WhatsApp não confirmou a entrega no aparelho.
 - **Tipo de atividade** — define as habilidades exigidas. Se algum técnico selecionado não tiver
   a habilidade no nível exigido, aparece um aviso vermelho com o que falta. A escala pode ser
   criada mesmo assim: a decisão é do supervisor.
-- **Local** — opcional. Sem local, a mensagem diz "a confirmar".
+- **Local** — **obrigatório**. Escala sem local não é criada, editada nem enviada (vale também para a importação: linha sem local é recusada).
 - **Data e Hora de início** — a escala **nunca pode começar no passado**: o mínimo é 5 minutos à
   frente do horário atual. O campo de data não aceita dias anteriores a hoje, e no mesmo dia a
   hora mínima aparece como dica. O **término é calculado sozinho** pela jornada CLT e aparece logo

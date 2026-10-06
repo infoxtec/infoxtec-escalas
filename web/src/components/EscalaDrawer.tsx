@@ -61,6 +61,7 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
   }
   const salvarEdicao = async () => {
     if (!edicao) return
+    if (!edicao.local_id) return setErro('Escolha o local. Escala sem local não é enviada.')
     setBusy(true); setErro(null)
     try {
       const r = await api.editarEscala({ id: edicao.id, data_servico: edicao.data_servico, hora_inicio: edicao.hora_inicio,
@@ -276,9 +277,9 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
             <Field label="Data"><Input type="date" value={edicao.data_servico} onChange={e => setEdicao({ ...edicao, data_servico: e.target.value })} /></Field>
             <Field label="Hora"><Input type="time" value={edicao.hora_inicio} onChange={e => setEdicao({ ...edicao, hora_inicio: e.target.value })} /></Field>
           </div>
-          <Field label="Local">
+          <Field label="Local *">
             <Select value={edicao.local_id ?? ''} onChange={e => setEdicao({ ...edicao, local_id: e.target.value || null })}>
-              <option value="">Local a confirmar</option>
+              <option value="" disabled>Escolha o local</option>
               {locais.filter(l => l.ativo || l.id === edicao.local_id).map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
             </Select>
           </Field>
