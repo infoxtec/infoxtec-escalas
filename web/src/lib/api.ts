@@ -49,7 +49,7 @@ export const api = {
     rpc<LinhaTempo[]>('app_linha_do_tempo', { p_escala: escalaId }),
 
   criarEscalas: (p: {
-    tecnicos: string[]; local: string | null; data: string; hora: string
+    tecnicos: string[]; local: string; data: string; hora: string
     tarefa: string; duracao: number; prioridade: string; enviar: boolean; tipo?: string | null; teste?: boolean
   }) => rpc<ResultadoLote[]>('app_criar_escalas', {
     p_tecnicos: p.tecnicos, p_local: p.local, p_data: p.data, p_hora: p.hora,

@@ -235,6 +235,18 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 57 (08/10): escala exige local
+
+- Gatilho **`trg_escalas_exige_local`** (`fn_escala_exige_local`): inserir escala sem local, ou
+  apagar o local de uma escala, é recusado — em qualquer caminho (painel, importação, lote, edição).
+- **`fn_payload_escala`** recusa montar a mensagem de escala sem local: escala antiga sem local não é
+  enviada; o motor registra a falha e, esgotadas as tentativas, avisa o supervisor.
+- URA: **`fn_preparar_ligacao`** (motor e botão de ligar) recusa escala sem local, e
+  **`vw_ligacoes_pendentes`** não a lista. **`fn_evolution_falhando`** ignora falha interna
+  (`erro_codigo = 'interno'`), para escala sem local não virar alarme falso de Evolution caída.
+- Como `escalas.local_id` é `on delete set null`, apagar um local com escalas agora é recusado pelo
+  gatilho (o painel só desativa local, não apaga).
+
 ### Migration 56 (07/10): Módulo Registro de Ponto — WhatsApp e acompanhamento do gestor (backlog 083 e 090)
 
 - **WhatsApp:** `fn_webhook_evolution` passa cada mensagem primeiro por **`fn_ponto_wh`**, que devolve

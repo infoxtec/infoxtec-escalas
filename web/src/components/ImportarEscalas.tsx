@@ -115,7 +115,8 @@ export default function ImportarEscalas({ open, onClose, onSuccess, tecnicos, lo
           const erros: string[] = []
           if (!tecnico_nome) erros.push('Técnico em branco')
           else if (t.erro) erros.push(`Técnico ${t.erro}`)
-          if (local_nome && l.erro) erros.push(`Local ${l.erro}`)
+          if (!local_nome) erros.push('Local em branco')
+          else if (l.erro) erros.push(`Local ${l.erro}`)
           if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) erros.push('Data inválida (use DD/MM/AAAA)')
           if (!/^\d{2}:\d{2}$/.test(hora)) erros.push('Hora inválida (use HH:MM)')
           if (!tarefa) erros.push('Tarefa em branco')
@@ -142,7 +143,7 @@ export default function ImportarEscalas({ open, onClose, onSuccess, tecnicos, lo
       if (r.status !== 'pendente') continue
       try {
         const res = await api.criarEscalas({
-          tecnicos: [r.tecnico_id!], local: r.local_id ?? null, data: r.data, hora: r.hora,
+          tecnicos: [r.tecnico_id!], local: r.local_id!, data: r.data, hora: r.hora,
           tarefa: r.tarefa, duracao: r.duracao, prioridade: r.prioridade, enviar: r.enviar,
         })
         const x = res[0]
