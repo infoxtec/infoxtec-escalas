@@ -110,6 +110,8 @@ jobs:
                 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                where n.nspname = 'public' and p.proname not like 'ponto\_%'
                  and has_function_privilege('anon', p.oid, 'execute')
+                 -- funções de extensão (o plpgsql_check do passo anterior) não são nossas
+                 and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
               union all
               select p.proname, 'ponto_* sem security definer'
                 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
