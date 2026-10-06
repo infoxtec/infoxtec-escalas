@@ -326,3 +326,20 @@ export interface PontoComprovante {
   dentro_area: boolean | null; distancia_m: number | null; autenticacao: string
   login_origem: 'whatsapp' | 'gestor' | null
 }
+
+// Painel: acompanhamento do ponto pelo gestor (backlog 090, migration 56)
+export const PONTO_ROTULO: Record<string, string> = {
+  entrada: 'Entrada', saida_almoco: 'Saída almoço', volta_almoco: 'Volta almoço',
+  saida: 'Saída', inicio_he: 'Início HE', fim_he: 'Fim HE',
+}
+export interface PontoHoje {
+  tecnico_id: string; tecnico: string; empresa: string; escala_hora: string | null; escala_local: string | null
+  marcacoes: number; ultima_tipo: string | null; ultima_hora: string | null; fora_area: number
+  situacao: 'com_marcacao' | 'sem_entrada' | 'sem_marcacao'
+}
+export interface PontoAcompanhamento {
+  id: string; nsr: number; empresa: string; tecnico_id: string; tecnico: string; momento: string
+  data: string; hora: string; tipo: string; canal: string; local: string | null; distancia_m: number | null
+  dentro_area: boolean | null; login_origem: string | null; gestor: string | null; autenticacao: string
+  latitude: number | null; longitude: number | null; ajustada: boolean
+}

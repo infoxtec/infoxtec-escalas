@@ -58,6 +58,14 @@ flowchart LR
 - Localização escolhida no mapa (não em tempo real) é recusada com orientação.
 - Lembrete amigável da **saída** para o almoço; o retorno é do funcionário.
 - **Aceite:** fluxo completo com um técnico de teste na homologação.
+- **Estado (07/10):** migration 56 na homologação, fluxo simulado em transação desfeita (a homologação
+  não tem Evolution, por regra). O teste real com o WhatsApp é na produção, com o funcionário David,
+  depois da ordem do responsável. Aceita a localização atual (fixa ou em tempo real); recusa lugar
+  escolhido no mapa.
+
+### Acompanhamento do gestor — backlog **090**
+- Tela **Ponto** no painel: situação de hoje online (30 s) e histórico por período e funcionário,
+  com canal, local, fora da área, mapa e selo de código do gestor. Migration 56, painel 3.11.0.
 
 ### F4 · Jornada, espelho e ajustes — backlog **084**
 - Regras da CLT e da convenção coletiva (resultado do L2), por empresa.
