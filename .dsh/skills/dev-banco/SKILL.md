@@ -20,6 +20,8 @@ e o painel é vitrine: ele só chama funções `app_*`.
 - Tabela nova: RLS ligado e **sem políticas**. O acesso passa pelas funções.
 - Fechar toda migration que cria ou altera função com o bloco de permissões por laço sobre o prefixo
   `app_` (decisão 12). **Nunca** `grant` citando assinatura de função.
+- O bloco tem **duas voltas** (decisão 49): `app_*` para `authenticated` e `ponto_*` (API do funcionário
+  no app do ponto) para `anon` e `authenticated`. Copiar do `CLAUDE.md`; o bloco antigo derruba o app do ponto.
 - A migration precisa rodar em banco vazio: não depender de dado que só existe na produção.
 - Ao recriar função que já existe, partir da definição atual da homologação, não de migration
   antiga.

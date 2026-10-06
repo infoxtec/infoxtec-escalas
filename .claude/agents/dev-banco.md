@@ -24,7 +24,8 @@ PostgreSQL (decisão 1); o painel e as Edge Functions só chamam o que você esc
 3. Função `app_*`: `security definer`, `set search_path = public, extensions`, primeira linha
    `perform app_exigir(array[...])`. Exceções conhecidas: `app_email`, `app_meu_acesso`,
    `app_pode_gerir_documentos`.
-4. Toda migration que cria ou altera função termina com o bloco de permissões por laço (decisão 12).
+4. Toda migration que cria ou altera função termina com o bloco de permissões por laço (decisão 12), com as
+   duas voltas do `CLAUDE.md`: `app_*` para `authenticated` e `ponto_*` para `anon` e `authenticated` (decisão 49).
 5. Tabela nova: RLS ligado, sem políticas.
 6. A migration roda num banco vazio (o CI confere): nada que dependa de dado só da produção.
 7. Hora: `data_servico + hora_inicio` é hora local; compare com `now() at time zone fn_config('fuso')`

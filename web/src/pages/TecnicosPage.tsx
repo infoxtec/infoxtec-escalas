@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertTriangle, Columns3, Edit2, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { AlertTriangle, Columns3, Edit2, KeyRound, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { Button, Confirm, ErrorBox, Field, Input, Select, Sheet, SuccessBox, ToggleRow, useToast } from '../components/ui'
 import { PlainTh, SortableTh, useColumnWidths, useSortable } from '../components/SortableTh'
 import { api, erroMsg } from '../lib/api'
@@ -57,6 +57,13 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
     supervisor: t => t.is_supervisor, whatsapp: t => t.opt_in, ativo: t => t.ativo,
   }, { key: 'nome' })
   const { col, total, restaurarTudo } = useColumnWidths('tecnicos', { nome: 260, telefone: 150, funcao: 150, equipe: 140, supervisor: 115, whatsapp: 115, ativo: 90, acoes: 90 })
+
+  // Contingência do app do ponto: código de acesso gerado pelo gestor, quando o WhatsApp não chega
+  const [codigoPonto, setCodigoPonto] = useState<{ codigo: string; nome: string } | null>(null)
+  const gerarCodigo = async (t: Tecnico) => {
+    try { const r = await api.pontoGerarCodigo(t.id); setCodigoPonto({ codigo: r.codigo, nome: r.nome }) }
+    catch (e) { toast(erroMsg(e)) }
+  }
 
   const atualizar = async () => { setAtualizando(true); await recarregar(); setAtualizando(false) }
 
@@ -138,6 +145,7 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
                   <td className="px-3 py-2.5 text-center"><span className={`inline-block h-2 w-2 rounded-full ${t.ativo ? 'bg-green-500' : 'bg-gray-400'}`} /></td>
                   <td className="px-3 py-2.5 text-right">
                     <div className="flex justify-end gap-1">
+                      {podeEditar && t.cpf && t.ativo && <Button variant="ghost" size="icon" aria-label="Código do ponto" title="Gerar código de acesso ao app do ponto" onClick={() => void gerarCodigo(t)}><KeyRound className="h-3.5 w-3.5" /></Button>}
                       {podeEditar && <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => abrirEdicao({ ...t })}><Edit2 className="h-3.5 w-3.5" /></Button>}
                       {podeExcluir && <Button variant="ghost" size="icon" aria-label="Excluir" className="text-destructive hover:bg-destructive/10" onClick={() => { setAlvo(t); setConfirmaNome(''); setErroExcluir(null) }}><Trash2 className="h-3.5 w-3.5" /></Button>}
                     </div>
@@ -227,6 +235,12 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
           </div>
         )}
       </Sheet>
+
+      <Confirm open={!!codigoPonto} title="Código de acesso ao ponto" confirmLabel="Fechar"
+        onCancel={() => setCodigoPonto(null)} onConfirm={() => setCodigoPonto(null)}>
+        <p>Passe este código para <strong className="text-foreground">{codigoPonto?.nome}</strong>. Ele vale por 15 minutos e só uma vez, em <strong className="text-foreground">{window.location.origin}/ponto</strong>.</p>
+        <p className="py-2 text-center font-mono text-3xl font-bold tracking-[0.3em] text-foreground">{codigoPonto?.codigo}</p>
+      </Confirm>
 
       <Confirm open={!!alvo} title="Excluir técnico definitivamente" confirmLabel="Excluir definitivamente" destructive
         busy={excluindo} disabled={confirmaNome !== alvo?.nome} onCancel={() => setAlvo(null)} onConfirm={() => void excluir()}>

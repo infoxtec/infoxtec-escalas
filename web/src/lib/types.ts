@@ -309,3 +309,19 @@ export const PAPEL_LABEL: Record<Papel, string> = { admin: 'Administrador', gest
 export const ENVIO_LABEL: Record<string, string> = {
   enfileirada: 'enviando', enviada: 'enviada', entregue: 'entregue', lida: 'lida', falha: 'falha',
 }
+
+// Módulo Registro de Ponto: app do funcionário (/ponto)
+export type PontoTipo = 'entrada' | 'saida_almoco' | 'volta_almoco' | 'saida' | 'inicio_he' | 'fim_he'
+export interface PontoEu {
+  nome: string; empresa: string; ciente: boolean
+  hoje: { nsr: number; tipo: PontoTipo; hora: string; dentro_area: boolean | null }[]
+}
+export interface PontoMarcacao {
+  nsr: number; data: string; hora: string; tipo: PontoTipo; canal: string; local: string | null
+  dentro_area: boolean | null; autenticacao: string
+}
+export interface PontoComprovante {
+  marcacao_id: string; nsr: number; empresa: string; cnpj: string; trabalhador: string; cpf: string
+  data: string; hora: string; tipo: PontoTipo; canal: string; local: string | null
+  dentro_area: boolean | null; distancia_m: number | null; autenticacao: string
+}

@@ -211,6 +211,16 @@ lê as coordenadas do link do Google Maps (o link precisa ter `@-12.97,-38.50`).
 feita fora do raio é sinalizada ao gestor, nunca bloqueada. **Empresa cliente** liga o local à empresa
 cadastrada em Empresas.
 
+## 7c. App do ponto (funcionário)
+
+O funcionário abre **`/ponto`** no celular (o mesmo endereço do painel, com `/ponto` no fim), digita o
+CPF e recebe um **código de 6 dígitos no WhatsApp**. Se o WhatsApp não chegar, o gestor gera o código na
+aba Técnicos, no botão da **chave** ao lado do técnico (vale 15 minutos, uma vez só). No primeiro
+acesso aparece o **aviso de privacidade**. Depois, botões grandes: Entrada, Saída para almoço, Volta do
+almoço, Saída, Início e Fim de hora extra — o próximo esperado fica destacado. Cada marcação pede a
+localização e mostra o **comprovante** (NSR, data, hora, empregador, local e código de autenticação).
+Fora da área do local, a marcação vale e o gestor é avisado. Um login novo encerra o anterior.
+
 ## 7b. Empresas
 
 Empregadoras (os funcionários batem ponto no CNPJ delas) e clientes (donos dos locais). O CNPJ é

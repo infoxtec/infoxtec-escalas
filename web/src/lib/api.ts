@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa,
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo,
 } from './types'
 
 function traduzir(msg: string): string {
@@ -14,6 +14,19 @@ async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.rpc(fn, args)
   if (error) throw new Error(traduzir(error.message))
   return data as T
+}
+
+// API do funcionário (funções ponto_*, decisão 49): sem login do Supabase, validada pelo token da sessão
+export const ponto = {
+  pedirCodigo: (cpf: string) => rpc<{ mensagem: string }>('ponto_pedir_codigo', { p_cpf: cpf }),
+  entrar: (cpf: string, codigo: string) =>
+    rpc<{ token?: string; nome?: string; empresa?: string; erro?: string }>('ponto_entrar', { p_cpf: cpf, p_codigo: codigo }),
+  sair: (token: string) => rpc<void>('ponto_sair', { p_token: token }),
+  eu: (token: string, versaoAviso: string) => rpc<PontoEu>('ponto_eu', { p_token: token, p_versao_aviso: versaoAviso }),
+  registrarCiencia: (token: string, versaoAviso: string) => rpc<void>('ponto_registrar_ciencia', { p_token: token, p_versao_aviso: versaoAviso }),
+  bater: (token: string, tipo: PontoTipo, lat: number, lng: number, precisao: number, appVersao: string) =>
+    rpc<PontoComprovante>('ponto_bater', { p_token: token, p_tipo: tipo, p_lat: lat, p_lng: lng, p_precisao: precisao, p_app_versao: appVersao }),
+  minhasMarcacoes: (token: string, dias: number) => rpc<PontoMarcacao[]>('ponto_minhas_marcacoes', { p_token: token, p_dias: dias }),
 }
 
 export const api = {
@@ -63,6 +76,7 @@ export const api = {
   salvarLocal: (l: Partial<Local>) => rpc<string>('app_salvar_local', { p: l }),
   tecnicoCpf: (id: string) => rpc<string | null>('app_tecnico_cpf', { p_tecnico: id }),
   empresas: () => rpc<Empresa[]>('app_empresas'),
+  pontoGerarCodigo: (tecnico: string) => rpc<{ codigo: string; nome: string; expira_em: string }>('app_ponto_gerar_codigo', { p_tecnico: tecnico }),
   salvarEmpresa: (e: Partial<Empresa>) => rpc<string>('app_salvar_empresa', { p: e }),
 
   pendencias: (data: string) => rpc<Pendencias>('app_pendencias', { p_data: data }),

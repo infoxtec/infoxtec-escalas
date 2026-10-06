@@ -496,3 +496,17 @@ cliente externo. Mesmo banco e mesma Evolution. Custos aprovados: INPI, e-CNPJ, 
 Twilio. Nenhuma promessa comercial sem lastro ("homologado pelo MTE" não existe para software).
 **Consequência:** plano, parte legal e aviso de privacidade em `docs/modulo-registro-de-ponto/`;
 backlog 075 a 089; etapas 26 a 31 do plano de trabalho. Supera a opção de só integrar (backlog 4).
+
+## 49. API do funcionário no app do ponto: funções `ponto_*`
+
+**Decisão (Claude, dentro do plano aprovado em 06/10; a confirmar pelo responsável no PR #56):** o
+funcionário não é usuário do painel nem do Supabase Auth. Ele entra no app do ponto com **CPF + código
+de 6 dígitos** (WhatsApp; contingência: código gerado pelo gestor) e recebe um token de sessão que só
+existe no aparelho — o banco guarda o hash. **Sessão única**: login novo encerra a anterior; validade
+de 12 horas. A API dele é uma família própria, **`ponto_*`**, executável pelo papel `anon`, e toda
+função valida o token na primeira linha (`fn_ponto_sessao`) e tira o funcionário da sessão, nunca de
+parâmetro. Pedir código responde igual com ou sem cadastro (não revela quem é funcionário); 3 códigos
+por WhatsApp a cada 15 min; 5 erros vencem o código; 10 erros na hora bloqueiam por 1 hora.
+**Consequência:** o bloco de permissões por laço do `CLAUDE.md` ganha a segunda volta (`ponto_*` para
+`anon` e `authenticated`). Migration que usar o bloco antigo derruba o app do ponto — o CI e a revisão
+do Claude conferem.

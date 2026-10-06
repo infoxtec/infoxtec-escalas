@@ -217,6 +217,15 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
 - Nenhuma rotina de limpeza toca nestas tabelas. Descarte depois de 5 anos só por migration própria,
   que desliga o gatilho de forma registrada.
 
+### Migration 55 (07/10): Módulo Registro de Ponto — login do funcionário (backlog 082, decisão 49)
+
+- **`ponto_codigos`** (código de 6 dígitos só como hash; origem WhatsApp ou gestor; tentativas),
+  **`ponto_sessoes`** (hash do token, 12 h, sessão única) e **`ponto_ciencias`** (ciência do aviso de
+  privacidade por versão). RLS sem políticas; nenhum papel com acesso direto.
+- API do funcionário (`anon`): `ponto_pedir_codigo`, `ponto_entrar`, `ponto_sair`, `ponto_eu`,
+  `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
+  `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
+
 ## Gatilhos em `escalas`
 
 | Gatilho | O que faz |

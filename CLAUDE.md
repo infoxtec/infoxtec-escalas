@@ -62,6 +62,9 @@ Edge Functions, todas as migrations num banco vazio e `plpgsql_check`. Precisa e
   arquivo precisa coincidir com a versão gravada no banco.
 - Toda função `app_*`: `security definer`, `set search_path = public, extensions`, e a primeira
   linha é `perform app_exigir(array[...papéis...]);` (`admin`, `gestor`, `leitura`).
+- Toda função `ponto_*` (API do funcionário no app do ponto, decisão 49): `security definer`, o mesmo
+  `search_path`, e a primeira linha valida a sessão — `v_tec uuid := fn_ponto_sessao(p_token);`. O
+  funcionário vem sempre da sessão, nunca de parâmetro. É a única família executável pelo papel `anon`.
 - Toda migration que cria ou altera função termina com o bloco de permissões por laço, nunca com
   `grant` citando assinatura (decisão 12):
 
@@ -73,6 +76,10 @@ begin
   for f in select p.oid::regprocedure as a from pg_proc p join pg_namespace n on n.oid = p.pronamespace
            where n.nspname = 'public' and p.proname like 'app\_%' loop
     execute format('grant execute on function %s to authenticated', f.a);
+  end loop;
+  for f in select p.oid::regprocedure as a from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public' and p.proname like 'ponto\_%' loop
+    execute format('grant execute on function %s to anon, authenticated', f.a);
   end loop;
 end $$;
 ```
