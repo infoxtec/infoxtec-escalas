@@ -324,4 +324,5 @@ export interface PontoComprovante {
   marcacao_id: string; nsr: number; empresa: string; cnpj: string; trabalhador: string; cpf: string
   data: string; hora: string; tipo: PontoTipo; canal: string; local: string | null
   dentro_area: boolean | null; distancia_m: number | null; autenticacao: string
+  login_origem: 'whatsapp' | 'gestor' | null
 }

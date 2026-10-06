@@ -203,6 +203,7 @@ function Comprovante({ c, onFechar }: { c: PontoComprovante; onFechar: () => voi
           <dt className="text-muted-foreground">CNPJ</dt><dd>{c.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')}</dd>
           {c.local && <><dt className="text-muted-foreground">Local</dt><dd>{c.local}</dd></>}
           <dt className="text-muted-foreground">Autenticação</dt><dd className="font-mono text-xs">{c.autenticacao}</dd>
+          {c.login_origem === 'gestor' && <><dt className="text-muted-foreground">Acesso</dt><dd>com código gerado pelo gestor</dd></>}
         </dl>
         {c.dentro_area === false && (
           <p className="flex items-start gap-1.5 rounded-md bg-amber-50 p-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">

@@ -100,3 +100,26 @@ jobs:
               and (not p.prosecdef or pg_get_functiondef(p.oid) not ilike '%app_exigir%')")
           if [ -n "$faltando" ]; then echo "Funções app_* sem app_exigir ou sem security definer: $faltando"; exit 1; fi
           echo "ok"
+      - name: Só ponto_* abre para anon, e toda ponto_* valida a sessão (decisão 49)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          problemas=$(psql "postgresql://postgres@127.0.0.1:54322/postgres" -At -c "
+            select string_agg(p.proname || ' (' || motivo || ')', ', ') from (
+              select p.proname, 'executável por anon fora de ponto_*' as motivo
+                from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+               where n.nspname = 'public' and p.proname not like 'ponto\_%'
+                 and has_function_privilege('anon', p.oid, 'execute')
+              union all
+              select p.proname, 'ponto_* sem security definer'
+                from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+               where n.nspname = 'public' and p.proname like 'ponto\_%' and not p.prosecdef
+              union all
+              select p.proname, 'ponto_* sem fn_ponto_sessao'
+                from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+               where n.nspname = 'public' and p.proname like 'ponto\_%'
+                 and p.proname not in ('ponto_pedir_codigo', 'ponto_entrar', 'ponto_sair')
+                 and pg_get_functiondef(p.oid) not ilike '%fn_ponto_sessao(p_token)%'
+            ) p")
+          if [ -n "$problemas" ]; then echo "Permissões da API do funcionário: $problemas"; exit 1; fi
+          echo "ok"

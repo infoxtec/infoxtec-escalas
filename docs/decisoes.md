@@ -505,8 +505,14 @@ de 6 dígitos** (WhatsApp; contingência: código gerado pelo gestor) e recebe u
 existe no aparelho — o banco guarda o hash. **Sessão única**: login novo encerra a anterior; validade
 de 12 horas. A API dele é uma família própria, **`ponto_*`**, executável pelo papel `anon`, e toda
 função valida o token na primeira linha (`fn_ponto_sessao`) e tira o funcionário da sessão, nunca de
-parâmetro. Pedir código responde igual com ou sem cadastro (não revela quem é funcionário); 3 códigos
-por WhatsApp a cada 15 min; 5 erros vencem o código; 10 erros na hora bloqueiam por 1 hora.
+parâmetro. Pedir código e entrar respondem igual com ou sem cadastro, código errado, vencido ou
+bloqueio (não revelam quem é funcionário). Limites (revisão do `seguranca`): códigos por WhatsApp — 3
+a cada 15 min e 6 por dia por funcionário, 10 pedidos por IP na hora e teto total por hora
+(`config.ponto_max_codigos_hora`); login — trava por funcionário, 5 erros vencem o código, 10 erros na
+hora bloqueiam o funcionário (o código do gestor destrava), 20 por IP e teto total
+(`config.ponto_max_erros_hora`). **Login pelo código do gestor fica marcado** na sessão, em cada
+marcação (`origem.login_origem`) e no comprovante, e o funcionário é avisado pelo WhatsApp. O CI
+confere que só `ponto_*` abre para `anon` e que toda `ponto_*` valida a sessão.
 **Consequência:** o bloco de permissões por laço do `CLAUDE.md` ganha a segunda volta (`ponto_*` para
 `anon` e `authenticated`). Migration que usar o bloco antigo derruba o app do ponto — o CI e a revisão
 do Claude conferem.
