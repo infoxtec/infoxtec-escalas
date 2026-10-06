@@ -508,6 +508,16 @@ de API mínima, controle de acesso em camadas), e fica mais barato antes do mult
 funcionam iguais; `plpgsql_check` zero; as migrations rodam do zero no CI.
 **Esforço:** G. Etapa 24 do plano.
 
+## 075. Módulo Registro de Ponto (Trilha Ponto) — planejado, urgente
+
+**Oportunidade registrada em 06/10/2026.** Ponto eletrônico aderente à CLT e à Portaria MTP 671/2021,
+pelo app web (principal), WhatsApp (complementar) e URA (contingência), sempre com data, hora do
+servidor e localização. Nasce vendável; começa pela avaliação na Infoxtec.
+**Tudo do módulo está em [`docs/modulo-registro-de-ponto/`](modulo-registro-de-ponto/README.md)**:
+decisões, plano por fases, parte legal (Gabriel Pirolli e Andreia Monteiro) e aviso de privacidade.
+**Tarefas:** itens **076 a 089** (L1–L4 legalização, F1–F8 desenvolvimento). Decisão 48.
+**Substitui** a opção de só integrar com um ponto de terceiros (item 4, VRmais).
+
 ## Plano Diretor Comercial do Trilha
 
 **Pedido em 27/09/2026.** Guarda-chuva comercial do produto, registrado no grupo `saas` do Roadmap.

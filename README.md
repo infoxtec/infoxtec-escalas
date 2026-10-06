@@ -20,6 +20,7 @@ são lembrados da escala do dia seguinte, com prazo às 18h.
 | [**Manual de uso**](docs/manual.md) | **Tela a tela: o que cada botão faz e o que o técnico recebe** |
 | [Plano comercial](docs/plano-comercial.md) | O que é vendido, para quem, a que preço, o que ainda não existe e o que bloqueia a venda |
 | [Marca](docs/marca.md) | Trilha: nome, narrativa, posicionamento, identidade e o que a marca não promete |
+| [**Módulo Registro de Ponto**](docs/modulo-registro-de-ponto/README.md) | **Trilha Ponto: decisões, plano por fases, parte legal e aviso de privacidade** |
 | [Arquitetura](docs/arquitetura.md) | Como as peças se encaixam e por que o banco é o centro |
 | [Banco de dados](docs/banco-de-dados.md) | Tabelas, views, funções, gatilhos e parâmetros |
 | [Operação](docs/operacao.md) | Diagnóstico do dia a dia: o que consultar quando algo falha |

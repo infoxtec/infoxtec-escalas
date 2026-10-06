@@ -434,7 +434,7 @@ Isso é mudança de **identidade**, não de roadmap. As consequências, na ordem
 |---|---|---|
 | **M1 · Escala e programação** | o produto de hoje: criar, confirmar por WhatsApp, cobrar, escalonar, indicadores | **entregue** |
 | **M2 · Documentos e liberação para obra** | NR, CNH e ASO com validade, alerta de vencimento, arquivo privado, vínculo com a aptidão do técnico | **entregue, com lacunas** (expurgo sem executor, sem trilha de leitura, retenção única de 5 anos) |
-| **M3 · Ponto e jornada** | registro de ponto e apuração da jornada | **não iniciado** — e é programa regulado (§15.2) |
+| **M3 · Ponto e jornada** | registro de ponto e apuração da jornada | **planejado em 06/10** (backlog 075–089, decisão 48): REP-P, legalização em paralelo — ver `docs/modulo-registro-de-ponto/`. **Não vender antes do INPI e do parecer** |
 | **M4 · Atividades e projetos** | Kanban, Gantt, Curva S, gestão de atividades | **não existe** |
 
 A boa notícia estrutural: M1 e M2 **já compartilham o mesmo modelo de dados** (técnico, local, escala,

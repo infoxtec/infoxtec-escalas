@@ -482,3 +482,17 @@ default_transaction_read_only=on'` **não** é respeitado (a sessão abriu com
 `transaction_read_only = on`. Seguem proibidos: escrever, alterar estrutura ou função, `migration
 repair`, `db pull` e despejar dados. Em produção, a leitura continua só de metadado — **dado de
 técnico não se lê** — e a alteração é do responsável, pelo script.
+
+## 48. Módulo Registro de Ponto (Trilha Ponto)
+
+**Decisão (responsável, 06/10):** o Trilha ganha o módulo de ponto eletrônico, **vendável**, começando
+pela avaliação na Infoxtec. Enquadramento pretendido **REP-P** (Portaria MTP 671/2021), a confirmar
+no parecer jurídico. **App web** é o canal principal, **WhatsApp** complementar e **URA** só de
+contingência. Hora do servidor; **localização obrigatória** no momento da marcação, conferida contra a
+área do local, que **sinaliza e nunca bloqueia**; **sem selfie nem biometria**. Marcações **só de
+inclusão**, NSR por empresa, guarda de 5 anos fora de qualquer limpeza. Login do funcionário com
+sessão única. Tabela de **empresas (CNPJ)** desde já; separação por cliente (074) antes do primeiro
+cliente externo. Mesmo banco e mesma Evolution. Custos aprovados: INPI, e-CNPJ, número de entrada da
+Twilio. Nenhuma promessa comercial sem lastro ("homologado pelo MTE" não existe para software).
+**Consequência:** plano, parte legal e aviso de privacidade em `docs/modulo-registro-de-ponto/`;
+backlog 075 a 089; etapas 26 a 31 do plano de trabalho. Supera a opção de só integrar (backlog 4).
