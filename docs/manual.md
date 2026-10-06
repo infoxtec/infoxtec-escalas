@@ -230,7 +230,7 @@ vale. Quem marcou entrada e não saiu para o almoço recebe um lembrete amigáve
 bateu, quem tem escala e não bateu entrada, marcações fora da área —, atualizada sozinha a cada 30
 segundos. Embaixo, o histórico por período (até 62 dias) e funcionário, com canal, local, aviso de
 fora da área, link do mapa e o selo **gestor** quando o funcionário entrou com código gerado pelo
-gestor. O administrador confere a cadeia das marcações de cada empresa (NSR e hash).
+gestor. O administrador confere a cadeia das marcações de cada empresa (NSR e hash). Na coluna **Local** aparecem o **bairro e a cidade** de onde a marcação foi feita (do OpenStreetMap; surgem alguns minutos depois) e o local cadastrado; a coluna **GPS** abre a localização exata no mapa.
 
 ## 7b. Empresas
 

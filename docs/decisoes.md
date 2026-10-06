@@ -518,3 +518,21 @@ confere que só `ponto_*` abre para `anon` e que toda `ponto_*` valida a sessão
 **Consequência:** o bloco de permissões por laço do `CLAUDE.md` ganha a segunda volta (`ponto_*` para
 `anon` e `authenticated`). Migration que usar o bloco antigo derruba o app do ponto — o CI e a revisão
 do Claude conferem.
+
+## 50. Bairro e cidade das marcações pelo OpenStreetMap (Nominatim), não pelo Google
+
+**Data:** 08/10/2026. **Contexto:** o responsável pediu bairro e cidade de cada marcação, a partir da
+latitude e longitude, no Registro de Ponto. **Decisão:** geocodificação reversa no banco, pelo
+**Nominatim (OpenStreetMap)**: gratuito, sem cartão e sem chave, com dados ODbL que podem ser
+guardados com atribuição. O Google Geocoding foi descartado: exige conta de faturamento com cartão e
+os termos proíbem guardar o resultado por mais de 30 dias. **Como:** `ponto_geo` guarda bairro e
+cidade por coordenada **arredondada em 3 casas (~110 m)** — só isso sai do banco, sem nome, CPF ou
+horário (minimização, LGPD); `fn_ponto_geo_processar` faz uma consulta por minuto (política do
+Nominatim: até 1 por segundo, User-Agent identificado, cache). A marcação não muda (é imutável).
+**LGPD:** a coordenada arredondada, sem identificador e enviada a quem não tem as marcações (a OSMF,
+no Reino Unido), é tratada como dado anonimizado (art. 12): a OSMF não tem meio razoável de ligar o
+ponto a uma pessoa. O momento da consulta (até um minuto depois da marcação) não acompanha nome nem
+CPF. O papel `leitura` não vê bairro nem cidade, como já não via as coordenadas. **Consequência:**
+aviso de privacidade menciona a consulta e o país (avisar os funcionários já cadastrados da nova
+versão do texto, junto com a revisão do Gabriel); o painel mostra a atribuição do OpenStreetMap. Se o volume passar do razoável para o serviço público, troca-se `geocodificacao_url`
+por um Nominatim próprio ou outro provedor, sem mudar o painel.

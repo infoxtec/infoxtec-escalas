@@ -12,3 +12,6 @@ select cron.schedule('vigia-motor', '*/5 * * * *', $$select fn_vigiar_motor()$$)
 -- Lembrete da saída para o almoço do ponto (migration 56): a cada 15 minutos; a função só envia
 -- entre o horário de config ponto_lembrete_almoco e 15h, uma vez por dia por funcionário.
 select cron.schedule('ponto-lembrete-almoco', '*/15 * * * *', $$select fn_ponto_lembrete_almoco()$$);
+
+-- Bairro e cidade das marcações do ponto (migration 58): uma consulta ao OpenStreetMap por minuto.
+select cron.schedule('ponto-geo', '* * * * *', $$select fn_ponto_geo_processar()$$);

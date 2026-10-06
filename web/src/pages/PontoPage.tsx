@@ -3,7 +3,7 @@ import { KeyRound, Loader2, MapPin, RefreshCw, ShieldCheck } from 'lucide-react'
 import { Button, ErrorBox, Field, Input, Select, SuccessBox } from '../components/ui'
 import { api, erroMsg } from '../lib/api'
 import { PONTO_ROTULO, hojeBahia } from '../lib/types'
-import type { Empresa, PontoAcompanhamento, PontoHoje } from '../lib/types'
+import type { Empresa, PontoAcompanhamento, PontoGeo, PontoHoje } from '../lib/types'
 
 const SITUACAO: Record<PontoHoje['situacao'], { label: string; cor: string }> = {
   sem_entrada: { label: 'Escala sem entrada', cor: 'bg-red-100 text-red-800' },
@@ -18,6 +18,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
   const hoje = hojeBahia()
   const [situacao, setSituacao] = useState<PontoHoje[] | null>(null)
   const [lista, setLista] = useState<PontoAcompanhamento[] | null>(null)
+  const [geo, setGeo] = useState<Record<string, PontoGeo>>({})
   const [de, setDe] = useState(hoje)
   const [ate, setAte] = useState(hoje)
   const [tecnico, setTecnico] = useState('')
@@ -30,11 +31,12 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
   const carregar = useCallback(async () => {
     setErro(null)
     try {
-      const [s, l] = await Promise.all([api.pontoHoje(), api.pontoAcompanhamento(de, ate, tecnico || null)])
-      setSituacao(s); setLista(l)
+      const [s, l, g] = await Promise.all([api.pontoHoje(), api.pontoAcompanhamento(de, ate, tecnico || null),
+        papel === 'leitura' ? Promise.resolve([]) : api.pontoGeo(de, ate, tecnico || null)])
+      setSituacao(s); setLista(l); setGeo(Object.fromEntries(g.map(x => [x.id, x])))
       setAtualizado(new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Bahia' }))
     } catch (e) { setErro(erroMsg(e)) }
-  }, [de, ate, tecnico])
+  }, [de, ate, tecnico, papel])
 
   useEffect(() => { void carregar() }, [carregar])
   // Online: com o período terminando hoje, atualiza a cada 30 s
@@ -123,18 +125,18 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
               {situacao?.map(s => <option key={s.tecnico_id} value={s.tecnico_id}>{s.tecnico}</option>)}
             </Select>
           </Field>
-          <p className="pb-2 text-xs text-muted-foreground">Período de até 62 dias.</p>
+          <p className="pb-2 text-xs text-muted-foreground">Período de até 62 dias. Bairro e cidade: © colaboradores do <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline">OpenStreetMap</a>.</p>
         </div>
         {!lista ? <Carregando /> : (
           <div className="overflow-x-auto rounded-md border">
             <table className="w-full text-sm">
               <thead><tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
                 <th className="px-3 py-2">Data e hora</th><th className="px-3 py-2">Funcionário</th><th className="px-3 py-2">Marcação</th>
-                <th className="px-3 py-2">Canal</th><th className="px-3 py-2">Local</th><th className="px-3 py-2">NSR · autenticação</th>
+                <th className="px-3 py-2">Canal</th><th className="px-3 py-2">Local</th><th className="px-3 py-2">GPS</th><th className="px-3 py-2">NSR · autenticação</th>
               </tr></thead>
               <tbody>
                 {lista.length === 0 ? (
-                  <tr><td colSpan={6} className="py-10 text-center text-muted-foreground">Nenhuma marcação no período</td></tr>
+                  <tr><td colSpan={7} className="py-10 text-center text-muted-foreground">Nenhuma marcação no período</td></tr>
                 ) : lista.map(m => (
                   <tr key={m.id} className="border-b last:border-0 hover:bg-muted/30">
                     <td className="whitespace-nowrap px-3 py-2 text-xs">{m.data} <span className="font-medium">{m.hora}</span></td>
@@ -151,12 +153,19 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
                       )}
                     </td>
                     <td className="px-3 py-2 text-xs">
-                      {m.local ?? <span className="text-muted-foreground">sem local</span>}
-                      {m.dentro_area === false && <span className="ml-1 rounded bg-amber-100 px-1 text-amber-800">fora da área · {m.distancia_m} m</span>}
-                      {m.latitude != null && m.longitude != null && (
+                      {papel !== 'leitura' && <p className="font-medium">{bairroCidade(geo[m.id])}</p>}
+                      <p className="text-muted-foreground">
+                        {m.local ?? 'sem local cadastrado'}
+                        {m.dentro_area === false && <span className="ml-1 rounded bg-amber-100 px-1 text-amber-800">fora da área · {m.distancia_m} m</span>}
+                      </p>
+                    </td>
+                    <td className="px-3 py-2 text-xs">
+                      {m.latitude != null && m.longitude != null ? (
                         <a href={`https://www.google.com/maps?q=${m.latitude},${m.longitude}`} target="_blank" rel="noreferrer"
-                          className="ml-1 inline-flex items-center text-primary hover:underline" title="Ver no mapa"><MapPin className="h-3 w-3" /></a>
-                      )}
+                          className="inline-flex items-center gap-0.5 text-primary hover:underline" title={`${m.latitude}, ${m.longitude}`}>
+                          <MapPin className="h-3 w-3" /> Abrir no mapa
+                        </a>
+                      ) : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="px-3 py-2 font-mono text-[11px] text-muted-foreground">{m.nsr} · {m.autenticacao}</td>
                   </tr>
@@ -196,4 +205,11 @@ function Cartao({ titulo, valor, cor }: { titulo: string; valor: number | null |
 
 function Carregando() {
   return <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin" /></div>
+}
+
+// Bairro e cidade da marcação (OpenStreetMap, migration 58); a consulta leva até alguns minutos
+function bairroCidade(g: PontoGeo | undefined) {
+  if (!g || g.geo_status === 'pendente' || g.geo_status === 'enviado') return 'Localizando bairro...'
+  if (g.geo_status === 'erro' || (!g.bairro && !g.cidade)) return 'Bairro não identificado'
+  return [g.bairro, g.cidade && `${g.cidade}${g.uf ? '/' + g.uf : ''}`].filter(Boolean).join(', ')
 }

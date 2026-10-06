@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento,
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo,
 } from './types'
 
 function traduzir(msg: string): string {
@@ -81,6 +81,8 @@ export const api = {
   pontoHoje: () => rpc<PontoHoje[]>('app_ponto_hoje'),
   pontoAcompanhamento: (de: string, ate: string, tecnico: string | null) =>
     rpc<PontoAcompanhamento[]>('app_ponto_acompanhamento', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
+  pontoGeo: (de: string, ate: string, tecnico: string | null) =>
+    rpc<PontoGeo[]>('app_ponto_geo', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
   pontoVerificar: (empresa: string) =>
     rpc<{ integra: boolean; conferidas: number; nsr?: number; motivo?: string }>('app_ponto_verificar', { p_empresa: empresa }),
 

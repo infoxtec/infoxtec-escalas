@@ -9,7 +9,7 @@ import type { PontoComprovante, PontoEu, PontoMarcacao, PontoTipo } from '../lib
 // Login por CPF + código no WhatsApp; o token fica só neste aparelho; sessão única no banco.
 
 const CHAVE_TOKEN = 'trilha.ponto.token'
-const VERSAO_AVISO = 'v2-2026-10-07'
+const VERSAO_AVISO = 'v3-2026-10-08'
 const APP_VERSAO = __APP_VERSION__
 
 const TIPOS: { id: PontoTipo; label: string }[] = [
@@ -222,7 +222,7 @@ function Aviso({ empresa, onCiente }: { empresa: string; onCiente: () => Promise
     <div className="space-y-3 rounded-xl border bg-card p-5 text-sm">
       <div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" /><h1 className="text-base font-semibold">Aviso de privacidade</h1></div>
       <p><strong>{empresa}</strong> registra a sua jornada de trabalho para cumprir a obrigação legal do art. 74 da CLT e da Portaria MTP 671/2021.</p>
-      <p>Em cada marcação guardamos: nome, CPF, data e hora (do servidor, na hora legal brasileira), tipo da marcação, canal e <strong>a sua localização no momento da marcação</strong> — nunca de forma contínua. A localização serve para confirmar o local de trabalho e prevenir fraude. Não coletamos foto nem biometria. Para proteger o seu acesso, o endereço de internet (IP) de cada tentativa de entrada fica guardado por 30 dias.</p>
+      <p>Em cada marcação guardamos: nome, CPF, data e hora (do servidor, na hora legal brasileira), tipo da marcação, canal e <strong>a sua localização no momento da marcação</strong> — nunca de forma contínua. A localização serve para confirmar o local de trabalho e prevenir fraude. Para mostrar ao gestor o bairro e a cidade, a localização arredondada (cerca de 100 metros), sem nada que identifique você, é consultada no OpenStreetMap, serviço público no Reino Unido. Não coletamos foto nem biometria. Para proteger o seu acesso, o endereço de internet (IP) de cada tentativa de entrada fica guardado por 30 dias.</p>
       <p>Os dados ficam guardados por 5 anos (prazo da prescrição trabalhista). A Infoxtec Tecnologia e Serviços Ltda opera o sistema em nome do seu empregador. Você pode pedir acesso e correção ao seu empregador, e suas marcações ficam disponíveis neste app.</p>
       <Button className="w-full" disabled={ocupado} onClick={async () => { setOcupado(true); try { await onCiente() } finally { setOcupado(false) } }}>
         {ocupado ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Li e estou ciente

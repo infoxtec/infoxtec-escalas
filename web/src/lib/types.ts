@@ -343,3 +343,4 @@ export interface PontoAcompanhamento {
   dentro_area: boolean | null; login_origem: string | null; gestor: string | null; autenticacao: string
   latitude: number | null; longitude: number | null; ajustada: boolean
 }
+export interface PontoGeo { id: string; bairro: string | null; cidade: string | null; uf: string | null; geo_status: 'pendente' | 'enviado' | 'ok' | 'erro' }
