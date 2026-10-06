@@ -497,6 +497,8 @@ Twilio. Nenhuma promessa comercial sem lastro ("homologado pelo MTE" não existe
 **Consequência:** plano, parte legal e aviso de privacidade em `docs/modulo-registro-de-ponto/`;
 backlog 075 a 089; etapas 26 a 31 do plano de trabalho. Supera a opção de só integrar (backlog 4).
 
+**Limite conhecido do canal WhatsApp (07/10, revisão da migration 56):** o ponto recusa lugar escolhido no mapa (com nome ou endereço) e localização encaminhada, mas não detecta GPS falso, WhatsApp modificado nem alfinete arrastado e enviado sem nome. Mitigação: conferência pela área do local, precisão guardada na marcação e sinalização ao gestor; o app web segue como canal principal.
+
 ## 49. API do funcionário no app do ponto: funções `ponto_*`
 
 **Decisão (Claude, dentro do plano aprovado em 06/10; a confirmar pelo responsável no PR #56):** o

@@ -244,6 +244,11 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   hora é a do recebimento. Lugar escolhido no mapa (com nome ou endereço) é recusado. Comprovante com
   CPF mascarado. **`ponto_conversas`** guarda só a etapa (10 minutos), sem conteúdo de mensagem.
   Índice único em `origem->>'msg_id'`: entrega repetida da Evolution não duplica marcação.
+  Recusa também localização encaminhada; ignora grupo, status, canal, mensagem sem id e telefone
+  canônico que case com mais de um funcionário; número citando outra mensagem (a escala) não vale
+  como escolha do menu; ao funcionário só volta mensagem de regra (`P0001`). Falha no ponto nunca
+  derruba o fluxo de escalas. **LGPD:** `webhook_eventos` não guarda a localização (fica só
+  `{"localizacao": true}`); a coordenada mora na marcação.
 - **`fn_ponto_wa`**: envio do ponto pelo WhatsApp que nunca desfaz a marcação se o envio falhar.
 - **`fn_ponto_lembrete_almoco`**: lembrete amigável da saída para o almoço, uma vez por dia, a quem só
   marcou entrada, entre `ponto_lembrete_almoco` (config, 12:00) e 15h; deduplicado em

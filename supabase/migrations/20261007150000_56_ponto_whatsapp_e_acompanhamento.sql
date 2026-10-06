@@ -59,7 +59,7 @@ end $$;
 
 -- Devolve null quando a mensagem não é do ponto (o fluxo de escalas segue normalmente).
 create or replace function fn_ponto_wh(p_data jsonb)
-returns jsonb language plpgsql volatile security definer set search_path = public, extensions as $$
+returns jsonb language plpgsql volatile set search_path = public, extensions as $$
 declare
   v_key    jsonb := p_data->'key';
   v_msg    jsonb := p_data->'message';
@@ -77,7 +77,9 @@ declare
   c        jsonb;
   v_menu   text;
 begin
-  if coalesce((v_key->>'fromMe')::boolean, false) then return null; end if;
+  if coalesce((v_key->>'fromMe')::boolean, false) or v_wa_id is null then return null; end if;
+  -- grupo, status e canal não são do ponto
+  if coalesce(v_key->>'remoteJid', '') ~ '@(g\.us|broadcast|newsletter)$' then return null; end if;
   select j into v_jid from unnest(array[v_key->>'remoteJid', v_key->>'remoteJidAlt',
                                         v_key->>'senderPn', p_data->>'sender']) as j
    where j like '%@s.whatsapp.net' limit 1;
@@ -86,10 +88,16 @@ begin
   select t.id, t.nome, t.telefone_e164, t.cpf, t.empresa_id, coalesce(e.fuso, 'America/Bahia') as fuso
     into v_tec from tecnicos t left join empresas e on e.id = t.empresa_id
    where fn_tel_canonico(t.telefone_e164) = fn_tel_canonico(split_part(v_jid, '@', 1)) and t.ativo;
+  -- telefone canônico ambíguo (com e sem o 9): não arrisca marcar no funcionário errado
+  if (select count(*) from tecnicos t where t.ativo
+        and fn_tel_canonico(t.telefone_e164) = fn_tel_canonico(split_part(v_jid, '@', 1))) > 1 then
+    return null;
+  end if;
   -- só quem está cadastrado para o ponto (CPF e empresa) conversa com o ponto
   if v_tec.id is null or v_tec.cpf is null or v_tec.empresa_id is null then return null; end if;
 
-  select * into v_conv from ponto_conversas where tecnico_id = v_tec.id and expira_em > now();
+  -- trava a conversa: duas localizações simultâneas não geram duas marcações
+  select * into v_conv from ponto_conversas where tecnico_id = v_tec.id and expira_em > now() for update;
   v_norm := lower(trim(translate(coalesce(v_msg->>'conversation', v_msg->'extendedTextMessage'->>'text', ''),
                                  'áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ', 'aaaaeeiooouc' || 'aaaaeeiooouc')));
   v_norm := regexp_replace(v_norm, '[.!?]+$', '');
@@ -105,6 +113,8 @@ begin
       return jsonb_build_object('ignorado', 'ponto: evento duplicado');
     end if;
     if v_conv.tecnico_id is null or v_conv.etapa <> 'aguardando_local' then
+      -- atualização da localização em tempo real fora da conversa: ignora em silêncio
+      if v_msg ? 'liveLocationMessage' then return jsonb_build_object('ignorado', 'ponto: localização sem conversa'); end if;
       perform fn_ponto_wa(v_tec.telefone_e164, 'Para bater o ponto, escreva *ponto* primeiro e depois mande a localização.');
       return jsonb_build_object('acao', 'ponto_localizacao_sem_conversa');
     end if;
@@ -112,6 +122,12 @@ begin
     if v_msg ? 'locationMessage' and (coalesce(v_loc->>'name', '') <> '' or coalesce(v_loc->>'address', '') <> '') then
       perform fn_ponto_wa(v_tec.telefone_e164, 'Essa localização é um lugar escolhido no mapa. Mande a sua *localização atual*: 📎 → Localização → *Enviar localização atual*.');
       return jsonb_build_object('acao', 'ponto_localizacao_recusada');
+    end if;
+    -- localização encaminhada é de outra pessoa
+    if coalesce(v_loc->'contextInfo'->>'isForwarded', '') = 'true'
+       or coalesce(v_loc->'contextInfo'->>'forwardingScore', '0') <> '0' then
+      perform fn_ponto_wa(v_tec.telefone_e164, 'Localização encaminhada não vale para o ponto. Mande a *sua localização atual*: 📎 → Localização → *Enviar localização atual*.');
+      return jsonb_build_object('acao', 'ponto_localizacao_encaminhada');
     end if;
     v_lat := (v_loc->>'degreesLatitude')::numeric;
     v_lng := (v_loc->>'degreesLongitude')::numeric;
@@ -123,7 +139,10 @@ begin
     exception when unique_violation then
       return jsonb_build_object('ignorado', 'ponto: evento duplicado');   -- entrega simultânea
     when others then
-      perform fn_ponto_wa(v_tec.telefone_e164, 'Não foi possível registrar o ponto: ' || sqlerrm);
+      -- só a mensagem de regra (raise exception) vai ao funcionário; o detalhe técnico fica no log
+      perform fn_ponto_wa(v_tec.telefone_e164, case when sqlstate = 'P0001'
+        then 'Não foi possível registrar o ponto: ' || sqlerrm
+        else 'Não foi possível registrar o ponto agora. Tente de novo ou fale com o gestor.' end);
       return jsonb_build_object('acao', 'ponto_erro', 'erro', sqlerrm);
     end;
     update ponto_conversas set expira_em = now() where tecnico_id = v_tec.id;
@@ -140,17 +159,19 @@ begin
   end if;
 
   -- 2. Texto: palavra do ponto ou escolha do menu
-  if v_conv.tecnico_id is not null and v_conv.etapa = 'escolher_tipo' and v_norm ~ '^[1-6]$' then
+  -- número só vale como escolha do menu se não for resposta citando outra mensagem (ex.: a escala)
+  if v_conv.tecnico_id is not null and v_conv.etapa = 'escolher_tipo' and v_norm ~ '^[1-6]$'
+     and v_msg->'extendedTextMessage'->'contextInfo'->>'stanzaId' is null then
     v_tipo := (array['entrada','saida_almoco','volta_almoco','saida','inicio_he','fim_he'])[v_norm::int];
-  elsif v_norm in ('entrada', 'entrei', 'cheguei', 'inicio', 'inicio do expediente') then
+  elsif v_norm in ('entrada', 'entrei', 'cheguei', 'inicio do expediente') then
     v_tipo := 'entrada';
   elsif v_norm in ('almoco', 'saida almoco', 'saida para almoco', 'saida para o almoco', 'sai para almoco', 'intervalo') then
     v_tipo := case when v_ultima = 'saida_almoco' then 'volta_almoco' else 'saida_almoco' end;
   elsif v_norm in ('volta', 'volta do almoco', 'voltei', 'retorno', 'retorno do almoco') then
     v_tipo := 'volta_almoco';
-  elsif v_norm in ('saida', 'sai', 'fim', 'fim do expediente', 'encerrar') then
+  elsif v_norm in ('saida', 'fim do expediente') then
     v_tipo := 'saida';
-  elsif v_norm in ('he', 'hora extra', 'horas extras', 'extra') then
+  elsif v_norm in ('he', 'hora extra', 'horas extras') then
     v_tipo := case when v_ultima = 'inicio_he' then 'fim_he' else 'inicio_he' end;
   elsif v_norm in ('ponto', 'bater ponto', 'registro de ponto', 'registrar ponto', 'marcar ponto') then
     v_menu := 'Qual marcação, ' || split_part(v_tec.nome, ' ', 1) || '? Responda o número:' || E'\n'
@@ -183,20 +204,32 @@ declare
   v_log    bigint;
   v_evento text := lower(replace(coalesce(p_payload->>'event', ''), '_', '.'));
   v_res    jsonb;
+  v_pl     jsonb := p_payload - 'apikey';
 begin
   if p_token is null or p_token = '' or p_token is distinct from fn_segredo('WEBHOOK_TOKEN') then
     raise exception 'token invalido';
   end if;
 
+  -- LGPD: a localização do ponto já fica na marcação; o log do webhook não guarda outra cópia
+  if v_pl->'data'->'message' ?| array['locationMessage', 'liveLocationMessage'] then
+    v_pl := jsonb_set(v_pl, '{data,message}',
+      ((v_pl->'data'->'message') - 'locationMessage' - 'liveLocationMessage') || '{"localizacao": true}');
+  end if;
   insert into webhook_eventos (evento, payload)
-  values (v_evento, p_payload - 'apikey')
+  values (v_evento, v_pl)
   returning id into v_log;
 
   begin
     if v_evento = 'messages.update' then
       v_res := fn_wh_status(p_payload->'data');
     elsif v_evento = 'messages.upsert' then
-      v_res := fn_ponto_wh(p_payload->'data');
+      begin
+        v_res := fn_ponto_wh(p_payload->'data');
+      exception when others then
+        -- falha no ponto não pode derrubar a resposta das escalas
+        v_res := null;
+        raise warning 'ponto: %', sqlerrm;
+      end;
       if v_res is null then
         v_res := fn_wh_mensagem(p_payload->'data');
       end if;
