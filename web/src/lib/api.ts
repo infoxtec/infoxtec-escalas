@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo,
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento,
 } from './types'
 
 function traduzir(msg: string): string {
@@ -78,6 +78,11 @@ export const api = {
   empresas: () => rpc<Empresa[]>('app_empresas'),
   pontoGerarCodigo: (tecnico: string) => rpc<{ codigo: string; nome: string; expira_em: string }>('app_ponto_gerar_codigo', { p_tecnico: tecnico }),
   salvarEmpresa: (e: Partial<Empresa>) => rpc<string>('app_salvar_empresa', { p: e }),
+  pontoHoje: () => rpc<PontoHoje[]>('app_ponto_hoje'),
+  pontoAcompanhamento: (de: string, ate: string, tecnico: string | null) =>
+    rpc<PontoAcompanhamento[]>('app_ponto_acompanhamento', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
+  pontoVerificar: (empresa: string) =>
+    rpc<{ integra: boolean; conferidas: number; nsr?: number; motivo?: string }>('app_ponto_verificar', { p_empresa: empresa }),
 
   pendencias: (data: string) => rpc<Pendencias>('app_pendencias', { p_data: data }),
   simularJornada: (hora: string) => rpc<Jornada>('app_simular_jornada', { p_inicio: hora }),

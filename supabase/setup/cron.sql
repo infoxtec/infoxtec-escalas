@@ -8,3 +8,7 @@ select cron.schedule('limpeza-logs', '17 6 * * *', $$select fn_limpeza_logs()$$)
 
 -- Vigia do motor (migration 44): a cada 5 minutos, avisa os supervisores se o motor parou.
 select cron.schedule('vigia-motor', '*/5 * * * *', $$select fn_vigiar_motor()$$);
+
+-- Lembrete da saída para o almoço do ponto (migration 56): a cada 15 minutos; a função só envia
+-- entre o horário de config ponto_lembrete_almoco e 15h, uma vez por dia por funcionário.
+select cron.schedule('ponto-lembrete-almoco', '*/15 * * * *', $$select fn_ponto_lembrete_almoco()$$);

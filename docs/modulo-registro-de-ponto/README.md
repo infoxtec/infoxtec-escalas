@@ -10,7 +10,7 @@ regras, parte legal e decisões. Mudou algo do ponto, muda aqui.
 | [legal.md](legal.md) | Normas, tarefas jurídicas e contábeis, registro no INPI, o que podemos afirmar |
 | [aviso-de-privacidade.md](aviso-de-privacidade.md) | Aviso ao trabalhador (LGPD), rascunho para revisão do advogado |
 
-**Backlog:** item **075** (o módulo) e itens **076 a 089** (as tarefas), na aba Roadmap do painel.
+**Backlog:** item **075** (o módulo) e itens **076 a 090** (as tarefas), na aba Roadmap do painel.
 **Decisão de arquitetura:** decisão **48** em [`docs/decisoes.md`](../decisoes.md).
 **Responsáveis externos:** **Gabriel Pirolli** (advogado) e **Andreia Monteiro** (contadora).
 
@@ -69,7 +69,7 @@ responsabilidade do funcionário — não há lembrete, para não criar risco tr
 |---|---|
 | Plano e decisões | aprovados em 06/10 |
 | Legal (L1–L4) | a iniciar — Gabriel e Andreia |
-| Desenvolvimento (F1–F8) | **F1 completa na homologação em 06/10**: pacote 1 (080, migration 53, painel 3.9.0) e pacote 2 (081, migration 54: marcações imutáveis, NSR, hash). **F2 na homologação em 07/10**: login do funcionário e app `/ponto` (082, migration 55, painel 3.10.0). A seguir: WhatsApp (083) |
+| Desenvolvimento (F1–F8) | **F1 completa na homologação em 06/10**: pacote 1 (080, migration 53, painel 3.9.0) e pacote 2 (081, migration 54: marcações imutáveis, NSR, hash). **F2 na produção em 07/10**: login do funcionário e app `/ponto` (082, migration 55, painel 3.10.0). **F3 na homologação em 07/10**: WhatsApp (083) e tela Ponto do gestor, hoje e histórico (090), migration 56, painel 3.11.0. A seguir: jornada e espelho (084) |
 | Ponto oficial na Infoxtec | só depois do parecer, do INPI e de 30 dias de avaliação |
 
 ## 5. O que já existe no Trilha e será reaproveitado
