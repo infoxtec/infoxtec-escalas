@@ -192,6 +192,31 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `cliente_empresa_id`. A área é usada no ponto para sinalizar marcação fora do local.
 - Índices nas três chaves estrangeiras novas.
 
+### Migration 54 (06/10): Módulo Registro de Ponto — marcações (backlog 081, decisão 48)
+
+- **`ponto_marcacoes`** (RLS sem políticas): **só inclusão** — gatilhos recusam update, delete e
+  truncate (`fn_ponto_imutavel`). NSR sequencial por empresa sem lacuna (a linha de `ponto_nsr` fica
+  travada na transação), hora do servidor (`momento`), CPF do momento, tipo (entrada, saída e volta
+  do almoço, saída, início e fim de hora extra), canal (app, WhatsApp, URA), localização obrigatória
+  fora da URA, local de referência (o da escala de hoje; sem escala, o local com área mais perto),
+  distância e `dentro_area` (tolerância: precisão do aparelho, até 100 m). Fora da área é sinalizado,
+  nunca bloqueado. **Hash encadeado** (`fn_ponto_hash`, SHA-256 de todos os campos + hash anterior).
+- **Porta única garantida pelo banco** (revisão do `seguranca`): gatilho `before insert` recusa
+  marcação que não continue a cadeia (NSR seguinte, hash anterior, hash conferido, hora de agora);
+  `ponto_nsr` só avança de um em um; `anon`, `authenticated` e **`service_role`** sem nenhum acesso
+  direto às três tabelas. `origem` guarda só `msg_id`, `call_sid` e `app_versao` (até 2 KB) — nunca
+  o conteúdo da mensagem, porque a tabela não admite descarte antes do prazo.
+- **`ponto_ajustes`**: incluir ou desconsiderar, com motivo (mínimo 10 caracteres) e autor; também só
+  inclusão. A marcação original nunca muda.
+- **`fn_ponto_registrar`** (interna, sem acesso pelo painel): a porta única dos canais; devolve o
+  comprovante (NSR, empresa, CNPJ, nome, CPF, data, hora no fuso da empresa, tipo, local, código de
+  autenticação).
+- **`app_ponto_marcacoes`** (todos os papéis; leitura sem coordenadas, até 62 dias) e
+  **`app_ponto_verificar`** (admin: recalcula a cadeia e aponta lacuna ou hash adulterado).
+- Gatilho em `tecnicos`: técnico com marcação **não pode ser excluído** (guarda de 5 anos).
+- Nenhuma rotina de limpeza toca nestas tabelas. Descarte depois de 5 anos só por migration própria,
+  que desliga o gatilho de forma registrada.
+
 ## Gatilhos em `escalas`
 
 | Gatilho | O que faz |

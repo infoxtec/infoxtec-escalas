@@ -69,7 +69,7 @@ responsabilidade do funcionário — não há lembrete, para não criar risco tr
 |---|---|
 | Plano e decisões | aprovados em 06/10 |
 | Legal (L1–L4) | a iniciar — Gabriel e Andreia |
-| Desenvolvimento (F1–F8) | **F1 pacote 1 (080) na homologação em 06/10** (migration 53, painel 3.9.0); pacote 2 (081) a seguir |
+| Desenvolvimento (F1–F8) | **F1 completa na homologação em 06/10**: pacote 1 (080, migration 53, painel 3.9.0) e pacote 2 (081, migration 54: marcações imutáveis, NSR, hash). A seguir: login do funcionário (082) |
 | Ponto oficial na Infoxtec | só depois do parecer, do INPI e de 30 dias de avaliação |
 
 ## 5. O que já existe no Trilha e será reaproveitado
