@@ -226,7 +226,7 @@ Fora da área do local, a marcação vale e o gestor é avisado. Um login novo e
 (📎 → Localização → *Enviar localização atual*) e recebe o comprovante. Lugar escolhido no mapa não
 vale. Quem marcou entrada e não saiu para o almoço recebe um lembrete amigável a partir do meio-dia.
 
-**Tela Ponto (painel):** botão **Ponto** na tela principal. Em cima, a situação de hoje — quem já
+**Registro de Ponto (painel):** na **Agenda**, submenu **Registro de Ponto**. Em cima, a situação de hoje — quem já
 bateu, quem tem escala e não bateu entrada, marcações fora da área —, atualizada sozinha a cada 30
 segundos. Embaixo, o histórico por período (até 62 dias) e funcionário, com canal, local, aviso de
 fora da área, link do mapa e o selo **gestor** quando o funcionário entrou com código gerado pelo
