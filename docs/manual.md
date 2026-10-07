@@ -231,7 +231,9 @@ vale. Quem marcou entrada e não saiu para o almoço recebe um lembrete amigáve
 bateu, quem tem escala e não bateu entrada, marcações fora da área —, atualizada sozinha a cada 30
 segundos. Embaixo, o histórico por período (até 62 dias) e funcionário, com canal, local, aviso de
 fora da área, link do mapa e o selo **gestor** quando o funcionário entrou com código gerado pelo
-gestor. O administrador confere a cadeia das marcações de cada empresa (NSR e hash). Na coluna **Local** aparecem o **bairro e a cidade** de onde a marcação foi feita (do OpenStreetMap; surgem alguns minutos depois) e o local cadastrado; a coluna **GPS** abre a localização exata no mapa.
+gestor. O administrador confere a cadeia das marcações de cada empresa (NSR e hash). Na coluna **Local** aparecem o **bairro e a cidade** de onde a marcação foi feita (do OpenStreetMap; surgem alguns minutos depois) e o local cadastrado; a coluna **GPS** abre a localização exata no mapa. Em **Espelho de jornada**, cada dia de cada funcionário com entrada, almoço, saída, horas trabalhadas, intervalo e hora extra, e os avisos da CLT: intervalo abaixo de 1 h ou acima de 2 h, hora extra acima de 2 h, menos de 11 h entre jornadas, atraso e marcação faltando.
+
+**Avisos de jornada para o funcionário:** ao registrar a volta do almoço antes de 1 h de intervalo, o app e o WhatsApp avisam antes ("Registrar mesmo assim"); depois de qualquer marcação fora da regra, o comprovante traz o aviso e o gestor recebe uma mensagem no WhatsApp (uma vez por dia por tipo). Nenhum aviso impede a marcação.
 
 ## 7b. Empresas
 

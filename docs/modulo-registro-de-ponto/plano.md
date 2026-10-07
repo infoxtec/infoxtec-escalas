@@ -73,6 +73,9 @@ flowchart LR
 - **Aviso de limite de hora extra** (2 h/dia) ao funcionário e ao gestor.
 - Conciliação escala × ponto: aponta divergência, **nunca bloqueia** a marcação.
 - Tela de ajustes com justificativa e trilha.
+- **Estado (09/10):** entrega 1 na homologação (migration 61, painel 3.13.0) — cálculo da jornada, avisos
+  da CLT (inclusive o intervalo abaixo de 1 h, pedido do responsável), espelho no painel. Entrega 2:
+  tela de ajustes com justificativa.
 
 ### F5 · Arquivos legais — backlog **085**
 - **AFD** e **AEJ** no layout da Portaria 671/2021, com a assinatura definida no parecer L1.

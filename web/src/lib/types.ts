@@ -325,6 +325,7 @@ export interface PontoComprovante {
   data: string; hora: string; tipo: PontoTipo; canal: string; local: string | null
   dentro_area: boolean | null; distancia_m: number | null; autenticacao: string
   login_origem: 'whatsapp' | 'gestor' | null
+  avisos?: string[]   // avisos de jornada (intervalo, hora extra, interjornada) — a marcação vale
 }
 
 // Painel: acompanhamento do ponto pelo gestor (backlog 090, migration 56)
@@ -344,3 +345,19 @@ export interface PontoAcompanhamento {
   latitude: number | null; longitude: number | null; ajustada: boolean
 }
 export interface PontoGeo { id: string; bairro: string | null; cidade: string | null; uf: string | null; geo_status: 'pendente' | 'enviado' | 'ok' | 'erro' }
+// Espelho de jornada (backlog 084, migration 61)
+export interface PontoEspelho {
+  tecnico_id: string; tecnico: string; data: string; escala_hora: string | null
+  entrada: string | null; saida_almoco: string | null; volta_almoco: string | null; saida: string | null
+  trabalhado_min: number | null; intervalo_min: number | null; he_min: number | null
+  atraso_min: number | null; interjornada_min: number | null; alertas: string[]
+}
+export const ALERTA_JORNADA: Record<string, string> = {
+  intervalo_curto: 'Intervalo abaixo do mínimo', intervalo_longo: 'Intervalo acima de 2 h',
+  sem_intervalo: 'Sem intervalo', he_acima_limite: 'HE acima de 2 h', interjornada_curta: 'Interjornada < 11 h',
+  atraso: 'Atraso', incompleta: 'Marcação faltando',
+}
+export function minutosHm(m: number | null | undefined): string {
+  if (m == null) return '—'
+  return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}`
+}

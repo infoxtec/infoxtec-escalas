@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo,
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho,
 } from './types'
 
 function traduzir(msg: string): string {
@@ -26,6 +26,7 @@ export const ponto = {
   registrarCiencia: (token: string, versaoAviso: string) => rpc<void>('ponto_registrar_ciencia', { p_token: token, p_versao_aviso: versaoAviso }),
   bater: (token: string, tipo: PontoTipo, lat: number, lng: number, precisao: number, appVersao: string) =>
     rpc<PontoComprovante>('ponto_bater', { p_token: token, p_tipo: tipo, p_lat: lat, p_lng: lng, p_precisao: precisao, p_app_versao: appVersao }),
+  avisoPrevio: (token: string, tipo: PontoTipo) => rpc<string | null>('ponto_aviso_previo', { p_token: token, p_tipo: tipo }),
   minhasMarcacoes: (token: string, dias: number) => rpc<PontoMarcacao[]>('ponto_minhas_marcacoes', { p_token: token, p_dias: dias }),
 }
 
@@ -81,6 +82,8 @@ export const api = {
   pontoHoje: () => rpc<PontoHoje[]>('app_ponto_hoje'),
   pontoAcompanhamento: (de: string, ate: string, tecnico: string | null) =>
     rpc<PontoAcompanhamento[]>('app_ponto_acompanhamento', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
+  pontoEspelho: (de: string, ate: string, tecnico: string | null) =>
+    rpc<PontoEspelho[]>('app_ponto_espelho', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
   pontoGeo: (de: string, ate: string, tecnico: string | null) =>
     rpc<PontoGeo[]>('app_ponto_geo', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
   pontoVerificar: (empresa: string) =>

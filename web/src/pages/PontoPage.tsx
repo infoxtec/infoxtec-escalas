@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { KeyRound, Loader2, MapPin, RefreshCw, ShieldCheck } from 'lucide-react'
 import { Button, ErrorBox, Field, Input, Select, SuccessBox } from '../components/ui'
 import { api, erroMsg } from '../lib/api'
-import { PONTO_ROTULO, hojeBahia } from '../lib/types'
-import type { Empresa, PontoAcompanhamento, PontoGeo, PontoHoje } from '../lib/types'
+import { ALERTA_JORNADA, PONTO_ROTULO, hojeBahia, minutosHm } from '../lib/types'
+import type { Empresa, PontoAcompanhamento, PontoEspelho, PontoGeo, PontoHoje } from '../lib/types'
 
 const SITUACAO: Record<PontoHoje['situacao'], { label: string; cor: string }> = {
   sem_entrada: { label: 'Escala sem entrada', cor: 'bg-red-100 text-red-800' },
@@ -19,6 +19,8 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
   const [situacao, setSituacao] = useState<PontoHoje[] | null>(null)
   const [lista, setLista] = useState<PontoAcompanhamento[] | null>(null)
   const [geo, setGeo] = useState<Record<string, PontoGeo>>({})
+  const [espelho, setEspelho] = useState<PontoEspelho[] | null>(null)
+  const [vista, setVista] = useState<'marcacoes' | 'espelho'>('marcacoes')
   const [de, setDe] = useState(hoje)
   const [ate, setAte] = useState(hoje)
   const [tecnico, setTecnico] = useState('')
@@ -31,9 +33,10 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
   const carregar = useCallback(async () => {
     setErro(null)
     try {
-      const [s, l, g] = await Promise.all([api.pontoHoje(), api.pontoAcompanhamento(de, ate, tecnico || null),
-        papel === 'leitura' ? Promise.resolve([]) : api.pontoGeo(de, ate, tecnico || null)])
-      setSituacao(s); setLista(l); setGeo(Object.fromEntries(g.map(x => [x.id, x])))
+      const [s, l, g, j] = await Promise.all([api.pontoHoje(), api.pontoAcompanhamento(de, ate, tecnico || null),
+        papel === 'leitura' ? Promise.resolve([]) : api.pontoGeo(de, ate, tecnico || null),
+        api.pontoEspelho(de, ate, tecnico || null)])
+      setSituacao(s); setLista(l); setGeo(Object.fromEntries(g.map(x => [x.id, x]))); setEspelho(j)
       setAtualizado(new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Bahia' }))
     } catch (e) { setErro(erroMsg(e)) }
   }, [de, ate, tecnico, papel])
@@ -115,7 +118,14 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
 
       {/* Histórico */}
       <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Marcações</h3>
+        <div className="flex items-center gap-1 rounded-md border p-0.5 w-fit">
+          {([['marcacoes', 'Marcações'], ['espelho', 'Espelho de jornada']] as const).map(([id, rotulo]) => (
+            <button key={id} type="button" onClick={() => setVista(id)}
+              className={`rounded px-3 py-1.5 text-sm font-medium ${vista === id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
+              {rotulo}
+            </button>
+          ))}
+        </div>
         <div className="flex flex-wrap items-end gap-3">
           <Field label="De"><Input type="date" value={de} max={ate} onChange={e => setDe(e.target.value)} /></Field>
           <Field label="Até"><Input type="date" value={ate} min={de} max={hoje} onChange={e => setAte(e.target.value)} /></Field>
@@ -127,7 +137,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
           </Field>
           <p className="pb-2 text-xs text-muted-foreground">Período de até 62 dias. Bairro e cidade: © colaboradores do <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline">OpenStreetMap</a>.</p>
         </div>
-        {!lista ? <Carregando /> : (
+        {vista === 'espelho' ? <Espelho linhas={espelho} /> : !lista ? <Carregando /> : (
           <div className="overflow-x-auto rounded-md border">
             <table className="w-full text-sm">
               <thead><tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
@@ -213,3 +223,49 @@ function bairroCidade(g: PontoGeo | undefined) {
   if (g.geo_status === 'erro' || (!g.bairro && !g.cidade)) return 'Bairro não identificado'
   return [g.bairro, g.cidade && `${g.cidade}${g.uf ? '/' + g.uf : ''}`].filter(Boolean).join(', ')
 }
+
+// Espelho de jornada: previsto (escala) × realizado (marcações), com os avisos da CLT (backlog 084)
+function Espelho({ linhas }: { linhas: PontoEspelho[] | null }) {
+  if (!linhas) return <Carregando />
+  return (
+    <div className="space-y-2">
+      <div className="overflow-x-auto rounded-md border">
+        <table className="w-full text-sm">
+          <thead><tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
+            <th className="px-3 py-2">Data</th><th className="px-3 py-2">Funcionário</th><th className="px-3 py-2">Escala</th>
+            <th className="px-3 py-2">Entrada</th><th className="px-3 py-2">Almoço</th><th className="px-3 py-2">Saída</th>
+            <th className="px-3 py-2">Trabalhado</th><th className="px-3 py-2">Intervalo</th><th className="px-3 py-2">Hora extra</th>
+            <th className="px-3 py-2">Avisos</th>
+          </tr></thead>
+          <tbody>
+            {linhas.length === 0 ? (
+              <tr><td colSpan={10} className="py-10 text-center text-muted-foreground">Nenhuma jornada no período</td></tr>
+            ) : linhas.map(l => (
+              <tr key={`${l.tecnico_id}-${l.data}`} className="border-b last:border-0 hover:bg-muted/30">
+                <td className="whitespace-nowrap px-3 py-2 text-xs">{l.data.split('-').reverse().join('/')}</td>
+                <td className="px-3 py-2 text-xs">{l.tecnico}</td>
+                <td className="px-3 py-2 text-xs">{l.escala_hora ?? '—'}{l.atraso_min != null && <span className="ml-1 text-red-700">+{l.atraso_min} min</span>}</td>
+                <td className="px-3 py-2 text-xs">{l.entrada ?? '—'}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-xs">{l.saida_almoco || l.volta_almoco ? `${l.saida_almoco ?? '—'} – ${l.volta_almoco ?? '—'}` : '—'}</td>
+                <td className="px-3 py-2 text-xs">{l.saida ?? '—'}</td>
+                <td className="px-3 py-2 text-xs font-medium">{minutosHm(l.trabalhado_min)}</td>
+                <td className={`px-3 py-2 text-xs ${l.alertas.some(a => a.startsWith('intervalo') || a === 'sem_intervalo') ? 'font-medium text-amber-700' : ''}`}>{minutosHm(l.intervalo_min)}</td>
+                <td className={`px-3 py-2 text-xs ${l.alertas.includes('he_acima_limite') ? 'font-medium text-red-700' : ''}`}>{l.he_min ? minutosHm(l.he_min) : '—'}</td>
+                <td className="px-3 py-2 text-xs">
+                  {l.alertas.length === 0 ? <span className="text-green-700">ok</span> : l.alertas.map(a => (
+                    <span key={a} className={`mr-1 inline-block rounded px-1 ${a === 'he_acima_limite' || a === 'interjornada_curta' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{ALERTA_JORNADA[a] ?? a}</span>
+                  ))}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Avisos pela CLT: intervalo de 1 h a 2 h para jornada acima de 6 h (art. 71), hora extra de até 2 h por dia (art. 59),
+        11 h entre jornadas (art. 66) e atraso acima de 5 min na entrada (art. 58: até 5 min por marcação, no máximo 10 min no dia). Intervalo e jornada podem ter regra própria na convenção coletiva. Avisos não bloqueiam a marcação; ajustes vêm na próxima entrega.
+      </p>
+    </div>
+  )
+}
+
