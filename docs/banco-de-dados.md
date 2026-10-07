@@ -235,6 +235,13 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 60 (08/10): localização encaminhada ou reenviada não bate ponto
+
+- `fn_ponto_wh` procura o aviso de encaminhada também em `data.contextInfo` (Evolution 2.x) e em
+  `message.messageContextInfo`. Localização **fixa** com coordenada igual (6 casas) à de uma marcação
+  do mesmo funcionário nos últimos 60 dias pede a **localização em tempo real** (não pode ser
+  encaminhada); não bloqueia o funcionário honesto cujo GPS repete a coordenada.
+
 ### Migration 59 (08/10): menu do ponto com botões e volta ao menu
 
 - **`fn_ponto_menu`** abre a conversa e manda o menu: até **3 botões** (limite do WhatsApp; as
