@@ -4,14 +4,16 @@ Como montar a máquina Linux e o banco de homologação usados para rodar o pain
 É opcional: o fluxo padrão, descrito em [fluxo-de-desenvolvimento.md](fluxo-de-desenvolvimento.md),
 funciona só com o Claude Code na web.
 
-Testado em MacBook Air Intel (i3 dois núcleos). Em Mac Intel, **o Homebrew não funciona mais**:
-tudo abaixo é instalado por download direto.
+Desde 07/10/2026 o Mac é um **MacBook Air M2 (Apple Silicon)**. A máquina Linux continua a mesma
+que veio do Mac Intel antigo (`ubuntu`, arquitetura amd64), rodando pelo **Rosetta** — ver
+"Troca de Mac" no fim. Os passos abaixo foram escritos no Mac Intel (i3), onde **o Homebrew não
+funciona mais** e tudo é instalado por download direto.
 
 ## 1. Máquina Linux
 
 Duas opções, ambas com Ubuntu 24.04.
 
-**OrbStack** (https://orbstack.dev/download, versão Intel). Mais integrado: portas chegam ao
+**OrbStack** (https://orbstack.dev/download, versão do processador do Mac: Apple Silicon ou Intel). Mais integrado: portas chegam ao
 `localhost` do Mac. Licença comercial paga.
 
 ```bash
@@ -283,3 +285,24 @@ cat supabase/.temp/project-ref
 ```
 
 Se aparecer `zpckrxydqqmmcrphrkxz`, você está na **produção**.
+
+## Troca de Mac (Intel → Apple Silicon, 07/10/2026)
+
+O Assistente de Migração traz os dados do OrbStack, mas não deixa a máquina pronta. O que resolveu,
+sem perder nada:
+
+1. Cópia de segurança instantânea (APFS) dos dados, com o OrbStack fechado:
+   `cp -cR ~/Library/Group\ Containers/HUAQ24HBR6.dev.orbstack/data ~/orbstack-data-backup`.
+2. Rosetta: `softwareupdate --install-rosetta --agree-to-license`.
+3. Trocar o **aplicativo** pela versão Apple Silicon (o Assistente traz a Intel, que falha com
+   *must not be running under Rosetta*). Conferir com
+   `file /Applications/OrbStack.app/Contents/MacOS/OrbStack` → `arm64`.
+4. Se falhar com *Permission denied while opening data image*:
+   `sudo chown -R $USER ~/Library/Group\ Containers/HUAQ24HBR6.dev.orbstack/data`.
+5. `orb list` mostra a máquina antiga (`ubuntu`, amd64) ligada, com repositório, `web/.env.local`,
+   login do Supabase e DeepSeek Harness.
+
+Nunca apagar `~/.orbstack` nem os dados do Group Containers durante a troca. Pendente, sem pressa:
+criar uma máquina nativa arm64 e copiar o ambiente para ela (mais rápida), mantendo a amd64 como
+reserva até conferir.
+
