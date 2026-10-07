@@ -15,7 +15,7 @@ continue no ar, rápido e recuperável, sem custo de assinatura.
 | CI | `.github/workflows/ci.yml` | Build, audit bloqueante, deno check, migrations do zero, plpgsql_check |
 | Backup | `backup.yml` (diário) e `restauracao.yml` (dia 1) | Ambiente `producao-backup`, restrito à `main` |
 | Scripts | `scripts/aplicar-homologacao.sh`, `aplicar-producao.sh`, `painel.sh` | CLI fixado em `supabase@2.118.0` |
-| Máquina local | Linux no OrbStack, MacBook Air Intel i3 | Ver `docs/ambiente-dev-mac.md` |
+| Máquina local | Linux no OrbStack (máquina `ubuntu` amd64 via Rosetta), MacBook Air M2 desde 07/10/2026 | Ver `docs/ambiente-dev-mac.md` |
 
 Referências: `docs/analise-topologia.md` (medições), `docs/operacao.md` (diagnóstico, backup,
 contingência), `docs/analise-global.md` (riscos).
