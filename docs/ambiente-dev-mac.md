@@ -254,7 +254,7 @@ com os dois serviços rodando perfeitamente nesta máquina.
 No Mac:
 
 1. **OrbStack → Settings → Start at login** — para o OrbStack abrir sozinho.
-2. Confirme que a máquina **`dev`** volta sozinha. O OrbStack religa as máquinas que estavam rodando
+2. Confirme que a máquina **`ubuntu`** (antes `dev`) volta sozinha. O OrbStack religa as máquinas que estavam rodando
    quando ele fechou; se não voltar, `orb start dev` no terminal do Mac resolve — e dá para criar um
    item de login do macOS que rode esse comando.
 3. As portas chegam ao Mac pelo encaminhamento do próprio OrbStack: o `localhost` do Mac aponta para
@@ -301,6 +301,15 @@ sem perder nada:
    `sudo chown -R $USER ~/Library/Group\ Containers/HUAQ24HBR6.dev.orbstack/data`.
 5. `orb list` mostra a máquina antiga (`ubuntu`, amd64) ligada, com repositório, `web/.env.local`,
    login do Supabase e DeepSeek Harness.
+
+6. A máquina caía a cada 1–3 minutos por falta de memória (*Memory cgroup out of memory* em
+   `~/.orbstack/log/vmgr.log`): o limite **por máquina** veio do Mac antigo
+   (`orb config show` → `machine.ubuntu.memory_mib: 3072`). Resolvido com
+   `orb config set machine.ubuntu.memory_mib 0` (usa o limite geral, `memory_mib`) e
+   `orb restart ubuntu`.
+7. O login do Supabase não vem na migração: `npx --yes supabase@2.118.0 login` dentro da máquina e,
+   se o `aplicar-producao.sh` parar no meio, `npx --yes supabase@2.118.0 link --project-ref
+   oruwnlxyvznpigbpjjbx` para voltar o vínculo à homologação.
 
 Nunca apagar `~/.orbstack` nem os dados do Group Containers durante a troca. Pendente, sem pressa:
 criar uma máquina nativa arm64 e copiar o ambiente para ela (mais rápida), mantendo a amd64 como
