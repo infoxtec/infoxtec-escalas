@@ -235,6 +235,24 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 61 (09/10): jornada e avisos da CLT no ponto (backlog 084, entrega 1)
+
+- **`fn_ponto_jornada_dia(técnico, data)`**: entrada, almoço, saída, trabalhado, intervalo, hora
+  extra, interjornada, escala e atraso do dia, com os alertas: `intervalo_curto` (abaixo de 1 h em
+  jornada acima de 6 h; abaixo de 15 min de 4 a 6 h — CLT art. 71), `intervalo_longo` (acima de 2 h),
+  `sem_intervalo`, `he_acima_limite` (acima de 2 h — art. 59), `interjornada_curta` (abaixo de 11 h
+  — art. 66), `atraso` (entrada mais de 5 min depois da escala — art. 58) e `incompleta`. O dia é a data local da
+  marcação (jornada que cruza a meia-noite fica dividida: tratar com a convenção, L2).
+- **`fn_ponto_aviso_previo`** / **`ponto_aviso_previo`** (app): aviso **antes** de registrar a volta
+  do almoço com intervalo abaixo de 1 h. **`fn_ponto_avisar`**: depois da marcação, devolve os avisos
+  ao funcionário (comprovante do WhatsApp e do app, via `ponto_bater`) e avisa os supervisores **da mesma
+  empresa** (com `opt_in`, fora de `perfil_teste`) uma vez por dia por tipo (`alertas_enviados`).
+  Nenhum aviso bloqueia a marcação, e erro no cálculo do aviso nunca desfaz a marcação (só warning).
+- **`app_ponto_espelho(de, até, técnico)`**: espelho previsto × realizado por funcionário e dia.
+- Parâmetros novos em `config`: `ponto_intervalo_max_min` (120), `ponto_intervalo_curto_min` (15),
+  `ponto_he_limite_min` (120), `ponto_interjornada_min` (660), `ponto_tolerancia_min` (5); usa também
+  `jornada_min` e `intervalo_min`.
+
 ### Migration 60 (08/10): localização encaminhada ou reenviada não bate ponto
 
 - `fn_ponto_wh` procura o aviso de encaminhada também em `data.contextInfo` (Evolution 2.x) e em

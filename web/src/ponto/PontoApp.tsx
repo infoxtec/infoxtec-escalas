@@ -112,6 +112,7 @@ function Painel({ token, onSair }: { token: string; onSair: () => void }) {
   const [erro, setErro] = useState<string | null>(null)
   const [batendo, setBatendo] = useState<PontoTipo | null>(null)
   const [comprovante, setComprovante] = useState<PontoComprovante | null>(null)
+  const [previo, setPrevio] = useState<{ tipo: PontoTipo; texto: string } | null>(null)
 
   const carregar = useCallback(async () => {
     try {
@@ -124,8 +125,20 @@ function Painel({ token, onSair }: { token: string; onSair: () => void }) {
   }, [token, onSair])
   useEffect(() => { void carregar() }, [carregar])
 
+  // Antes da volta do almoço: avisa se o intervalo ainda está abaixo do mínimo (não bloqueia)
+  const escolher = async (tipo: PontoTipo) => {
+    setErro(null)
+    if (tipo === 'volta_almoco') {
+      try {
+        const t = await ponto.avisoPrevio(token, tipo)
+        if (t) { setPrevio({ tipo, texto: t.replace(/\*/g, '').replace(/^⚠️\s*/, '') }); return }
+      } catch { /* sem aviso: segue para a marcação */ }
+    }
+    await bater(tipo)
+  }
+
   const bater = async (tipo: PontoTipo) => {
-    setErro(null); setBatendo(tipo)
+    setErro(null); setPrevio(null); setBatendo(tipo)
     try {
       const p = await posicao()
       const c = await ponto.bater(token, tipo, p.coords.latitude, p.coords.longitude, Math.round(p.coords.accuracy), APP_VERSAO)
@@ -159,7 +172,7 @@ function Painel({ token, onSair }: { token: string; onSair: () => void }) {
 
       <div className="grid grid-cols-2 gap-3">
         {TIPOS.map(t => (
-          <button key={t.id} onClick={() => void bater(t.id)} disabled={!!batendo}
+          <button key={t.id} onClick={() => void escolher(t.id)} disabled={!!batendo}
             className={`flex min-h-[88px] flex-col items-center justify-center gap-1 rounded-xl border p-3 text-center text-sm font-semibold transition-colors disabled:opacity-60 ${t.id === sugerido ? 'border-primary bg-primary text-primary-foreground' : 'bg-card hover:border-primary'}`}>
             {batendo === t.id ? <Loader2 className="h-6 w-6 animate-spin" /> : <Clock className="h-6 w-6" />}
             {t.label}
@@ -184,6 +197,19 @@ function Painel({ token, onSair }: { token: string; onSair: () => void }) {
       </section>
 
       {comprovante && <Comprovante c={comprovante} onFechar={() => setComprovante(null)} />}
+      {previo && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center" onClick={() => setPrevio(null)}>
+          <div className="w-full max-w-md space-y-3 rounded-xl bg-card p-5" onClick={e => e.stopPropagation()}>
+            <p className="flex items-start gap-2 text-sm text-amber-900 dark:text-amber-200">
+              <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" /> {previo.texto}
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setPrevio(null)}>Voltar</Button>
+              <Button className="flex-1" onClick={() => void bater(previo.tipo)}>Registrar mesmo assim</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -210,6 +236,11 @@ function Comprovante({ c, onFechar }: { c: PontoComprovante; onFechar: () => voi
             <XCircle className="mt-0.5 h-4 w-4 shrink-0" /> Você está a {c.distancia_m} m do local. A marcação foi registrada normalmente e o gestor será avisado.
           </p>
         )}
+        {c.avisos?.map((a, i) => (
+          <p key={i} className="flex items-start gap-1.5 rounded-md bg-amber-50 p-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+            <XCircle className="mt-0.5 h-4 w-4 shrink-0" /> {a.replace(/^⚠️\s*/, '')}
+          </p>
+        ))}
         <Button className="w-full" onClick={onFechar}>Fechar</Button>
       </div>
     </div>
