@@ -536,3 +536,21 @@ CPF. O papel `leitura` não vê bairro nem cidade, como já não via as coordena
 aviso de privacidade menciona a consulta e o país (avisar os funcionários já cadastrados da nova
 versão do texto, junto com a revisão do Gabriel); o painel mostra a atribuição do OpenStreetMap. Se o volume passar do razoável para o serviço público, troca-se `geocodificacao_url`
 por um Nominatim próprio ou outro provedor, sem mudar o painel.
+
+## 51. Nenhuma função interna executável pelo `service_role`; suíte de regressão no CI
+
+**Data:** 09/10/2026. **Contexto:** reavaliação do pacote de segurança do DeepSeek (08/10), conferida
+pelo dev-banco, fullstack e QA: o bloco de permissões revogava de `public`, `anon` e `authenticated`,
+mas não do `service_role`, e o Supabase concede execute ao `service_role` em toda função nova. Quem
+tivesse a chave `service_role` chamaria `fn_ponto_registrar` (que recebe o funcionário por parâmetro)
+ou `fn_segredo`. **Decisão:** (1) o bloco de permissões revoga também do `service_role`; nada
+legítimo usa esse papel (painel → `app_*` como `authenticated`, app do ponto → `ponto_*` como `anon`,
+Edge Functions, pg_cron e backup → `postgres`); (2) `alter default privileges` faz função nova nascer
+fechada (o execute do `public` vem do padrão global do `postgres` e também é revogado); (3)
+`supabase/tests/regressao.sql` roda no CI a cada PR, num banco vazio com todas as migrations: permissões
+(T1), escala exige local, login e app do ponto, imutabilidade, carga de 2.000 marcações com NSR e
+cadeia de hash íntegros, conversa do WhatsApp com 300 mensagens, jornada, webhook e painel.
+É defesa em profundidade **nas funções**: a chave `service_role` continua com acesso total às
+tabelas (ignora o RLS) e segue sendo segredo de nível máximo. **Consequência:** migration nova que esquecer o bloco não abre função; o CI recusa qualquer função
+fora de `app_*`/`ponto_*` executável por papel da API. Partes 2 (âncora da cadeia no backup) e 3
+(token do webhook no cabeçalho) seguem em PRs próprios. Pendente (etapa 15a): revogar do `service_role` também tabelas e sequências do `public` e desativar a chave `service_role` antiga no Supabase, que nada usa.

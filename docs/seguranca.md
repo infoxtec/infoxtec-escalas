@@ -18,8 +18,9 @@ Quem faz login e não está em `painel_usuarios` vê "Acesso não autorizado".
 
 ## O que está fechado
 
-- `revoke execute on all functions ... from public, anon, authenticated` — só as `app_*` têm
-  permissão explícita.
+- `revoke execute on all functions ... from public, anon, authenticated, service_role` — só as
+  `app_*` (para `authenticated`) e as `ponto_*` (para `anon` e `authenticated`) têm permissão explícita; função nova
+  nasce fechada (default privileges, decisão 51). O CI confere a cada PR (`supabase/tests/regressao.sql`, T1). **Ressalva:** a chave `service_role` ainda tem acesso total às tabelas; revogar está na etapa 15a.
 - Todas as tabelas com RLS ligado e **sem políticas**: nada é legível pela API pública.
 - Views revogadas para `anon` e `authenticated`.
 - Todas as funções `app_*` com `search_path` fixo. **Ressalva honesta:** 26 funções antigas foram
