@@ -108,7 +108,8 @@ Edge Function não é migration: é publicada com `npx supabase functions deploy
 ### Bloco 5: proteção automática
 
 - [x] **14. CI no GitHub.** *Valendo desde o merge do PR #3 (27/09).* Em todo pull request: compilar o painel, reaplicar todas as migrations num banco vazio e rodar o `plpgsql_check`. Pega sozinho os erros que nesta análise foram encontrados à mão.
-- [ ] **15. Testes automáticos das regras críticas** (pgTAP): fuso do motor, jornada CLT, permissões por papel, habilidades.
+- [ ] **15. Testes automáticos das regras críticas** (pgTAP): fuso do motor, jornada CLT, permissões por papel, habilidades. *Primeira parte em 09/10: `supabase/tests/regressao.sql` no CI (permissões, ponto, WhatsApp, jornada do ponto, carga); faltam fuso do motor e habilidades.*
+- [ ] **15a. Endurecimento em 3 partes (decisão 51).** (1) Migration 62: nenhuma função interna executável pelo `service_role`, função nova fechada, regressão no CI. (2) Âncora da cadeia de hash do ponto no backup diário, conferida na restauração. (3) Token do webhook da Evolution no cabeçalho `x-webhook-token`, URL antiga como reserva por 3 a 7 dias, depois troca do token. Pendente da revisão do `seguranca`: revogar do `service_role` tabelas e sequências do `public` e desativar a chave `service_role` antiga.
 
 ### Bloco 6: infraestrutura sem custo
 
@@ -216,3 +217,4 @@ avaliação.
 | 08/10 | Migration 59: menu do ponto no WhatsApp com botões e volta ao menu | Homologação: 11 cenários em transação desfeita (menu, inválido, botão, botão interativo, botão de escala e falso, citação, cancelar), plpgsql_check zero | Concluído: produção, testado pelo responsável (08/10) |
 | 08/10 | Migration 60: localização encaminhada ou reenviada não bate ponto (bug achado no teste) | Homologação: encaminhada por data.contextInfo e por messageContextInfo recusadas, coordenada repetida recusada, leitura nova aceita; plpgsql_check zero | Concluído: produção, testado pelo responsável (08/10) |
 | 09/10 | Migration 61 + painel 3.13.0: jornada e avisos da CLT no ponto (084, entrega 1), espelho de jornada | Homologação: dia com intervalo de 40 min e 3h50 de HE (dois avisos), interjornada de 9h30, aviso antes da volta com 20 min, gestor avisado uma vez, espelho; plpgsql_check zero | Aguardando teste conjunto e ordem |
+| 09/10 | Migration 62: permissões sem `service_role`, default privileges, `supabase/tests/regressao.sql` no CI (decisão 51, etapa 15a parte 1) | Homologação: suíte T1 a T9 verde (2.000 marcações em 2,5 s; 300 mensagens em 0,4 s) | Aguardando merge e ordem |

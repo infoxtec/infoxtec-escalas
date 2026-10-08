@@ -125,3 +125,7 @@ jobs:
             ) p")
           if [ -n "$problemas" ]; then echo "Permissões da API do funcionário: $problemas"; exit 1; fi
           echo "ok"
+      - name: Regressão e carga (permissões, ponto, WhatsApp, jornada; decisão 51)
+        env:
+          PGPASSWORD: postgres
+        run: psql "postgresql://postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/tests/regressao.sql

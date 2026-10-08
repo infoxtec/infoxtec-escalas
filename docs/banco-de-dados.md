@@ -235,6 +235,18 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 62 (09/10): permissões sem `service_role` e função nova fechada (decisão 51)
+
+- O bloco de permissões revoga também do **`service_role`**: nenhuma função do schema `public` é
+  executável por ele. `app_*` → `authenticated`; `ponto_*` → `anon` e `authenticated`; o resto só
+  `postgres` (Edge Functions, pg_cron e backup entram como `postgres`).
+- **Default privileges** do `postgres`: função nova nasce sem execute para `public`, `anon`,
+  `authenticated` e `service_role`. O padrão global vale para qualquer função criada pelo `postgres`:
+  extensão ativada depois da migration 62 pode precisar de `grant` explícito.
+- **`supabase/tests/regressao.sql`**: suíte de regressão e carga (T1 a T9) numa transação desfeita;
+  roda no CI e na homologação. Medido na homologação em 09/10: 2.000 marcações em 2,5 s (NSR e cadeia
+  íntegros) e 300 mensagens do WhatsApp em 0,4 s.
+
 ### Migration 61 (09/10): jornada e avisos da CLT no ponto (backlog 084, entrega 1)
 
 - **`fn_ponto_jornada_dia(técnico, data)`**: entrada, almoço, saída, trabalhado, intervalo, hora

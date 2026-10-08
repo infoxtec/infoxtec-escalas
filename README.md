@@ -174,6 +174,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Painel de controle interno: 47 temas pendentes com referência exata e as avaliações de segurança, infraestrutura e código atualizadas (28/09)
 - [x] Evolution própria na Oracle Cloud, versão 2.4 com botões; produção virada e SEG-01/SEG-02 fechados (28/09)
 - [x] Migration 51 e painel 3.6.0: Administração do Sistema > Checklist, estado de saúde da plataforma (homologação, 29/09)
+- [ ] Migration 62: nenhuma função interna executável pelo `service_role`, função nova nasce fechada e **suíte de regressão e carga** no CI (decisão 51, homologação, 09/10)
 - [ ] Migration 61 e painel 3.13.0: jornada no ponto — avisos da CLT (intervalo abaixo de 1 h, antes e depois da marcação; hora extra acima de 2 h; interjornada; atraso) e **Espelho de jornada** no Registro de Ponto (homologação, 09/10)
 - [x] Migration 60: ponto no WhatsApp recusa localização encaminhada ou reenviada (bug do teste do responsável, produção, 08/10)
 - [x] Migration 59: ponto no WhatsApp com **botões** (3 mais prováveis) e menu numerado; opção inválida volta ao menu, *0* cancela (homologação, 08/10)

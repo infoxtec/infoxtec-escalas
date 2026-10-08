@@ -72,7 +72,7 @@ Edge Functions, todas as migrations num banco vazio e `plpgsql_check`. Precisa e
 do $$
 declare f record;
 begin
-  execute 'revoke execute on all functions in schema public from public, anon, authenticated';
+  execute 'revoke execute on all functions in schema public from public, anon, authenticated, service_role';
   for f in select p.oid::regprocedure as a from pg_proc p join pg_namespace n on n.oid = p.pronamespace
            where n.nspname = 'public' and p.proname like 'app\_%' loop
     execute format('grant execute on function %s to authenticated', f.a);
@@ -84,6 +84,9 @@ begin
 end $$;
 ```
 
+- Função nova já nasce sem execute para ninguém (default privileges, migration 62, decisão 51); o
+  `service_role` não executa nenhuma função nossa. `supabase/tests/regressao.sql` roda no CI e pode
+  rodar na homologação (transação desfeita); teste novo de regra entra nele.
 - Tabela nova: RLS ligado e sem políticas. O acesso passa pelas funções.
 - Migration precisa rodar num banco vazio: não depender de dado que só existe na produção.
 - Depois de aplicar uma migration na homologação, rodar o `plpgsql_check` em todas as funções
