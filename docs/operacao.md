@@ -267,6 +267,11 @@ recalcula a partir das marcações. A restauração mensal confere a âncora do 
 ainda guardada** contra o banco restaurado, recalculando a cadeia com uma **cópia de referência da
 fórmula do hash** (`scripts/backup/conferir-ancora.sql`), não com a `fn_ponto_hash` que veio no
 backup — quem trocasse a função na produção é acusado.
+Os três scripts rodam com `search_path = pg_catalog, pg_temp` e nomes qualificados, e recusam
+conferir se `ponto_marcacoes` não for a tabela da migration 54 com os tipos exatos das colunas do
+hash (`scripts/backup/tipos-ponto.sql`): função, tipo ou view plantados no `public` não enganam a
+conferência. Coluna nova na tabela não atrapalha; mudar o tipo de uma coluna do hash exige atualizar
+esse arquivo.
 
 **Limites:** quem for ao mesmo tempo dono do banco **e** administrador do GitHub pode apagar
 execuções e artefatos; uma âncora fora do alcance dele (e-mail para um terceiro, carimbo de tempo

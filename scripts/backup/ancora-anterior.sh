@@ -16,8 +16,10 @@ done < "$arq"
 if [ -z "$valores" ]; then echo "Âncora anterior sem empresas (nada a conferir)"; exit 0; fi
 faltando=$(psql "$URL" -X -A -t -v ON_ERROR_STOP=1 -v VERBOSITY=terse <<SQL
 begin transaction read only;
+set local search_path = pg_catalog, pg_temp;
+\\i $(dirname "$0")/tipos-ponto.sql
 select count(*) from (values $valores) a(empresa_id, nsr, hash)
- where a.nsr > 0 and not exists (select 1 from ponto_marcacoes m
+ where a.nsr > 0 and not exists (select 1 from public.ponto_marcacoes m
          where m.empresa_id = a.empresa_id and m.nsr = a.nsr and m.hash = a.hash);
 rollback;
 SQL

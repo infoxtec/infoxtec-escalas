@@ -62,9 +62,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           run=$(gh run list -R "$GITHUB_REPOSITORY" --workflow backup.yml --branch main --status success -L 1 --json databaseId -q '.[0].databaseId')
-          if [ -z "$run" ] || ! gh run download "$run" -R "$GITHUB_REPOSITORY" -n ancora-ponto -D anterior 2>/dev/null; then
-            echo "Sem âncora anterior (primeiro backup com âncora): nada a conferir"; exit 0
+          tem=0
+          if [ -n "$run" ]; then
+            tem=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" --jq '[.artifacts[] | select(.name == "ancora-ponto")] | length')
           fi
+          if [ "$tem" = "0" ]; then
+            echo "Backup anterior sem âncora (primeiro backup com âncora): nada a conferir"; exit 0
+          fi
+          # o artefato existe (ou expirou): não conseguir baixar é falha, nunca "nada a conferir"
+          gh run download "$run" -R "$GITHUB_REPOSITORY" -n ancora-ponto -D anterior
           gpg --batch --yes --pinentry-mode loopback --decrypt --passphrase-fd 3 \
               --output anterior.csv anterior/ancora-ponto.csv.gpg 3<<<"$SENHA"
           scripts/backup/ancora-anterior.sh anterior.csv
@@ -86,7 +92,8 @@ jobs:
             echo "sha256 das linhas empresa,NSR,hash: \`$(cut -d, -f1-3 copia/ancora-ponto.csv | sha256sum | cut -d' ' -f1)\`"
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
-        if: steps.ancora.outcome == 'success'
+        # só guarda âncora de execução em que as duas conferências passaram
+        if: steps.ancora.outcome == 'success' && steps.ancora_anterior.outcome == 'success'
         with:
           name: ancora-ponto
           path: ancora/ancora-ponto.csv.gpg

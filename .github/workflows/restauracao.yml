@@ -82,11 +82,13 @@ jobs:
           echo "sha256 da âncora do backup: $(cut -d, -f1-3 copia/ancora-ponto.csv | sha256sum | cut -d' ' -f1) (igual ao do resumo do backup)"
           cp copia/ancora-ponto.csv copia/ancoras.csv
           # e a âncora mais antiga ainda guardada (até 90 dias): prova que nada até ela mudou
-          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=ancora-ponto&per_page=100" \
-                  --jq '[.artifacts[] | select(.expired | not) | select(.workflow_run.head_branch == "main")] | sort_by(.created_at) | .[0].workflow_run.id // empty')
+          run=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?name=ancora-ponto&per_page=100" \
+                  --jq '.artifacts[] | select(.expired | not) | select(.workflow_run.head_branch == "main") | "\(.created_at) \(.workflow_run.id)"' \
+                | sort | head -1 | cut -d' ' -f2)
           if [ -n "$run" ] && gh run download "$run" -R "$GITHUB_REPOSITORY" -n ancora-ponto -D antiga; then
             gpg --batch --yes --pinentry-mode loopback --decrypt --passphrase-fd 3 \
                 --output antiga.csv antiga/ancora-ponto.csv.gpg 3<<<"$SENHA"
             cat antiga.csv >> copia/ancoras.csv
           fi
-          psql "postgresql://postgres@127.0.0.1:54322/postgres" -X -q -v VERBOSITY=terse -f scripts/backup/conferir-ancora.sql
+          # supabase_admin ignora RLS: nenhuma política vinda do backup esconde marcação da conferência
+          psql "postgresql://supabase_admin@127.0.0.1:54322/postgres" -X -q -v VERBOSITY=terse -f scripts/backup/conferir-ancora.sql

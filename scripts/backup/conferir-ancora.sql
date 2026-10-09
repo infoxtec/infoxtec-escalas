@@ -9,12 +9,15 @@
 -- alterados. Função do backup diferente da referência também é acusada.
 --   psql "$URL" -X -q -f scripts/backup/conferir-ancora.sql
 \set ON_ERROR_STOP on
+set search_path = pg_catalog, pg_temp;
+\ir tipos-ponto.sql
 create temp table ancora (empresa_id uuid, ultimo bigint, ultimo_hash text, gerada_em text);
 \copy ancora from 'copia/ancoras.csv' with (format csv)
 
 -- Cópia fiel de fn_ponto_hash(ponto_marcacoes) da migration 54. Se a fórmula mudar numa migration
 -- nova, esta cópia muda junto (e as marcações antigas continuam conferindo pela fórmula delas).
-create function pg_temp.hash_ref(m ponto_marcacoes) returns text language sql immutable as $$
+create function pg_temp.hash_ref(m public.ponto_marcacoes) returns text language sql immutable
+  set search_path = pg_catalog, pg_temp as $$
   select encode(sha256(convert_to(array_to_string(array[
            m.hash_anterior, m.empresa_id::text, m.nsr::text, m.tecnico_id::text, m.cpf,
            to_char(m.momento at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
@@ -25,24 +28,24 @@ create function pg_temp.hash_ref(m ponto_marcacoes) returns text language sql im
 $$;
 
 do $$
-declare a record; m ponto_marcacoes; v_ant text; v_esp bigint; v_total bigint := 0;
+declare a record; m public.ponto_marcacoes; v_ant text; v_esp bigint; v_total bigint := 0;
 begin
-  if not exists (select 1 from ancora) and exists (select 1 from ponto_marcacoes) then
+  if not exists (select 1 from ancora) and exists (select 1 from public.ponto_marcacoes) then
     raise exception 'âncora vazia num backup com marcações';
   end if;
   for a in select * from ancora where ultimo > 0 loop
-    if not exists (select 1 from ponto_marcacoes
+    if not exists (select 1 from public.ponto_marcacoes
                     where empresa_id = a.empresa_id and nsr = a.ultimo and hash = a.ultimo_hash) then
       raise exception 'âncora de % não confere: empresa %, NSR %', a.gerada_em, a.empresa_id, a.ultimo;
     end if;
   end loop;
-  for a in select distinct empresa_id from ponto_marcacoes loop
+  for a in select distinct empresa_id from public.ponto_marcacoes loop
     v_ant := repeat('0', 64); v_esp := 1;
-    for m in select * from ponto_marcacoes where empresa_id = a.empresa_id order by nsr loop
+    for m in select * from public.ponto_marcacoes where empresa_id = a.empresa_id order by nsr loop
       if m.nsr <> v_esp or m.hash_anterior <> v_ant or m.hash <> pg_temp.hash_ref(m) then
         raise exception 'cadeia quebrada: empresa %, NSR %', a.empresa_id, m.nsr;
       end if;
-      if fn_ponto_hash(m) <> m.hash then
+      if public.fn_ponto_hash(m) <> m.hash then
         raise exception 'fn_ponto_hash do backup difere da fórmula de referência (empresa %, NSR %)', a.empresa_id, m.nsr;
       end if;
       v_ant := m.hash; v_esp := v_esp + 1; v_total := v_total + 1;

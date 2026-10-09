@@ -7,15 +7,17 @@
 --   psql "$URL" -X -q -f scripts/backup/ancora-ponto.sql
 \set ON_ERROR_STOP on
 begin transaction isolation level repeatable read read only;
+set local search_path = pg_catalog, pg_temp;
+\ir tipos-ponto.sql
 
 do $$
 declare r record;
 begin
   for r in
     select coalesce(n.empresa_id, m.empresa_id) as empresa, n.ultimo, n.ultimo_hash, m.qtd, m.maior,
-           (select x.hash from ponto_marcacoes x where x.empresa_id = n.empresa_id and x.nsr = n.ultimo) as hash_ultima
-      from ponto_nsr n
-      full join (select empresa_id, count(*) as qtd, max(nsr) as maior from ponto_marcacoes group by 1) m
+           (select x.hash from public.ponto_marcacoes x where x.empresa_id = n.empresa_id and x.nsr = n.ultimo) as hash_ultima
+      from public.ponto_nsr n
+      full join (select empresa_id, count(*) as qtd, max(nsr) as maior from public.ponto_marcacoes group by 1) m
         on m.empresa_id = n.empresa_id
   loop
     if r.ultimo is null then
@@ -30,6 +32,6 @@ begin
   end loop;
 end $$;
 
-\copy (select empresa_id, ultimo, ultimo_hash, to_char(now() at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') from ponto_nsr order by empresa_id) to 'copia/ancora-ponto.csv' with (format csv)
+\copy (select empresa_id, ultimo, ultimo_hash, to_char(now() at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') from public.ponto_nsr order by empresa_id) to 'copia/ancora-ponto.csv' with (format csv)
 
 commit;
