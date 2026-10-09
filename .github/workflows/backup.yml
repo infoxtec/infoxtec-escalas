@@ -20,6 +20,7 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read   # baixar a âncora do backup anterior
 
 jobs:
   backup:
@@ -28,6 +29,8 @@ jobs:
     environment: producao-backup
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
       - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb  # v1.7.3
         with:
           version: 2.118.0
@@ -40,6 +43,55 @@ jobs:
             echo "::error::Cadastre PRODUCAO_DB_URL e BACKUP_SENHA no ambiente producao-backup (Settings > Environments)"
             exit 1
           fi
+      # Âncora da cadeia do ponto (decisão 51, parte 2). Antes do dump:
+      # 1. a âncora do backup anterior (artefato ancora-ponto, 90 dias) tem de continuar valendo na
+      #    produção — reescrever a cadeia entre um backup e outro muda o hash ancorado e falha aqui;
+      # 2. a âncora nova é gravada em transação só de leitura; divergência entre ponto_nsr e as
+      #    marcações falha o backup.
+      # Os dois passos não interrompem a cópia (num incidente o backup é o que mais importa): a
+      # execução falha no fim, e como só execução com sucesso vira "backup anterior", a próxima
+      # continua conferindo contra a última âncora boa.
+      # No resumo (público, o repositório é aberto) sai só o sha256 das linhas canônicas
+      # (empresa, NSR, hash, sem horário): qualquer um recalcula a partir das marcações depois.
+      - name: Âncora anterior confere na produção
+        id: ancora_anterior
+        continue-on-error: true
+        env:
+          URL: ${{ secrets.PRODUCAO_DB_URL }}
+          SENHA: ${{ secrets.BACKUP_SENHA }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run=$(gh run list -R "$GITHUB_REPOSITORY" --workflow backup.yml --branch main --status success -L 1 --json databaseId -q '.[0].databaseId')
+          if [ -z "$run" ] || ! gh run download "$run" -R "$GITHUB_REPOSITORY" -n ancora-ponto -D anterior 2>/dev/null; then
+            echo "Sem âncora anterior (primeiro backup com âncora): nada a conferir"; exit 0
+          fi
+          gpg --batch --yes --pinentry-mode loopback --decrypt --passphrase-fd 3 \
+              --output anterior.csv anterior/ancora-ponto.csv.gpg 3<<<"$SENHA"
+          scripts/backup/ancora-anterior.sh anterior.csv
+          rm -rf anterior anterior.csv
+      - name: Âncora da cadeia do ponto
+        id: ancora
+        continue-on-error: true
+        env:
+          URL: ${{ secrets.PRODUCAO_DB_URL }}
+          SENHA: ${{ secrets.BACKUP_SENHA }}
+        run: |
+          mkdir -p copia ancora
+          psql "$URL" -X -q -v VERBOSITY=terse -f scripts/backup/ancora-ponto.sql
+          test -f copia/ancora-ponto.csv
+          gpg --batch --yes --pinentry-mode loopback --symmetric --cipher-algo AES256 --passphrase-fd 3 \
+              --output ancora/ancora-ponto.csv.gpg copia/ancora-ponto.csv 3<<<"$SENHA"
+          {
+            echo "### Âncora da cadeia do ponto"
+            echo "sha256 das linhas empresa,NSR,hash: \`$(cut -d, -f1-3 copia/ancora-ponto.csv | sha256sum | cut -d' ' -f1)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        if: steps.ancora.outcome == 'success'
+        with:
+          name: ancora-ponto
+          path: ancora/ancora-ponto.csv.gpg
+          retention-days: 90
+          if-no-files-found: error
       - name: Copiar o banco
         env:
           URL: ${{ secrets.PRODUCAO_DB_URL }}
@@ -66,3 +118,8 @@ jobs:
           path: ${{ env.ARQUIVO }}
           retention-days: 30
           if-no-files-found: error
+      - name: Resultado da âncora
+        if: steps.ancora_anterior.outcome != 'success' || steps.ancora.outcome != 'success'
+        run: |
+          echo "::error::A cópia foi guardada, mas a âncora da cadeia do ponto acusou (anterior: ${{ steps.ancora_anterior.outcome }}, nova: ${{ steps.ancora.outcome }}). Tratar como incidente: docs/operacao.md, Backup."
+          exit 1
