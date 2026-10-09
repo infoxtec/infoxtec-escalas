@@ -252,6 +252,33 @@ do banco de produção (papéis, estrutura e dados, sem `webhook_eventos`), crip
 Todo dia 1, `.github/workflows/restauracao.yml` restaura a cópia mais recente num banco temporário e
 confere as contagens; se falhar, o GitHub manda e-mail.
 
+**Âncora da cadeia do ponto** (decisão 51, parte 2). Antes do dump, o backup:
+1. baixa a âncora do backup anterior (artefato `ancora-ponto`, criptografado, 90 dias) e confere na
+   produção que cada empresa ainda tem aquela marcação com o mesmo hash (`scripts/backup/ancora-anterior.sh`).
+   Como cada hash inclui o anterior, reescrever qualquer marcação até ali — mesmo refazendo a cadeia
+   inteira de forma consistente, o que o banco sozinho não percebe — muda o hash ancorado;
+2. grava a âncora nova (`scripts/backup/ancora-ponto.sql`, transação só de leitura): por empresa, o
+   último NSR e o último hash, depois de conferir `ponto_nsr` contra as marcações.
+
+Se uma das duas acusar, **a cópia é guardada mesmo assim** e a execução falha no fim, com e-mail do
+GitHub. Execução com falha não vira "backup anterior": o dia seguinte continua conferindo contra a
+última âncora boa. No resumo (público) sai só o `sha256` das linhas `empresa,NSR,hash` — qualquer um
+recalcula a partir das marcações. A restauração mensal confere a âncora do backup **e a mais antiga
+ainda guardada** contra o banco restaurado, recalculando a cadeia com uma **cópia de referência da
+fórmula do hash** (`scripts/backup/conferir-ancora.sql`), não com a `fn_ponto_hash` que veio no
+backup — quem trocasse a função na produção é acusado.
+Os três scripts rodam com `search_path = pg_catalog, pg_temp` e nomes qualificados, e recusam
+conferir se `ponto_marcacoes` não for a tabela da migration 54 com os tipos exatos das colunas do
+hash (`scripts/backup/tipos-ponto.sql`): função, tipo ou view plantados no `public` não enganam a
+conferência. Coluna nova na tabela não atrapalha; mudar o tipo de uma coluna do hash exige atualizar
+esse arquivo.
+
+**Limites:** quem for ao mesmo tempo dono do banco **e** administrador do GitHub pode apagar
+execuções e artefatos; uma âncora fora do alcance dele (e-mail para um terceiro, carimbo de tempo
+público) é decisão do responsável. Se a fórmula do hash mudar numa migration, a cópia de referência
+muda junto. **Execução com âncora acusando = incidente:** não apagar artefatos (a âncora mais antiga
+que ainda confere mostra até onde a cadeia é confiável) e acionar o `seguranca`.
+
 **Guardar a `BACKUP_SENHA` fora do GitHub** (gerenciador de senhas). Sem ela, a cópia não abre.
 
 Para restaurar de verdade (desastre), numa máquina com o Supabase CLI:

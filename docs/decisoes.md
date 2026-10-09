@@ -553,4 +553,4 @@ cadeia de hash íntegros, conversa do WhatsApp com 300 mensagens, jornada, webho
 É defesa em profundidade **nas funções**: a chave `service_role` continua com acesso total às
 tabelas (ignora o RLS) e segue sendo segredo de nível máximo. **Consequência:** migration nova que esquecer o bloco não abre função; o CI recusa qualquer função
 fora de `app_*`/`ponto_*` executável por papel da API. Partes 2 (âncora da cadeia no backup) e 3
-(token do webhook no cabeçalho) seguem em PRs próprios. Pendente (etapa 15a): revogar do `service_role` também tabelas e sequências do `public` e desativar a chave `service_role` antiga no Supabase, que nada usa.
+(token do webhook no cabeçalho) seguem em PRs próprios. **Parte 2 (09/10):** âncora da cadeia do ponto no backup diário, conferida na restauração (`docs/operacao.md`, Backup). Pendente (etapa 15a): revogar do `service_role` também tabelas e sequências do `public` e desativar a chave `service_role` antiga no Supabase, que nada usa.

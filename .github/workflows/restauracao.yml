@@ -18,6 +18,9 @@ jobs:
     # segredos só existem no ambiente producao-backup, liberado apenas para a branch main
     environment: producao-backup
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
       - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb  # v1.7.3
         with:
           version: 2.118.0
@@ -25,7 +28,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          run=$(gh run list -R "$GITHUB_REPOSITORY" --workflow backup.yml --status success -L 1 --json databaseId -q '.[0].databaseId')
+          run=$(gh run list -R "$GITHUB_REPOSITORY" --workflow backup.yml --branch main --status success -L 1 --json databaseId -q '.[0].databaseId')
           if [ -z "$run" ]; then echo "::error::Nenhum backup com sucesso encontrado"; exit 1; fi
           gh run download "$run" -R "$GITHUB_REPOSITORY" -n backup-producao -D backup
           ls -la backup
@@ -69,3 +72,24 @@ jobs:
           n=$(psql "postgresql://postgres@127.0.0.1:54322/postgres" -At -c "select count(*) from escalas")
           if [ "$n" -eq 0 ]; then echo "::error::Backup restaurado sem nenhuma escala"; exit 1; fi
           echo "Restauração conferida: $n escalas"
+      - name: Conferir as âncoras da cadeia do ponto
+        env:
+          PGPASSWORD: postgres
+          SENHA: ${{ secrets.BACKUP_SENHA }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ ! -f copia/ancora-ponto.csv ]; then echo "::error::Backup sem a âncora da cadeia do ponto"; exit 1; fi
+          echo "sha256 da âncora do backup: $(cut -d, -f1-3 copia/ancora-ponto.csv | sha256sum | cut -d' ' -f1) (igual ao do resumo do backup)"
+          cp copia/ancora-ponto.csv copia/ancoras.csv
+          # e a âncora mais antiga ainda guardada (até 90 dias): prova que nada até ela mudou
+          run=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?name=ancora-ponto&per_page=100" \
+                  --jq '.artifacts[] | select(.expired | not) | select(.workflow_run.head_branch == "main") | "\(.created_at) \(.workflow_run.id)"' \
+                | sort | head -1 | cut -d' ' -f2)
+          if [ -n "$run" ]; then
+            gh run download "$run" -R "$GITHUB_REPOSITORY" -n ancora-ponto -D antiga
+            gpg --batch --yes --pinentry-mode loopback --decrypt --passphrase-fd 3 \
+                --output antiga.csv antiga/ancora-ponto.csv.gpg 3<<<"$SENHA"
+            cat antiga.csv >> copia/ancoras.csv
+          fi
+          # supabase_admin ignora RLS: nenhuma política vinda do backup esconde marcação da conferência
+          psql "postgresql://supabase_admin@127.0.0.1:54322/postgres" -X -q -v VERBOSITY=terse -f scripts/backup/conferir-ancora.sql
