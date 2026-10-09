@@ -1,0 +1,302 @@
+<title>Sprint 13–23 de outubro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: quadro de trilhas × dias (o calendário da sprint), depois o encadeamento e as fichas de cada tarefa */
+:root {
+  --bg: #f6f8fc; --surface: #ffffff; --line: #d8dfec; --fg: #172033; --muted: #55627a;
+  --claude: #2563eb; --claude-soft: #e3ecfe;
+  --resp: #15803d; --resp-soft: #dcf5e4;
+  --decisao: #a16207; --decisao-soft: #fdf3c4;
+  --risco: #b42318; --risco-soft: #fde4e1;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1522; --surface: #172033; --line: #2a3650; --fg: #e6ebf5; --muted: #9aa8c2;
+  --claude: #7aa6ff; --claude-soft: #1b2b4f; --resp: #5ad08a; --resp-soft: #15362a;
+  --decisao: #f3c94b; --decisao-soft: #3a3115; --risco: #ff8a7a; --risco-soft: #3d1d1b; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1522; --surface: #172033; --line: #2a3650; --fg: #e6ebf5; --muted: #9aa8c2;
+  --claude: #7aa6ff; --claude-soft: #1b2b4f; --resp: #5ad08a; --resp-soft: #15362a;
+  --decisao: #f3c94b; --decisao-soft: #3a3115; --risco: #ff8a7a; --risco-soft: #3d1d1b; color-scheme: dark }
+
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; display: grid; gap: 36px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: 1.9rem; font-weight: 700; }
+h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 12px; }
+p { margin: 0; max-width: 70ch; }
+.muted { color: var(--muted); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.eyebrow { font-family: var(--font-mono); font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+header { display: grid; gap: 10px; }
+.objetivo { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.legenda { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: .85rem; color: var(--muted); }
+.legenda span { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.dot.c { background: var(--claude); } .dot.r { background: var(--resp); } .dot.d { background: var(--decisao); }
+
+/* Quadro */
+.quadro-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.quadro { display: grid; grid-template-columns: 150px repeat(11, minmax(112px, 1fr)); min-width: 1380px; }
+.quadro > div { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 8px; min-width: 0; }
+.quadro .dia { font-weight: 700; font-size: .85rem; background: var(--bg); position: sticky; top: 0; }
+.quadro .dia small { display: block; font-weight: 400; color: var(--muted); font-size: .75rem; }
+.quadro .dia.fora { color: var(--muted); }
+.quadro .trilha { font-weight: 700; font-size: .85rem; background: var(--bg); position: sticky; left: 0; z-index: 1; }
+.quadro .trilha small { display: block; font-weight: 400; color: var(--muted); }
+.cel { display: flex; flex-direction: column; gap: 6px; }
+.t { display: block; border-radius: 6px; padding: 6px 7px; font-size: .78rem; line-height: 1.3; text-decoration: none; color: var(--fg); border-left: 4px solid; }
+.t b { font-family: var(--font-mono); font-size: .72rem; display: block; }
+.t.c { background: var(--claude-soft); border-color: var(--claude); }
+.t.r { background: var(--resp-soft); border-color: var(--resp); }
+.t.d { background: var(--decisao-soft); border-color: var(--decisao); }
+.t:hover, .t:focus-visible { outline: 2px solid var(--fg); outline-offset: 1px; }
+.teste { font-family: var(--font-mono); font-size: .68rem; color: var(--resp); }
+
+/* Encadeamento */
+.cadeia { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; overflow-x: auto; }
+.cadeia pre { margin: 0; }
+
+/* Fichas */
+.fichas { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.ficha { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 8px; align-content: start; scroll-margin-top: 16px; }
+.ficha:target { outline: 2px solid var(--claude); }
+.ficha header { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.ficha h3 { font-size: 1rem; }
+.tag { font-family: var(--font-mono); font-size: .7rem; padding: 2px 7px; border-radius: 99px; white-space: nowrap; }
+.tag.c { background: var(--claude-soft); color: var(--claude); }
+.tag.r { background: var(--resp-soft); color: var(--resp); }
+.tag.d { background: var(--decisao-soft); color: var(--decisao); }
+dl { margin: 0; display: grid; grid-template-columns: 92px 1fr; gap: 4px 10px; font-size: .88rem; }
+dt { color: var(--muted); }
+dd { margin: 0; min-width: 0; }
+
+/* Tabelas */
+.tab-scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; font-size: .9rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: .78rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.duas { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.risco { border-left: 4px solid var(--risco); background: var(--risco-soft); border-radius: 6px; padding: 8px 10px; }
+.riscos { display: grid; gap: 8px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Infoxtec Escalas · Trilha · proposta para aprovação</span>
+    <h1>Sprint de 13 a 23 de outubro</h1>
+    <div class="objetivo">
+      <p><strong>Objetivo:</strong> fechar o endurecimento da decisão 51 (permissões, backup, webhook) e completar a jornada do ponto (084, entrega 2), com <strong>no máximo uma mudança de risco por dia na produção</strong>.</p>
+    </div>
+    <div class="legenda">
+      <span><i class="dot c"></i>Claude desenvolve e aplica na homologação</span>
+      <span><i class="dot r"></i>Responsável testa e aplica na produção</span>
+      <span><i class="dot d"></i>Decisão do responsável</span>
+      <span class="teste">✓ teste = teste conjunto no dia</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>Calendário por trilha</h2>
+    <p class="muted" style="margin-bottom:10px">Clique numa tarefa para ver a ficha. Segunda, 12/10, é feriado (Nossa Senhora Aparecida).</p>
+    <div class="quadro-scroll">
+      <div class="quadro">
+        <div class="dia"></div>
+        <div class="dia fora">Sáb 10<small>antes da sprint</small></div>
+        <div class="dia">Ter 13</div><div class="dia">Qua 14</div><div class="dia">Qui 15</div><div class="dia">Sex 16</div>
+        <div class="dia">Sáb 17<small>noite</small></div><div class="dia">Seg 19</div><div class="dia">Ter 20</div>
+        <div class="dia">Qua 21</div><div class="dia">Qui 22</div><div class="dia">Sex 23</div>
+
+        <div class="trilha">Backup<small>decisão 51, parte 2</small></div>
+        <div class="cel"><a class="t c" href="#T02"><b>T02</b>Conferir o 1º backup com âncora</a></div>
+        <div class="cel"></div>
+        <div class="cel"><a class="t r" href="#T05"><b>T05</b>Restauração manual com âncora<span class="teste">✓ teste</span></a></div>
+        <div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div>
+
+        <div class="trilha">Webhook<small>decisão 51, parte 3</small></div>
+        <div class="cel"></div><div class="cel"></div>
+        <div class="cel"><a class="t c" href="#T06"><b>T06</b>PR: token no cabeçalho, revisão e homologação</a></div>
+        <div class="cel"><a class="t r" href="#T07"><b>T07</b>Publicar e ajustar a Evolution (mesmo token)<span class="teste">✓ teste</span></a></div>
+        <div class="cel"></div>
+        <div class="cel"><a class="t r" href="#T09"><b>T09</b>Trocar o token<span class="teste">✓ escala de teste</span></a></div>
+        <div class="cel"></div><div class="cel"></div>
+        <div class="cel"><a class="t c" href="#T14"><b>T14</b>PR: tirar o token da URL</a></div>
+        <div class="cel"><a class="t r" href="#T15"><b>T15</b>Publicar sem o token na URL<span class="teste">✓ teste</span></a></div>
+        <div class="cel"></div>
+
+        <div class="trilha">Permissões<small>pendência da parte 1</small></div>
+        <div class="cel"><a class="t r" href="#T01"><b>T01</b>Teste conjunto da migration 62<span class="teste">✓ teste</span></a></div>
+        <div class="cel"></div><div class="cel"></div><div class="cel"></div>
+        <div class="cel"><a class="t c" href="#T08"><b>T08</b>Migration 63: service_role sem tabelas<span class="teste">✓ homologação</span></a></div>
+        <div class="cel"></div>
+        <div class="cel"><a class="t r" href="#T10"><b>T10</b>Migration 63 na produção<span class="teste">✓ teste</span></a></div>
+        <div class="cel"><a class="t r" href="#T12"><b>T12</b>Desativar a chave service_role antiga</a></div>
+        <div class="cel"></div><div class="cel"></div><div class="cel"></div>
+
+        <div class="trilha">Jornada 084<small>entrega 2: ajustes</small></div>
+        <div class="cel"></div>
+        <div class="cel"><a class="t d" href="#T03"><b>T03</b>Decisões A, B e C</a></div>
+        <div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div>
+        <div class="cel"><a class="t c" href="#T11"><b>T11</b>Ajustes com justificativa na homologação</a></div>
+        <div class="cel"><a class="t r" href="#T11"><b>T11</b>Teste conjunto dos ajustes<span class="teste">✓ teste</span></a></div>
+        <div class="cel"><a class="t r" href="#T13"><b>T13</b>Ajustes na produção, painel 3.14.0<span class="teste">✓ teste</span></a></div>
+        <div class="cel"></div><div class="cel"></div>
+
+        <div class="trilha">Qualidade e registro<small>Claude, em paralelo</small></div>
+        <div class="cel"></div>
+        <div class="cel"><a class="t c" href="#T04"><b>T04</b>PR de documentação: backlog, plano e README em dia</a></div>
+        <div class="cel"><a class="t c" href="#P1"><b>P1</b>Testes de fuso do motor e habilidades (até 22/10)</a></div>
+        <div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div>
+        <div class="cel"><a class="t d" href="#T16"><b>T16</b>Revisão da sprint e decisão da Twilio</a></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Encadeamento</h2>
+    <p class="muted" style="margin-bottom:10px">Cada seta é uma dependência: a tarefa da ponta só começa quando a de origem está pronta. O caminho mais longo é o do webhook (T06 → T15).</p>
+    <div class="cadeia">
+<pre class="mermaid">
+flowchart LR
+  classDef c fill:#2563eb,stroke:#1d4ed8,color:#ffffff
+  classDef r fill:#15803d,stroke:#166534,color:#ffffff
+  classDef d fill:#ca8a04,stroke:#a16207,color:#ffffff
+  T01["T01 Teste da 62<br/>sáb 10"]:::r
+  T02["T02 1º backup com âncora<br/>sáb 10"]:::c
+  T03["T03 Decisões A·B·C<br/>ter 13"]:::d
+  T04["T04 PR de documentação<br/>ter 13"]:::c
+  T05["T05 Restauração com âncora<br/>qua 14"]:::r
+  T06["T06 PR token no cabeçalho<br/>qua 14"]:::c
+  T07["T07 Publicar webhook<br/>qui 15"]:::r
+  T08["T08 Migration 63 homologação<br/>sex 16"]:::c
+  T09["T09 Trocar token<br/>sáb 17 noite"]:::r
+  T10["T10 Migration 63 produção<br/>seg 19"]:::r
+  T11["T11 Ajustes 084 homologação<br/>seg 19 · teste ter 20"]:::c
+  T12["T12 Desativar chave antiga<br/>ter 20"]:::r
+  T13["T13 Ajustes 084 produção<br/>qua 21"]:::r
+  T14["T14 PR sem token na URL<br/>qua 21"]:::c
+  T15["T15 Publicar sem URL<br/>qui 22"]:::r
+  P1["P1 Testes fuso e habilidades<br/>até qui 22"]:::c
+  T16["T16 Revisão da sprint<br/>sex 23"]:::d
+  T02 --> T05
+  T01 --> T08
+  T06 --> T07 --> T09 --> T14 --> T15
+  T08 --> T10 --> T12
+  T03 --> T11 --> T13
+  T05 --> T16
+  T15 --> T16
+  T12 --> T16
+  T13 --> T16
+  P1 --> T16
+  T04 --> T16
+</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>Tarefas</h2>
+    <div class="fichas">
+      <article class="ficha" id="T01"><header><h3><span class="mono">T01</span> Teste conjunto da migration 62</h3><span class="tag r">Responsável</span></header>
+        <dl><dt>Quando</dt><dd>Sáb 10/10 (antes da sprint)</dd><dt>O quê</dt><dd>Uma marcação pelo app <span class="mono">/ponto</span>, uma pelo WhatsApp e a tela Agenda → Registro de Ponto.</dd><dt>Depende</dt><dd>—</dd><dt>Pronto</dt><dd>As três funcionam como antes; a parte 1 ganha <span class="mono">[x]</span> no plano.</dd></dl></article>
+
+      <article class="ficha" id="T02"><header><h3><span class="mono">T02</span> Conferir o 1º backup com âncora</h3><span class="tag c">Claude</span></header>
+        <dl><dt>Quando</dt><dd>Sáb 10/10, 9h (lembrete agendado)</dd><dt>O quê</dt><dd>Execução "Backup da produção" da madrugada verde, com "sem âncora anterior" e o sha256 no resumo.</dd><dt>Depende</dt><dd>PR #67 (mergeado)</dd><dt>Pronto</dt><dd>Execução verde; a de domingo já confere contra a de sábado.</dd></dl></article>
+
+      <article class="ficha" id="T03"><header><h3><span class="mono">T03</span> Decisões A, B e C da jornada</h3><span class="tag d">Decisão</span></header>
+        <dl><dt>Quando</dt><dd>Ter 13/10, 10 minutos</dd><dt>O quê</dt><dd>A: o papel leitura vê o espelho? B: o aviso ao gestor leva o nome? C: quem lança ajuste?</dd><dt>Depende</dt><dd>—</dd><dt>Bloqueia</dt><dd>T11. Sem a resposta, o teste de 20/10 escorrega.</dd></dl></article>
+
+      <article class="ficha" id="T04"><header><h3><span class="mono">T04</span> PR de documentação</h3><span class="tag c">Claude</span></header>
+        <dl><dt>Quando</dt><dd>Ter 13/10</dd><dt>O quê</dt><dd>Backlog, plano ("Onde estamos": 01–62, painel 3.13.0), README e Kanban em dia. Fecha 073 e 004 (substituído pelo 075). Registra o prazo da Twilio.</dd><dt>Depende</dt><dd>Aprovação desta sprint</dd><dt>Pronto</dt><dd>Merge; Kanban atualizado na produção (exceção do backlog).</dd></dl></article>
+
+      <article class="ficha" id="T05"><header><h3><span class="mono">T05</span> Restauração com âncora</h3><span class="tag r">Responsável</span></header>
+        <dl><dt>Quando</dt><dd>Qua 14/10</dd><dt>O quê</dt><dd>Rodar "Teste de restauração do backup" à mão no GitHub Actions.</dd><dt>Depende</dt><dd>T02</dd><dt>Pronto</dt><dd>Verde, com "Âncoras conferidas" no passo da âncora.</dd></dl></article>
+
+      <article class="ficha" id="T06"><header><h3><span class="mono">T06</span> Token do webhook no cabeçalho</h3><span class="tag c">Claude</span></header>
+        <dl><dt>Quando</dt><dd>Qua 14/10</dd><dt>O quê</dt><dd>Edge Function lê <span class="mono">x-webhook-token</span>; a URL antiga continua aceita, com aviso no log. Conferir se a Evolution 2.4 aceita cabeçalho no <span class="mono">/webhook/set</span>.</dd><dt>Depende</dt><dd>—</dd><dt>Pronto</dt><dd>Revisão do <span class="mono">seguranca</span>, CI verde, testado na homologação, roteiro no PR.</dd></dl></article>
+
+      <article class="ficha" id="T07"><header><h3><span class="mono">T07</span> Publicar o webhook novo</h3><span class="tag r">Responsável</span></header>
+        <dl><dt>Quando</dt><dd>Qui 15/10</dd><dt>O quê</dt><dd>Publicar a Edge Function; <span class="mono">/webhook/set</span> com o <strong>mesmo</strong> token no cabeçalho.</dd><dt>Depende</dt><dd>T06</dd><dt>Pronto</dt><dd>Ponto e escala de teste pelo WhatsApp funcionando; log sem "token pela URL".</dd></dl></article>
+
+      <article class="ficha" id="T08"><header><h3><span class="mono">T08</span> Migration 63: service_role sem tabelas</h3><span class="tag c">Claude</span></header>
+        <dl><dt>Quando</dt><dd>Sex 16/10</dd><dt>O quê</dt><dd>Revogar do <span class="mono">service_role</span> tabelas e sequências do <span class="mono">public</span>, com default privileges. O <span class="mono">infra-bd</span> confirma antes que nada usa a chave.</dd><dt>Depende</dt><dd>T01</dd><dt>Pronto</dt><dd>Homologação com zero privilégios; suíte de regressão verde; teste do painel e do app.</dd></dl></article>
+
+      <article class="ficha" id="T09"><header><h3><span class="mono">T09</span> Trocar o token do webhook</h3><span class="tag r">Responsável</span></header>
+        <dl><dt>Quando</dt><dd>Sáb 17/10, noite (lembrete às 18h50)</dd><dt>O quê</dt><dd>Token novo no Vault e no <span class="mono">/webhook/set</span>, em 5 minutos. O comando de volta ao token antigo fica pronto.</dd><dt>Depende</dt><dd>T07 sem 401 inesperado</dd><dt>Pronto</dt><dd>Escala de teste enviada e confirmada.</dd></dl></article>
+
+      <article class="ficha" id="T10"><header><h3><span class="mono">T10</span> Migration 63 na produção</h3><span class="tag r">Responsável</span></header>
+        <dl><dt>Quando</dt><dd>Seg 19/10</dd><dt>O quê</dt><dd><span class="mono">aplicar-producao.sh</span> com a consulta de conferência antes e depois.</dd><dt>Depende</dt><dd>T08</dd><dt>Pronto</dt><dd><span class="mono">service_role</span> com zero privilégios; app, WhatsApp e painel ok.</dd></dl></article>
+
+      <article class="ficha" id="T11"><header><h3><span class="mono">T11</span> Ajustes de ponto com justificativa</h3><span class="tag c">Claude</span></header>
+        <dl><dt>Quando</dt><dd>Seg 19/10 na homologação; teste conjunto ter 20/10</dd><dt>O quê</dt><dd>O gestor lança o ajuste com motivo; o espelho recalcula; a marcação original não muda; ajuste sem motivo é recusado.</dd><dt>Depende</dt><dd>T03</dd><dt>Pronto</dt><dd>Migration, painel 3.14.0, revisão do <span class="mono">seguranca</span> (quem vê, guarda de 5 anos), suíte de regressão com o caso novo.</dd></dl></article>
+
+      <article class="ficha" id="T12"><header><h3><span class="mono">T12</span> Desativar a chave service_role antiga</h3><span class="tag r">Responsável</span></header>
+        <dl><dt>Quando</dt><dd>Ter 20/10</dd><dt>O quê</dt><dd>No painel do Supabase, depois de 24 h da 63 estável.</dd><dt>Depende</dt><dd>T10 e a decisão D</dd><dt>Pronto</dt><dd>Checklist Sistema, backup e motor verdes no dia seguinte.</dd></dl></article>
+
+      <article class="ficha" id="T13"><header><h3><span class="mono">T13</span> Ajustes na produção</h3><span class="tag r">Responsável</span></header>
+        <dl><dt>Quando</dt><dd>Qua 21/10</dd><dt>O quê</dt><dd>Merge, painel publicado, migration aplicada e o mesmo teste da homologação.</dd><dt>Depende</dt><dd>T11 aprovado</dd><dt>Pronto</dt><dd>084 entrega 2 com <span class="mono">[x]</span>; Kanban movido.</dd></dl></article>
+
+      <article class="ficha" id="T14"><header><h3><span class="mono">T14</span> PR: tirar o token da URL</h3><span class="tag c">Claude</span></header>
+        <dl><dt>Quando</dt><dd>Qua 21/10</dd><dt>O quê</dt><dd>A Edge Function só aceita o cabeçalho.</dd><dt>Depende</dt><dd>T09 e 3 a 7 dias de log limpo</dd><dt>Pronto</dt><dd>Revisão do <span class="mono">seguranca</span>, CI verde.</dd></dl></article>
+
+      <article class="ficha" id="T15"><header><h3><span class="mono">T15</span> Publicar sem o token na URL</h3><span class="tag r">Responsável</span></header>
+        <dl><dt>Quando</dt><dd>Qui 22/10</dd><dt>O quê</dt><dd>Publicar a Edge Function e testar ponto e escala.</dd><dt>Depende</dt><dd>T14</dd><dt>Pronto</dt><dd>Etapa 15a com <span class="mono">[x]</span>: decisão 51 fechada.</dd></dl></article>
+
+      <article class="ficha" id="P1"><header><h3><span class="mono">P1</span> Testes de fuso e habilidades</h3><span class="tag c">Claude</span></header>
+        <dl><dt>Quando</dt><dd>Em paralelo, até 22/10</dd><dt>O quê</dt><dd>Casos novos na suíte de regressão: fuso do motor (Bahia × UTC) e habilidades exigidas na escala.</dd><dt>Depende</dt><dd>—</dd><dt>Pronto</dt><dd>CI verde; do responsável, só o merge. Fecha a etapa 15.</dd></dl></article>
+
+      <article class="ficha" id="T16"><header><h3><span class="mono">T16</span> Revisão da sprint</h3><span class="tag d">Decisão</span></header>
+        <dl><dt>Quando</dt><dd>Sex 23/10</dd><dt>O quê</dt><dd>O que entrou, o que escorregou e a próxima sprint. Decidir a assinatura da Twilio: ligar o bloqueio ou adiar, com registro (prazo 27/10).</dd><dt>Depende</dt><dd>Tudo acima</dd><dt>Pronto</dt><dd>Plano, backlog e README registrados.</dd></dl></article>
+    </div>
+  </section>
+
+  <section>
+    <h2>Decisões do responsável</h2>
+    <div class="tab-scroll">
+    <table>
+      <thead><tr><th>Decisão</th><th>Pergunta</th><th>Recomendação do time</th><th>Até</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">A</td><td>O papel leitura vê o espelho de jornada?</td><td>Vê totais e avisos, sem localização</td><td>Ter 13</td></tr>
+        <tr><td class="mono">B</td><td>O aviso ao gestor leva o nome do funcionário?</td><td>Primeiro nome, nunca o CPF</td><td>Ter 13</td></tr>
+        <tr><td class="mono">C</td><td>Quem lança ajuste de ponto?</td><td>Admin e gestor; o funcionário é avisado pelo WhatsApp</td><td>Ter 13</td></tr>
+        <tr><td class="mono">D</td><td>Quando desativar a chave service_role antiga?</td><td>Ter 20, longe da troca de token</td><td>Seg 19</td></tr>
+        <tr><td class="mono">E</td><td>O repositório continua público?</td><td>Tornar privado: a documentação expõe topologia e defesas</td><td>Sex 23</td></tr>
+        <tr><td class="mono">F</td><td>Adotar a persona engenheiro-saas?</td><td>Adiar: hoje se sobrepõe ao CTO e ao infra-bd</td><td>Sex 23</td></tr>
+        <tr><td class="mono">G</td><td>Situação do parecer REP-P (076, Gabriel)?</td><td>Informar: sem ele, a avaliação de 30 dias (088) não tem data</td><td>Sex 23</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section class="duas">
+    <div>
+      <h2>Riscos</h2>
+      <div class="riscos">
+        <div class="risco"><strong>Troca de token no sábado.</strong> Se falhar, o WhatsApp para no fim de semana. O token antigo fica de reserva até 22/10, com o comando de volta pronto.</div>
+        <div class="risco"><strong>Chave service_role.</strong> Antes de desativar, o <span class="mono">infra-bd</span> confirma que nada a usa (Checklist Sistema, backup, scripts).</div>
+        <div class="risco"><strong>Decisões A, B e C.</strong> Sem resposta em 13/10, os ajustes (T11) escorregam para a próxima sprint.</div>
+        <div class="risco"><strong>Prazo da Twilio, 27/10.</strong> Fica fora da sprint, mas vence quatro dias depois dela.</div>
+      </div>
+    </div>
+    <div>
+      <h2>Fica de fora</h2>
+      <ul>
+        <li>Teste do pino arrastado no mapa (Android e iPhone). Entra em 23/10 se sobrar folga.</li>
+        <li>Máquina OrbStack arm64: não mexer em meio a cinco publicações.</li>
+        <li>Substituir técnico depois de a escala começar (DEV-04).</li>
+        <li>Monitor externo no healthchecks.io (10c).</li>
+        <li>Pré-visualização de documentos com aviso de LGPD (etapa 19).</li>
+      </ul>
+      <h2 style="margin-top:20px">Pronto, para toda tarefa</h2>
+      <ul>
+        <li>CI verde: <span class="mono">plpgsql_check</span> zero e suíte de regressão passando.</li>
+        <li>Revisão do <span class="mono">seguranca</span> em toda mudança de banco ou Edge Function.</li>
+        <li>Teste conjunto na homologação, ordem do responsável, o mesmo teste na produção.</li>
+        <li><span class="mono">[x]</span> no plano, linha no registro e item movido no Kanban.</li>
+      </ul>
+    </div>
+  </section>
+</div>
