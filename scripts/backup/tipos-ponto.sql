@@ -22,8 +22,10 @@ begin
   if v_falta is not null then
     raise exception 'âncora: colunas de ponto_marcacoes fora do esperado: %', v_falta;
   end if;
-  if (select pg_catalog.format_type(a.atttypid, a.atttypmod) from pg_catalog.pg_attribute a
-       where a.attrelid = 'public.ponto_nsr'::pg_catalog.regclass and a.attname = 'ultimo_hash') is distinct from 'text' then
-    raise exception 'âncora: ponto_nsr.ultimo_hash fora do esperado';
+  if (select pg_catalog.count(*) from pg_catalog.pg_attribute a
+       where a.attrelid = 'public.ponto_nsr'::pg_catalog.regclass and not a.attisdropped
+         and (a.attname, pg_catalog.format_type(a.atttypid, a.atttypmod)) in
+             (('empresa_id', 'uuid'), ('ultimo', 'bigint'), ('ultimo_hash', 'text'))) <> 3 then
+    raise exception 'âncora: colunas de ponto_nsr fora do esperado';
   end if;
 end $$;

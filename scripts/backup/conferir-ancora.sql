@@ -6,10 +6,12 @@
 --
 -- O hash é recalculado por uma cópia de referência da fórmula (migration 54), não pela fn_ponto_hash
 -- que veio no backup: quem trocasse a função na produção faria a cadeia "conferir" com dados
--- alterados. Função do backup diferente da referência também é acusada.
+-- alterados. A fn_ponto_hash do backup nunca é executada (a conferência roda como superusuário):
+-- só o texto dela é comparado com o da migration 54. Gatilhos e event triggers ficam desligados.
 --   psql "$URL" -X -q -f scripts/backup/conferir-ancora.sql
 \set ON_ERROR_STOP on
 set search_path = pg_catalog, pg_temp;
+set session_replication_role = replica;
 \ir tipos-ponto.sql
 create temp table ancora (empresa_id uuid, ultimo bigint, ultimo_hash text, gerada_em text);
 \copy ancora from 'copia/ancoras.csv' with (format csv)
@@ -26,6 +28,17 @@ create function pg_temp.hash_ref(m public.ponto_marcacoes) returns text language
            coalesce(m.distancia_m::text, ''), coalesce(m.dentro_area::text, ''),
            coalesce(m.escala_id::text, ''), m.origem::text], '|'), 'UTF8')), 'hex')
 $$;
+
+-- md5 do corpo de fn_ponto_hash(ponto_marcacoes) na migration 54 (muda junto com hash_ref)
+do $$
+begin
+  if (select pg_catalog.md5(p.prosrc) || '/' || l.lanname from pg_catalog.pg_proc p
+        join pg_catalog.pg_language l on l.oid = p.prolang
+       where p.oid = 'public.fn_ponto_hash(public.ponto_marcacoes)'::pg_catalog.regprocedure)
+     is distinct from '247462d5b4ddf075d63b9008ed50d28a/sql' then
+    raise exception 'fn_ponto_hash do backup difere da fórmula da migration 54';
+  end if;
+end $$;
 
 do $$
 declare a record; m public.ponto_marcacoes; v_ant text; v_esp bigint; v_total bigint := 0;
@@ -44,9 +57,6 @@ begin
     for m in select * from public.ponto_marcacoes where empresa_id = a.empresa_id order by nsr loop
       if m.nsr <> v_esp or m.hash_anterior <> v_ant or m.hash <> pg_temp.hash_ref(m) then
         raise exception 'cadeia quebrada: empresa %, NSR %', a.empresa_id, m.nsr;
-      end if;
-      if public.fn_ponto_hash(m) <> m.hash then
-        raise exception 'fn_ponto_hash do backup difere da fórmula de referência (empresa %, NSR %)', a.empresa_id, m.nsr;
       end if;
       v_ant := m.hash; v_esp := v_esp + 1; v_total := v_total + 1;
     end loop;

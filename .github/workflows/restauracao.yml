@@ -85,7 +85,8 @@ jobs:
           run=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?name=ancora-ponto&per_page=100" \
                   --jq '.artifacts[] | select(.expired | not) | select(.workflow_run.head_branch == "main") | "\(.created_at) \(.workflow_run.id)"' \
                 | sort | head -1 | cut -d' ' -f2)
-          if [ -n "$run" ] && gh run download "$run" -R "$GITHUB_REPOSITORY" -n ancora-ponto -D antiga; then
+          if [ -n "$run" ]; then
+            gh run download "$run" -R "$GITHUB_REPOSITORY" -n ancora-ponto -D antiga
             gpg --batch --yes --pinentry-mode loopback --decrypt --passphrase-fd 3 \
                 --output antiga.csv antiga/ancora-ponto.csv.gpg 3<<<"$SENHA"
             cat antiga.csv >> copia/ancoras.csv
