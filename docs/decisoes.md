@@ -554,3 +554,18 @@ cadeia de hash íntegros, conversa do WhatsApp com 300 mensagens, jornada, webho
 tabelas (ignora o RLS) e segue sendo segredo de nível máximo. **Consequência:** migration nova que esquecer o bloco não abre função; o CI recusa qualquer função
 fora de `app_*`/`ponto_*` executável por papel da API. Partes 2 (âncora da cadeia no backup) e 3
 (token do webhook no cabeçalho) seguem em PRs próprios. **Parte 2 (09/10):** âncora da cadeia do ponto no backup diário, conferida na restauração (`docs/operacao.md`, Backup). Pendente (etapa 15a): revogar do `service_role` também tabelas e sequências do `public` e desativar a chave `service_role` antiga no Supabase, que nada usa.
+
+## 52. Sprint de 13 a 23/10 e as três regras da 084 entrega 2
+
+**Data:** 10/10/2026. **Contexto:** revisão do backlog pelo PO e pelo Scrum Master; sprint aprovada pelo
+responsável (`docs/sprint-13-23-out.html`), seguindo a recomendação do time nas três decisões que
+bloqueavam a 084 entrega 2. **Decisão:**
+- **A. Papel leitura e o espelho de jornada:** vê os totais e os avisos, **sem localização** (coerente
+  com a decisão 50: a leitura já não vê coordenadas, bairro nem cidade).
+- **B. Aviso ao gestor:** leva o **primeiro nome** do funcionário, nunca o CPF.
+- **C. Ajuste de ponto:** lançado por **admin e gestor**, sempre com justificativa; a marcação original
+  não muda e o funcionário é avisado do ajuste pelo WhatsApp.
+**Consequência:** A e B mudam funções da migration 61 e entram com C na 084 entrega 2 (painel 3.14.0),
+com revisão do `seguranca` sobre quem vê o ajuste e por quanto tempo fica guardado (proposta: 5 anos,
+como as marcações). Ficam para a revisão de 23/10: repositório público, persona engenheiro-saas,
+parecer REP-P (076) e o bloqueio da assinatura da Twilio (prazo 27/10).

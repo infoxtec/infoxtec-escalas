@@ -250,6 +250,8 @@ declare
   v_tec uuid := (select v::uuid from qa where k = 'tec7');
   v_emp uuid := (select v::uuid from qa where k = 'emp');
   d date := current_date - 3; j jsonb; v_av text[];
+  v_almoco timestamptz := least(now(), greatest(now() - interval '25 minutes',
+                          (now() at time zone 'America/Bahia')::date::timestamp at time zone 'America/Bahia' + interval '1 second'));
 begin
   alter table ponto_marcacoes disable trigger user;
   insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, latitude, longitude, hash_anterior, hash)
@@ -259,14 +261,17 @@ begin
                  (3, (d + time '12:40') at time zone 'America/Bahia', 'volta_almoco'),
                  (4, (d + time '20:30') at time zone 'America/Bahia', 'saida'),
                  (5, (d + 1 + time '06:00') at time zone 'America/Bahia', 'entrada'),
-                 (6, now() - interval '25 minutes', 'saida_almoco')) v(i, m, tp);
+                 -- saída para o almoço há 25 min, mas nunca antes da meia-noite local: o aviso prévio só
+                 -- conta o almoço de hoje, e o CI pode rodar logo depois da meia-noite em Salvador
+                 (6, v_almoco, 'saida_almoco')) v(i, m, tp);
   alter table ponto_marcacoes enable trigger user;
   j := fn_ponto_jornada_dia(v_tec, d);
   perform pg_temp.ok(j->'alertas' ? 'intervalo_curto' and j->'alertas' ? 'he_acima_limite'
                      and (j->>'trabalhado_min')::int = 710, '[T7] dia com intervalo curto e HE: ' || j::text);
   j := fn_ponto_jornada_dia(v_tec, d + 1);
   perform pg_temp.ok(j->'alertas' ? 'interjornada_curta', '[T7] interjornada: ' || j::text);
-  perform pg_temp.ok(fn_ponto_aviso_previo(v_tec, 'volta_almoco') like '%25 min%', '[T7] aviso antes da volta');
+  perform pg_temp.ok(fn_ponto_aviso_previo(v_tec, 'volta_almoco')
+                     like '%' || (extract(epoch from now() - v_almoco) / 60)::int || ' min%', '[T7] aviso antes da volta');
   perform pg_temp.ok(fn_ponto_aviso_previo(v_tec, 'entrada') is null, '[T7] aviso prévio fora da volta');
   v_av := fn_ponto_avisar(v_tec, 'saida');
   perform pg_temp.ok(v_av is not null, '[T7] avisos nulos');
