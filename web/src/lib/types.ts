@@ -350,7 +350,14 @@ export interface PontoEspelho {
   tecnico_id: string; tecnico: string; data: string; escala_hora: string | null
   entrada: string | null; saida_almoco: string | null; volta_almoco: string | null; saida: string | null
   trabalhado_min: number | null; intervalo_min: number | null; he_min: number | null
-  atraso_min: number | null; interjornada_min: number | null; alertas: string[]
+  atraso_min: number | null; interjornada_min: number | null; alertas: string[]; ajustes: number
+}
+// Ajuste de ponto com justificativa (backlog 084 entrega 2, migration 65); leitura recebe motivo e autor nulos
+export interface PontoAjuste {
+  id: string; tecnico_id: string; tecnico: string; data: string; hora: string
+  acao: 'incluir' | 'desconsiderar'; tipo: string; marcacao_nsr: number | null
+  desfaz_inclusao: boolean; desconsiderado: boolean
+  motivo: string | null; autor: string | null; criado_em: string
 }
 export const ALERTA_JORNADA: Record<string, string> = {
   intervalo_curto: 'Intervalo abaixo do mínimo', intervalo_longo: 'Intervalo acima de 2 h',

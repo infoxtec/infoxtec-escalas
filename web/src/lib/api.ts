@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho,
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste,
 } from './types'
 
 function traduzir(msg: string): string {
@@ -84,6 +84,13 @@ export const api = {
     rpc<PontoAcompanhamento[]>('app_ponto_acompanhamento', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
   pontoEspelho: (de: string, ate: string, tecnico: string | null) =>
     rpc<PontoEspelho[]>('app_ponto_espelho', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
+  pontoAjustes: (de: string, ate: string, tecnico: string | null) =>
+    rpc<PontoAjuste[]>('app_ponto_ajustes', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
+  // incluir: data e hora locais (o fuso é o da empresa, no banco); desconsiderar: marcação ou inclusão
+  pontoAjustar: (a: { tecnico: string; acao: 'incluir' | 'desconsiderar'; motivo: string; marcacao?: string; ajuste?: string; data?: string; hora?: string; tipo?: string }) =>
+    rpc<{ id: string; data: string; hora: string; avisado: boolean }>('app_ponto_ajustar', {
+      p_tecnico: a.tecnico, p_acao: a.acao, p_motivo: a.motivo, p_marcacao: a.marcacao ?? null,
+      p_ajuste: a.ajuste ?? null, p_data: a.data ?? null, p_hora: a.hora ?? null, p_tipo: a.tipo ?? null }),
   pontoGeo: (de: string, ate: string, tecnico: string | null) =>
     rpc<PontoGeo[]>('app_ponto_geo', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
   pontoVerificar: (empresa: string) =>

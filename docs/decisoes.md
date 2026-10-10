@@ -567,7 +567,10 @@ bloqueavam a 084 entrega 2. **Decisão:**
   não muda e o funcionário é avisado do ajuste pelo WhatsApp.
 **Consequência:** A e B mudam funções da migration 61 e entram com C na 084 entrega 2 (painel 3.14.0),
 com revisão do `seguranca` sobre quem vê o ajuste e por quanto tempo fica guardado (proposta: 5 anos,
-como as marcações). Ficam para a revisão de 23/10: repositório público, persona engenheiro-saas,
+como as marcações). *Na implementação (migration 65, revisão do `seguranca` em 10/10):* o motivo
+**não deve conter dado de saúde** — o painel orienta "atestado apresentado", nunca diagnóstico, CID ou
+doença (minimização, LGPD art. 6º, III); inclusão com hora errada se corrige com outro ajuste que a
+desconsidera, porque nada em `ponto_ajustes` se altera ou apaga. Ficam para a revisão de 23/10: repositório público, persona engenheiro-saas,
 parecer REP-P (076) e o bloqueio da assinatura da Twilio (prazo 27/10).
 
 ## 53. Assinatura da Twilio: ligar o bloqueio por teste controlado, não por espera
