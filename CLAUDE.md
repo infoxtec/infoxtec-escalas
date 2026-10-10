@@ -87,7 +87,8 @@ end $$;
 - Função nova já nasce sem execute para ninguém (default privileges, migration 62, decisão 51); o
   `service_role` não executa nenhuma função nossa. `supabase/tests/regressao.sql` roda no CI e pode
   rodar na homologação (transação desfeita); teste novo de regra entra nele.
-- Tabela nova: RLS ligado e sem políticas. O acesso passa pelas funções.
+- Tabela nova: RLS ligado e sem políticas. O acesso passa pelas funções. Tabela e sequência novas já
+  nascem sem privilégio para `anon`, `authenticated` e `service_role` (migration 63).
 - Migration precisa rodar num banco vazio: não depender de dado que só existe na produção.
 - Depois de aplicar uma migration na homologação, rodar o `plpgsql_check` em todas as funções
   (dentro de uma transação desfeita, como em `docs/analise-topologia.md`) e exigir zero erros.

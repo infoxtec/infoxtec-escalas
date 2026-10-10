@@ -550,10 +550,10 @@ fechada (o execute do `public` vem do padrão global do `postgres` e também é 
 `supabase/tests/regressao.sql` roda no CI a cada PR, num banco vazio com todas as migrations: permissões
 (T1), escala exige local, login e app do ponto, imutabilidade, carga de 2.000 marcações com NSR e
 cadeia de hash íntegros, conversa do WhatsApp com 300 mensagens, jornada, webhook e painel.
-É defesa em profundidade **nas funções**: a chave `service_role` continua com acesso total às
-tabelas (ignora o RLS) e segue sendo segredo de nível máximo. **Consequência:** migration nova que esquecer o bloco não abre função; o CI recusa qualquer função
+É defesa em profundidade **nas funções**: a chave `service_role` continuava com acesso total às
+tabelas (ignora o RLS) até a migration 63, e segue sendo segredo de nível máximo. **Consequência:** migration nova que esquecer o bloco não abre função; o CI recusa qualquer função
 fora de `app_*`/`ponto_*` executável por papel da API. Partes 2 (âncora da cadeia no backup) e 3
-(token do webhook no cabeçalho) seguem em PRs próprios. **Parte 2 (09/10):** âncora da cadeia do ponto no backup diário, conferida na restauração (`docs/operacao.md`, Backup). Pendente (etapa 15a): revogar do `service_role` também tabelas e sequências do `public` e desativar a chave `service_role` antiga no Supabase, que nada usa.
+(token do webhook no cabeçalho) seguem em PRs próprios. **Parte 2 (09/10):** âncora da cadeia do ponto no backup diário, conferida na restauração (`docs/operacao.md`, Backup). Tabelas e sequências do `public` revogadas do `service_role` (e as sequências também de `anon` e `authenticated`) na migration 63, de 10/10. Pendente (20/10): desativar a chave `service_role` antiga no Supabase, que nada usa.
 
 ## 52. Sprint de 13 a 23/10 e as três regras da 084 entrega 2
 
