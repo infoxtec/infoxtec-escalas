@@ -235,6 +235,28 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 65 (10/10): ajustes de ponto com justificativa (backlog 084, entrega 2; decisão 52)
+
+- **`app_ponto_ajustar(técnico, ação, motivo, marcação, ajuste, data, hora, tipo)`** (admin e gestor):
+  grava em `ponto_ajustes` — `incluir` (tipo + data e hora **locais**, convertidas pelo fuso da empresa;
+  inclusão idêntica é recusada) ou `desconsiderar` (uma marcação **ou** uma inclusão anterior do mesmo
+  funcionário — é assim que se desfaz inclusão com hora errada). Nunca no futuro nem antes de 62 dias.
+  Motivo de 10 a 500 letras, autor = e-mail do painel; o ajuste fica com a empresa da marcação. A
+  marcação original não muda. O funcionário recebe pelo WhatsApp o que mudou (data, marcação e hora),
+  **sem o motivo**, no máximo um aviso a cada 5 minutos (`alertas_enviados`); a função devolve `avisado`.
+- `ponto_ajustes` ganha **`ajuste_id`** (alvo do desconsiderar quando é uma inclusão), o check
+  `ponto_ajustes_alvo_ck` (desconsiderar tem exatamente um alvo; incluir não tem alvo), o limite de 500
+  letras no motivo e **índices únicos** parciais em `marcacao_id` e `ajuste_id` para `desconsiderar`
+  (o mesmo alvo nunca duas vezes, nem com dois cliques simultâneos).
+- **`app_ponto_ajustes(de, até, técnico)`**: lista do período (até 62 dias), com `desfaz_inclusao` e
+  `desconsiderado`; o papel **leitura** recebe motivo e autor nulos (decisão 52 A).
+- **`fn_ponto_marcacoes_efetivas`**: marcações não desconsideradas + inclusões não desfeitas. É a base de
+  **`fn_ponto_jornada_dia`** (cálculo do dia e interjornada), que passa a devolver `ajustes` (quantos
+  ajustes tocam o dia); **`app_ponto_espelho`** ganha a coluna `ajustes` e mostra também o dia que só
+  tem marcação incluída.
+- **`fn_ponto_avisar`**: o aviso de jornada ao gestor leva só o **primeiro nome** (decisão 52 B).
+- `fn_ponto_rotulo(tipo)`: rótulo da marcação nas mensagens. Teste T11 em `supabase/tests/regressao.sql`.
+
 ### Migration 64 (10/10): URA só em dia útil e fora de feriado (decisão 54)
 
 - **`feriados`** (data, nome, abrangência): nacionais, 2 de Julho, 24/06 e 08/12 de Salvador, Sexta-feira

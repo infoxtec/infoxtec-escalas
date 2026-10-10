@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { KeyRound, Loader2, MapPin, RefreshCw, ShieldCheck } from 'lucide-react'
-import { Button, ErrorBox, Field, Input, Select, SuccessBox } from '../components/ui'
+import { KeyRound, Loader2, MapPin, PencilLine, RefreshCw, ShieldCheck } from 'lucide-react'
+import { Button, ErrorBox, Field, Input, Select, SuccessBox, Textarea } from '../components/ui'
 import { api, erroMsg } from '../lib/api'
 import { ALERTA_JORNADA, PONTO_ROTULO, hojeBahia, minutosHm } from '../lib/types'
-import type { Empresa, PontoAcompanhamento, PontoEspelho, PontoGeo, PontoHoje } from '../lib/types'
+import type { Empresa, PontoAcompanhamento, PontoAjuste, PontoEspelho, PontoGeo, PontoHoje } from '../lib/types'
 
 const SITUACAO: Record<PontoHoje['situacao'], { label: string; cor: string }> = {
   sem_entrada: { label: 'Escala sem entrada', cor: 'bg-red-100 text-red-800' },
@@ -13,14 +13,15 @@ const SITUACAO: Record<PontoHoje['situacao'], { label: string; cor: string }> = 
 const CANAL: Record<string, string> = { app: 'App', whatsapp: 'WhatsApp', ura: 'Telefone' }
 
 // Registro de Ponto (submenu da Agenda): acompanhamento online (hoje, atualiza sozinho) e histórico das marcações (backlog 090).
-// As marcações são imutáveis; esta tela só lê. Docs: docs/modulo-registro-de-ponto/.
+// As marcações são imutáveis: correção é ajuste com justificativa, registro à parte (migration 65). Docs: docs/modulo-registro-de-ponto/.
 export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leitura' }) {
   const hoje = hojeBahia()
   const [situacao, setSituacao] = useState<PontoHoje[] | null>(null)
   const [lista, setLista] = useState<PontoAcompanhamento[] | null>(null)
   const [geo, setGeo] = useState<Record<string, PontoGeo>>({})
   const [espelho, setEspelho] = useState<PontoEspelho[] | null>(null)
-  const [vista, setVista] = useState<'marcacoes' | 'espelho'>('marcacoes')
+  const [ajustes, setAjustes] = useState<PontoAjuste[] | null>(null)
+  const [vista, setVista] = useState<'marcacoes' | 'espelho' | 'ajustes'>('marcacoes')
   const [de, setDe] = useState(hoje)
   const [ate, setAte] = useState(hoje)
   const [tecnico, setTecnico] = useState('')
@@ -33,10 +34,10 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
   const carregar = useCallback(async () => {
     setErro(null)
     try {
-      const [s, l, g, j] = await Promise.all([api.pontoHoje(), api.pontoAcompanhamento(de, ate, tecnico || null),
+      const [s, l, g, j, a] = await Promise.all([api.pontoHoje(), api.pontoAcompanhamento(de, ate, tecnico || null),
         papel === 'leitura' ? Promise.resolve([]) : api.pontoGeo(de, ate, tecnico || null),
-        api.pontoEspelho(de, ate, tecnico || null)])
-      setSituacao(s); setLista(l); setGeo(Object.fromEntries(g.map(x => [x.id, x]))); setEspelho(j)
+        api.pontoEspelho(de, ate, tecnico || null), api.pontoAjustes(de, ate, tecnico || null)])
+      setSituacao(s); setLista(l); setGeo(Object.fromEntries(g.map(x => [x.id, x]))); setEspelho(j); setAjustes(a)
       setAtualizado(new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Bahia' }))
     } catch (e) { setErro(erroMsg(e)) }
   }, [de, ate, tecnico, papel])
@@ -119,7 +120,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
       {/* Histórico */}
       <section className="space-y-3">
         <div className="flex items-center gap-1 rounded-md border p-0.5 w-fit">
-          {([['marcacoes', 'Marcações'], ['espelho', 'Espelho de jornada']] as const).map(([id, rotulo]) => (
+          {([['marcacoes', 'Marcações'], ['espelho', 'Espelho de jornada'], ['ajustes', 'Ajustes']] as const).map(([id, rotulo]) => (
             <button key={id} type="button" onClick={() => setVista(id)}
               className={`rounded px-3 py-1.5 text-sm font-medium ${vista === id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
               {rotulo}
@@ -137,7 +138,10 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
           </Field>
           <p className="pb-2 text-xs text-muted-foreground">Período de até 62 dias. Bairro e cidade: © colaboradores do <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline">OpenStreetMap</a>.</p>
         </div>
-        {vista === 'espelho' ? <Espelho linhas={espelho} /> : !lista ? <Carregando /> : (
+        {vista === 'ajustes' ? (
+          <Ajustes linhas={ajustes} marcacoes={lista} funcionarios={situacao ?? []} tecnico={tecnico} hoje={hoje}
+            podeAjustar={papel !== 'leitura'} aoAjustar={carregar} />
+        ) : vista === 'espelho' ? <Espelho linhas={espelho} /> : !lista ? <Carregando /> : (
           <div className="overflow-x-auto rounded-md border">
             <table className="w-full text-sm">
               <thead><tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
@@ -153,7 +157,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
                     <td className="px-3 py-2 text-xs">{m.tecnico}</td>
                     <td className="px-3 py-2 text-xs font-medium">
                       {PONTO_ROTULO[m.tipo] ?? m.tipo}
-                      {m.ajustada && <span className="ml-1 rounded bg-blue-100 px-1 font-normal text-blue-800">ajuste</span>}
+                      {m.ajustada && <span title="Desconsiderada por ajuste do gestor; continua guardada" className="ml-1 rounded bg-blue-100 px-1 font-normal text-blue-800">desconsiderada</span>}
                     </td>
                     <td className="px-3 py-2 text-xs">
                       {CANAL[m.canal] ?? m.canal}
@@ -243,7 +247,10 @@ function Espelho({ linhas }: { linhas: PontoEspelho[] | null }) {
             ) : linhas.map(l => (
               <tr key={`${l.tecnico_id}-${l.data}`} className="border-b last:border-0 hover:bg-muted/30">
                 <td className="whitespace-nowrap px-3 py-2 text-xs">{l.data.split('-').reverse().join('/')}</td>
-                <td className="px-3 py-2 text-xs">{l.tecnico}</td>
+                <td className="px-3 py-2 text-xs">
+                  {l.tecnico}
+                  {l.ajustes > 0 && <span title={`${l.ajustes} ajuste(s) do gestor neste dia`} className="ml-1 rounded bg-blue-100 px-1 text-blue-800">ajustado</span>}
+                </td>
                 <td className="px-3 py-2 text-xs">{l.escala_hora ?? '—'}{l.atraso_min != null && <span className="ml-1 text-red-700">+{l.atraso_min} min</span>}</td>
                 <td className="px-3 py-2 text-xs">{l.entrada ?? '—'}</td>
                 <td className="whitespace-nowrap px-3 py-2 text-xs">{l.saida_almoco || l.volta_almoco ? `${l.saida_almoco ?? '—'} – ${l.volta_almoco ?? '—'}` : '—'}</td>
@@ -263,9 +270,146 @@ function Espelho({ linhas }: { linhas: PontoEspelho[] | null }) {
       </div>
       <p className="text-xs text-muted-foreground">
         Avisos pela CLT: intervalo de 1 h a 2 h para jornada acima de 6 h (art. 71), hora extra de até 2 h por dia (art. 59),
-        11 h entre jornadas (art. 66) e atraso acima de 5 min na entrada (art. 58: até 5 min por marcação, no máximo 10 min no dia). Intervalo e jornada podem ter regra própria na convenção coletiva. Avisos não bloqueiam a marcação; ajustes vêm na próxima entrega.
+        11 h entre jornadas (art. 66) e atraso acima de 5 min na entrada (art. 58: até 5 min por marcação, no máximo 10 min no dia). Intervalo e jornada podem ter regra própria na convenção coletiva. Avisos não bloqueiam a marcação. Dia marcado como ajustado foi corrigido pelo gestor na aba Ajustes; as marcações originais continuam guardadas.
       </p>
     </div>
   )
 }
 
+// Ajustes de ponto com justificativa (backlog 084 entrega 2, decisão 52): incluir marcação esquecida ou
+// desconsiderar marcação errada. Nada é apagado; o funcionário recebe aviso no WhatsApp, sem o motivo.
+function Ajustes({ linhas, marcacoes, funcionarios, tecnico, hoje, podeAjustar, aoAjustar }: {
+  linhas: PontoAjuste[] | null; marcacoes: PontoAcompanhamento[] | null; funcionarios: PontoHoje[]
+  tecnico: string; hoje: string; podeAjustar: boolean; aoAjustar: () => Promise<void>
+}) {
+  const [func, setFunc] = useState(tecnico)
+  const [acao, setAcao] = useState<'incluir' | 'desconsiderar'>('incluir')
+  const [data, setData] = useState(hoje)
+  const [hora, setHora] = useState('')
+  const [tipo, setTipo] = useState('saida')
+  const [marcacao, setMarcacao] = useState('')
+  const [motivo, setMotivo] = useState('')
+  const [salvando, setSalvando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  const [ok, setOk] = useState<string | null>(null)
+
+  useEffect(() => { setFunc(tecnico) }, [tecnico])
+  useEffect(() => { setMarcacao('') }, [func])
+
+  // alvo do desconsiderar: marcação original (m:) ou inclusão feita por ajuste (a:)
+  const candidatas = [
+    ...(marcacoes ?? []).filter(m => m.tecnico_id === func && !m.ajustada)
+      .map(m => ({ valor: `m:${m.id}`, texto: `${m.data} ${m.hora} · ${PONTO_ROTULO[m.tipo] ?? m.tipo} · NSR ${m.nsr}` })),
+    ...(linhas ?? []).filter(a => a.tecnico_id === func && a.acao === 'incluir' && !a.desconsiderado)
+      .map(a => ({ valor: `a:${a.id}`, texto: `${a.data} ${a.hora} · ${PONTO_ROTULO[a.tipo] ?? a.tipo} · incluída por ajuste` })),
+  ]
+  const motivoOk = motivo.trim().length >= 10
+  const pronto = !!func && motivoOk && (acao === 'incluir' ? !!data && !!hora && !!tipo : !!marcacao)
+
+  const salvar = async () => {
+    setSalvando(true); setErro(null); setOk(null)
+    try {
+      const r = await api.pontoAjustar(acao === 'incluir'
+        ? { tecnico: func, acao, motivo: motivo.trim(), data, hora, tipo }
+        : { tecnico: func, acao, motivo: motivo.trim(),
+            ...(marcacao.startsWith('a:') ? { ajuste: marcacao.slice(2) } : { marcacao: marcacao.slice(2) }) })
+      setOk(`Ajuste de ${r.data} às ${r.hora} registrado. ` + (r.avisado
+        ? 'O funcionário foi avisado pelo WhatsApp (sem o motivo).'
+        : 'Sem novo aviso ao funcionário: ele não autorizou mensagens, está inativo ou já foi avisado de um ajuste nos últimos 5 minutos.'))
+      setMotivo(''); setHora(''); setMarcacao('')
+      await aoAjustar()
+    } catch (e) { setErro(erroMsg(e)) }
+    finally { setSalvando(false) }
+  }
+
+  return (
+    <div className="space-y-4">
+      {podeAjustar && (
+        <div className="space-y-3 rounded-md border p-3">
+          <h3 className="flex items-center gap-1.5 text-sm font-semibold"><PencilLine className="h-4 w-4" /> Novo ajuste</h3>
+          <div className="flex flex-wrap items-end gap-3">
+            <Field label="Funcionário">
+              <Select value={func} onChange={e => setFunc(e.target.value)}>
+                <option value="">Escolha</option>
+                {funcionarios.map(f => <option key={f.tecnico_id} value={f.tecnico_id}>{f.tecnico}</option>)}
+              </Select>
+            </Field>
+            <Field label="Ajuste">
+              <Select value={acao} onChange={e => setAcao(e.target.value as 'incluir' | 'desconsiderar')}>
+                <option value="incluir">Incluir marcação esquecida</option>
+                <option value="desconsiderar">Desconsiderar marcação errada</option>
+              </Select>
+            </Field>
+            {acao === 'incluir' ? (<>
+              <Field label="Data"><Input type="date" value={data} max={hoje} onChange={e => setData(e.target.value)} /></Field>
+              <Field label="Hora"><Input type="time" value={hora} onChange={e => setHora(e.target.value)} /></Field>
+              <Field label="Marcação">
+                <Select value={tipo} onChange={e => setTipo(e.target.value)}>
+                  {Object.entries(PONTO_ROTULO).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </Select>
+              </Field>
+            </>) : (
+              <Field label="Marcação do período">
+                <Select value={marcacao} onChange={e => setMarcacao(e.target.value)} disabled={!func}>
+                  <option value="">{func ? (candidatas.length ? 'Escolha' : 'Nenhuma marcação no período') : 'Escolha o funcionário'}</option>
+                  {candidatas.map(c => <option key={c.valor} value={c.valor}>{c.texto}</option>)}
+                </Select>
+              </Field>
+            )}
+          </div>
+          <Field label="Motivo (obrigatório, fica guardado 5 anos; não vai para o funcionário)">
+            <Textarea rows={2} value={motivo} maxLength={500} onChange={e => setMotivo(e.target.value)}
+              placeholder="Ex.: esqueceu de marcar a saída; confirmado com o supervisor da obra. Não escreva diagnóstico, CID nem doença: use “atestado apresentado”." />
+          </Field>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button size="sm" disabled={!pronto || salvando} onClick={() => void salvar()}>
+              {salvando && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Registrar ajuste
+            </Button>
+            {!motivoOk && motivo.length > 0 && <span className="text-xs text-amber-700">Motivo com pelo menos 10 letras.</span>}
+          </div>
+          {erro && <ErrorBox>{erro}</ErrorBox>}
+          {ok && <SuccessBox>{ok}</SuccessBox>}
+          <p className="text-xs text-muted-foreground">
+            O ajuste não apaga nem altera a marcação original (Portaria 671): fica registrado com autor, data e motivo, e o
+            espelho passa a considerá-lo. Ajuste lançado não se apaga: inclusão com hora errada se corrige desconsiderando a
+            inclusão e lançando a certa. Não escreva dado de saúde no motivo (diagnóstico, CID, doença).
+          </p>
+        </div>
+      )}
+      {!linhas ? <Carregando /> : (
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full text-sm">
+            <thead><tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
+              <th className="px-3 py-2">Marcação de</th><th className="px-3 py-2">Funcionário</th><th className="px-3 py-2">Ajuste</th>
+              {podeAjustar && <><th className="px-3 py-2">Motivo</th><th className="px-3 py-2">Por</th></>}
+              <th className="px-3 py-2">Lançado em</th>
+            </tr></thead>
+            <tbody>
+              {linhas.length === 0 ? (
+                <tr><td colSpan={podeAjustar ? 6 : 4} className="py-10 text-center text-muted-foreground">Nenhum ajuste no período</td></tr>
+              ) : linhas.map(a => (
+                <tr key={a.id} className="border-b last:border-0 hover:bg-muted/30">
+                  <td className="whitespace-nowrap px-3 py-2 text-xs">{a.data} <span className="font-medium">{a.hora}</span></td>
+                  <td className="px-3 py-2 text-xs">{a.tecnico}</td>
+                  <td className="px-3 py-2 text-xs">
+                    <span className={`rounded px-1 ${a.acao === 'incluir' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                      {a.acao === 'incluir' ? 'incluída' : 'desconsiderada'}
+                    </span>{' '}
+                    {PONTO_ROTULO[a.tipo] ?? a.tipo}{a.marcacao_nsr != null && <span className="text-muted-foreground"> · NSR {a.marcacao_nsr}</span>}
+                    {a.desfaz_inclusao && <span className="text-muted-foreground"> · inclusão anterior</span>}
+                    {a.desconsiderado && <span className="ml-1 rounded bg-muted px-1 text-muted-foreground">desfeita</span>}
+                  </td>
+                  {podeAjustar && <>
+                    <td className="max-w-xs px-3 py-2 text-xs">{a.motivo}</td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">{a.autor}</td>
+                  </>}
+                  <td className="whitespace-nowrap px-3 py-2 text-xs text-muted-foreground">{a.criado_em}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}

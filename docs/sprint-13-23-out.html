@@ -109,15 +109,31 @@ ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
   </header>
 
   <section class="situacao" aria-label="Situação">
-    <h2 style="margin:0">Situação em 10/10</h2>
-    <div class="barra" role="img" aria-label="8 de 17 tarefas concluídas"><i style="width:47%"></i></div>
-    <p><strong>8 de 17 tarefas concluídas</strong>, adiantadas no feriado. O backup com âncora, a restauração, o webhook com token no cabeçalho (já na produção) e a migration 63 (na homologação) estão prontos. A sprint segue com a troca do token no sábado, 17/10.</p>
+    <h2 style="margin:0">Situação em 10/10, fim do dia</h2>
+    <div class="barra" role="img" aria-label="10 de 18 tarefas concluídas"><i style="width:56%"></i></div>
+    <p><strong>10 de 18 tarefas concluídas.</strong> Na produção: webhook com token no cabeçalho, migration 63 (nenhum papel da API alcança tabela; conferido: 0 acessos) e migration 64 (URA só em dia útil, das 08:00 às 20:00, fora de feriado). Decidido pelo responsável: <strong>sem bloqueio da Twilio</strong> e <strong>URA automática ativa</strong> (decisão 54).</p>
     <div class="feitos">
       <span class="tag ok">T01 teste da 62</span><span class="tag ok">T02 1º backup com âncora</span><span class="tag ok">T03 decisões A, B e C</span>
       <span class="tag ok">T04 documentação</span><span class="tag ok">T05 restauração</span><span class="tag ok">T06 PR do webhook</span>
-      <span class="tag ok">T07 webhook na produção</span><span class="tag ok">T08 migration 63 na homologação</span>
+      <span class="tag ok">T07 webhook na produção</span><span class="tag ok">T08 63 na homologação</span><span class="tag ok">T10 63 na produção</span>
+      <span class="tag ok">T17 regra da URA (64) na produção</span>
     </div>
-    <p class="muted">Mudança no fluxo: o conector do Supabase não grava na homologação, então migrations vão para lá pelo <span class="mono">aplicar-homologacao.sh</span>, rodado pelo responsável; o Claude confere lendo.</p>
+    <h3 style="margin-top:6px">Calendário revisado (uma mudança de risco por dia na produção)</h3>
+    <div class="tab-scroll"><table>
+      <thead><tr><th>Dia</th><th>Produção</th><th>Em paralelo</th></tr></thead>
+      <tbody>
+        <tr><td>Sáb 10</td><td><strong>T18</strong> publicar a voz-escala e ligar o disparo automático (a regra impede ligação até terça, 08:00)</td><td>Claude começa a 084 entrega 2 (T11) e os testes de fuso e habilidades (P1)</td></tr>
+        <tr><td>Ter 13</td><td>primeiro dia útil da URA automática: acompanhar as ligações</td><td>T11 pronta na homologação</td></tr>
+        <tr><td>Qua 14</td><td><strong>T09</strong> troca do token, 21h às 21h30</td><td>teste conjunto da T11</td></tr>
+        <tr><td>Qui 15</td><td>observar</td><td>PR do fim da URL (T14)</td></tr>
+        <tr><td>Sex 16</td><td><strong>T12</strong> desativar a chave service_role antiga (decisão D, fechada pelo PO)</td><td>apagar o WEBHOOK_TOKEN_ANTERIOR (48 h após a T09)</td></tr>
+        <tr><td>Seg 19</td><td><strong>T13</strong> 084 entrega 2 na produção (painel 3.14.0)</td><td>—</td></tr>
+        <tr><td>Ter 20</td><td><strong>T15</strong> fim do token na URL</td><td>merge da P1</td></tr>
+        <tr><td>Qua 21</td><td>reserva</td><td>decisões E, F e G (abaixo) respondidas</td></tr>
+        <tr><td>Qui 22</td><td>—</td><td>T16 revisão da sprint</td></tr>
+      </tbody>
+    </table></div>
+    <p class="muted">Fluxo: migrations vão para a homologação pelo <span class="mono">aplicar-homologacao.sh</span> (responsável) e o Claude confere lendo; o conector do Supabase não grava.</p>
   </section>
 
   <section>
@@ -153,7 +169,7 @@ ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
         <div class="cel"></div><div class="cel"></div><div class="cel"></div>
         <div class="cel"><a class="t c feito" href="#T08"><b>T08</b>Migration 63: service_role sem tabelas<span class="teste">✓ homologação</span></a></div>
         <div class="cel"></div>
-        <div class="cel"><a class="t r" href="#T10"><b>T10</b>Migration 63 na produção<span class="teste">✓ teste</span></a></div>
+        <div class="cel"><a class="t r feito" href="#T10"><b>T10</b>Migration 63 na produção<span class="teste">✓ teste</span></a></div>
         <div class="cel"><a class="t r" href="#T12"><b>T12</b>Desativar a chave service_role antiga</a></div>
         <div class="cel"></div><div class="cel"></div><div class="cel"></div>
 
@@ -245,9 +261,9 @@ flowchart LR
         <dl><dt>Quando</dt><dd>Sex 16/10</dd><dt>O quê</dt><dd>Revogar do <span class="mono">service_role</span> tabelas e sequências do <span class="mono">public</span>, com default privileges. O <span class="mono">infra-bd</span> confirma antes que nada usa a chave.</dd><dt>Depende</dt><dd>T01</dd><dt>Pronto</dt><dd>Homologação com zero privilégios; suíte de regressão verde; teste do painel e do app.</dd></dl></article>
 
       <article class="ficha" id="T09"><header><h3><span class="mono">T09</span> Trocar o token do webhook</h3><span class="tag r">Responsável</span></header>
-        <dl><dt>Quando</dt><dd>Sáb 17/10, noite (lembrete às 18h50)</dd><dt>O quê</dt><dd>Token novo no Vault e no <span class="mono">/webhook/set</span>, em 5 minutos. O comando de volta ao token antigo fica pronto.</dd><dt>Depende</dt><dd>T07 sem 401 inesperado</dd><dt>Pronto</dt><dd>Escala de teste enviada e confirmada.</dd></dl></article>
+        <dl><dt>Quando</dt><dd>Qua 14/10, 21h às 21h30 (antecipada)</dd><dt>O quê</dt><dd>Token novo no Vault e no <span class="mono">/webhook/set</span>, em 5 minutos. O comando de volta ao token antigo fica pronto.</dd><dt>Depende</dt><dd>T07 sem 401 inesperado</dd><dt>Pronto</dt><dd>Escala de teste enviada e confirmada.</dd></dl></article>
 
-      <article class="ficha" id="T10"><header><h3><span class="mono">T10</span> Migration 63 na produção</h3><span class="tag r">Responsável</span></header>
+      <article class="ficha feito" id="T10"><header><h3><span class="mono">T10</span> Migration 63 na produção</h3><span class="tag r">Responsável</span><span class="tag ok">feito 10/10</span></header>
         <dl><dt>Quando</dt><dd>Seg 19/10</dd><dt>O quê</dt><dd><span class="mono">aplicar-producao.sh</span> com a consulta de conferência antes e depois.</dd><dt>Depende</dt><dd>T08</dd><dt>Pronto</dt><dd><span class="mono">service_role</span> com zero privilégios; app, WhatsApp e painel ok.</dd></dl></article>
 
       <article class="ficha" id="T11"><header><h3><span class="mono">T11</span> Ajustes de ponto com justificativa</h3><span class="tag c">Claude</span></header>
@@ -269,7 +285,7 @@ flowchart LR
         <dl><dt>Quando</dt><dd>Em paralelo, até 22/10</dd><dt>O quê</dt><dd>Casos novos na suíte de regressão: fuso do motor (Bahia × UTC) e habilidades exigidas na escala.</dd><dt>Depende</dt><dd>—</dd><dt>Pronto</dt><dd>CI verde; do responsável, só o merge. Fecha a etapa 15.</dd></dl></article>
 
       <article class="ficha" id="T16"><header><h3><span class="mono">T16</span> Revisão da sprint</h3><span class="tag d">Decisão</span></header>
-        <dl><dt>Quando</dt><dd>Sex 23/10</dd><dt>O quê</dt><dd>O que entrou, o que escorregou e a próxima sprint. Decidir a assinatura da Twilio: ligar o bloqueio ou adiar, com registro (prazo 27/10).</dd><dt>Depende</dt><dd>Tudo acima</dd><dt>Pronto</dt><dd>Plano, backlog e README registrados.</dd></dl></article>
+        <dl><dt>Quando</dt><dd>Qui 22/10</dd><dt>O quê</dt><dd>O que entrou, o que escorregou e a próxima sprint. A decisão da Twilio já foi tomada em 10/10 (decisão 54); aqui se mede o primeiro ciclo da URA automática.</dd><dt>Depende</dt><dd>Tudo acima</dd><dt>Pronto</dt><dd>Plano, backlog e README registrados.</dd></dl></article>
     </div>
   </section>
 
@@ -279,13 +295,13 @@ flowchart LR
     <table>
       <thead><tr><th>Decisão</th><th>Pergunta</th><th>Recomendação do time</th><th>Até</th></tr></thead>
       <tbody>
-        <tr><td class="mono">A</td><td>O papel leitura vê o espelho de jornada?</td><td>Vê totais e avisos, sem localização</td><td>Ter 13</td></tr>
+        <tr><td class="mono">A</td><td>O papel leitura vê o espelho de jornada?</td><td>Vê totais e avisos, sem localização</td><td>feito 10/10</td></tr>
         <tr><td class="mono">B</td><td>O aviso ao gestor leva o nome do funcionário?</td><td>Primeiro nome, nunca o CPF</td><td>Ter 13</td></tr>
         <tr><td class="mono">C</td><td>Quem lança ajuste de ponto?</td><td>Admin e gestor; o funcionário é avisado pelo WhatsApp</td><td>Ter 13</td></tr>
-        <tr><td class="mono">D</td><td>Quando desativar a chave service_role antiga?</td><td>Ter 20, longe da troca de token</td><td>Seg 19</td></tr>
-        <tr><td class="mono">E</td><td>O repositório continua público?</td><td>Tornar privado: a documentação expõe topologia e defesas</td><td>Sex 23</td></tr>
-        <tr><td class="mono">F</td><td>Adotar a persona engenheiro-saas?</td><td>Adiar: hoje se sobrepõe ao CTO e ao infra-bd</td><td>Sex 23</td></tr>
-        <tr><td class="mono">G</td><td>Situação do parecer REP-P (076, Gabriel)?</td><td>Informar: sem ele, a avaliação de 30 dias (088) não tem data</td><td>Sex 23</td></tr>
+        <tr><td class="mono">D</td><td>Quando desativar a chave service_role antiga?</td><td><strong>Decidido pelo PO:</strong> sex 16, com a 63 estável há 6 dias</td><td>—</td></tr>
+        <tr><td class="mono">E</td><td>O repositório continua público?</td><td>Tornar privado: a documentação expõe topologia e defesas</td><td>Qua 21</td></tr>
+        <tr><td class="mono">F</td><td>Adotar a persona engenheiro-saas?</td><td>Adiar: hoje se sobrepõe ao CTO e ao infra-bd</td><td>Qua 21</td></tr>
+        <tr><td class="mono">G</td><td>Situação do parecer REP-P (076, Gabriel)?</td><td>Informar: sem ele, a avaliação de 30 dias (088) não tem data</td><td>Qua 21</td></tr>
       </tbody>
     </table>
     </div>
@@ -298,7 +314,7 @@ flowchart LR
         <div class="risco"><strong>Troca de token no sábado.</strong> Se falhar, o WhatsApp para no fim de semana. O token antigo fica de reserva até 22/10, com o comando de volta pronto.</div>
         <div class="risco"><strong>Chave service_role.</strong> Antes de desativar, o <span class="mono">infra-bd</span> confirma que nada a usa (Checklist Sistema, backup, scripts).</div>
         <div class="risco"><strong>Decisões A, B e C.</strong> Sem resposta em 13/10, os ajustes (T11) escorregam para a próxima sprint.</div>
-        <div class="risco"><strong>Prazo da Twilio, 27/10.</strong> Fica fora da sprint, mas vence quatro dias depois dela.</div>
+        <div class="risco"><strong>URA automática em produção.</strong> Primeiro dia útil é terça, 13/10: acompanhar ligações, custo e confirmações. Sem bloqueio da assinatura (risco aceito na decisão 54).</div>
       </div>
     </div>
     <div>
