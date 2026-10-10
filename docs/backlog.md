@@ -8,7 +8,8 @@
 
 O Kanban (aba Roadmap) é a fonte do status; esta revisão alinha o documento a ele.
 - **Entregues na produção:** 080, 081 e 082 (07/10); 083 e 090 (08/10, migrations 56 a 60); 084 entrega 1
-  (avisos da CLT e espelho, 09/10). 073 concluída em 30/09; 064 e 065 em 28/09.
+  (avisos da CLT e espelho, 09/10); **084 entrega 2** (ajustes com justificativa, migration 65 e painel
+  3.14.0, 10/10) — a 084 está completa. 073 concluída em 30/09; 064 e 065 em 28/09.
 - **Decididos em 27/09 (decisão 32):** os pontos em aberto dos itens 14, 15 e 16 (CPF no cadastro, quem vê
   suspensão e advertência, CNH continua).
 - **004 (VRmais):** substituído pelo 075, o módulo de ponto próprio (decisão 48); a conciliação de escala
@@ -16,7 +17,7 @@ O Kanban (aba Roadmap) é a fonte do status; esta revisão alinha o documento a 
 - **Novo, 091:** endurecimento da decisão 51 (service_role, âncora do backup, token do webhook). *Em 10/10: partes 1 e 2 concluídas (restauração com âncora verde), parte 3 publicada (token no cabeçalho), migration 63 na homologação. 63 na produção em 10/10. Faltam a troca do token (14/10), a chave antiga (16/10) e o fim da URL (20/10).*
 - **002 (URA):** decidido em 10/10 (decisão 54) — sem bloqueio da assinatura; disparo automático ativado, só em dia útil, das 08:00 às 20:00, fora de feriado (migration 64).
 - **Sprint de 13 a 23/10:** `docs/sprint-13-23-out.html`; regras da 084 entrega 2 na decisão 52.
-- **084 entrega 2 (T11), adiantada para 10/10:** migration 65 + painel 3.14.0 — ajustes com justificativa (incluir, desconsiderar marcação ou inclusão errada), aba Ajustes, leitura sem motivo nem autor, aviso ao gestor só com o primeiro nome. Revisão do `seguranca` sem P1; os cinco P2 e os cinco P3 corrigidos no mesmo PR (inclusão repetida, alvo único por índice, motivo de 10 a 500 letras e sem dado de saúde, inclusão errada desfeita por ajuste, fuso da empresa, empresa da marcação, janela de 62 dias, aviso no máximo a cada 5 min, teste de permissão). Herdado, sem mudança: supervisor sem empresa (074). Próximo: homologação e teste conjunto (13/10), produção (19/10).
+- **084 entrega 2 (T11), adiantada para 10/10:** migration 65 + painel 3.14.0 — ajustes com justificativa (incluir, desconsiderar marcação ou inclusão errada), aba Ajustes, leitura sem motivo nem autor, aviso ao gestor só com o primeiro nome. Revisão do `seguranca` sem P1; os cinco P2 e os cinco P3 corrigidos no mesmo PR (inclusão repetida, alvo único por índice, motivo de 10 a 500 letras e sem dado de saúde, inclusão errada desfeita por ajuste, fuso da empresa, empresa da marcação, janela de 62 dias, aviso no máximo a cada 5 min, teste de permissão). Herdado, sem mudança: supervisor sem empresa (074). **Na produção em 10/10** (homologação com `plpgsql_check` zero em 132 funções; produção conferida: coluna, índices, permissões e `service_role` sem execute), nove dias antes do previsto.
 
 Nove funcionalidades pedidas, analisadas por viabilidade, dependência e esforço.
 

@@ -7,7 +7,7 @@ A análise que originou a lista está em [analise-topologia.md](analise-topologi
 
 ## Onde estamos
 
-**Sprint atual: 13 a 23/10** — fechar a decisão 51 e a 084 entrega 2. *Situação em 10/10, fim do dia: 10 de 18 tarefas concluídas (T01 a T08, T10 e a regra da URA, T17); falta ligar a URA automática (T18, hoje), T09 (14/10), T11 e T13 (084 entrega 2 — **T11 adiantada: migration 65, teste T11 e painel 3.14.0 prontos em 10/10, aguardando homologação**), T12 (16/10), T14 e T15, P1 e T16. Calendário revisado na página da sprint.* Plano, encadeamento e fichas em
+**Sprint atual: 13 a 23/10** — fechar a decisão 51 e a 084 entrega 2. *Situação em 10/10, fim do dia: 10 de 18 tarefas concluídas (T01 a T08, T10 e a regra da URA, T17); falta ligar a URA automática (T18, hoje), T09 (14/10), T11 e T13 (084 entrega 2 — **T11 e T13 concluídas em 10/10: migration 65 e painel 3.14.0 na produção, nove dias antes do previsto**), T12 (16/10), T14 e T15, P1 e T16. Calendário revisado na página da sprint.* Plano, encadeamento e fichas em
 [`sprint-13-23-out.html`](sprint-13-23-out.html).
 
 | Peça | O que é | Situação |
