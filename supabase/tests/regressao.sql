@@ -102,6 +102,25 @@ begin
   perform pg_temp.ok(not has_table_privilege('service_role', 'ponto_marcacoes', 'insert')
                      and not has_table_privilege('authenticated', 'ponto_marcacoes', 'select'),
                      '[T1] ponto_marcacoes aberta a papel da API');
+  -- nenhuma tabela, view ou sequência do public alcançável por papel da API (migration 63)
+  select string_agg(r.rolname || ':' || c.relname, ', ') into v
+    from pg_class c join pg_namespace n on n.oid = c.relnamespace
+    cross join (values ('anon'), ('authenticated'), ('service_role')) r(rolname)
+   where n.nspname = 'public'
+     and not exists (select 1 from pg_depend d where d.objid = c.oid and d.deptype = 'e')
+     and case when c.relkind in ('r','p','v','m','f')
+                then has_table_privilege(r.rolname, c.oid, 'select,insert,update,delete,truncate,references,trigger')
+                     or has_any_column_privilege(r.rolname, c.oid, 'select,insert,update,references')
+              when c.relkind = 'S' then has_sequence_privilege(r.rolname, c.oid, 'usage,select,update')
+              else false end;
+  perform pg_temp.ok(v is null, '[T1] papel da API alcança tabela ou sequência: ' || coalesce(v, ''));
+  -- tabela e sequência novas nascem fechadas
+  execute 'create table public.qa_nova (id bigint generated always as identity primary key)';
+  select string_agg(r.rolname, ', ') into v
+    from (values ('anon'), ('authenticated'), ('service_role')) r(rolname)
+   where has_table_privilege(r.rolname, 'public.qa_nova', 'select,insert,update,delete')
+      or has_sequence_privilege(r.rolname, pg_get_serial_sequence('public.qa_nova', 'id'), 'usage,select,update');
+  perform pg_temp.ok(v is null, '[T1] tabela nova nasce aberta para: ' || coalesce(v, ''));
 end $$;
 
 -- T2 escala exige local ----------------------------------------------------------------------------------

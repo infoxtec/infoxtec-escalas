@@ -235,6 +235,15 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 63 (10/10): nenhum papel da API alcança tabela, view ou sequência (decisão 51)
+
+- `revoke all` em todas as tabelas, views e sequências do `public` para `anon`, `authenticated` e
+  `service_role`. Antes, o `service_role` (que ignora o RLS) alcançava 33 das 42 tabelas e views, e as
+  três sequências estavam abertas também para `anon` e `authenticated` (padrão antigo do Supabase).
+- Default privileges do `postgres`: tabela e sequência novas já nascem fechadas.
+- O acesso aos dados segue só pelas funções `security definer` (rodam como `postgres`). A suíte de
+  regressão (T1) confere zero privilégios e que tabela nova nasce fechada.
+
 ### Migration 62 (09/10): permissões sem `service_role` e função nova fechada (decisão 51)
 
 - O bloco de permissões revoga também do **`service_role`**: nenhuma função do schema `public` é
