@@ -7,7 +7,7 @@ A análise que originou a lista está em [analise-topologia.md](analise-topologi
 
 ## Onde estamos
 
-**Sprint atual: 13 a 23/10** — fechar a decisão 51 e a 084 entrega 2. *Situação em 10/10, fim do dia: 10 de 18 tarefas concluídas (T01 a T08, T10 e a regra da URA, T17); falta ligar a URA automática (T18, hoje), T09 (14/10), T11 e T13 (084 entrega 2 — **T11 e T13 concluídas em 10/10: migration 65 e painel 3.14.0 na produção, nove dias antes do previsto**), T12 (16/10), T14 e T15, P1 e T16. Calendário revisado na página da sprint.* Plano, encadeamento e fichas em
+**Sprint atual: 13 a 23/10** — fechar a decisão 51 e a 084 entrega 2. *Situação em 10/10, fim do dia: 15 de 18 tarefas concluídas — T01 a T08, T10, T11, T13, T17, T18 (URA automática ligada; primeira ligação possível na terça, 13/10, 08:00) e P1 (fuso do motor e habilidades na regressão). Faltam T09 (troca do token, 14/10), T12 (chave antiga, 16/10), T14 e T15 (fim do token na URL, 15 e 20/10) e T16 (revisão, 22/10). Calendário revisado na página da sprint.* Plano, encadeamento e fichas em
 [`sprint-13-23-out.html`](sprint-13-23-out.html).
 
 | Peça | O que é | Situação |
@@ -231,4 +231,5 @@ avaliação.
 | 10/10 | Migration 63 aplicada na homologação (`aplicar-homologacao.sh`, pelo responsável); conector do Supabase não grava (o servidor pede confirmação que não chega à sessão), então migrations passam a ir para a homologação pelo script | Leitura: versão 20261010180000 registrada; `anon`, `authenticated` e `service_role` com 0 acessos a tabela, view ou sequência do `public` | Concluído na homologação |
 | 10/10 | Migrations 63 e 64 na produção (`aplicar-producao.sh`); decisão 54: sem bloqueio da Twilio, URA automática só em dia útil, das 08:00 às 20:00, fora de feriado (80 feriados de 2026 a 2030) | Homologação: plpgsql_check 0 erros em 130 funções, regra testada; produção (leitura): versões 63 e 64 registradas, 0 acessos da API, 80 feriados | Concluído; falta publicar a `voz-escala` e ligar `ligacao_ativa` (T18) |
 | 10/10 | T11 e T13 adiantadas: migration 65 + painel 3.14.0 — ajustes de ponto com justificativa (084 entrega 2, decisão 52); revisão do `seguranca` sem P1, dez achados corrigidos no PR #75 | CI: regressão T1 a T11 verde; homologação: `plpgsql_check` zero em 132 funções; produção conferida (coluna, 2 índices, permissões, `service_role` 0) | Concluído: produção em 10/10 |
-| 10/10 | P1 adiantado: T12 fuso do motor e T13 habilidades na regressão (etapa 15) | CI do PR | Em validação |
+| 10/10 | P1 adiantado: T12 fuso do motor e T13 habilidades na regressão (etapa 15) | CI do PR #76: regressão T1 a T13 verde num banco vazio | Concluído |
+| 10/10 | T18: `voz-escala` com a reserva atômica da ligação na produção (versão 72) e `ligacao_ativa = true`; 084 movida para Feito no Kanban | Conferido: ativa, janela 08:00–20:00, `fn_ligacao_permitida()` falsa no sábado | Concluído; primeira ligação possível em 13/10, 08:00 |
