@@ -55,6 +55,14 @@ header { display: grid; gap: 10px; }
 .t.d { background: var(--decisao-soft); border-color: var(--decisao); }
 .t:hover, .t:focus-visible { outline: 2px solid var(--fg); outline-offset: 1px; }
 .teste { font-family: var(--font-mono); font-size: .68rem; color: var(--resp); }
+.t.feito { opacity: .55; }
+.t.feito b::after { content: " ✓ feito"; color: var(--resp); }
+.ficha.feito { opacity: .7; }
+.tag.ok { background: var(--resp-soft); color: var(--resp); }
+.situacao { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 10px; }
+.barra { height: 10px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.barra i { display: block; height: 100%; background: var(--resp); }
+.feitos { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* Encadeamento */
 .cadeia { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; overflow-x: auto; }
@@ -100,6 +108,18 @@ ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
     </div>
   </header>
 
+  <section class="situacao" aria-label="Situação">
+    <h2 style="margin:0">Situação em 10/10</h2>
+    <div class="barra" role="img" aria-label="8 de 17 tarefas concluídas"><i style="width:47%"></i></div>
+    <p><strong>8 de 17 tarefas concluídas</strong>, adiantadas no feriado. O backup com âncora, a restauração, o webhook com token no cabeçalho (já na produção) e a migration 63 (na homologação) estão prontos. A sprint segue com a troca do token no sábado, 17/10.</p>
+    <div class="feitos">
+      <span class="tag ok">T01 teste da 62</span><span class="tag ok">T02 1º backup com âncora</span><span class="tag ok">T03 decisões A, B e C</span>
+      <span class="tag ok">T04 documentação</span><span class="tag ok">T05 restauração</span><span class="tag ok">T06 PR do webhook</span>
+      <span class="tag ok">T07 webhook na produção</span><span class="tag ok">T08 migration 63 na homologação</span>
+    </div>
+    <p class="muted">Mudança no fluxo: o conector do Supabase não grava na homologação, então migrations vão para lá pelo <span class="mono">aplicar-homologacao.sh</span>, rodado pelo responsável; o Claude confere lendo.</p>
+  </section>
+
   <section>
     <h2>Calendário por trilha</h2>
     <p class="muted" style="margin-bottom:10px">Clique numa tarefa para ver a ficha. Segunda, 12/10, é feriado (Nossa Senhora Aparecida).</p>
@@ -112,15 +132,15 @@ ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
         <div class="dia">Qua 21</div><div class="dia">Qui 22</div><div class="dia">Sex 23</div>
 
         <div class="trilha">Backup<small>decisão 51, parte 2</small></div>
-        <div class="cel"><a class="t c" href="#T02"><b>T02</b>Conferir o 1º backup com âncora</a></div>
+        <div class="cel"><a class="t c feito" href="#T02"><b>T02</b>Conferir o 1º backup com âncora</a></div>
         <div class="cel"></div>
-        <div class="cel"><a class="t r" href="#T05"><b>T05</b>Restauração manual com âncora<span class="teste">✓ teste</span></a></div>
+        <div class="cel"><a class="t r feito" href="#T05"><b>T05</b>Restauração manual com âncora<span class="teste">✓ teste</span></a></div>
         <div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div>
 
         <div class="trilha">Webhook<small>decisão 51, parte 3</small></div>
         <div class="cel"></div><div class="cel"></div>
-        <div class="cel"><a class="t c" href="#T06"><b>T06</b>PR: token no cabeçalho, revisão e homologação</a></div>
-        <div class="cel"><a class="t r" href="#T07"><b>T07</b>Publicar e ajustar a Evolution (mesmo token)<span class="teste">✓ teste</span></a></div>
+        <div class="cel"><a class="t c feito" href="#T06"><b>T06</b>PR: token no cabeçalho, revisão e homologação</a></div>
+        <div class="cel"><a class="t r feito" href="#T07"><b>T07</b>Publicar e ajustar a Evolution (mesmo token)<span class="teste">✓ teste</span></a></div>
         <div class="cel"></div>
         <div class="cel"><a class="t r" href="#T09"><b>T09</b>Trocar o token<span class="teste">✓ escala de teste</span></a></div>
         <div class="cel"></div><div class="cel"></div>
@@ -129,9 +149,9 @@ ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
         <div class="cel"></div>
 
         <div class="trilha">Permissões<small>pendência da parte 1</small></div>
-        <div class="cel"><a class="t r" href="#T01"><b>T01</b>Teste conjunto da migration 62<span class="teste">✓ teste</span></a></div>
+        <div class="cel"><a class="t r feito" href="#T01"><b>T01</b>Teste conjunto da migration 62<span class="teste">✓ teste</span></a></div>
         <div class="cel"></div><div class="cel"></div><div class="cel"></div>
-        <div class="cel"><a class="t c" href="#T08"><b>T08</b>Migration 63: service_role sem tabelas<span class="teste">✓ homologação</span></a></div>
+        <div class="cel"><a class="t c feito" href="#T08"><b>T08</b>Migration 63: service_role sem tabelas<span class="teste">✓ homologação</span></a></div>
         <div class="cel"></div>
         <div class="cel"><a class="t r" href="#T10"><b>T10</b>Migration 63 na produção<span class="teste">✓ teste</span></a></div>
         <div class="cel"><a class="t r" href="#T12"><b>T12</b>Desativar a chave service_role antiga</a></div>
@@ -139,7 +159,7 @@ ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
 
         <div class="trilha">Jornada 084<small>entrega 2: ajustes</small></div>
         <div class="cel"></div>
-        <div class="cel"><a class="t d" href="#T03"><b>T03</b>Decisões A, B e C</a></div>
+        <div class="cel"><a class="t d feito" href="#T03"><b>T03</b>Decisões A, B e C</a></div>
         <div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div>
         <div class="cel"><a class="t c" href="#T11"><b>T11</b>Ajustes com justificativa na homologação</a></div>
         <div class="cel"><a class="t r" href="#T11"><b>T11</b>Teste conjunto dos ajustes<span class="teste">✓ teste</span></a></div>
@@ -148,7 +168,7 @@ ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
 
         <div class="trilha">Qualidade e registro<small>Claude, em paralelo</small></div>
         <div class="cel"></div>
-        <div class="cel"><a class="t c" href="#T04"><b>T04</b>PR de documentação: backlog, plano e README em dia</a></div>
+        <div class="cel"><a class="t c feito" href="#T04"><b>T04</b>PR de documentação: backlog, plano e README em dia</a></div>
         <div class="cel"><a class="t c" href="#P1"><b>P1</b>Testes de fuso do motor e habilidades (até 22/10)</a></div>
         <div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div>
         <div class="cel"><a class="t d" href="#T16"><b>T16</b>Revisão da sprint e decisão da Twilio</a></div>
@@ -200,28 +220,28 @@ flowchart LR
   <section>
     <h2>Tarefas</h2>
     <div class="fichas">
-      <article class="ficha" id="T01"><header><h3><span class="mono">T01</span> Teste conjunto da migration 62</h3><span class="tag r">Responsável</span></header>
+      <article class="ficha feito" id="T01"><header><h3><span class="mono">T01</span> Teste conjunto da migration 62</h3><span class="tag r">Responsável</span><span class="tag ok">feito 10/10</span></header>
         <dl><dt>Quando</dt><dd>Sáb 10/10 (antes da sprint)</dd><dt>O quê</dt><dd>Uma marcação pelo app <span class="mono">/ponto</span>, uma pelo WhatsApp e a tela Agenda → Registro de Ponto.</dd><dt>Depende</dt><dd>—</dd><dt>Pronto</dt><dd>As três funcionam como antes; a parte 1 ganha <span class="mono">[x]</span> no plano.</dd></dl></article>
 
-      <article class="ficha" id="T02"><header><h3><span class="mono">T02</span> Conferir o 1º backup com âncora</h3><span class="tag c">Claude</span></header>
+      <article class="ficha feito" id="T02"><header><h3><span class="mono">T02</span> Conferir o 1º backup com âncora</h3><span class="tag c">Claude</span><span class="tag ok">feito 09/10</span></header>
         <dl><dt>Quando</dt><dd>Sáb 10/10, 9h (lembrete agendado)</dd><dt>O quê</dt><dd>Execução "Backup da produção" da madrugada verde, com "sem âncora anterior" e o sha256 no resumo.</dd><dt>Depende</dt><dd>PR #67 (mergeado)</dd><dt>Pronto</dt><dd>Execução verde; a de domingo já confere contra a de sábado.</dd></dl></article>
 
-      <article class="ficha" id="T03"><header><h3><span class="mono">T03</span> Decisões A, B e C da jornada</h3><span class="tag d">Decisão</span></header>
+      <article class="ficha feito" id="T03"><header><h3><span class="mono">T03</span> Decisões A, B e C da jornada</h3><span class="tag d">Decisão</span><span class="tag ok">feito 10/10</span></header>
         <dl><dt>Quando</dt><dd>Ter 13/10, 10 minutos</dd><dt>O quê</dt><dd>A: o papel leitura vê o espelho? B: o aviso ao gestor leva o nome? C: quem lança ajuste?</dd><dt>Depende</dt><dd>—</dd><dt>Bloqueia</dt><dd>T11. Sem a resposta, o teste de 20/10 escorrega.</dd></dl></article>
 
-      <article class="ficha" id="T04"><header><h3><span class="mono">T04</span> PR de documentação</h3><span class="tag c">Claude</span></header>
+      <article class="ficha feito" id="T04"><header><h3><span class="mono">T04</span> PR de documentação</h3><span class="tag c">Claude</span><span class="tag ok">feito 10/10</span></header>
         <dl><dt>Quando</dt><dd>Ter 13/10</dd><dt>O quê</dt><dd>Backlog, plano ("Onde estamos": 01–62, painel 3.13.0), README e Kanban em dia. Fecha 073 e 004 (substituído pelo 075). Registra o prazo da Twilio.</dd><dt>Depende</dt><dd>Aprovação desta sprint</dd><dt>Pronto</dt><dd>Merge; Kanban atualizado na produção (exceção do backlog).</dd></dl></article>
 
-      <article class="ficha" id="T05"><header><h3><span class="mono">T05</span> Restauração com âncora</h3><span class="tag r">Responsável</span></header>
+      <article class="ficha feito" id="T05"><header><h3><span class="mono">T05</span> Restauração com âncora</h3><span class="tag r">Responsável</span><span class="tag ok">feito 10/10</span></header>
         <dl><dt>Quando</dt><dd>Qua 14/10</dd><dt>O quê</dt><dd>Rodar "Teste de restauração do backup" à mão no GitHub Actions.</dd><dt>Depende</dt><dd>T02</dd><dt>Pronto</dt><dd>Verde, com "Âncoras conferidas" no passo da âncora.</dd></dl></article>
 
-      <article class="ficha" id="T06"><header><h3><span class="mono">T06</span> Token do webhook no cabeçalho</h3><span class="tag c">Claude</span></header>
+      <article class="ficha feito" id="T06"><header><h3><span class="mono">T06</span> Token do webhook no cabeçalho</h3><span class="tag c">Claude</span><span class="tag ok">feito 10/10</span></header>
         <dl><dt>Quando</dt><dd>Qua 14/10</dd><dt>O quê</dt><dd>Edge Function lê <span class="mono">x-webhook-token</span>; a URL antiga continua aceita, com aviso no log. Conferir se a Evolution 2.4 aceita cabeçalho no <span class="mono">/webhook/set</span>.</dd><dt>Depende</dt><dd>—</dd><dt>Pronto</dt><dd>Revisão do <span class="mono">seguranca</span>, CI verde, testado na homologação, roteiro no PR.</dd></dl></article>
 
-      <article class="ficha" id="T07"><header><h3><span class="mono">T07</span> Publicar o webhook novo</h3><span class="tag r">Responsável</span></header>
+      <article class="ficha feito" id="T07"><header><h3><span class="mono">T07</span> Publicar o webhook novo</h3><span class="tag r">Responsável</span><span class="tag ok">feito 10/10</span></header>
         <dl><dt>Quando</dt><dd>Qui 15/10</dd><dt>O quê</dt><dd>Publicar a Edge Function; <span class="mono">/webhook/set</span> com o <strong>mesmo</strong> token no cabeçalho.</dd><dt>Depende</dt><dd>T06</dd><dt>Pronto</dt><dd>Ponto e escala de teste pelo WhatsApp funcionando; log sem "token pela URL".</dd></dl></article>
 
-      <article class="ficha" id="T08"><header><h3><span class="mono">T08</span> Migration 63: service_role sem tabelas</h3><span class="tag c">Claude</span></header>
+      <article class="ficha feito" id="T08"><header><h3><span class="mono">T08</span> Migration 63: service_role sem tabelas</h3><span class="tag c">Claude</span><span class="tag ok">feito 10/10, homologação</span></header>
         <dl><dt>Quando</dt><dd>Sex 16/10</dd><dt>O quê</dt><dd>Revogar do <span class="mono">service_role</span> tabelas e sequências do <span class="mono">public</span>, com default privileges. O <span class="mono">infra-bd</span> confirma antes que nada usa a chave.</dd><dt>Depende</dt><dd>T01</dd><dt>Pronto</dt><dd>Homologação com zero privilégios; suíte de regressão verde; teste do painel e do app.</dd></dl></article>
 
       <article class="ficha" id="T09"><header><h3><span class="mono">T09</span> Trocar o token do webhook</h3><span class="tag r">Responsável</span></header>
