@@ -12,6 +12,8 @@
 -- T5 carga: 2.000 marcações, NSR e cadeia de hash íntegros
 -- T10 URA só em dia útil, das 08:00 às 20:00, fora de feriado
 -- T11 ajustes de ponto com justificativa (incluir, desconsiderar, papéis, imutável)
+-- T12 fuso do motor: fila do WhatsApp na hora local, não em UTC nem no fuso da sessão
+-- T13 habilidades exigidas pelo tipo de atividade (apto, nível abaixo, faltando)
 
 \set ON_ERROR_STOP on
 begin;
@@ -467,7 +469,83 @@ begin
   perform pg_temp.ok(v_ok, '[T11] ajuste foi alterado');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T11' as resultado,
+-- T12 fuso do motor (Bahia × UTC) ------------------------------------------------------------------------
+-- A fila do WhatsApp (vw_acoes_pendentes) compara a escala, gravada em hora local, com now() no fuso da
+-- config. Escala daqui a 2 h (hora local) está em UTC 1 h no passado: se o motor comparasse em UTC, ou no
+-- fuso da sessão, ela sumiria da fila. A sessão vai para Tóquio de propósito.
+do $$
+declare
+  v_tec uuid := (select v::uuid from qa where k = 'tec2');
+  v_loc uuid := (select v::uuid from qa where k = 'loc');
+  v_local timestamp := now() at time zone 'America/Bahia';
+  v_fut uuid; v_pas uuid; v_acao text; v_n int;
+begin
+  perform set_config('timezone', 'Asia/Tokyo', true);
+  update config set valor = 'America/Bahia' where chave = 'fuso';
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, (v_local + interval '2 hours')::date, (v_local + interval '2 hours')::time(0), 'QA fuso futuro', 'agendada', 'qa')
+  returning id into v_fut;
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, (v_local - interval '1 hour')::date, (v_local - interval '1 hour')::time(0), 'QA fuso passado', 'agendada', 'qa')
+  returning id into v_pas;
+
+  if v_local::time >= time '23:59' then
+    raise notice 'T12: 23:59 local, janela de envio não cobre o minuto; casos da janela pulados';
+  else
+    update config set valor = '00:00' where chave = 'janela_envio_inicio';
+    update config set valor = '23:59' where chave = 'janela_envio_fim';
+    select acao into v_acao from vw_acoes_pendentes where escala_id = v_fut;
+    perform pg_temp.ok(v_acao = 'enviar_primeira', '[T12] escala daqui a 2 h (hora local) fora da fila: ' || coalesce(v_acao, 'ausente'));
+    select count(*) into v_n from vw_acoes_pendentes where escala_id = v_pas;
+    perform pg_temp.ok(v_n = 0, '[T12] escala de 1 h atrás (hora local) na fila');
+    -- janela de envio também na hora local: fora dela, ninguém na fila
+    update config set valor = case when v_local::time < time '12:00' then '13:00' else '01:00' end where chave = 'janela_envio_inicio';
+    update config set valor = case when v_local::time < time '12:00' then '14:00' else '02:00' end where chave = 'janela_envio_fim';
+    select count(*) into v_n from vw_acoes_pendentes where escala_id = v_fut;
+    perform pg_temp.ok(v_n = 0, '[T12] fila ignorou a janela de envio');
+  end if;
+  -- o fuso da config manda: no Acre (UTC-5, 2 h atrás da Bahia) a escala de 1 h atrás da Bahia ainda não começou
+  update config set valor = 'America/Rio_Branco' where chave = 'fuso';
+  update config set valor = '00:00' where chave = 'janela_envio_inicio';
+  update config set valor = '23:59' where chave = 'janela_envio_fim';
+  if (now() at time zone 'America/Rio_Branco')::time < time '23:59' then
+    select count(*) into v_n from vw_acoes_pendentes where escala_id = v_pas;
+    perform pg_temp.ok(v_n = 1, '[T12] fuso da config não foi usado');
+  end if;
+  update config set valor = 'America/Bahia' where chave = 'fuso';
+  perform set_config('timezone', 'UTC', true);
+end $$;
+
+-- T13 habilidades exigidas pelo tipo de atividade ---------------------------------------------------------
+do $$
+declare
+  v_h uuid; v_tipo uuid; j jsonb; x jsonb;
+  t1 uuid := (select v::uuid from qa where k = 'tec1');
+  t2 uuid := (select v::uuid from qa where k = 'tec2');
+  t3 uuid := (select v::uuid from qa where k = 'tec3');
+begin
+  insert into habilidades (nome, categoria) values ('QA Solda ' || gen_random_uuid(), 'tecnica') returning id into v_h;
+  insert into tipos_atividade (nome) values ('QA Manutenção ' || gen_random_uuid()) returning id into v_tipo;
+  insert into tipo_atividade_requisitos (tipo_id, habilidade_id, nivel_minimo) values (v_tipo, v_h, 'intermediario');
+  insert into tecnico_habilidades (tecnico_id, habilidade_id, nivel) values (t1, v_h, 'avancado'), (t2, v_h, 'basico');
+
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  j := app_aptidao(v_tipo);
+  select e into x from jsonb_array_elements(j) e where e->>'tecnico_id' = t1::text;
+  perform pg_temp.ok((x->>'apto')::boolean and jsonb_array_length(x->'faltando') = 0, '[T13] avançado não está apto: ' || coalesce(x::text, '-'));
+  select e into x from jsonb_array_elements(j) e where e->>'tecnico_id' = t2::text;
+  perform pg_temp.ok(not (x->>'apto')::boolean and x->>'faltando' like '%nível abaixo%', '[T13] básico passou como intermediário: ' || coalesce(x::text, '-'));
+  select e into x from jsonb_array_elements(j) e where e->>'tecnico_id' = t3::text;
+  perform pg_temp.ok(not (x->>'apto')::boolean and jsonb_array_length(x->'faltando') = 1
+                     and x->>'faltando' not like '%nível abaixo%', '[T13] sem a habilidade passou: ' || coalesce(x::text, '-'));
+  -- técnico inativo não aparece como opção
+  update tecnicos set ativo = false where id = t3;
+  perform pg_temp.ok(not exists (select 1 from jsonb_array_elements(app_aptidao(v_tipo)) e where e->>'tecnico_id' = t3::text),
+                     '[T13] técnico inativo na lista de aptos');
+  update tecnicos set ativo = true where id = t3;
+end $$;
+
+select 'REGRESSÃO OK: T1 a T13' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
