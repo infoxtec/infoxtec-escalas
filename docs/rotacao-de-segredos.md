@@ -163,6 +163,13 @@ agora") e confirme que saiu. É a prova de que a Evolution aceitou a chave nova.
 
 Esta é a única rotação com **três passos que precisam acontecer em sequência rápida**.
 
+**4.0 Guardar o token atual no próprio Vault** (para a volta; nunca copie o valor para fora):
+
+```sql
+-- PRODUÇÃO. Esperado: um uuid
+select vault.create_secret(fn_segredo('WEBHOOK_TOKEN'), 'WEBHOOK_TOKEN_ANTERIOR');
+```
+
 **4.1 Gerar o token novo e gravar no Vault**
 
 ```sql
@@ -198,10 +205,21 @@ select recebido_em at time zone 'America/Bahia' as quando, evento, left(resultad
 ```
 
 **Esperado:** um evento `messages.upsert` novo, com resultado de confirmação. Se vier vazio, a
-Evolution ainda está com o token antigo — repita o 4.2 e confira a URL no Manager.
+Evolution ainda está com o token antigo — repita o 4.2 e confira o webhook no Manager.
 
-**Se der errado:** o token anterior ainda é conhecido por você (guarde-o antes do passo 4.1). Grave-o
-de volta no Vault, reaponte a Evolution e o sistema volta como estava.
+**Se der errado:** volte o token guardado no 4.0 e reaponte a Evolution (4.2 e 4.3):
+
+```sql
+select vault.update_secret((select id from vault.secrets where name = 'WEBHOOK_TOKEN'),
+                           fn_segredo('WEBHOOK_TOKEN_ANTERIOR')) is not null as voltou;
+```
+
+**Depois de alguns dias estável** (na sprint de outubro, junto com a remoção do token pela URL em
+22/10), apague o segredo guardado:
+
+```sql
+delete from vault.secrets where name = 'WEBHOOK_TOKEN_ANTERIOR';
+```
 
 ---
 

@@ -112,9 +112,13 @@ Se estiver vazio há horas, confira a configuração na Evolution:
 
 ```sql
 select fn_evo_get('/webhook/find/' || fn_config('evolution_instancia'));
+-- alguns segundos depois, com o número devolvido acima:
+select * from fn_http_resposta(<numero>);
+-- a resposta traz o token (em headers.x-webhook-token): depois de ler, apague o registro
+delete from net._http_response where id = <numero>;
 ```
 
-Para reconfigurar (o token vai no cabeçalho `x-webhook-token`, lido do Vault, e não aparece em tela; decisão 51, parte 3):
+Para reconfigurar (o token vai no cabeçalho `x-webhook-token`, lido do Vault; ele volta na resposta do `/webhook/set` e do `/webhook/find`, então apague o registro depois; decisão 51, parte 3):
 
 ```sql
 select fn_evo_post('/webhook/set/' || fn_config('evolution_instancia'),
@@ -126,6 +130,72 @@ select fn_evo_post('/webhook/set/' || fn_config('evolution_instancia'),
     'events', jsonb_build_array('MESSAGES_UPSERT','MESSAGES_UPDATE'))));
 -- depois apague o registro dessa resposta, que guarda a configuração com o token:
 delete from net._http_response where id = <numero devolvido>;
+```
+
+### Token no cabeçalho: publicação (decisão 51, parte 3, T07)
+
+Feita pelo responsável, na **produção**, em horário comercial: o token **não muda** neste passo, só
+sai da URL e vai para o cabeçalho. A função nova aceita os dois jeitos, então nada para entre um passo
+e outro.
+
+**0. A Evolution é 2.3.0 ou mais nova?** (só ela envia `webhook.headers`)
+
+```sql
+select fn_evo_get('/');
+-- alguns segundos depois:
+select * from fn_http_resposta(<numero>);
+```
+
+Esperado: `"version":"2.4.0-rc2"` (ou outra 2.3+). Se for mais velha, **pare**: não faça o passo 3.
+
+**1. Publicar a função** (terminal do OrbStack):
+
+```bash
+cd ~/infoxtec-escalas && git checkout main && git pull && npx --yes supabase@2.118.0 functions deploy webhook-evolution --no-verify-jwt --project-ref zpckrxydqqmmcrphrkxz
+```
+
+**2. Conferir que nada mudou:** mande "ponto" pelo WhatsApp de teste; o menu tem de chegar. No log da
+função (Supabase → Edge Functions → `webhook-evolution` → Logs) aparece `webhook: token pela URL
+(legado)` — esperado, a Evolution ainda usa a URL.
+
+**3. Mandar a Evolution usar o cabeçalho, com o mesmo token:**
+
+```sql
+select fn_evo_post('/webhook/set/' || fn_config('evolution_instancia'),
+  jsonb_build_object('webhook', jsonb_build_object(
+    'enabled', true,
+    'url', fn_config('webhook_url'),
+    'headers', jsonb_build_object('x-webhook-token', fn_segredo('WEBHOOK_TOKEN')),
+    'byEvents', false, 'base64', false,
+    'events', jsonb_build_array('MESSAGES_UPSERT','MESSAGES_UPDATE')))) as numero_da_requisicao;
+-- alguns segundos depois: esperado status 200 ou 201
+select status from fn_http_resposta(<numero_da_requisicao>);
+-- a resposta guarda o token: apague (esperado: DELETE 1)
+delete from net._http_response where id = <numero_da_requisicao>;
+```
+
+**4. Testar de ponta a ponta:** "ponto" pelo WhatsApp de teste (o menu chega) e uma escala de teste
+confirmada com "1". Conferência:
+
+```sql
+select recebido_em at time zone 'America/Bahia' as quando, evento, left(resultado, 80) as resultado
+  from webhook_eventos order by recebido_em desc limit 5;
+```
+
+Esperado: eventos novos depois do passo 3. No log da função, **nenhum** `token pela URL (legado)` novo
+depois do passo 3, e nenhum 401.
+
+**Se der errado:** a função não volta (ela já aceita os dois jeitos); volta só a Evolution, com o
+token de novo na URL. Válido até 22/10, quando a URL deixa de ser aceita:
+
+```sql
+select fn_evo_post('/webhook/set/' || fn_config('evolution_instancia'),
+  jsonb_build_object('webhook', jsonb_build_object(
+    'enabled', true,
+    'url', fn_config('webhook_url') || '?token=' || fn_segredo('WEBHOOK_TOKEN'),
+    'byEvents', false, 'base64', false,
+    'events', jsonb_build_array('MESSAGES_UPSERT','MESSAGES_UPDATE')))) as numero_da_requisicao;
+-- depois: delete from net._http_response where id = <numero_da_requisicao>;
 ```
 
 ## Respostas que o sistema não entendeu
