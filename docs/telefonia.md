@@ -157,7 +157,7 @@ Se o piloto mostrar que muita gente digita 2 e o motivo só aparece depois, aí 
 ela colhe o motivo na hora. Nesse momento, Telnyx ou Twilio ConversationRelay entram como troca
 de camada, aproveitando tudo o que já estiver construído.
 
-## Assinatura da Twilio (etapa 12, 27/09)
+## Assinatura da Twilio (etapa 12, 27/09; decisão 53, 10/10)
 
 A `voz-escala` confere, além do token na URL, a assinatura `X-Twilio-Signature` de toda chamada que
 vem da Twilio (HMAC-SHA1 com o `TWILIO_AUTH_TOKEN` sobre a URL pública `voz_url` e os parâmetros).
