@@ -569,3 +569,16 @@ bloqueavam a 084 entrega 2. **Decisão:**
 com revisão do `seguranca` sobre quem vê o ajuste e por quanto tempo fica guardado (proposta: 5 anos,
 como as marcações). Ficam para a revisão de 23/10: repositório público, persona engenheiro-saas,
 parecer REP-P (076) e o bloqueio da assinatura da Twilio (prazo 27/10).
+
+## 53. Assinatura da Twilio: ligar o bloqueio por teste controlado, não por espera
+
+**Data:** 10/10/2026. **Contexto:** a etapa 12 (27/09) previa ligar o bloqueio da assinatura
+`X-Twilio-Signature` na `voz-escala` depois de 10 ligações reais com "assinatura da Twilio ok", no
+máximo em 30 dias (27/10). Em 14 dias houve **zero** ligações: o disparo automático da URA está
+desligado, então o critério nunca se cumpriria sozinho, e a URA segue protegida só pelo token da URL.
+**Decisão:** trocar a espera por **teste controlado**: duas ligações pelo "Ligar agora" do painel para o
+técnico de teste; com "assinatura da Twilio ok" nas duas, ligar o bloqueio
+(`TWILIO_ASSINATURA=obrigatoria`) e confirmar com uma terceira ligação. Prazo: até 13/10. Se a
+assinatura falhar, corrigir antes de ligar o bloqueio. **Consequência:** o prazo de 27/10 deixa de ser
+o limite; a regra geral fica no papel do PO — decisão com os dados disponíveis é tomada na hora, e
+critério que depende de evento que não vai ocorrer é trocado por um teste que produza a evidência.

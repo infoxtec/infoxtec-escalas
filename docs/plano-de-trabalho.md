@@ -102,7 +102,7 @@ As etapas estão em ordem. Dentro de cada bloco, uma etapa só começa quando a 
 ### Bloco 4: segurança das Edge Functions
 
 - [x] **11. `documento-ocr` valida o login por conta própria**, sem depender só da configuração de publicação. *Na produção desde 27/09 (PR #3).* Corrigido junto: o botão de leitura na nuvem falhava sempre no navegador (faltava CORS) e a chave do Google podia vazar numa mensagem de erro.
-- [ ] **12. `voz-escala` confere a assinatura da Twilio** (`X-Twilio-Signature`) em vez de confiar só no token da URL. *Na produção desde 27/09, em observação; falta ligar o bloqueio.* Começa em observação; o bloqueio é ligado depois de conferir o log ([telefonia.md](telefonia.md)). **Prazo:** ligar o bloqueio depois de 10 ligações reais com `assinatura da Twilio ok` no log, no máximo 30 dias após a publicação; até lá a proteção continua sendo só o token.
+- [ ] **12. `voz-escala` confere a assinatura da Twilio** (`X-Twilio-Signature`) em vez de confiar só no token da URL. *Na produção desde 27/09, em observação; falta ligar o bloqueio.* Começa em observação; o bloqueio é ligado depois de conferir o log ([telefonia.md](telefonia.md)). **Prazo:** ~~10 ligações reais em até 30 dias~~ — em 10/10 havia zero ligações (disparo automático desligado). **Decisão 53:** duas ligações de teste controladas pelo "Ligar agora", conferir `assinatura da Twilio ok` no log, ligar o bloqueio e confirmar com uma terceira, **até 13/10**.
 - [x] **13. Trocar a biblioteca `xlsx`** da importação de planilhas. *Na produção desde 27/09 (painel 3.4.2, PR #8): xlsx 0.20.3 oficial guardado em `web/vendor/` (decisão 37), zero vulnerabilidades; o CI bloqueia vulnerabilidade alta.*
       *Teste:* importar a mesma planilha antes e depois.
 
