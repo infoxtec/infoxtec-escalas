@@ -163,6 +163,35 @@ agora") e confirme que saiu. É a prova de que a Evolution aceitou a chave nova.
 
 Esta é a única rotação com **três passos que precisam acontecer em sequência rápida**.
 
+### Antes de começar (T09, quarta 14/10, 21h às 21h30)
+
+Janela **depois do fim das jornadas** e sem escala aguardando resposta. Precisa estar à mão: o SQL
+Editor da **produção** aberto e um técnico de teste combinado para responder `1`. Registre a hora de
+início. **Evidências: só o que está abaixo** — nunca o valor, prefixo ou hash do token, nunca a saída
+do `webhook/find` nem do `fn_http_resposta`, nunca print do Manager da Evolution (mostra o cabeçalho)
+nem o telefone do técnico. O repositório é público.
+
+**Pré-condições** (tudo verdadeiro; se algo falhar, adie para a noite seguinte):
+
+```sql
+-- PRODUÇÃO, leitura. Esperado: as quatro colunas true.
+select
+  not exists (select 1 from vault.secrets where name = 'WEBHOOK_TOKEN_ANTERIOR') as sem_anterior,
+  length(fn_segredo('WEBHOOK_TOKEN')) = 64 as token_atual_ok,
+  (select count(*) from webhook_eventos where recebido_em > now() - interval '24 hours') > 0 as webhook_vivo,
+  not exists (select 1 from escalas where status = 'notificada'
+               and data_servico >= current_date) as sem_escala_aguardando;
+```
+
+E, no painel do Supabase → Edge Functions → `webhook-evolution` → Logs: nenhum `token pela URL
+(legado)` nem resposta 401 desde 10/10, 14h53. A instância conectada (`state: open`, seção "A
+instância do WhatsApp está conectada?" de `operacao.md`).
+
+**Critério para abortar e voltar** (comando "Se der errado", abaixo, depois o 4.2 e o 4.3): o 4.2
+devolve status diferente de 2xx; ou o 4.4 não mostra evento novo em 5 minutos, mesmo repetindo o 4.2;
+ou passam 15 minutos entre o 4.1 e o 4.4. **Depois da troca, a volta para o token na URL
+(`operacao.md`) está proibida** — a volta é só pelo token guardado no 4.0.
+
 **4.0 Guardar o token atual no próprio Vault** (para a volta; nunca copie o valor para fora):
 
 ```sql
@@ -207,6 +236,23 @@ select recebido_em at time zone 'America/Bahia' as quando, evento, left(resultad
 **Esperado:** um evento `messages.upsert` novo, com resultado de confirmação. Se vier vazio, a
 Evolution ainda está com o token antigo — repita o 4.2 e confira o webhook no Manager.
 
+**Evidências da troca** (guarde o resultado; vai para a tabela do plano):
+
+```sql
+-- PRODUÇÃO, leitura, logo depois do 4.4. Esperado: tudo true e um evento recente.
+select
+  fn_segredo('WEBHOOK_TOKEN') <> fn_segredo('WEBHOOK_TOKEN_ANTERIOR') as token_trocado,
+  length(fn_segredo('WEBHOOK_TOKEN')) = 64 as tamanho_ok,
+  (select to_char(updated_at at time zone 'America/Bahia', 'DD/MM HH24:MI') from vault.secrets
+    where name = 'WEBHOOK_TOKEN') as trocado_em,
+  (select count(*) = 0 from net._http_response where id = <numero_da_requisicao>) as resposta_apagada,
+  (select to_char(max(recebido_em) at time zone 'America/Bahia', 'HH24:MI:SS') from webhook_eventos
+    where evento = 'messages.upsert') as ultimo_evento;
+```
+
+Mais: o status do 4.2 (200 ou 201), o print da **tela de escalas do painel** com a escala de teste
+confirmada, e — na manhã seguinte — as escalas reais confirmadas e o log sem 401.
+
 **Se der errado:** volte o token guardado no 4.0 e reaponte a Evolution (4.2 e 4.3):
 
 ```sql
@@ -214,8 +260,8 @@ select vault.update_secret((select id from vault.secrets where name = 'WEBHOOK_T
                            fn_segredo('WEBHOOK_TOKEN_ANTERIOR')) is not null as voltou;
 ```
 
-**Depois de alguns dias estável** (na sprint de outubro, junto com a remoção do token pela URL em
-22/10), apague o segredo guardado:
+**Em até 48 horas, com tudo estável** (o `WEBHOOK_TOKEN_ANTERIOR` guarda justamente o valor que
+viajou na URL até 10/10), apague o segredo guardado:
 
 ```sql
 delete from vault.secrets where name = 'WEBHOOK_TOKEN_ANTERIOR';
