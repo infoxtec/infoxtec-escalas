@@ -582,3 +582,25 @@ técnico de teste; com "assinatura da Twilio ok" nas duas, ligar o bloqueio
 assinatura falhar, corrigir antes de ligar o bloqueio. **Consequência:** o prazo de 27/10 deixa de ser
 o limite; a regra geral fica no papel do PO — decisão com os dados disponíveis é tomada na hora, e
 critério que depende de evento que não vai ocorrer é trocado por um teste que produza a evidência.
+**Revogada em 10/10 pela decisão 54:** o responsável decidiu não ligar o bloqueio.
+
+## 54. URA automática ativada, sem bloqueio da assinatura da Twilio, só em dia útil
+
+**Data:** 10/10/2026. **Decisão do responsável:** (1) **não** ligar o bloqueio da assinatura da Twilio
+— a `voz-escala` segue conferindo a assinatura em modo observação (só registra no log) e protegida pelo
+`VOZ_TOKEN`; (2) **ativar o disparo automático** da URA (`ligacao_ativa = true`) para ligações reais;
+(3) ligações **só em dia útil, das 08:00 às 20:00, nunca em sábado, domingo ou feriado**.
+**Como:** migration 64 — tabela `feriados` (nacionais, 2 de Julho, 24/06 e 08/12 de Salvador, Sexta-feira
+Santa, e Carnaval e Corpus Christi como ponto facultativo, de 2026 a 2030, editável) e a regra única
+`fn_ligacao_permitida()`, aplicada ao disparo automático (`vw_ligacoes_pendentes`) e ao "Ligar agora"
+(`fn_preparar_ligacao`); a `voz-escala` só disca uma ligação recém-criada, uma vez, e no horário
+permitido. **Risco aceito pelo responsável** (achados S4, S5 e S9 de `analise-seguranca.md`): sem o
+bloqueio, a URA fica protegida só pelo `VOZ_TOKEN`, que viaja na URL de cada chamada e aparece no
+console e nos registros da Twilio (quem tem acesso à conta Twilio ou a esses registros o vê). Com ele,
+alguém poderia chamar `?acao=digito` e **registrar confirmação ou recusa de escala em nome do
+técnico** — exatamente o que a assinatura bloquearia. O abuso de custo (repetir `?acao=iniciar` com um
+id antigo) foi fechado nesta mesma entrega. **Revisão:** no próximo rodízio do `VOZ_TOKEN` ou se
+aparecer `assinatura da Twilio invalida` no log com ligações legítimas fora do esperado. **Também:**
+escala de segunda-feira antes das 08:00, notificada na sexta à noite, não recebe ligação (o primeiro
+horário permitido já é depois do início); feriados a partir de 2031 precisam ser incluídos antes do fim
+de 2030.

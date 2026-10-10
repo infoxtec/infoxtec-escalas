@@ -235,6 +235,15 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 64 (10/10): URA só em dia útil e fora de feriado (decisão 54)
+
+- **`feriados`** (data, nome, abrangência): nacionais, 2 de Julho, 24/06 e 08/12 de Salvador, Sexta-feira
+  Santa, e Carnaval e Corpus Christi (ponto facultativo), de 2026 a 2030. RLS sem políticas. Incluir
+  feriado novo é um `insert`. **`fn_pascoa(ano)`** calcula a Páscoa.
+- **`fn_ligacao_permitida(momento)`**: segunda a sexta, fora de feriado, entre `ligacao_janela_inicio` e
+  `ligacao_janela_fim`, no fuso da config. Usada por `vw_ligacoes_pendentes` (disparo automático) e por
+  `fn_preparar_ligacao` ("Ligar agora" e disparo).
+
 ### Migration 63 (10/10): nenhum papel da API alcança tabela, view ou sequência (decisão 51)
 
 - `revoke all` em todas as tabelas, views e sequências do `public` para `anon`, `authenticated` e
