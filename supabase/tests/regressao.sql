@@ -10,6 +10,7 @@
 -- T3 login do funcionário e app       T8 webhook recusa token inválido
 -- T4 marcações imutáveis              T9 funções do painel (gestor)
 -- T5 carga: 2.000 marcações, NSR e cadeia de hash íntegros
+-- T10 URA só em dia útil, das 08:00 às 20:00, fora de feriado
 
 \set ON_ERROR_STOP on
 begin;
@@ -329,7 +330,26 @@ begin
   end;
 end $$;
 
-select 'REGRESSÃO OK: T1 a T9' as resultado,
+-- T10 URA só em dia útil, das 08:00 às 20:00, fora de feriado (migration 64) -----------------------
+do $$
+declare v text;
+begin
+  perform pg_temp.ok(fn_pascoa(2027) = date '2027-03-28', '[T10] Páscoa 2027');
+  select string_agg(caso, ', ') into v from (values
+    ('ter 10:00', '2026-10-13 10:00 America/Bahia', true),
+    ('ter 07:59', '2026-10-13 07:59 America/Bahia', false),
+    ('ter 20:01', '2026-10-13 20:01 America/Bahia', false),
+    ('sábado', '2026-10-17 10:00 America/Bahia', false),
+    ('domingo', '2026-10-18 10:00 America/Bahia', false),
+    ('12/10', '2026-10-12 10:00 America/Bahia', false),
+    ('Carnaval', '2027-02-09 10:00 America/Bahia', false),
+    ('Sexta-feira Santa', '2027-03-26 10:00 America/Bahia', false),
+    ('2 de Julho', '2026-07-02 10:00 America/Bahia', false)) c(caso, m, esperado)
+   where fn_ligacao_permitida(m::timestamptz) is distinct from esperado;
+  perform pg_temp.ok(v is null, '[T10] regra de ligação errada em: ' || coalesce(v, ''));
+end $$;
+
+select 'REGRESSÃO OK: T1 a T10' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

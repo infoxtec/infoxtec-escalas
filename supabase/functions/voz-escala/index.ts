@@ -103,17 +103,28 @@ Deno.serve(async (req: Request) => {
       const id = String(form.ligacao_id ?? "");
       if (!id) return json({ ok: false, erro: "ligacao_id ausente" }, 400);
 
+      // Reserva a ligação numa operação só: cada ligação disca uma vez (repetir "iniciar" com um id
+      // antigo não gera outra chamada paga) e só no horário permitido (decisão 54, migration 64).
       const [dados] = await sql<{
         para: string; de: string; sid: string; token: string; url_base: string; voz_token: string;
       }[]>`
+        with reservada as (
+          update ligacoes set status = 'discando'
+           where id = ${id}::uuid and status = 'criada' and call_sid is null
+             and coalesce(fn_ligacao_permitida(), false)
+          returning tecnico_id)
         select (d->>'para') as para, (d->>'de') as de, (d->>'sid') as sid,
                (d->>'token') as token, (d->>'url_base') as url_base, (d->>'voz_token') as voz_token
         from (select jsonb_build_object(
                 'para', '+' || t.telefone_e164, 'de', fn_config('twilio_caller_id'),
                 'sid', fn_segredo('TWILIO_ACCOUNT_SID'), 'token', fn_segredo('TWILIO_AUTH_TOKEN'),
                 'url_base', fn_config('voz_url'), 'voz_token', fn_segredo('VOZ_TOKEN')) as d
-              from ligacoes l join tecnicos t on t.id = l.tecnico_id
-              where l.id = ${id}::uuid) x`;
+              from reservada r join tecnicos t on t.id = r.tecnico_id) x`;
+
+      if (!dados) {
+        console.warn("voz-escala: iniciar recusado (ligacao ja iniciada, inexistente ou fora do horario)");
+        return json({ ok: false, erro: "ligacao ja iniciada ou fora do horario" }, 409);
+      }
 
       if (!dados?.sid || !dados?.token) {
         await sql`select fn_registrar_call_sid(${id}::uuid, null, 'Credenciais da Twilio ausentes no Vault')`;

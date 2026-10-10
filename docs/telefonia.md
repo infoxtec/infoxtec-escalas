@@ -157,7 +157,14 @@ Se o piloto mostrar que muita gente digita 2 e o motivo só aparece depois, aí 
 ela colhe o motivo na hora. Nesse momento, Telnyx ou Twilio ConversationRelay entram como troca
 de camada, aproveitando tudo o que já estiver construído.
 
-## Assinatura da Twilio (etapa 12, 27/09; decisão 53, 10/10)
+## Quando a URA liga (decisão 54, 10/10)
+
+Disparo automático ativo (`ligacao_ativa = true`). Só em **dia útil, das 08:00 às 20:00**, nunca em
+sábado, domingo ou feriado (tabela `feriados`; incluir um feriado: `insert into feriados (data, nome,
+abrangencia) values ('2026-12-24', 'Véspera de Natal', 'facultativo');`). Vale também para o botão
+"Ligar agora".
+
+## Assinatura da Twilio (etapa 12, 27/09; decisão 54: fica em observação, sem bloqueio)
 
 A `voz-escala` confere, além do token na URL, a assinatura `X-Twilio-Signature` de toda chamada que
 vem da Twilio (HMAC-SHA1 com o `TWILIO_AUTH_TOKEN` sobre a URL pública `voz_url` e os parâmetros).
