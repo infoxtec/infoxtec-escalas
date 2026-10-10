@@ -13,7 +13,7 @@ O Kanban (aba Roadmap) é a fonte do status; esta revisão alinha o documento a 
   suspensão e advertência, CNH continua).
 - **004 (VRmais):** substituído pelo 075, o módulo de ponto próprio (decisão 48); a conciliação de escala
   com ponto passa a fazer parte do 084.
-- **Novo:** endurecimento da decisão 51 (service_role, âncora do backup, token do webhook).
+- **Novo, 091:** endurecimento da decisão 51 (service_role, âncora do backup, token do webhook).
 - **Prazo:** o bloqueio da assinatura da Twilio (002, etapa 12) vence em 27/10.
 - **Sprint de 13 a 23/10:** `docs/sprint-13-23-out.html`; regras da 084 entrega 2 na decisão 52.
 
