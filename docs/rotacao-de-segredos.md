@@ -155,13 +155,20 @@ agora") e confirme que saiu. É a prova de que a Evolution aceitou a chave nova.
 
 > **Cuidado que não se aplica aqui, mas se aplica ao `WEBHOOK_TOKEN`:** no passo 4.3 a limpeza é
 > **obrigatória**, porque a resposta do `/webhook/set/` devolve a configuração gravada — **com o token
-> na URL**. É a diferença entre higiene e vazamento.
+> no cabeçalho**. É a diferença entre higiene e vazamento.
 
 ---
 
 ## 4. Fase 2 — `WEBHOOK_TOKEN` (15 minutos, janela de segundos)
 
 Esta é a única rotação com **três passos que precisam acontecer em sequência rápida**.
+
+**4.0 Guardar o token atual no próprio Vault** (para a volta; nunca copie o valor para fora):
+
+```sql
+-- PRODUÇÃO. Esperado: um uuid
+select vault.create_secret(fn_segredo('WEBHOOK_TOKEN'), 'WEBHOOK_TOKEN_ANTERIOR');
+```
 
 **4.1 Gerar o token novo e gravar no Vault**
 
@@ -177,19 +184,20 @@ select vault.update_secret(
 select fn_evo_post('/webhook/set/' || fn_config('evolution_instancia'),
   jsonb_build_object('webhook', jsonb_build_object(
     'enabled', true,
-    'url', fn_config('webhook_url') || '?token=' || fn_segredo('WEBHOOK_TOKEN'),
+    'url', fn_config('webhook_url'),
+    'headers', jsonb_build_object('x-webhook-token', fn_segredo('WEBHOOK_TOKEN')),
     'byEvents', false, 'base64', false,
     'events', jsonb_build_array('MESSAGES_UPSERT','MESSAGES_UPDATE')))) as numero_da_requisicao;
 ```
 
-**4.3 Apagar a resposta dessa chamada** — ela guarda a URL **com o token**:
+**4.3 Apagar a resposta dessa chamada** — ela guarda a configuração **com o token**:
 
 ```sql
 delete from net._http_response where id = <numero_da_requisicao>;
 ```
 
 **4.4 Verificar de ponta a ponta** (é o teste que vale — não confie no `webhook/find`, que também
-devolve a URL com o token): peça ao técnico de teste para responder `1` e confira:
+devolve o token): peça ao técnico de teste para responder `1` e confira:
 
 ```sql
 select recebido_em at time zone 'America/Bahia' as quando, evento, left(resultado, 80) as resultado
@@ -197,10 +205,21 @@ select recebido_em at time zone 'America/Bahia' as quando, evento, left(resultad
 ```
 
 **Esperado:** um evento `messages.upsert` novo, com resultado de confirmação. Se vier vazio, a
-Evolution ainda está com o token antigo — repita o 4.2 e confira a URL no Manager.
+Evolution ainda está com o token antigo — repita o 4.2 e confira o webhook no Manager.
 
-**Se der errado:** o token anterior ainda é conhecido por você (guarde-o antes do passo 4.1). Grave-o
-de volta no Vault, reaponte a Evolution e o sistema volta como estava.
+**Se der errado:** volte o token guardado no 4.0 e reaponte a Evolution (4.2 e 4.3):
+
+```sql
+select vault.update_secret((select id from vault.secrets where name = 'WEBHOOK_TOKEN'),
+                           fn_segredo('WEBHOOK_TOKEN_ANTERIOR')) is not null as voltou;
+```
+
+**Depois de alguns dias estável** (na sprint de outubro, junto com a remoção do token pela URL em
+22/10), apague o segredo guardado:
+
+```sql
+delete from vault.secrets where name = 'WEBHOOK_TOKEN_ANTERIOR';
+```
 
 ---
 

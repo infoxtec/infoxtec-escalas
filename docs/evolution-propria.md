@@ -171,12 +171,13 @@ select vault.update_secret(
 select fn_evo_post('/webhook/set/' || fn_config('evolution_instancia'),
   jsonb_build_object('webhook', jsonb_build_object(
     'enabled', true,
-    'url', fn_config('webhook_url') || '?token=' || fn_segredo('WEBHOOK_TOKEN'),
+    'url', fn_config('webhook_url'),
+    'headers', jsonb_build_object('x-webhook-token', fn_segredo('WEBHOOK_TOKEN')),
     'byEvents', false, 'base64', false,
     'events', jsonb_build_array('MESSAGES_UPSERT', 'MESSAGES_UPDATE')))) as numero_da_requisicao;
 ```
 
-*Esperado:* `atualizado = true` e um número. Depois, apague a resposta (ela guarda a URL com o token),
+*Esperado:* `atualizado = true` e um número. Depois, apague a resposta (ela guarda o token),
 trocando `N` pelo número:
 
 ```sql
