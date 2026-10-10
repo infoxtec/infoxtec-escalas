@@ -1,5 +1,8 @@
 // Webhook da Evolution API -> Supabase
-// Autenticacao: token na URL (?token=...), conferido dentro do banco contra o Vault.
+// Autenticacao: token no cabecalho x-webhook-token (decisao 51, parte 3), conferido dentro do banco
+// contra o Vault. Cabecalho presente e errado = 401, sem tentar a URL. Transicao: sem o cabecalho,
+// ainda aceita o token na URL (?token=...) e registra um aviso no log, sem o valor. A aceitacao pela
+// URL sai depois de 3 a 7 dias sem esse aviso.
 // Toda a regra de negocio mora em SQL (fn_webhook_evolution). Esta funcao so repassa.
 // Deploy: supabase functions deploy webhook-evolution --no-verify-jwt
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -23,7 +26,14 @@ const json = (body: unknown, status = 200) =>
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ ok: true, info: "webhook evolution" });
 
-  const token = new URL(req.url).searchParams.get("token") ?? "";
+  const doCabecalho = req.headers.get("x-webhook-token");
+  let token: string;
+  if (doCabecalho !== null) {
+    token = doCabecalho;
+  } else {
+    token = new URL(req.url).searchParams.get("token") ?? "";
+    if (token) console.warn("webhook: token pela URL (legado)");
+  }
   if (!token) return json({ ok: false, erro: "token ausente" }, 401);
 
   if (Number(req.headers.get("content-length") ?? 0) > CORPO_MAX_BYTES) {

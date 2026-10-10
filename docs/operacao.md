@@ -114,16 +114,17 @@ Se estiver vazio há horas, confira a configuração na Evolution:
 select fn_evo_get('/webhook/find/' || fn_config('evolution_instancia'));
 ```
 
-Para reconfigurar (a URL leva o token do Vault, que não aparece em tela):
+Para reconfigurar (o token vai no cabeçalho `x-webhook-token`, lido do Vault, e não aparece em tela; decisão 51, parte 3):
 
 ```sql
 select fn_evo_post('/webhook/set/' || fn_config('evolution_instancia'),
   jsonb_build_object('webhook', jsonb_build_object(
     'enabled', true,
-    'url', fn_config('webhook_url') || '?token=' || fn_segredo('WEBHOOK_TOKEN'),
+    'url', fn_config('webhook_url'),
+    'headers', jsonb_build_object('x-webhook-token', fn_segredo('WEBHOOK_TOKEN')),
     'byEvents', false, 'base64', false,
     'events', jsonb_build_array('MESSAGES_UPSERT','MESSAGES_UPDATE'))));
--- depois apague o registro dessa resposta, que guarda a URL com o token:
+-- depois apague o registro dessa resposta, que guarda a configuração com o token:
 delete from net._http_response where id = <numero devolvido>;
 ```
 
@@ -320,7 +321,7 @@ O resumo do que muda, e o que se esquece:
 | `config.evolution_instancia` | se o nome da instância mudou |
 | Vault, `EVOLUTION_API_KEY` | a chave da instância nova |
 | **Webhook** | `fn_evo_post('/webhook/set/…')` **no servidor novo**. Sem isso, a resposta do técnico nunca chega — e o sintoma é silencioso, porque as escalas continuam saindo |
-| `net._http_response` | apagar a resposta do `/webhook/set/`, que guarda a URL com o token |
+| `net._http_response` | apagar a resposta do `/webhook/set/`, que guarda o token |
 
 **Operação do servidor** (no servidor, em `~/infoxtec-escalas/infra/evolution`): `docker compose ps`,
 `docker compose logs --tail 100 evolution`, troca da chave-mestra, troca da imagem e

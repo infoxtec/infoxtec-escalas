@@ -155,7 +155,7 @@ agora") e confirme que saiu. É a prova de que a Evolution aceitou a chave nova.
 
 > **Cuidado que não se aplica aqui, mas se aplica ao `WEBHOOK_TOKEN`:** no passo 4.3 a limpeza é
 > **obrigatória**, porque a resposta do `/webhook/set/` devolve a configuração gravada — **com o token
-> na URL**. É a diferença entre higiene e vazamento.
+> no cabeçalho**. É a diferença entre higiene e vazamento.
 
 ---
 
@@ -177,19 +177,20 @@ select vault.update_secret(
 select fn_evo_post('/webhook/set/' || fn_config('evolution_instancia'),
   jsonb_build_object('webhook', jsonb_build_object(
     'enabled', true,
-    'url', fn_config('webhook_url') || '?token=' || fn_segredo('WEBHOOK_TOKEN'),
+    'url', fn_config('webhook_url'),
+    'headers', jsonb_build_object('x-webhook-token', fn_segredo('WEBHOOK_TOKEN')),
     'byEvents', false, 'base64', false,
     'events', jsonb_build_array('MESSAGES_UPSERT','MESSAGES_UPDATE')))) as numero_da_requisicao;
 ```
 
-**4.3 Apagar a resposta dessa chamada** — ela guarda a URL **com o token**:
+**4.3 Apagar a resposta dessa chamada** — ela guarda a configuração **com o token**:
 
 ```sql
 delete from net._http_response where id = <numero_da_requisicao>;
 ```
 
 **4.4 Verificar de ponta a ponta** (é o teste que vale — não confie no `webhook/find`, que também
-devolve a URL com o token): peça ao técnico de teste para responder `1` e confira:
+devolve o token): peça ao técnico de teste para responder `1` e confira:
 
 ```sql
 select recebido_em at time zone 'America/Bahia' as quando, evento, left(resultado, 80) as resultado
