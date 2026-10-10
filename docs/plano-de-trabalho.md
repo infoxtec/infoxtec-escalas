@@ -7,7 +7,7 @@ A análise que originou a lista está em [analise-topologia.md](analise-topologi
 
 ## Onde estamos
 
-**Sprint atual: 13 a 23/10** — fechar a decisão 51 e a 084 entrega 2. *Situação em 10/10, fim do dia: 15 de 18 tarefas concluídas — T01 a T08, T10, T11, T13, T17, T18 (URA automática ligada; primeira ligação possível na terça, 13/10, 08:00) e P1 (fuso do motor e habilidades na regressão). Faltam T09 (troca do token, 14/10), T12 (chave antiga, 16/10), T14 e T15 (fim do token na URL, 15 e 20/10) e T16 (revisão, 22/10). Calendário revisado na página da sprint.* Plano, encadeamento e fichas em
+**Sprint atual: 13 a 23/10** — fechar a decisão 51 e a 084 entrega 2. *Situação em 10/10, fim do dia: 13 de 18 tarefas concluídas, mais o P1 — T01 a T08, T10, T11, T13, T17, T18 (URA automática ligada; primeira ligação possível na terça, 13/10, 08:00) e P1 (fuso do motor e habilidades na regressão). Faltam T09 (troca do token, 14/10), T12 (chave antiga, 16/10), T14 e T15 (fim do token na URL, 15 e 20/10) e T16 (revisão, 22/10). Calendário revisado na página da sprint.* Plano, encadeamento e fichas em
 [`sprint-13-23-out.html`](sprint-13-23-out.html).
 
 | Peça | O que é | Situação |
