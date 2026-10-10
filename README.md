@@ -101,7 +101,7 @@ Homologação: projeto Supabase `infoxtec-escalas-dev`, sem WhatsApp nem ligaç�
 ```
 web/                          painel React (o que vai para a Vercel, Root Directory = web)
 supabase/
-  migrations/                 01 a 43 — espelho do banco (conferido contra a produção em 26/09)
+  migrations/                 01 a 62 — espelho do banco (igual à produção em 10/10)
   functions/                  Edge Functions: webhook-evolution, voz-escala, documento-ocr
   setup/                      config por ambiente, cron e segredos (rodar uma vez)
   seed.sql                    dados fictícios para desenvolvimento
@@ -174,20 +174,21 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Painel de controle interno: 47 temas pendentes com referência exata e as avaliações de segurança, infraestrutura e código atualizadas (28/09)
 - [x] Evolution própria na Oracle Cloud, versão 2.4 com botões; produção virada e SEG-01/SEG-02 fechados (28/09)
 - [x] Migration 51 e painel 3.6.0: Administração do Sistema > Checklist, estado de saúde da plataforma (homologação, 29/09)
-- [ ] Migration 62: nenhuma função interna executável pelo `service_role`, função nova nasce fechada e **suíte de regressão e carga** no CI (decisão 51, homologação, 09/10)
-- [ ] Migration 61 e painel 3.13.0: jornada no ponto — avisos da CLT (intervalo abaixo de 1 h, antes e depois da marcação; hora extra acima de 2 h; interjornada; atraso) e **Espelho de jornada** no Registro de Ponto (homologação, 09/10)
+- [x] Migration 62: nenhuma função interna executável pelo `service_role`, função nova nasce fechada e **suíte de regressão e carga** no CI (decisão 51, produção, 08/10)
+- [x] Backup diário com **âncora da cadeia do ponto**, conferida no dia seguinte e na restauração (decisão 51, parte 2, 09/10)
+- [x] Migration 61 e painel 3.13.0: jornada no ponto — avisos da CLT (intervalo abaixo de 1 h, antes e depois da marcação; hora extra acima de 2 h; interjornada; atraso) e **Espelho de jornada** no Registro de Ponto (produção, 09/10)
 - [x] Migration 60: ponto no WhatsApp recusa localização encaminhada ou reenviada (bug do teste do responsável, produção, 08/10)
-- [x] Migration 59: ponto no WhatsApp com **botões** (3 mais prováveis) e menu numerado; opção inválida volta ao menu, *0* cancela (homologação, 08/10)
-- [x] Migration 58 e painel 3.12.0: Registro de Ponto com **bairro e cidade** de cada marcação (OpenStreetMap, gratuito; decisão 50) e coluna **GPS** com a localização exata (homologação, 08/10)
-- [x] Migration 57 e painel 3.11.2: **escala nunca é criada nem enviada sem local** — trava no banco e no painel (homologação, 08/10)
-- [x] Painel 3.11.1: o acompanhamento do ponto passa para a Agenda, submenu **Registro de Ponto** (homologação, 07/10)
-- [x] Migration 56 e painel 3.11.0: ponto pelo WhatsApp (palavras, menu, localização atual, comprovante), lembrete da saída para o almoço e tela **Ponto** do gestor — hoje online e histórico (homologação, 07/10)
+- [x] Migration 59: ponto no WhatsApp com **botões** (3 mais prováveis) e menu numerado; opção inválida volta ao menu, *0* cancela (produção, 08/10)
+- [x] Migration 58 e painel 3.12.0: Registro de Ponto com **bairro e cidade** de cada marcação (OpenStreetMap, gratuito; decisão 50) e coluna **GPS** com a localização exata (produção, 08/10)
+- [x] Migration 57 e painel 3.11.2: **escala nunca é criada nem enviada sem local** — trava no banco e no painel (produção, 08/10)
+- [x] Painel 3.11.1: o acompanhamento do ponto passa para a Agenda, submenu **Registro de Ponto** (produção, 07/10)
+- [x] Migration 56 e painel 3.11.0: ponto pelo WhatsApp (palavras, menu, localização atual, comprovante), lembrete da saída para o almoço e tela **Ponto** do gestor — hoje online e histórico (produção, 07/10)
 - [x] Migration 55 e painel 3.10.0: app do ponto do funcionário em `/ponto` — CPF + código no WhatsApp (ou do gestor), sessão única, aviso de privacidade, comprovante (produção, 07/10)
-- [ ] Migrations 53 e 54 e painel 3.9.0: Módulo Registro de Ponto, F1 — Empresas (CNPJ), CPF/matrícula do funcionário, área do local; marcações só de inclusão com NSR e hash encadeado (homologação, 06/10)
+- [x] Migrations 53 e 54 e painel 3.9.0: Módulo Registro de Ponto, F1 — Empresas (CNPJ), CPF/matrícula do funcionário, área do local; marcações só de inclusão com NSR e hash encadeado (produção, 07/10)
 - [x] Painel 3.8.0: tela principal com botões grandes; "Administração do Sistema" passa a ser **Checklist Sistema**; botão de voltar em cada tela (produção, 04/10)
 - [x] Painel 3.7.0: marca Trilha no painel — logo (∴ em verde, azul e amarelo, nome em Montserrat e check verde), assinatura *Cada passo conta.* — e grito *Trilha em campo, operação em dia.* (produção, decisão 46, 04/10)
 - [x] Marca v5 documentada e plano de branding iniciado: kit da logo, chamada para ação, proposta, site e INPI em `docs/marca.md` §11 (04/10)
 - [ ] Próximas etapas: ver [docs/plano-de-trabalho.md](docs/plano-de-trabalho.md)
-- [ ] Fluxo por pull request com CI (ver [docs/fluxo-de-desenvolvimento.md](docs/fluxo-de-desenvolvimento.md))
-- [ ] Desligar o painel Retool e remover as funções da bancada de teste
+- [x] Fluxo por pull request com CI (ver [docs/fluxo-de-desenvolvimento.md](docs/fluxo-de-desenvolvimento.md))
+- [x] Desligar o painel Retool e remover as funções da bancada de teste
 - [ ] Backlog de 60 dias (ver [docs/backlog.md](docs/backlog.md))
