@@ -283,7 +283,7 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
 - **Default privileges** do `postgres`: função nova nasce sem execute para `public`, `anon`,
   `authenticated` e `service_role`. O padrão global vale para qualquer função criada pelo `postgres`:
   extensão ativada depois da migration 62 pode precisar de `grant` explícito.
-- **`supabase/tests/regressao.sql`**: suíte de regressão e carga (T1 a T9) numa transação desfeita;
+- **`supabase/tests/regressao.sql`**: suíte de regressão e carga (T1 a T9; T10 a T13 em 10/10: URA em dia útil, ajustes de ponto, fuso do motor e habilidades) numa transação desfeita;
   roda no CI e na homologação. Medido na homologação em 09/10: 2.000 marcações em 2,5 s (NSR e cadeia
   íntegros) e 300 mensagens do WhatsApp em 0,4 s.
 

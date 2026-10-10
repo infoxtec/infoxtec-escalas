@@ -110,8 +110,8 @@ ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
 
   <section class="situacao" aria-label="Situação">
     <h2 style="margin:0">Situação em 10/10, fim do dia</h2>
-    <div class="barra" role="img" aria-label="10 de 18 tarefas concluídas"><i style="width:56%"></i></div>
-    <p><strong>10 de 18 tarefas concluídas.</strong> Na produção: webhook com token no cabeçalho, migration 63 (nenhum papel da API alcança tabela; conferido: 0 acessos) e migration 64 (URA só em dia útil, das 08:00 às 20:00, fora de feriado). Decidido pelo responsável: <strong>sem bloqueio da Twilio</strong> e <strong>URA automática ativa</strong> (decisão 54).</p>
+    <div class="barra" role="img" aria-label="13 de 18 tarefas concluídas, mais o P1"><i style="width:72%"></i></div>
+    <p><strong>13 de 18 tarefas concluídas, mais o P1 (paralelo).</strong> <strong>T18:</strong> URA automática ligada na produção (voz-escala versão 72; primeira ligação possível na terça, 13/10, 08:00). <strong>P1:</strong> fuso do motor e habilidades na regressão (T12 e T13, CI verde). <strong>T11 e T13 adiantadas nove dias:</strong> ajustes de ponto com justificativa (migration 65, painel 3.14.0) na produção em 10/10, com CI verde (regressão T1 a T11), revisão do <span class="mono">seguranca</span> sem P1 e os dez achados corrigidos no mesmo PR — a 084 está completa. Na produção também: webhook com token no cabeçalho, migration 63 (nenhum papel da API alcança tabela; conferido: 0 acessos) e migration 64 (URA só em dia útil, das 08:00 às 20:00, fora de feriado). Decidido pelo responsável: <strong>sem bloqueio da Twilio</strong> e <strong>URA automática ativa</strong> (decisão 54).</p>
     <div class="feitos">
       <span class="tag ok">T01 teste da 62</span><span class="tag ok">T02 1º backup com âncora</span><span class="tag ok">T03 decisões A, B e C</span>
       <span class="tag ok">T04 documentação</span><span class="tag ok">T05 restauração</span><span class="tag ok">T06 PR do webhook</span>
@@ -123,8 +123,8 @@ ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
       <thead><tr><th>Dia</th><th>Produção</th><th>Em paralelo</th></tr></thead>
       <tbody>
         <tr><td>Sáb 10</td><td><strong>T18</strong> publicar a voz-escala e ligar o disparo automático (a regra impede ligação até terça, 08:00)</td><td>Claude começa a 084 entrega 2 (T11) e os testes de fuso e habilidades (P1)</td></tr>
-        <tr><td>Ter 13</td><td>primeiro dia útil da URA automática: acompanhar as ligações</td><td>T11 pronta na homologação</td></tr>
-        <tr><td>Qua 14</td><td><strong>T09</strong> troca do token, 21h às 21h30</td><td>teste conjunto da T11</td></tr>
+        <tr><td>Ter 13</td><td>primeiro dia útil da URA automática: acompanhar as ligações</td><td>primeiro uso real dos ajustes (T11 e T13 já na produção)</td></tr>
+        <tr><td>Qua 14</td><td><strong>T09</strong> troca do token, 21h às 21h30</td><td>P1: testes de fuso e habilidades</td></tr>
         <tr><td>Qui 15</td><td>observar</td><td>PR do fim da URL (T14)</td></tr>
         <tr><td>Sex 16</td><td><strong>T12</strong> desativar a chave service_role antiga (decisão D, fechada pelo PO)</td><td>apagar o WEBHOOK_TOKEN_ANTERIOR (48 h após a T09)</td></tr>
         <tr><td>Seg 19</td><td><strong>T13</strong> 084 entrega 2 na produção (painel 3.14.0)</td><td>—</td></tr>
