@@ -784,7 +784,7 @@ Teste T21.
 **Data:** 11/10/2026. **Origem:** diagnóstico do DeepSeek (item 3) aprofundado pelo time. **Achado
 principal:** a tarefa `limpeza-logs` nunca foi agendada na produção — o histórico do agendador crescia
 cerca de 3 mil linhas por dia e o log do webhook passaria do prazo de 30 dias em 21/10. **Decisão do
-responsável:** agendar a limpeza (feito pelo responsável) e, na migration 76: o Checklist Sistema passa a
+responsável:** agendar a limpeza (feito pelo responsável em 11/10: tarefa 8, 03:17 em Salvador) e, na migration 76: o Checklist Sistema passa a
 apontar tarefa obrigatória faltando; saem 6 objetos sem chamador (conferidos no painel, Edge Functions,
 gatilhos, funções e views): `app_config`, `app_documentos_expirados`, `app_salvar_tecnico_habilidade`,
 `app_ponto_marcacoes`, `vw_resumo_dia`, `fn_set_ator`. `vw_documentos_expirados` fica (consulta de

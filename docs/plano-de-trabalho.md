@@ -13,9 +13,9 @@ A análise que originou a lista está em [analise-topologia.md](analise-topologi
 | Peça | O que é | Situação |
 |---|---|---|
 | Máquina Linux no Mac | Onde você roda o painel, os comandos do Supabase e os scripts | Pronta |
-| Homologação | Projeto Supabase `infoxtec-escalas-dev` (`oruwnlxyvznpigbpjjbx`), com dados fictícios, sem WhatsApp nem ligações reais | **Migrations 01 a 74** e as três Edge Functions — igual à produção (11/10) |
-| Produção | Projeto Supabase `infoxtec-escalas` (`zpckrxydqqmmcrphrkxz`) + painel na Vercel | **Migrations 01 a 74** (11/10), as três Edge Functions e o painel 3.21.0 |
-| Repositório | GitHub `infoxtec/infoxtec-escalas`. A `main` é o que vale para a produção | `main` igual à produção e à homologação (migrations 01 a 74, 11/10) |
+| Homologação | Projeto Supabase `infoxtec-escalas-dev` (`oruwnlxyvznpigbpjjbx`), com dados fictícios, sem WhatsApp nem ligações reais | **Migrations 01 a 76** e as três Edge Functions — igual à produção (11/10) |
+| Produção | Projeto Supabase `infoxtec-escalas` (`zpckrxydqqmmcrphrkxz`) + painel na Vercel | **Migrations 01 a 76** (11/10), as três Edge Functions, o painel 3.21.0 e 5 tarefas agendadas |
+| Repositório | GitHub `infoxtec/infoxtec-escalas`. A `main` é o que vale para a produção | `main` igual à produção e à homologação (migrations 01 a 76, 11/10) |
 
 ## Regras combinadas (26/09)
 
@@ -240,3 +240,4 @@ avaliação.
 | 11/10 | 084 entrega 3, E3: reincidência só de Ponto (atestado e falta legal nunca contam), pedido parado há mais de 2 dias úteis com aviso aos supervisores pelo cron do ponto já existente, métrica do período (migration 72, painel 3.20.0) | CI T1 a T19 verde; `seguranca` sem P1 (P2 da reincidência corrigido no PR); homologação ok; produção conferida (versão 72, 3 funções, cron do ponto ativo, `service_role` 0) e testada pelo responsável | Concluído: PR #87, produção em 11/10. A 084 entrega 3 está completa |
 | 11/10 | Medida 1 do Scrum Master: chave `COFRE_PONTO` da produção guardada no gerenciador de senhas do responsável, separada da `BACKUP_SENHA` | Impressão digital (SHA-256) da cópia igual à do Vault da produção; homologação tem chave própria, diferente | Concluído. Faltam as medidas 2 (PDF de 5 MB, até 15/10) e 3 (nada publicado em 14 e 16/10 além da T09 e da T12) |
 | 11/10 | Texto do afastamento (migration 73) e alta antecipada registrada pelo gestor com a liberação médica no cofre (migration 74, painel 3.21.0, decisão 64, opção A); medida 2 do Scrum Master (documento de 4,1 MB no cofre) cumprida | CI T1 a T20 verde; `seguranca` sem P1 (P2 do rótulo "atestado" corrigido); homologação e produção conferidas (versão 74, funções, canal `painel`, `anon` sem acesso, `service_role` 0) | Concluído: PRs #90 e #91. PO busca parecer de RH para a opção B |
+| 11/10 | Véspera de feriado sem alerta de escala (migration 75, decisão 65) e limpeza da estrutura (migration 76, decisão 66): Checklist confere as tarefas do agendador, 6 objetos sem uso removidos, mapa do banco por domínio; tarefa `limpeza-logs` agendada na produção (estava faltando desde a criação) | CI T1 a T22 verde; `seguranca` sem achado médio ou maior; produção conferida (versão 76, 5 tarefas ativas, objetos removidos, view de retenção mantida, `service_role` 0) | Concluído: PRs #92 e #93. Pendentes do diagnóstico do DeepSeek no backlog: avisos de supervisor por empresa (antes do 2º cliente), teto no envio de atrasos, colunas e chaves sem uso |
