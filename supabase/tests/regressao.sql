@@ -20,6 +20,7 @@
 -- T17 documento pelo WhatsApp: falta com foto ou PDF, arquivo só na etapa do documento, direto ao cofre
 -- T18 registro do documento: número sequencial por empresa, QR de verificação, integridade e descarte
 -- T19 E3: dias úteis, reincidência (só o fato), pedido parado, alerta aos supervisores e métrica
+-- T20 alta antecipada registrada pelo gestor: só com "vê atestados", documento no cofre, libera o ponto
 
 \set ON_ERROR_STOP on
 begin;
@@ -1036,7 +1037,46 @@ begin
   perform fn_ponto_lembrete_almoco();
 end $$;
 
-select 'REGRESSÃO OK: T1 a T19' as resultado,
+-- T20 alta pelo gestor (migration 74, decisão 64) -------------------------------------------------------
+do $$
+declare
+  v_tec  uuid := (select id from tecnicos where telefone_e164 = '557999991717');
+  v_hoje date := (now() at time zone 'America/Bahia')::date;
+  v_jpg  bytea := '\xffd8ffe000104a46494600010100000100010000ffd9'::bytea;
+  r jsonb; x record; v_ok boolean;
+begin
+  -- o funcionário do T17 está afastado (atestado de ontem até amanhã)
+  perform pg_temp.ok(fn_ponto_afastado_ate(v_tec, v_hoje) = v_hoje + 1, '[T20] funcionário do T17 não está afastado');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  v_ok := false;
+  begin perform app_ponto_registrar_alta(v_tec, v_hoje, encode(v_jpg, 'base64'), 'image/jpeg');
+  exception when others then v_ok := sqlerrm like '%ver atestados%'; end;
+  perform pg_temp.ok(v_ok, '[T20] alta registrada sem "vê atestados"');
+
+  perform app_definir_ve_saude('qa-admin@teste.local', true);
+  select * into x from app_ponto_afastados() a where a.tecnico_id = v_tec;
+  perform pg_temp.ok(x.afastado_ate = v_hoje + 1 and x.pode_registrar_alta, '[T20] lista de afastados');
+  v_ok := false;
+  begin perform app_ponto_registrar_alta(v_tec, v_hoje, null, null);
+  exception when others then v_ok := sqlerrm like '%liberação médica%'; end;
+  perform pg_temp.ok(v_ok, '[T20] alta sem documento aceita');
+
+  r := app_ponto_registrar_alta(v_tec, v_hoje, encode(v_jpg, 'base64'), 'image/jpeg', 'Liberação entregue ao gestor');
+  select * into x from ponto_justificativas where numero = (r->>'numero')::bigint;
+  perform pg_temp.ok(x.motivo = 'alta_medica' and x.canal = 'painel' and x.status = 'aprovada' and x.data = v_hoje,
+                     '[T20] alta gravada errado: ' || r::text);
+  perform pg_temp.ok(exists (select 1 from ponto_justificativa_anexos a join ponto_documento_registros d on d.anexo_id = a.id
+                              where a.justificativa_id = x.id), '[T20] liberação fora do cofre');
+  perform pg_temp.ok(fn_ponto_afastado_ate(v_tec, v_hoje) is null and r->>'afastado_ate' is null, '[T20] alta não liberou');
+  perform pg_temp.ok(not exists (select 1 from app_ponto_afastados() a where a.tecnico_id = v_tec), '[T20] continua na lista de afastados');
+  v_ok := false;
+  begin perform app_ponto_registrar_alta(v_tec, v_hoje, encode(v_jpg, 'base64'), 'image/jpeg');
+  exception when others then v_ok := sqlerrm like '%não está afastado%'; end;
+  perform pg_temp.ok(v_ok, '[T20] alta repetida aceita');
+  perform app_definir_ve_saude('qa-admin@teste.local', false);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T20' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

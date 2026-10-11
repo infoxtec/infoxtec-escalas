@@ -235,6 +235,14 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 74 (12/10): alta antecipada registrada pelo gestor (decisão 64)
+
+- `ponto_justificativas.canal` aceita `painel`. `app_ponto_afastados()` (admin, gestor): quem está afastado
+  hoje e até quando, nunca o motivo. `app_ponto_registrar_alta(técnico, dia, anexo, tipo, observação)`:
+  exige "vê atestados", funcionário afastado no dia e a liberação médica; o documento vai para o cofre e a
+  alta sai aprovada. `fn_ponto_midia_receber`: a confirmação do atestado no WhatsApp orienta a falar com o
+  gestor. Teste T20.
+
 ### Migration 73 (12/10): texto da marcação recusada no afastamento
 
 - `fn_ponto_bloquear_afastado`: "Você está afastado até DD/MM. Para voltar antes, tenha a liberação médica

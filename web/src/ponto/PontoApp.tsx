@@ -3,6 +3,7 @@ import { CheckCircle2, Clock, FileText, Loader2, LogOut, MapPin, ShieldCheck, XC
 import { Button, ErrorBox, Field, Input, Select, Textarea } from '../components/ui'
 import { erroMsg, ponto } from '../lib/api'
 import { formatCpf } from '../lib/types'
+import { prepararArquivo } from '../lib/arquivo'
 import type { PontoComprovante, PontoEu, PontoMarcacao, PontoMeuPedido, PontoTipo } from '../lib/types'
 
 // App do funcionário (Módulo Registro de Ponto, docs/modulo-registro-de-ponto/). Abre em /ponto.
@@ -175,7 +176,7 @@ function Painel({ token, onSair }: { token: string; onSair: () => void }) {
       {eu.afastado_ate && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           Você está <strong>afastado por atestado até {eu.afastado_ate.slice(0, 5)}</strong>: não marca ponto nem recebe escala. Melhoras!
-          Para voltar antes, passe por nova avaliação médica e envie o <strong>atestado de aptidão</strong> na aba Ajuste.
+          Para voltar antes, tenha a <strong>liberação médica</strong> em mãos e fale com o seu gestor.
         </div>
       )}
 
@@ -316,23 +317,6 @@ const MOTIVOS_FALTA: Record<string, MotivoFalta[]> = {
     { id: 'outra_convocacao', label: 'Serviço militar, vestibular ou reunião sindical internacional', doc: 'convocação' },
   ],
 }
-// Foto: reduzida a 1600 px e regravada em JPEG no próprio aparelho (tira a localização e os dados da foto)
-async function prepararArquivo(f: File): Promise<{ base64: string; tipo: string }> {
-  if (f.type === 'application/pdf') {
-    if (f.size > 5 * 1024 * 1024) throw new Error('O PDF precisa ter até 5 MB.')
-    const buf = new Uint8Array(await f.arrayBuffer())
-    let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000))
-    return { base64: btoa(bin), tipo: 'application/pdf' }
-  }
-  if (!f.type.startsWith('image/')) throw new Error('O documento precisa ser foto ou PDF.')
-  const bmp = await createImageBitmap(f)
-  const escala = Math.min(1, 1600 / Math.max(bmp.width, bmp.height))
-  const c = document.createElement('canvas')
-  c.width = Math.round(bmp.width * escala); c.height = Math.round(bmp.height * escala)
-  c.getContext('2d')!.drawImage(bmp, 0, 0, c.width, c.height)
-  const url = c.toDataURL('image/jpeg', 0.85)
-  return { base64: url.slice(url.indexOf(',') + 1), tipo: 'image/jpeg' }
-}
 const SITUACAO_PEDIDO: Record<PontoMeuPedido['status'], { label: string; cor: string }> = {
   pendente: { label: 'Em análise', cor: 'bg-amber-100 text-amber-800' },
   aprovada: { label: 'Aprovado', cor: 'bg-green-100 text-green-800' },
@@ -381,7 +365,7 @@ function Ajuste({ token, onSair, onMudou }: { token: string; onSair: () => void;
         const r = await ponto.justificarAtestado(token, { motivo: ehAtestado ? 'atestado' : 'alta_medica', data, validoAte: ehAtestado ? dataFim : null,
           observacao: obs.trim() || null, anexo: arquivo.base64, anexoTipo: arquivo.tipo })
         setEnviado(ehAtestado
-          ? `Pedido ${r.numero} enviado. Até ${dataFim.split('-').reverse().join('/')} você fica afastado: não marca ponto nem recebe escala. Melhoras! Para voltar antes, envie o atestado de aptidão (alta médica).`
+          ? `Pedido ${r.numero} enviado. Até ${dataFim.split('-').reverse().join('/')} você fica afastado: não marca ponto nem recebe escala. Melhoras! Para voltar antes, tenha a liberação médica em mãos e fale com o seu gestor.`
           : `Pedido ${r.numero} enviado. Você está liberado para marcar o ponto e receber escala.`)
         setGrupo(null); setMotivo(''); setObs(''); setDataFim(''); setArquivo(null)
         await carregar(); onMudou(); return
@@ -447,7 +431,7 @@ function Ajuste({ token, onSair, onMudou }: { token: string; onSair: () => void;
                 <Field label={ehAtestado ? 'Válido até (último dia)' : 'Até o dia (se mais de um)'}><Input type="date" value={dataFim} min={data} onChange={e => setDataFim(e.target.value)} /></Field>
               </div>
             )}
-            {ehAtestado && <p className="text-xs text-amber-800">Durante a validade do atestado você não marca ponto nem recebe escala. Para voltar antes, passe por nova avaliação médica e envie o atestado de aptidão (alta médica).</p>}
+            {ehAtestado && <p className="text-xs text-amber-800">Durante a validade do atestado você não marca ponto nem recebe escala. Para voltar antes, tenha a liberação médica em mãos e fale com o seu gestor.</p>}
             <p className="text-sm font-semibold">Documento</p>
             <p className="text-xs text-muted-foreground">Foto ou PDF do {falta.doc}. {grupo === 'saude' && 'Se o documento tiver o CID (código da doença), você pode cobri-lo antes da foto. '}
               Fica guardado com segurança e só quem aprova vê.</p>

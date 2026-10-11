@@ -102,6 +102,9 @@ export const api = {
   pontoJustificativas: (de: string, ate: string, tecnico: string | null) =>
     rpc<PontoJustificativa[]>('app_ponto_justificativas', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
   pontoMetricas: (de: string, ate: string) => rpc<PontoMetricas>('app_ponto_justificativas_metricas', { p_de: de, p_ate: ate }),
+  pontoAfastados: () => rpc<{ tecnico_id: string; tecnico: string; afastado_ate: string; pode_registrar_alta: boolean }[]>('app_ponto_afastados'),
+  pontoRegistrarAlta: (tecnico: string, data: string, anexo: string, tipo: string, observacao: string | null) =>
+    rpc<{ numero: number; data: string; afastado_ate: string | null }>('app_ponto_registrar_alta', { p_tecnico: tecnico, p_data: data, p_anexo: anexo, p_anexo_tipo: tipo, p_observacao: observacao }),
   pontoDecidir: (id: string, aprovar: boolean, resposta: string | null) =>
     rpc<{ numero: number; status: string }>('app_ponto_decidir', { p_id: id, p_aprovar: aprovar, p_resposta: resposta }),
   pontoAbonar: (tecnico: string, data: string, motivo: string, inicio: string | null, fim: string | null) =>
