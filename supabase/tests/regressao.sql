@@ -22,6 +22,7 @@
 -- T19 E3: dias úteis, reincidência (só o fato), pedido parado, alerta aos supervisores e métrica
 -- T20 alta antecipada registrada pelo gestor: só com "vê atestados", documento no cofre, libera o ponto
 -- T21 véspera de feriado: o alerta da escala de amanhã não sai
+-- T22 limpeza da estrutura: objetos sem chamador removidos; Checklist aponta tarefa obrigatória faltando
 
 \set ON_ERROR_STOP on
 begin;
@@ -1098,7 +1099,29 @@ begin
   end if;
 end $$;
 
-select 'REGRESSÃO OK: T1 a T21' as resultado,
+-- T22 limpeza da estrutura (migration 76, decisão 66) -----------------------------------------------------
+do $$
+declare r jsonb; x jsonb;
+begin
+  perform pg_temp.ok(to_regprocedure('app_config()') is null and to_regprocedure('app_documentos_expirados()') is null
+                     and to_regprocedure('app_salvar_tecnico_habilidade(jsonb)') is null
+                     and to_regprocedure('app_ponto_marcacoes(date,date,uuid)') is null
+                     and to_regprocedure('fn_set_ator(text)') is null and to_regclass('vw_resumo_dia') is null,
+                     '[T22] objeto sem chamador continua no banco');
+  perform pg_temp.ok(to_regclass('vw_documentos_expirados') is not null, '[T22] view da consulta de retenção removida');
+  -- banco sem a tarefa limpeza-logs: o Checklist aponta a falta (só onde o pg_cron existe)
+  if to_regclass('cron.job') is not null and not exists (select 1 from cron.job where jobname = 'limpeza-logs') then
+    update config set valor = 'producao' where chave = 'ambiente';
+    perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+    r := app_checklist_saude();
+    select e into x from jsonb_array_elements(r->'itens') e where e->>'item' = 'Tarefas agendadas (cron)';
+    perform pg_temp.ok(x->>'estado' = 'falha' and x->>'detalhe' like '%limpeza-logs%', '[T22] Checklist sem a tarefa faltando: ' || coalesce(x::text, 'null'));
+  else
+    raise notice 'T22: sem pg_cron ou com limpeza-logs agendada; item do Checklist não conferido';
+  end if;
+end $$;
+
+select 'REGRESSÃO OK: T1 a T22' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

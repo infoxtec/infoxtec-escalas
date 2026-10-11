@@ -1,10 +1,30 @@
 # Banco de dados
 
-23 tabelas, 8 views, 110 funções (53 delas são a API `app_*`), 7 gatilhos e 1 agendamento.
-Tudo versionado em `supabase/migrations` (01 a 49 — 6.592 linhas), e a produção está na 49 (28/09).
-Os números vêm da leitura do código em [analise-codigo.md](analise-codigo.md); quando divergirem daqui, o código manda.
+**Situação em 11/10/2026 (produção e homologação na migration 76):** 45 tabelas, 7 views, 204 funções
+— 76 da API do painel (`app_*`), 12 do app do funcionário (`ponto_*`) e as internas (`fn_*`) —, 34
+gatilhos e 5 tarefas agendadas (`supabase/setup/cron.sql`, conferidas pelo Checklist Sistema). Tudo
+versionado em `supabase/migrations`. Quando este documento divergir do banco, o banco manda; a
+seção de cada migration, abaixo, diz o que mudou e por quê.
 
-## Modelo
+## Mapa por domínio
+
+| Domínio | Tabelas | Para quê |
+|---|---|---|
+| **Escalas** (núcleo) | `escalas`, `notificacoes`, `respostas`, `ocorrencias`, `escala_eventos`, `ligacoes`, `alertas_enviados`, `motor_estado` | Escala do técnico, envio pelo WhatsApp e pela URA, respostas, alertas aos supervisores e o motor (`fn_dispatcher_whatsapp`, a cada minuto) |
+| **Cadastros** | `tecnicos`, `locais`, `empresas`, `habilidades`, `tecnico_habilidades`, `tipos_atividade`, `tipo_atividade_requisitos`, `tipo_atividade_documentos`, `feriados` | Equipe, locais, empresas do ponto, aptidão por atividade e o calendário de feriados (URA e alertas) |
+| **Documentos do técnico** | `documentos`, `tipos_documento`, `tecnico_documentos` | ASO, NR, CNH com validade; retenção pela view `vw_documentos_expirados` |
+| **Ponto: marcações** | `ponto_marcacoes`, `ponto_nsr`, `ponto_ajustes`, `ponto_geo`, `ponto_conversas` | Marcação imutável com NSR e cadeia de hash (Portaria 671); ajuste nunca altera a original |
+| **Ponto: acesso do funcionário** | `ponto_codigos`, `ponto_sessoes`, `ponto_acessos`, `ponto_ciencias` | Login por CPF e código no WhatsApp, sessões e ciência do aviso de privacidade |
+| **Ponto: justificativas** | `ponto_motivos`, `ponto_justificativas`, `ponto_abonos` | Pedido do funcionário, decisão do gestor, abono (nunca marcação inventada), afastamento e alta |
+| **Ponto: cofre de documentos** | `ponto_justificativa_anexos`, `ponto_anexo_acessos`, `ponto_anexos_descartados` | O arquivo cifrado (AES-256), quem abriu e o que foi descartado (decisão 56) |
+| **Ponto: registro e QR** | `ponto_documento_registros`, `ponto_documento_sequencia`, `ponto_documento_verificacoes` | Número sequencial por empresa, código do QR e quem conferiu; sobrevive ao descarte do arquivo (decisão 62). Não duplica o cofre: é outra camada sobre o mesmo documento |
+| **Plataforma** | `config`, `painel_usuarios`, `painel_ve_saude_log`, `webhook_eventos`, `saude_testes`, `log_exclusoes`, `backlog_itens` | Parâmetros, usuários do painel e quem vê saúde, log do webhook (30 dias), Checklist Sistema, exclusões e o Kanban |
+
+**Regras que valem para tudo:** RLS ligado e sem políticas; acesso só pelas funções; toda `app_*` é
+`security definer` e começa por `app_exigir`; toda `ponto_*` começa por `fn_ponto_sessao`; nenhuma
+função é executável pelo `service_role`; a retenção roda em `fn_limpeza_logs` (diária).
+
+## Modelo do núcleo de escalas
 
 ```mermaid
 erDiagram
@@ -17,7 +37,7 @@ erDiagram
     notificacoes ||--o{ respostas : "correlação por wa_message_id"
 ```
 
-## Tabelas
+## Tabelas do núcleo de escalas
 
 | Tabela | Papel | Observações |
 |---|---|---|
@@ -61,7 +81,6 @@ erDiagram
 |---|---|
 | `vw_escalas_painel` | Tabela principal, com semáforo, jornada e `pode_remover` |
 | `vw_acoes_pendentes` | O motor: o que fazer agora e com qual diagnóstico. Compara a hora local da escala com a hora local atual (migration 39) |
-| `vw_resumo_dia` | Indicadores por dia |
 | `vw_linha_do_tempo` | Auditoria + eventos do WhatsApp em ordem |
 | `vw_ligacoes_pendentes` | Quem deve receber ligação agora: já recebeu WhatsApp N vezes, não respondeu, dentro da janela |
 | `vw_documentos_expirados` | Documentos que passaram dos 5 anos após o desligamento do técnico |
@@ -72,15 +91,15 @@ erDiagram
 
 **API do painel (`app_*`)** — únicas expostas ao navegador. Identificam o usuário por
 `auth.jwt()`, conferem o papel e executam: `app_meu_acesso`, `app_escalas`, `app_resumo`,
-`app_linha_do_tempo`, `app_tecnicos`, `app_locais`, `app_pendencias`, `app_config`,
+`app_linha_do_tempo`, `app_tecnicos`, `app_locais`, `app_pendencias`,
 `app_simular_jornada`, `app_criar_escalas`, `app_mudar_status`, `app_remover_escala`,
 `app_reenviar_escala`, `app_salvar_tecnico`, `app_excluir_tecnico`, `app_salvar_local`,
 `app_usuarios`, `app_salvar_usuario`, `app_habilidades`, `app_salvar_habilidade`,
-`app_tecnico_habilidades`, `app_salvar_tecnico_habilidade`, `app_remover_tecnico_habilidade`,
+`app_tecnico_habilidades`, `app_remover_tecnico_habilidade`,
 `app_tipos_atividade`, `app_salvar_tipo_atividade`, `app_aptidao`, `app_painel_locais`,
 `app_definir_habilidades`, `app_excluir_habilidade`, `app_habilidades_por_tecnico`,
 `app_ligacoes`, `app_ligar_escala`, `app_documentos`, `app_registrar_documento`,
-`app_excluir_documento`, `app_documentos_expirados`, `app_backlog`, `app_salvar_backlog_item`,
+`app_excluir_documento`, `app_backlog`, `app_salvar_backlog_item`,
 `app_mover_backlog_item`, `app_pode_gerir_documentos` (usada pelas políticas do bucket `documentos`).
 
 > **Permissão por laço:** toda migration termina revogando `execute` de tudo no schema e
@@ -234,6 +253,16 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
 - API do funcionário (`anon`): `ponto_pedir_codigo`, `ponto_entrar`, `ponto_sair`, `ponto_eu`,
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
+
+### Migration 76 (11/10): limpeza da estrutura (decisão 66)
+
+- Checklist Sistema: o item "Tarefas agendadas" aponta, como falha, qualquer uma das 5 tarefas
+  obrigatórias faltando (`dispatcher-whatsapp`, `vigia-motor`, `limpeza-logs`, `ponto-lembrete-almoco`,
+  `ponto-geo`). Na homologação, sem cron, só informa.
+- Removidos, sem chamador no painel, nas Edge Functions, em gatilhos, funções ou views:
+  `app_config`, `app_documentos_expirados`, `app_salvar_tecnico_habilidade` (substituída por
+  `app_definir_habilidades`), `app_ponto_marcacoes` (substituída por `app_ponto_acompanhamento`),
+  `vw_resumo_dia` e `fn_set_ator` (época do Retool). Fica `vw_documentos_expirados`. Teste T22.
 
 ### Migration 75 (11/10): alerta da escala de amanhã sem véspera de feriado (decisão 65)
 
