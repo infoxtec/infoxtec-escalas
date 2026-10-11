@@ -716,3 +716,24 @@ o que `DATABASE_SAVE_DATA_NEW_MESSAGE` grava) e desligar o download automático 
 empresa; se algo guardar, definir a limpeza e o prazo aqui. **Revisão:** quando sair a API oficial
 (decisão 33).
 
+## 62. Timbre com registro e QR de verificação no documento do cofre
+
+**Data:** 12/10/2026. **Pedido do responsável:** além da marca d'água, um timbre com QR, número de
+registro sequencial e data e hora do envio, para comprovar a autenticidade. **Decisão (PO e `seguranca`):**
+o QR comprova o **registro**, não o atestado: prova que o sistema recebeu *aquele arquivo*, *naquela
+hora*, sem alteração (SHA-256 gravado no recebimento e conferido a cada abertura). A emissão do documento
+se confere com quem o emitiu; o timbre diz isso. **Como (migration 71, painel 3.18.0):** número de registro
+**por empresa, sem lacuna** (contador na mesma transação do documento), código de verificação aleatório de
+16 caracteres (80 bits, não dá para adivinhar nem percorrer), registro imutável que sobrevive ao descarte.
+Timbre e QR são desenhados **só na tela**, por cima da imagem: o arquivo do cofre não muda, porque mudar
+quebraria a prova de integridade. O QR leva ao próprio painel (`/?verificar=código`), **com login**: mostra
+registro, pedido, recebimento, canal e integridade, nunca o documento; motivo de saúde só para quem vê
+atestados; cada conferência fica registrada; só admin e gestor conferem (minimização: o QR lido quase sempre
+vem de uma foto da tela, e o registro da conferência com a marca d'água ajuda a achar quem vazou); até 20
+conferências por minuto por usuário. **Limite assumido (revisão `seguranca`):** o SHA-256 fica no mesmo
+banco do arquivo: detecta alteração acidental ou fora do sistema, não quem administra o banco; prova contra
+o próprio administrador pede carimbo de tempo de terceiros (RFC 3161), com custo, a decidir. A conferência
+vale para o arquivo guardado, não para a foto ou cópia em mãos de quem confere. **Guarda:** registro e
+conferências seguem a guarda da justificativa (5 anos, executor pendente no plano). **Não escolhido:**
+página pública de verificação (exporia dado de saúde de um empregado a quem tivesse a foto do QR).
+

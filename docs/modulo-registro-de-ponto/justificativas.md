@@ -81,6 +81,7 @@ escolhido já revela saúde.
 | **E1** | `ponto_motivos`, `ponto_justificativas` e `ponto_abonos`. Falta e abonado no espelho. Categoria **Ponto** (esqueci de marcar, app falhou, atraso ou saída antecipada) pelo app e pelo WhatsApp, só com texto, comprovante opcional. Painel: lista de pedidos, aprovar ou negar, abono lançado pelo gestor | Não | Sprint 13–23/10 (a folga cobre) |
 | **E2** | Categorias **Saúde**, **Família** e **Convocação**, com anexo obrigatório, visibilidade restrita, alerta de limite e prazo de 48 h | Sim | Próxima sprint, depois das decisões e do parecer do Gabriel |
 | **E2b** | Saúde, Família e Convocação também pelo WhatsApp, com a foto ou o PDF baixado pela Edge Function direto ao cofre (migration 70, decisão 61) | Sim | 11/10 |
+| **E2c** | Timbre com QR no documento do cofre: registro sequencial por empresa, recebimento, integridade e conferência pelo QR com login (migration 71, decisão 62) | Sim | 12/10 |
 | **E3** | Reincidência (só o fato, nunca o rótulo "desídia"), alerta de pedido parado há mais de 2 dias úteis e métrica | — | Depois da E2 |
 
 **Métrica de 30 dias:**

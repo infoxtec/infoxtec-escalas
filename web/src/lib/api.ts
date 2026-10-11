@@ -1,7 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido,
-} from './types'
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao } from './types'
 
 function traduzir(msg: string): string {
   if (/JWT expired|invalid JWT|not authenticated/i.test(msg)) return 'Sessão expirada. Entre novamente.'
@@ -110,7 +109,8 @@ export const api = {
     rpc<PontoAbono[]>('app_ponto_abonos', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
   pontoAnexos: (justificativa: string) =>
     rpc<{ id: string; tipo: string; tamanho: number; criado_em: string; visualizacoes: number }[]>('app_ponto_anexos', { p_justificativa: justificativa }),
-  pontoAnexoVer: (anexo: string) => rpc<{ tipo: string; conteudo: string; visto_por: string; em: string }>('app_ponto_anexo_ver', { p_anexo: anexo }),
+  pontoAnexoVer: (anexo: string) => rpc<PontoDocumento>('app_ponto_anexo_ver', { p_anexo: anexo }),
+  pontoVerificarDocumento: (codigo: string) => rpc<PontoVerificacao>('app_ponto_verificar_documento', { p_codigo: codigo }),
   pontoAnexoDescartar: (anexo: string, motivo: string) => rpc<void>('app_ponto_anexo_descartar', { p_anexo: anexo, p_motivo: motivo }),
   veSaudeHistorico: () => rpc<{ email: string; valor: boolean; autor: string; em: string }[]>('app_ve_saude_historico'),
   pontoEstornarAbono: (abono: string, motivo: string) => rpc<{ id: string }>('app_ponto_estornar_abono', { p_abono: abono, p_motivo: motivo }),

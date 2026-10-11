@@ -18,6 +18,7 @@
 -- T15 atestado no cofre: documento cifrado, só quem vê atestados vê e decide, limite legal, abono por dia
 -- T16 validade do atestado: sem ponto e sem escala no afastamento; alta médica libera
 -- T17 documento pelo WhatsApp: falta com foto ou PDF, arquivo só na etapa do documento, direto ao cofre
+-- T18 registro do documento: número sequencial por empresa, QR de verificação, integridade e descarte
 
 \set ON_ERROR_STOP on
 begin;
@@ -932,7 +933,62 @@ begin
   perform pg_temp.ok(r->>'acao' = 'ponto_midia_recusada', '[T17] arquivo aceito depois de cancelar');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T17' as resultado,
+-- T18 registro do documento e QR de verificação (migration 71, decisão 62) ----------------------------
+do $$
+declare
+  v_emp  uuid := (select v::uuid from qa where k = 'emp');
+  v_tec  uuid := (select id from tecnicos where telefone_e164 = '557999991717');
+  v_anexo uuid; v_cod text; r jsonb; v_ok boolean; v_n int; v_max bigint; v_min bigint; x record;
+begin
+  -- todo documento do cofre tem registro; na empresa, a numeração não tem lacuna nem repetição
+  perform pg_temp.ok(not exists (select 1 from ponto_justificativa_anexos a
+                                  where not exists (select 1 from ponto_documento_registros d where d.anexo_id = a.id)),
+                     '[T18] documento sem registro');
+  select count(*), min(registro), max(registro) into v_n, v_min, v_max from ponto_documento_registros where empresa_id = v_emp;
+  perform pg_temp.ok(v_n > 0 and v_min = 1 and v_max = v_n, '[T18] numeração com lacuna: ' || v_n || ' de ' || v_min || ' a ' || v_max);
+  perform pg_temp.ok((select ultimo from ponto_documento_sequencia where empresa_id = v_emp) = v_max, '[T18] contador fora do último registro');
+  perform pg_temp.ok(not exists (select 1 from ponto_documento_registros where codigo !~ '^[A-Z2-7]{16}$'), '[T18] código fora do formato');
+
+  select a.id, d.codigo into v_anexo, v_cod
+    from ponto_justificativa_anexos a join ponto_justificativas j on j.id = a.justificativa_id
+    join ponto_documento_registros d on d.anexo_id = a.id
+   where j.tecnico_id = v_tec and j.motivo = 'atestado';
+
+  -- cofre: timbre com registro, recebimento e integridade
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  perform app_definir_ve_saude('qa-admin@teste.local', true);
+  r := app_ponto_anexo_ver(v_anexo);
+  perform pg_temp.ok(r->>'registro' ~ '^\d{6}$' and r->>'codigo' = v_cod and (r->>'integro')::boolean and r->>'canal' = 'WhatsApp'
+                     and r->>'recebido_em' ~ '^\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}$', '[T18] timbre: ' || (r - 'conteudo')::text);
+
+  -- QR: confere com código digitado de qualquer jeito; não mostra o documento
+  r := app_ponto_verificar_documento(lower(substr(v_cod, 1, 8)) || '-' || substr(v_cod, 9));
+  perform pg_temp.ok((r->>'encontrado')::boolean and (r->>'integro')::boolean and r->>'motivo' = 'Atestado médico'
+                     and not r ? 'conteudo', '[T18] verificação: ' || coalesce(r::text, 'null'));
+  perform app_definir_ve_saude('qa-admin@teste.local', false);
+  r := app_ponto_verificar_documento(v_cod);
+  perform pg_temp.ok(r->>'motivo' = 'Justificativa de saúde', '[T18] motivo de saúde aberto na verificação');
+  r := app_ponto_verificar_documento('AAAAAAAAAAAAAAAA');
+  perform pg_temp.ok(not (r->>'encontrado')::boolean, '[T18] código inventado encontrado');
+  perform pg_temp.ok((select count(*) from ponto_documento_verificacoes where email = 'qa-admin@teste.local') >= 3, '[T18] verificação sem registro');
+
+  -- registro imutável; o documento descartado continua com o registro
+  v_ok := false;
+  begin update ponto_documento_registros set registro = 999 where anexo_id = v_anexo;
+  exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T18] registro foi alterado');
+  v_ok := false;
+  begin update ponto_documento_sequencia set ultimo = ultimo + 5 where empresa_id = v_emp;
+  exception when others then v_ok := sqlerrm like '%de um em um%'; end;
+  perform pg_temp.ok(v_ok, '[T18] contador pulou números');
+  perform app_definir_ve_saude('qa-admin@teste.local', true);
+  perform app_ponto_anexo_descartar(v_anexo, 'Documento enviado por engano no teste');
+  r := app_ponto_verificar_documento(v_cod);
+  perform pg_temp.ok((r->>'descartado')::boolean and r->>'integro' is null, '[T18] descarte: ' || coalesce(r::text, 'null'));
+  perform app_definir_ve_saude('qa-admin@teste.local', false);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T18' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
