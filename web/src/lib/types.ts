@@ -315,6 +315,7 @@ export type PontoTipo = 'entrada' | 'saida_almoco' | 'volta_almoco' | 'saida' | 
 export interface PontoEu {
   nome: string; empresa: string; ciente: boolean
   hoje: { nsr: number; tipo: PontoTipo; hora: string; dentro_area: boolean | null }[]
+  afastado_ate?: string | null
 }
 export interface PontoMarcacao {
   nsr: number; data: string; hora: string; tipo: PontoTipo; canal: string; local: string | null

@@ -16,6 +16,7 @@
 -- T13 habilidades exigidas pelo tipo de atividade (apto, nível abaixo, faltando)
 -- T14 justificativa de ponto: pedido no WhatsApp e no app, aprovar, negar, abono, falta no espelho
 -- T15 atestado no cofre: documento cifrado, só quem vê atestados vê e decide, limite legal, abono por dia
+-- T16 validade do atestado: sem ponto e sem escala no afastamento; alta médica libera
 
 \set ON_ERROR_STOP on
 begin;
@@ -675,14 +676,14 @@ declare
 begin
   -- documento obrigatório e conferido pelos primeiros bytes
   v_ok := false;
-  begin perform ponto_justificar_falta(v_tok, 'atestado', d, d + 1);
+  begin perform ponto_justificar_atestado(v_tok, 'atestado', d, d + 1);
   exception when others then v_ok := sqlerrm like '%Falta o documento%'; end;
   perform pg_temp.ok(v_ok, '[T15] atestado sem documento aceito');
   v_ok := false;
-  begin perform ponto_justificar_falta(v_tok, 'atestado', d, d + 1, null, null, null, encode(v_jpg, 'base64'), 'application/pdf');
+  begin perform ponto_justificar_atestado(v_tok, 'atestado', d, d + 1, null, encode(v_jpg, 'base64'), 'application/pdf');
   exception when others then v_ok := sqlerrm like '%foto (JPG ou PNG) ou PDF%'; end;
   perform pg_temp.ok(v_ok, '[T15] tipo falso aceito');
-  r := ponto_justificar_falta(v_tok, 'atestado', d, d + 1, null, null, 'Fui ao posto de saúde', encode(v_jpg, 'base64'), 'image/jpeg');
+  r := ponto_justificar_atestado(v_tok, 'atestado', d, d + 1, 'Fui ao posto de saúde', encode(v_jpg, 'base64'), 'image/jpeg');
   select * into x from ponto_justificativas where numero = (r->>'numero')::bigint;
   v_id := x.id;
   perform pg_temp.ok(x.status = 'pendente' and x.data_fim = d + 1 and x.canal = 'app', '[T15] pedido de atestado gravado errado');
@@ -752,7 +753,86 @@ begin
   perform pg_temp.ok(v_ok, '[T15] decidiu família sem permissão');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T15' as resultado,
+-- T16 validade do atestado bloqueia ponto e escala; alta médica libera (migration 69, decisão 60) -------
+do $$
+declare
+  v_emp  uuid := (select v::uuid from qa where k = 'emp');
+  v_loc  uuid := (select v::uuid from qa where k = 'loc');
+  v_hoje date := (now() at time zone 'America/Bahia')::date;
+  v_jpg  bytea := '\xffd8ffe000104a46494600010100000100010000ffd9'::bytea;
+  v_tec uuid; v_cpf text := pg_temp.cpf('161616101'); v_tok text; r jsonb; ra jsonb; v_ok boolean; c jsonb;
+  v_esc uuid; v_janela boolean := (now() at time zone 'America/Bahia')::time < time '23:59';
+begin
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste)
+  values ('QA Afastado Lima', '557999991616', true, true, v_cpf, v_emp, true) returning id into v_tec;
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  c := app_ponto_gerar_codigo(v_tec);
+  v_tok := ponto_entrar(v_cpf, c->>'codigo')->>'token';
+  perform ponto_registrar_ciencia(v_tok, 'qa');
+  -- escala marcada antes do atestado, dentro do período
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, v_hoje + 2, '08:00', 'QA escala antes do atestado', 'agendada', 'qa') returning id into v_esc;
+
+  -- validade obrigatória; o caminho genérico não aceita atestado
+  v_ok := false;
+  begin perform ponto_justificar_atestado(v_tok, 'atestado', v_hoje - 1, null, null, encode(v_jpg, 'base64'), 'image/jpeg');
+  exception when others then v_ok := sqlerrm like '%até quando vale%'; end;
+  perform pg_temp.ok(v_ok, '[T16] atestado sem validade aceito');
+  v_ok := false;
+  begin perform ponto_justificar_falta(v_tok, 'atestado', v_hoje - 1, v_hoje + 2, null, null, null, encode(v_jpg, 'base64'), 'image/jpeg');
+  exception when others then v_ok := sqlerrm like '%envio próprio%'; end;
+  perform pg_temp.ok(v_ok, '[T16] atestado pelo caminho genérico');
+  r := ponto_justificar_atestado(v_tok, 'atestado', v_hoje - 1, v_hoje + 2, null, encode(v_jpg, 'base64'), 'image/jpeg');
+  perform pg_temp.ok(ponto_eu(v_tok, 'qa')->>'afastado_ate' = to_char(v_hoje + 2, 'DD/MM/YYYY'), '[T16] app não sabe do afastamento');
+
+  -- sem ponto, sem escala nova e o motor não envia a escala antiga
+  v_ok := false;
+  begin perform ponto_bater(v_tok, 'entrada', -12.900100, -38.400100, 10, 'qa');
+  exception when others then v_ok := sqlerrm like '%afastado até%'; end;
+  perform pg_temp.ok(v_ok, '[T16] afastado bateu ponto');
+  v_ok := false;
+  begin
+    insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+    values (v_tec, v_loc, v_hoje + 1, '08:00', 'QA afastado', 'agendada', 'qa');
+  exception when others then v_ok := sqlerrm like '%afastado%'; end;
+  perform pg_temp.ok(v_ok, '[T16] afastado recebeu escala');
+  if v_janela then
+    update config set valor = '00:00' where chave = 'janela_envio_inicio';
+    update config set valor = '23:59' where chave = 'janela_envio_fim';
+    perform pg_temp.ok(not exists (select 1 from vw_acoes_pendentes where escala_id = v_esc), '[T16] motor enviaria escala do afastado');
+  end if;
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, v_hoje + 3, '08:00', 'QA depois do afastamento', 'agendada', 'qa');
+
+  -- alta médica hoje libera ponto, escala e motor
+  ra := ponto_justificar_atestado(v_tok, 'alta_medica', v_hoje, null, null, encode(v_jpg, 'base64'), 'image/jpeg');
+  perform pg_temp.ok(ponto_eu(v_tok, 'qa')->>'afastado_ate' is null, '[T16] alta não liberou');
+  c := ponto_bater(v_tok, 'entrada', -12.900100, -38.400100, 10, 'qa');
+  perform pg_temp.ok(c ? 'nsr', '[T16] liberado não bateu ponto');
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, v_hoje + 1, '08:00', 'QA liberado', 'agendada', 'qa');
+  if v_janela then
+    perform pg_temp.ok(exists (select 1 from vw_acoes_pendentes where escala_id = v_esc), '[T16] motor não voltou a enviar');
+  end if;
+
+  -- aprovar: o atestado abona só até a véspera da alta; a alta não abona
+  perform app_definir_ve_saude('qa-admin@teste.local', true);
+  perform app_ponto_decidir((select id from ponto_justificativas where numero = (r->>'numero')::bigint), true);
+  perform pg_temp.ok((select array_agg(a.data order by a.data) from ponto_abonos a join ponto_justificativas j on j.id = a.justificativa_id
+                       where j.numero = (r->>'numero')::bigint) = array[v_hoje - 1], '[T16] abono depois da alta');
+  perform app_ponto_decidir((select id from ponto_justificativas where numero = (ra->>'numero')::bigint), true);
+  perform pg_temp.ok(not exists (select 1 from ponto_abonos a join ponto_justificativas j on j.id = a.justificativa_id
+                                  where j.numero = (ra->>'numero')::bigint), '[T16] alta gerou abono');
+
+  -- atestado novo depois da alta volta a bloquear; negado, libera
+  r := ponto_justificar_atestado(v_tok, 'atestado', v_hoje, v_hoje + 1, null, encode(v_jpg, 'base64'), 'image/jpeg');
+  perform pg_temp.ok(ponto_eu(v_tok, 'qa')->>'afastado_ate' is not null, '[T16] alta antiga anulou atestado novo');
+  perform app_ponto_decidir((select id from ponto_justificativas where numero = (r->>'numero')::bigint), false, 'Documento ilegível, envie de novo');
+  perform pg_temp.ok(ponto_eu(v_tok, 'qa')->>'afastado_ate' is null, '[T16] atestado negado continuou bloqueando');
+  perform app_definir_ve_saude('qa-admin@teste.local', false);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T16' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

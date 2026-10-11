@@ -38,6 +38,11 @@ export const ponto = {
     rpc<{ numero: number; motivo: string; data: string; detalhe: string; alerta: string | null }>('ponto_justificar_falta', {
       p_token: token, p_motivo: p.motivo, p_data: p.data, p_data_fim: p.dataFim ?? null, p_hora_ini: p.ini ?? null, p_hora_fim: p.fim ?? null,
       p_observacao: p.observacao ?? null, p_anexo: p.anexo, p_anexo_tipo: p.anexoTipo }),
+  // atestado (validade obrigatória) e alta médica: bloqueio do ponto e da escala no afastamento (decisão 60)
+  justificarAtestado: (token: string, p: { motivo: 'atestado' | 'alta_medica'; data: string; validoAte?: string | null; observacao?: string | null; anexo: string; anexoTipo: string }) =>
+    rpc<{ numero: number; motivo: string; data: string; detalhe: string; alerta: string | null; escalas_no_periodo: number }>('ponto_justificar_atestado', {
+      p_token: token, p_motivo: p.motivo, p_data: p.data, p_valido_ate: p.validoAte ?? null, p_observacao: p.observacao ?? null,
+      p_anexo: p.anexo, p_anexo_tipo: p.anexoTipo }),
   meusPedidos: (token: string) => rpc<PontoMeuPedido[]>('ponto_minhas_justificativas', { p_token: token }),
 }
 

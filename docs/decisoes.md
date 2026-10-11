@@ -683,3 +683,17 @@ descartado pelo painel, ficando a marca. **Limites registrados:** "sem baixar" �
 pelo navegador de quem vê, e a tela pode ser fotografada); a limpeza dos dados da foto é feita no app —
 quem contornar o app pode enviar PDF ou JPEG com metadados.
 
+## 60. Atestado com validade: sem ponto e sem escala no afastamento
+
+**Data:** 11/10/2026. **Decisão do responsável:** o atestado tem **validade obrigatória** ("válido até").
+Do primeiro dia até a validade, o funcionário **não marca ponto** (app, WhatsApp, qualquer canal) e **não
+recebe escala**, salvo se passar por nova avaliação médica e der entrada no **atestado de aptidão (alta
+médica)**, que encerra o afastamento na data da alta. **Como (migration 69):** `fn_ponto_afastado_ate`
+(atestado pendente ou aprovado, sem alta posterior); gatilho em `ponto_marcacoes` recusa a marcação;
+gatilho em `escalas` recusa criar ou mover escala para o técnico afastado; o motor (WhatsApp e URA) não
+envia nem liga para escala já existente no período, e os supervisores são avisados das escalas a
+substituir ("afastado", nunca o motivo); o app mostra o afastamento e desliga os botões. Atestado negado
+deixa de bloquear. **Risco aceito pelo responsável:** a Portaria MTP 671/2021 trata de restrição à
+marcação de ponto; bloquear a marcação no afastamento pode ser questionado em fiscalização. A
+alternativa (alertar sem bloquear) foi levantada e não escolhida. **Revisão:** parecer do advogado (076).
+

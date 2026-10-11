@@ -235,6 +235,16 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 69 (11/10): validade do atestado bloqueia ponto e escala (decisão 60)
+
+- Motivo `alta_medica` (atestado de aptidão). `fn_ponto_afastado_ate(técnico, dia)`: data final do
+  atestado em vigor (pendente ou aprovado), salvo alta posterior.
+- Gatilhos `trg_ponto_marcacoes_afastado` (recusa marcação) e `trg_escalas_afastado` (recusa criar ou
+  mover escala). `vw_acoes_pendentes` e `vw_ligacoes_pendentes` ignoram escala de técnico afastado.
+- `ponto_justificar_atestado` (app): atestado exige `p_valido_ate`; alta é de um dia; avisa supervisores
+  das escalas no período. `ponto_eu` devolve `afastado_ate`. `app_ponto_decidir`: aprovar alta só
+  registra a liberação (sem abono). Teste T16.
+
 ### Migration 68 (11/10): atestado e faltas com documento no cofre (084 entrega 3, E2; decisão 56)
 
 - **Cofre:** `ponto_justificativa_anexos` guarda o documento **cifrado** (pgcrypto, AES-256) com a chave
