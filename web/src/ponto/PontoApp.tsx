@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { CheckCircle2, Clock, Loader2, LogOut, MapPin, ShieldCheck, XCircle } from 'lucide-react'
-import { Button, ErrorBox, Field, Input } from '../components/ui'
+import { CheckCircle2, Clock, FileText, Loader2, LogOut, MapPin, ShieldCheck, XCircle } from 'lucide-react'
+import { Button, ErrorBox, Field, Input, Select, Textarea } from '../components/ui'
 import { erroMsg, ponto } from '../lib/api'
 import { formatCpf } from '../lib/types'
-import type { PontoComprovante, PontoEu, PontoMarcacao, PontoTipo } from '../lib/types'
+import type { PontoComprovante, PontoEu, PontoMarcacao, PontoMeuPedido, PontoTipo } from '../lib/types'
 
 // App do funcionário (Módulo Registro de Ponto, docs/modulo-registro-de-ponto/). Abre em /ponto.
 // Login por CPF + código no WhatsApp; o token fica só neste aparelho; sessão única no banco.
@@ -113,6 +113,7 @@ function Painel({ token, onSair }: { token: string; onSair: () => void }) {
   const [batendo, setBatendo] = useState<PontoTipo | null>(null)
   const [comprovante, setComprovante] = useState<PontoComprovante | null>(null)
   const [previo, setPrevio] = useState<{ tipo: PontoTipo; texto: string } | null>(null)
+  const [aba, setAba] = useState<'ponto' | 'ajuste'>('ponto')
 
   const carregar = useCallback(async () => {
     try {
@@ -164,6 +165,14 @@ function Painel({ token, onSair }: { token: string; onSair: () => void }) {
         <Button variant="ghost" size="sm" onClick={onSair}><LogOut className="h-4 w-4" /> Sair</Button>
       </div>
 
+      <div className="grid grid-cols-2 gap-1 rounded-lg border p-0.5">
+        {([['ponto', 'Ponto'], ['ajuste', 'Ajuste']] as const).map(([id, rotulo]) => (
+          <button key={id} type="button" onClick={() => setAba(id)}
+            className={`rounded-md py-2 text-sm font-semibold ${aba === id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}>{rotulo}</button>
+        ))}
+      </div>
+      {aba === 'ajuste' ? <Ajuste token={token} onSair={onSair} /> : (<>
+
       {lembrarAlmoco && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
           Hora do almoço? Bom apetite! Lembre de marcar a <strong>saída para o almoço</strong>.
@@ -196,6 +205,7 @@ function Painel({ token, onSair }: { token: string; onSair: () => void }) {
         )}
       </section>
 
+      </>)}
       {comprovante && <Comprovante c={comprovante} onFechar={() => setComprovante(null)} />}
       {previo && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center" onClick={() => setPrevio(null)}>
@@ -258,6 +268,149 @@ function Aviso({ empresa, onCiente }: { empresa: string; onCiente: () => Promise
       <Button className="w-full" disabled={ocupado} onClick={async () => { setOcupado(true); try { await onCiente() } finally { setOcupado(false) } }}>
         {ocupado ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Li e estou ciente
       </Button>
+    </div>
+  )
+}
+
+// Aba Ajuste (084 entrega 3, decisão 55; textos da persona marca, sem ameaça — decisão 57).
+// Nesta entrega, só a categoria Ponto; Saúde, Família e Convocação chegam com o anexo (E2).
+const GRUPOS = [
+  { id: 'saude', titulo: 'Saúde', ajuda: 'atestado, consulta ou exame' },
+  { id: 'familia', titulo: 'Família', ajuda: 'falecimento, casamento ou nascimento' },
+  { id: 'convocacao', titulo: 'Convocação', ajuda: 'justiça, eleição ou outra' },
+  { id: 'ponto', titulo: 'Ponto', ajuda: 'esqueci de marcar, atrasei ou o app falhou' },
+] as const
+const MOTIVOS_PONTO = [
+  { id: 'esqueci_marcar', label: 'Esqueci de marcar' },
+  { id: 'falha_registro', label: 'O app ou o WhatsApp não funcionou' },
+  { id: 'atraso_saida', label: 'Cheguei atrasado ou saí mais cedo' },
+] as const
+const SITUACAO_PEDIDO: Record<PontoMeuPedido['status'], { label: string; cor: string }> = {
+  pendente: { label: 'Em análise', cor: 'bg-amber-100 text-amber-800' },
+  aprovada: { label: 'Aprovado', cor: 'bg-green-100 text-green-800' },
+  negada: { label: 'Não aprovado', cor: 'bg-red-100 text-red-800' },
+  cancelada: { label: 'Cancelado', cor: 'bg-muted text-muted-foreground' },
+}
+function hojeLocal() { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10) }
+
+function Ajuste({ token, onSair }: { token: string; onSair: () => void }) {
+  const [pedidos, setPedidos] = useState<PontoMeuPedido[] | null>(null)
+  const [grupo, setGrupo] = useState<string | null>(null)
+  const [motivo, setMotivo] = useState<string>('')
+  const [data, setData] = useState(hojeLocal())
+  const [tipo, setTipo] = useState<PontoTipo>('entrada')
+  const [hora, setHora] = useState('')
+  const [ini, setIni] = useState('')
+  const [fim, setFim] = useState('')
+  const [obs, setObs] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  const [enviado, setEnviado] = useState<string | null>(null)
+
+  const carregar = useCallback(async () => {
+    try { setPedidos(await ponto.meusPedidos(token)) }
+    catch (e) { const m = erroMsg(e); if (/Sessão encerrada/.test(m)) onSair(); else setErro(m) }
+  }, [token, onSair])
+  useEffect(() => { void carregar() }, [carregar])
+
+  const atraso = motivo === 'atraso_saida'
+  const pronto = !!motivo && !!data && (atraso ? !!ini && !!fim && ini < fim : !!hora)
+  const enviar = async () => {
+    setEnviando(true); setErro(null)
+    try {
+      const r = await ponto.justificar(token, { motivo, data, tipo: atraso ? null : tipo, hora: atraso ? null : hora,
+        ini: atraso ? ini : null, fim: atraso ? fim : null, observacao: obs.trim() || null })
+      setEnviado(`Pedido ${r.numero} enviado. O gestor vai analisar. A resposta chega aqui e no WhatsApp.`)
+      setGrupo(null); setMotivo(''); setHora(''); setIni(''); setFim(''); setObs('')
+      await carregar()
+    } catch (e) { const m = erroMsg(e); if (/Sessão encerrada/.test(m)) onSair(); else setErro(m) }
+    finally { setEnviando(false) }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-base font-semibold">Ajuste de ponto</h2>
+        <p className="text-sm text-muted-foreground">Justifique uma falta, um atraso ou uma marcação que ficou faltando. O gestor analisa, e você acompanha aqui.</p>
+      </div>
+      {enviado && <div className="flex items-start gap-2 rounded-lg border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-900"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> {enviado}</div>}
+
+      <section className="space-y-3 rounded-xl border bg-card p-4">
+        <p className="text-sm font-semibold">O que aconteceu?</p>
+        <div className="grid grid-cols-2 gap-2">
+          {GRUPOS.map(g => (
+            <button key={g.id} type="button" onClick={() => { setGrupo(g.id); setMotivo(''); setEnviado(null); setErro(null) }}
+              className={`rounded-lg border p-3 text-left ${grupo === g.id ? 'border-primary bg-primary/5' : 'hover:border-primary'}`}>
+              <p className="text-sm font-semibold">{g.titulo}</p><p className="text-xs text-muted-foreground">{g.ajuda}</p>
+            </button>
+          ))}
+        </div>
+        {grupo && grupo !== 'ponto' && (
+          <p className="rounded-md bg-muted px-3 py-2 text-sm">Este tipo de pedido chega em breve por aqui. Por enquanto, entregue o documento ao seu gestor.</p>
+        )}
+        {grupo === 'ponto' && (<>
+          <p className="text-sm font-semibold">Escolha o motivo</p>
+          <div className="space-y-1.5">
+            {MOTIVOS_PONTO.map(m => (
+              <label key={m.id} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${motivo === m.id ? 'border-primary bg-primary/5' : ''}`}>
+                <input type="radio" name="motivo" checked={motivo === m.id} onChange={() => setMotivo(m.id)} /> {m.label}
+              </label>
+            ))}
+          </div>
+          {motivo && (<>
+            <p className="text-sm font-semibold">Quando foi?</p>
+            <Field label="Dia"><Input type="date" value={data} max={hojeLocal()} onChange={e => setData(e.target.value)} /></Field>
+            {atraso ? (
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Das"><Input type="time" value={ini} onChange={e => setIni(e.target.value)} /></Field>
+                <Field label="Às"><Input type="time" value={fim} onChange={e => setFim(e.target.value)} /></Field>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Marcação que faltou">
+                  <Select value={tipo} onChange={e => setTipo(e.target.value as PontoTipo)}>
+                    {TIPOS.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                  </Select>
+                </Field>
+                <Field label="Horário"><Input type="time" value={hora} onChange={e => setHora(e.target.value)} /></Field>
+              </div>
+            )}
+            <Field label="Observação (opcional)" hint="Não escreva doença nem CID.">
+              <Textarea rows={2} maxLength={500} value={obs} onChange={e => setObs(e.target.value)}
+                placeholder="Ex.: o app não abriu na obra; avisei o supervisor às 7h40." />
+            </Field>
+            {erro && <ErrorBox>{erro}</ErrorBox>}
+            <Button className="w-full" disabled={!pronto || enviando} onClick={() => void enviar()}>
+              {enviando && <Loader2 className="h-4 w-4 animate-spin" />} Enviar para o gestor
+            </Button>
+          </>)}
+        </>)}
+      </section>
+
+      <section className="rounded-xl border bg-card">
+        <h2 className="border-b px-4 py-2 text-sm font-semibold">Meus pedidos</h2>
+        {!pedidos ? <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin" /></div>
+          : pedidos.length === 0 ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">Nenhum pedido ainda.</p> : (
+          <ul className="divide-y text-sm">
+            {pedidos.map(p => (
+              <li key={p.numero} className="space-y-0.5 px-4 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="flex items-center gap-1.5 font-medium"><FileText className="h-3.5 w-3.5" /> Pedido {p.numero}</p>
+                  <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${SITUACAO_PEDIDO[p.status].cor}`}>{SITUACAO_PEDIDO[p.status].label}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">{p.motivo} · {p.data} · {p.detalhe}</p>
+                {p.resposta && <p className="text-xs">Gestor: {p.resposta}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <p className="text-xs text-muted-foreground">
+        <strong>Seus direitos.</strong> Falta com motivo previsto em lei e comprovada é abonada: o período não é descontado (CLT art. 473; Lei 605/49, art. 6º).
+        O atestado médico vale para o dia ou o período indicado; a declaração de comparecimento vale só para o horário da consulta.
+        Falta ou atraso sem justificativa pode ser descontado, conforme as regras da empresa. Pelo WhatsApp, escreva <strong>ajuste</strong>.
+      </p>
     </div>
   )
 }

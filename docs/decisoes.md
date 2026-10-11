@@ -656,3 +656,16 @@ advogado da empresa. **Risco aceito pelo responsável:** valor legal errado na t
 impreciso ao funcionário. **Mitigação:** os valores ficam em `ponto_motivos` (corrigir é dado, não
 código), o sistema alerta e não bloqueia, e as perguntas seguem para o Gabriel quando ele puder
 responder.
+
+## 59. Texto livre do pedido de ajuste: guarda e descarte
+
+**Data:** 11/10/2026. **Contexto:** revisão do `seguranca` da migration 66 (P2). A observação do
+funcionário e a resposta do gestor em `ponto_justificativas` são texto livre: mesmo com o aviso "não
+escreva doença nem CID", podem conter dado de saúde, e a resposta vai pelo WhatsApp. **Decisão:**
+finalidade — registrar e decidir o ajuste de ponto (Portaria 671; base legal: obrigação legal e
+exercício de direitos, LGPD art. 7º II e VI); quem vê — admin e gestor (o papel `leitura` não vê);
+guarda — **5 anos depois da decisão** (prescrição trabalhista), como as marcações; descarte — a linha
+não se apaga (trilha do ajuste), mas `observacao` e `resposta` são **anonimizadas por update** ao fim da
+guarda (o gatilho `fn_ponto_justificativa_guarda` permite só isso num pedido decidido). O executor do
+descarte entra com a rotina de guarda do cofre de anexos (E2, decisão 56); o primeiro texto vence em
+10/2031. No painel, o campo da negativa avisa que o texto vai ao funcionário pelo WhatsApp.

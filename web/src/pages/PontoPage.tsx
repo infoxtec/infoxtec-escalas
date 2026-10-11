@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { KeyRound, Loader2, MapPin, PencilLine, RefreshCw, ShieldCheck } from 'lucide-react'
+import { Check, KeyRound, Loader2, MapPin, PencilLine, RefreshCw, ShieldCheck, Undo2, X } from 'lucide-react'
 import { Button, ErrorBox, Field, Input, Select, SuccessBox, Textarea } from '../components/ui'
 import { api, erroMsg } from '../lib/api'
 import { ALERTA_JORNADA, PONTO_ROTULO, hojeBahia, minutosHm } from '../lib/types'
-import type { Empresa, PontoAcompanhamento, PontoAjuste, PontoEspelho, PontoGeo, PontoHoje } from '../lib/types'
+import type { Empresa, PontoAbono, PontoAcompanhamento, PontoAjuste, PontoEspelho, PontoGeo, PontoHoje, PontoJustificativa } from '../lib/types'
 
 const SITUACAO: Record<PontoHoje['situacao'], { label: string; cor: string }> = {
   sem_entrada: { label: 'Escala sem entrada', cor: 'bg-red-100 text-red-800' },
@@ -21,6 +21,8 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
   const [geo, setGeo] = useState<Record<string, PontoGeo>>({})
   const [espelho, setEspelho] = useState<PontoEspelho[] | null>(null)
   const [ajustes, setAjustes] = useState<PontoAjuste[] | null>(null)
+  const [pedidos, setPedidos] = useState<PontoJustificativa[] | null>(null)
+  const [abonos, setAbonos] = useState<PontoAbono[] | null>(null)
   const [vista, setVista] = useState<'marcacoes' | 'espelho' | 'ajustes'>('marcacoes')
   const [de, setDe] = useState(hoje)
   const [ate, setAte] = useState(hoje)
@@ -34,10 +36,12 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
   const carregar = useCallback(async () => {
     setErro(null)
     try {
-      const [s, l, g, j, a] = await Promise.all([api.pontoHoje(), api.pontoAcompanhamento(de, ate, tecnico || null),
+      const [s, l, g, j, a, pd, ab] = await Promise.all([api.pontoHoje(), api.pontoAcompanhamento(de, ate, tecnico || null),
         papel === 'leitura' ? Promise.resolve([]) : api.pontoGeo(de, ate, tecnico || null),
-        api.pontoEspelho(de, ate, tecnico || null), api.pontoAjustes(de, ate, tecnico || null)])
+        api.pontoEspelho(de, ate, tecnico || null), api.pontoAjustes(de, ate, tecnico || null),
+        api.pontoJustificativas(de, ate, tecnico || null), api.pontoAbonos(de, ate, tecnico || null)])
       setSituacao(s); setLista(l); setGeo(Object.fromEntries(g.map(x => [x.id, x]))); setEspelho(j); setAjustes(a)
+      setPedidos(pd); setAbonos(ab)
       setAtualizado(new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Bahia' }))
     } catch (e) { setErro(erroMsg(e)) }
   }, [de, ate, tecnico, papel])
@@ -64,6 +68,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
     finally { setConferindo(false) }
   }
 
+  const pendentes = pedidos?.filter(p => p.status === 'pendente').length ?? 0
   const conta = (s: PontoHoje['situacao']) => situacao?.filter(x => x.situacao === s).length ?? 0
   const fora = situacao?.reduce((n, x) => n + x.fora_area, 0) ?? 0
 
@@ -124,6 +129,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
             <button key={id} type="button" onClick={() => setVista(id)}
               className={`rounded px-3 py-1.5 text-sm font-medium ${vista === id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
               {rotulo}
+              {id === 'ajustes' && pendentes > 0 && <span className="ml-1.5 rounded-full bg-amber-500 px-1.5 text-[11px] text-white">{pendentes}</span>}
             </button>
           ))}
         </div>
@@ -139,8 +145,12 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
           <p className="pb-2 text-xs text-muted-foreground">Período de até 62 dias. Bairro e cidade: © colaboradores do <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline">OpenStreetMap</a>.</p>
         </div>
         {vista === 'ajustes' ? (
-          <Ajustes linhas={ajustes} marcacoes={lista} funcionarios={situacao ?? []} tecnico={tecnico} hoje={hoje}
-            podeAjustar={papel !== 'leitura'} aoAjustar={carregar} />
+          <div className="space-y-5">
+            <Pedidos linhas={pedidos} podeDecidir={papel !== 'leitura'} aoDecidir={carregar} />
+            <Ajustes linhas={ajustes} marcacoes={lista} funcionarios={situacao ?? []} tecnico={tecnico} hoje={hoje}
+              podeAjustar={papel !== 'leitura'} aoAjustar={carregar} />
+            <Abonos linhas={abonos} podeEstornar={papel !== 'leitura'} aoEstornar={carregar} />
+          </div>
         ) : vista === 'espelho' ? <Espelho linhas={espelho} /> : !lista ? <Carregando /> : (
           <div className="overflow-x-auto rounded-md border">
             <table className="w-full text-sm">
@@ -260,8 +270,9 @@ function Espelho({ linhas }: { linhas: PontoEspelho[] | null }) {
                 <td className={`px-3 py-2 text-xs ${l.alertas.includes('he_acima_limite') ? 'font-medium text-red-700' : ''}`}>{l.he_min ? minutosHm(l.he_min) : '—'}</td>
                 <td className="px-3 py-2 text-xs">
                   {l.alertas.length === 0 ? <span className="text-green-700">ok</span> : l.alertas.map(a => (
-                    <span key={a} className={`mr-1 inline-block rounded px-1 ${a === 'he_acima_limite' || a === 'interjornada_curta' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{ALERTA_JORNADA[a] ?? a}</span>
+                    <span key={a} className={`mr-1 inline-block rounded px-1 ${a.endsWith('_abonada') || a.endsWith('_abonado') ? 'bg-blue-100 text-blue-800' : a === 'he_acima_limite' || a === 'interjornada_curta' || a === 'falta' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{ALERTA_JORNADA[a] ?? a}</span>
                   ))}
+                  {l.abono && <span className="block text-[11px] text-blue-800">abono: {l.abono}</span>}
                 </td>
               </tr>
             ))}
@@ -270,7 +281,7 @@ function Espelho({ linhas }: { linhas: PontoEspelho[] | null }) {
       </div>
       <p className="text-xs text-muted-foreground">
         Avisos pela CLT: intervalo de 1 h a 2 h para jornada acima de 6 h (art. 71), hora extra de até 2 h por dia (art. 59),
-        11 h entre jornadas (art. 66) e atraso acima de 5 min na entrada (art. 58: até 5 min por marcação, no máximo 10 min no dia). Intervalo e jornada podem ter regra própria na convenção coletiva. Avisos não bloqueiam a marcação. Dia marcado como ajustado foi corrigido pelo gestor na aba Ajustes; as marcações originais continuam guardadas.
+        11 h entre jornadas (art. 66) e atraso acima de 5 min na entrada (art. 58: até 5 min por marcação, no máximo 10 min no dia). Intervalo e jornada podem ter regra própria na convenção coletiva. Avisos não bloqueiam a marcação. Falta é dia com escala, já passado, sem marcação. Dia marcado como ajustado foi corrigido pelo gestor na aba Ajustes, e o abono cobre falta ou atraso sem criar marcação; as marcações originais continuam guardadas.
       </p>
     </div>
   )
@@ -283,7 +294,10 @@ function Ajustes({ linhas, marcacoes, funcionarios, tecnico, hoje, podeAjustar, 
   tecnico: string; hoje: string; podeAjustar: boolean; aoAjustar: () => Promise<void>
 }) {
   const [func, setFunc] = useState(tecnico)
-  const [acao, setAcao] = useState<'incluir' | 'desconsiderar'>('incluir')
+  const [acao, setAcao] = useState<'incluir' | 'desconsiderar' | 'abonar'>('incluir')
+  const [diaInteiro, setDiaInteiro] = useState(true)
+  const [ini, setIni] = useState('')
+  const [fim, setFim] = useState('')
   const [data, setData] = useState(hoje)
   const [hora, setHora] = useState('')
   const [tipo, setTipo] = useState('saida')
@@ -304,11 +318,17 @@ function Ajustes({ linhas, marcacoes, funcionarios, tecnico, hoje, podeAjustar, 
       .map(a => ({ valor: `a:${a.id}`, texto: `${a.data} ${a.hora} · ${PONTO_ROTULO[a.tipo] ?? a.tipo} · incluída por ajuste` })),
   ]
   const motivoOk = motivo.trim().length >= 10
-  const pronto = !!func && motivoOk && (acao === 'incluir' ? !!data && !!hora && !!tipo : !!marcacao)
+  const pronto = !!func && motivoOk && (acao === 'incluir' ? !!data && !!hora && !!tipo
+    : acao === 'abonar' ? !!data && (diaInteiro || (!!ini && !!fim && ini < fim)) : !!marcacao)
 
   const salvar = async () => {
     setSalvando(true); setErro(null); setOk(null)
     try {
+      if (acao === 'abonar') {
+        const a = await api.pontoAbonar(func, data, motivo.trim(), diaInteiro ? null : ini, diaInteiro ? null : fim)
+        setOk(`Abono de ${a.data} (${a.detalhe}) registrado. O funcionário foi avisado, sem o motivo.`)
+        setMotivo(''); setIni(''); setFim(''); await aoAjustar(); return
+      }
       const r = await api.pontoAjustar(acao === 'incluir'
         ? { tecnico: func, acao, motivo: motivo.trim(), data, hora, tipo }
         : { tecnico: func, acao, motivo: motivo.trim(),
@@ -335,12 +355,20 @@ function Ajustes({ linhas, marcacoes, funcionarios, tecnico, hoje, podeAjustar, 
               </Select>
             </Field>
             <Field label="Ajuste">
-              <Select value={acao} onChange={e => setAcao(e.target.value as 'incluir' | 'desconsiderar')}>
+              <Select value={acao} onChange={e => setAcao(e.target.value as 'incluir' | 'desconsiderar' | 'abonar')}>
                 <option value="incluir">Incluir marcação esquecida</option>
                 <option value="desconsiderar">Desconsiderar marcação errada</option>
+                <option value="abonar">Abonar falta ou atraso</option>
               </Select>
             </Field>
-            {acao === 'incluir' ? (<>
+            {acao === 'abonar' ? (<>
+              <Field label="Data"><Input type="date" value={data} max={hoje} onChange={e => setData(e.target.value)} /></Field>
+              <label className="flex items-center gap-1.5 pb-2 text-sm"><input type="checkbox" checked={diaInteiro} onChange={e => setDiaInteiro(e.target.checked)} /> Dia inteiro</label>
+              {!diaInteiro && <>
+                <Field label="Das"><Input type="time" value={ini} onChange={e => setIni(e.target.value)} /></Field>
+                <Field label="Às"><Input type="time" value={fim} onChange={e => setFim(e.target.value)} /></Field>
+              </>}
+            </>) : acao === 'incluir' ? (<>
               <Field label="Data"><Input type="date" value={data} max={hoje} onChange={e => setData(e.target.value)} /></Field>
               <Field label="Hora"><Input type="time" value={hora} onChange={e => setHora(e.target.value)} /></Field>
               <Field label="Marcação">
@@ -410,6 +438,125 @@ function Ajustes({ linhas, marcacoes, funcionarios, tecnico, hoje, podeAjustar, 
           </table>
         </div>
       )}
+    </div>
+  )
+}
+
+const STATUS_PEDIDO: Record<PontoJustificativa['status'], { label: string; cor: string }> = {
+  pendente: { label: 'Em análise', cor: 'bg-amber-100 text-amber-800' },
+  aprovada: { label: 'Aprovado', cor: 'bg-green-100 text-green-800' },
+  negada: { label: 'Não aprovado', cor: 'bg-red-100 text-red-800' },
+  cancelada: { label: 'Cancelado', cor: 'bg-muted text-muted-foreground' },
+}
+
+// Pedidos de ajuste dos funcionários (app e WhatsApp, decisão 55): o gestor aprova ou nega.
+// Aprovado: esqueci/falha vira marcação incluída por ajuste; atraso vira abono do período.
+function Pedidos({ linhas, podeDecidir, aoDecidir }: { linhas: PontoJustificativa[] | null; podeDecidir: boolean; aoDecidir: () => Promise<void> }) {
+  const [negando, setNegando] = useState<string | null>(null)
+  const [resposta, setResposta] = useState('')
+  const [ocupado, setOcupado] = useState<string | null>(null)
+  const [erro, setErro] = useState<string | null>(null)
+  const decidir = async (p: PontoJustificativa, aprovar: boolean) => {
+    setOcupado(p.id); setErro(null)
+    try { await api.pontoDecidir(p.id, aprovar, aprovar ? null : resposta.trim()); setNegando(null); setResposta(''); await aoDecidir() }
+    catch (e) { setErro(erroMsg(e)) } finally { setOcupado(null) }
+  }
+  if (!linhas) return <Carregando />
+  return (
+    <div className="space-y-2">
+      <h3 className="text-sm font-semibold">Pedidos dos funcionários <span className="font-normal text-muted-foreground">· pelo app (aba Ajuste) ou pelo WhatsApp (palavra "ajuste")</span></h3>
+      {erro && <ErrorBox>{erro}</ErrorBox>}
+      <div className="overflow-x-auto rounded-md border">
+        <table className="w-full text-sm">
+          <thead><tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
+            <th className="px-3 py-2">Nº</th><th className="px-3 py-2">Dia</th><th className="px-3 py-2">Funcionário</th><th className="px-3 py-2">Pedido</th>
+            <th className="px-3 py-2">Situação</th><th className="px-3 py-2">{podeDecidir ? 'Decisão' : ''}</th>
+          </tr></thead>
+          <tbody>
+            {linhas.length === 0 ? (
+              <tr><td colSpan={6} className="py-8 text-center text-muted-foreground">Nenhum pedido em análise nem no período</td></tr>
+            ) : linhas.map(p => (
+              <tr key={p.id} className="border-b align-top last:border-0 hover:bg-muted/30">
+                <td className="px-3 py-2 font-mono text-xs">{p.numero}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-xs">{p.data.split('-').reverse().join('/')}</td>
+                <td className="px-3 py-2 text-xs">{p.tecnico}<p className="text-muted-foreground">{p.canal === 'app' ? 'App' : 'WhatsApp'} · {p.criado_em}</p></td>
+                <td className="max-w-xs px-3 py-2 text-xs"><p className="font-medium">{p.motivo_nome}</p><p>{p.detalhe}</p>
+                  {p.observacao && <p className="text-muted-foreground">“{p.observacao}”</p>}</td>
+                <td className="px-3 py-2 text-xs"><span className={`rounded px-1.5 py-0.5 font-medium ${STATUS_PEDIDO[p.status].cor}`}>{STATUS_PEDIDO[p.status].label}</span>
+                  {p.decidido_em && <p className="mt-1 text-muted-foreground">{p.decidido_por ?? ''} · {p.decidido_em}</p>}
+                  {p.resposta && <p className="mt-1 text-muted-foreground">{p.resposta}</p>}
+                  {p.abono_estornado && <p className="mt-1 text-red-700">abono estornado depois</p>}</td>
+                <td className="px-3 py-2 text-xs">
+                  {podeDecidir && p.status === 'pendente' && (negando === p.id ? (
+                    <div className="w-64 space-y-1.5">
+                      <Textarea rows={2} value={resposta} maxLength={500} onChange={e => setResposta(e.target.value)}
+                        placeholder="Motivo da negativa (vai ao funcionário pelo WhatsApp; não escreva doença nem CID)" />
+                      <div className="flex gap-1.5">
+                        <Button size="sm" variant="outline" onClick={() => { setNegando(null); setResposta('') }}>Voltar</Button>
+                        <Button size="sm" disabled={resposta.trim().length < 10 || ocupado === p.id} onClick={() => void decidir(p, false)}>Negar</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-1.5">
+                      <Button size="sm" disabled={ocupado === p.id} onClick={() => void decidir(p, true)}>
+                        {ocupado === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Aprovar
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => { setNegando(p.id); setResposta('') }}><X className="h-3.5 w-3.5" /> Negar</Button>
+                    </div>
+                  ))}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {podeDecidir && <p className="text-xs text-muted-foreground">Aprovar "Esqueci de marcar" ou "App falhou" inclui a marcação (registro à parte, Portaria 671). Aprovar atraso ou saída antecipada abona o período, sem criar marcação. O funcionário recebe a resposta pelo WhatsApp.</p>}
+    </div>
+  )
+}
+
+// Abonos do período (estorno quando lançado por engano; o abono continua guardado)
+function Abonos({ linhas, podeEstornar, aoEstornar }: { linhas: PontoAbono[] | null; podeEstornar: boolean; aoEstornar: () => Promise<void> }) {
+  const [alvo, setAlvo] = useState<string | null>(null)
+  const [motivo, setMotivo] = useState('')
+  const [erro, setErro] = useState<string | null>(null)
+  if (!linhas || linhas.length === 0) return null
+  const estornar = async (id: string) => {
+    setErro(null)
+    try { await api.pontoEstornarAbono(id, motivo.trim()); setAlvo(null); setMotivo(''); await aoEstornar() }
+    catch (e) { setErro(erroMsg(e)) }
+  }
+  return (
+    <div className="space-y-2">
+      <h3 className="text-sm font-semibold">Abonos</h3>
+      {erro && <ErrorBox>{erro}</ErrorBox>}
+      <div className="overflow-x-auto rounded-md border">
+        <table className="w-full text-sm">
+          <thead><tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
+            <th className="px-3 py-2">Dia</th><th className="px-3 py-2">Funcionário</th><th className="px-3 py-2">Abono</th>
+            {podeEstornar && <><th className="px-3 py-2">Motivo</th><th className="px-3 py-2">Por</th></>}<th className="px-3 py-2">Lançado em</th><th className="px-3 py-2" />
+          </tr></thead>
+          <tbody>
+            {linhas.map(a => (
+              <tr key={a.id} className={`border-b last:border-0 ${a.estornado ? 'text-muted-foreground line-through' : ''}`}>
+                <td className="whitespace-nowrap px-3 py-2 text-xs">{a.data.split('-').reverse().join('/')}</td>
+                <td className="px-3 py-2 text-xs">{a.tecnico}</td>
+                <td className="px-3 py-2 text-xs">{a.detalhe}{a.pedido != null && <span className="text-muted-foreground"> · pedido {a.pedido}</span>}</td>
+                {podeEstornar && <><td className="max-w-xs px-3 py-2 text-xs">{a.motivo}</td><td className="px-3 py-2 text-xs">{a.autor}</td></>}
+                <td className="whitespace-nowrap px-3 py-2 text-xs">{a.criado_em}{a.estornado && ' · estornado'}</td>
+                <td className="px-3 py-2 text-xs no-underline">
+                  {podeEstornar && !a.estornado && (alvo === a.id ? (
+                    <div className="flex items-center gap-1.5">
+                      <Input value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Motivo do estorno" className="h-8 w-48" />
+                      <Button size="sm" disabled={motivo.trim().length < 10} onClick={() => void estornar(a.id)}>Estornar</Button>
+                    </div>
+                  ) : <Button size="sm" variant="outline" onClick={() => { setAlvo(a.id); setMotivo('') }}><Undo2 className="h-3.5 w-3.5" /> Estornar</Button>)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
