@@ -12,7 +12,9 @@
 -- O gestor também abona direto, sem pedido (falta justificada fora do sistema), e pode estornar um abono.
 -- Limite legal: alerta, nunca bloqueia (decisão 55). Texto sem ameaça de punição (decisão 57).
 
--- Motivos (limites em dado, não em código; conferência jurídica pela persona juridico, decisão 58) ------
+-- Motivos (limites em dado, não em código). Conferidos pela persona juridico em 11/10 (decisão 58), sem
+-- fonte primária acessível: valores e citações a confirmar no Planalto. Nascimento muda para 10 dias em
+-- 01/01/2027 (Lei 15.371/2026): UPDATE de dado, lembrete no backlog ---------------------------------
 create table if not exists ponto_motivos (
   codigo        text primary key,
   grupo         text not null check (grupo in ('saude', 'familia', 'convocacao', 'ponto')),
@@ -34,18 +36,19 @@ insert into ponto_motivos (codigo, grupo, nome, base_legal, abrange, quantidade,
   ('esqueci_marcar',  'ponto', 'Esqueci de marcar', 'Poder diretivo do empregador (CLT art. 2º)', 'gestor', null, null, null, false, false, true, 1),
   ('falha_registro',  'ponto', 'O app ou o WhatsApp não funcionou', 'Poder diretivo do empregador (CLT art. 2º)', 'gestor', null, null, null, false, false, true, 2),
   ('atraso_saida',    'ponto', 'Cheguei atrasado ou saí mais cedo', 'Poder diretivo do empregador (CLT art. 2º)', 'gestor', null, null, null, false, false, true, 3),
-  ('atestado',        'saude', 'Atestado médico', 'CLT art. 473; Lei 605/1949, art. 6º, §1º', 'periodo', null, null, null, true, true, false, 10),
-  ('comparecimento',  'saude', 'Declaração de comparecimento', 'CLT art. 473; Lei 605/1949, art. 6º, §1º', 'horario', null, null, null, true, true, false, 11),
-  ('prenatal',        'saude', 'Acompanhei consulta ou exame do pré-natal', 'CLT art. 473, X', 'horario', 6, 'consultas', 'gestacao', true, true, false, 12),
-  ('filho_6_anos',    'saude', 'Levei filho de até 6 anos ao médico', 'CLT art. 473, XI', 'periodo', 1, 'dias', 'ano', true, true, false, 13),
-  ('preventivo',      'saude', 'Fiz exame preventivo de câncer', 'CLT art. 473, XII', 'periodo', 3, 'dias', '12_meses', true, true, false, 14),
+  ('atestado',        'saude', 'Atestado médico', 'Lei 605/1949, art. 6º, §1º, f, e §2º; Lei 8.213/1991, art. 60, §3º (acima de 15 dias: INSS)', 'periodo', 15, 'dias', 'evento', true, true, false, 10),
+  ('comparecimento',  'saude', 'Declaração de comparecimento', 'Sem previsão legal: convenção coletiva ou liberalidade do empregador', 'horario', null, null, null, true, true, false, 11),
+  ('prenatal',        'saude', 'Acompanhei consulta ou exame do pré-natal', 'CLT art. 473, X (redação da Lei 14.457/2022)', 'horario', 6, 'consultas', 'gestacao', true, true, false, 12),
+  ('filho_6_anos',    'saude', 'Levei filho de até 6 anos ao médico', 'CLT art. 473, XI (Lei 13.257/2016)', 'periodo', 1, 'dias', 'ano', true, true, false, 13),
+  ('preventivo',      'saude', 'Fiz exame preventivo de câncer', 'CLT art. 473, XII (Lei 13.767/2018) e §3º (Lei 15.377/2026: dever de informar)', 'periodo', 3, 'dias', '12_meses', true, true, false, 14),
   ('doacao_sangue',   'saude', 'Doei sangue', 'CLT art. 473, IV', 'periodo', 1, 'dias', '12_meses', true, true, false, 15),
-  ('falecimento',     'familia', 'Falecimento de familiar próximo', 'CLT art. 473, I', 'periodo', 2, 'dias', 'evento', true, false, false, 20),
-  ('casamento',       'familia', 'Casamento', 'CLT art. 473, II', 'periodo', 3, 'dias', 'evento', true, false, false, 21),
-  ('nascimento',      'familia', 'Nascimento ou adoção de filho', 'CF art. 7º, XIX; CLT art. 473, III; Lei 15.371/2026 (ampliação gradual)', 'periodo', 5, 'dias', 'evento', true, false, false, 22),
-  ('justica',         'convocacao', 'Justiça: audiência, testemunha ou júri', 'CLT art. 473, VIII', 'periodo', null, 'tempo_necessario', 'evento', true, false, false, 30),
-  ('eleitoral',       'convocacao', 'Justiça Eleitoral: título ou mesário', 'CLT art. 473, V; Lei 9.504/1997, art. 98', 'periodo', 2, 'dias', 'evento', true, false, false, 31),
-  ('outra_convocacao','convocacao', 'Outra: serviço militar, sindicato ou vestibular', 'CLT art. 473, VI, VII e IX', 'periodo', null, 'tempo_necessario', 'evento', true, false, false, 32)
+  ('falecimento',     'familia', 'Falecimento de cônjuge, pais, avós, filhos, netos, irmão ou dependente', 'CLT art. 473, I (até 2 dias consecutivos)', 'periodo', 2, 'dias', 'evento', true, false, false, 20),
+  ('casamento',       'familia', 'Casamento', 'CLT art. 473, II (até 3 dias consecutivos)', 'periodo', 3, 'dias', 'evento', true, false, false, 21),
+  ('nascimento',      'familia', 'Nascimento ou adoção de filho', 'CF art. 7º, XIX; ADCT art. 10, §1º (5 dias corridos até 31/12/2026); CLT art. 473, §2º (Lei 15.156/2025: 20 dias, Zika); Lei 15.371/2026: 10 dias em 2027, 15 em 2028, 20 em 2029', 'periodo', 5, 'dias', 'evento', true, false, false, 22),
+  ('justica',         'convocacao', 'Justiça: audiência, testemunha ou júri', 'CLT art. 473, VIII; CPP art. 441 (jurado); CPC art. 463, parágrafo único (testemunha)', 'periodo', null, 'tempo_necessario', 'evento', true, false, false, 30),
+  ('eleitoral',       'convocacao', 'Justiça Eleitoral: tirar ou regularizar o título', 'CLT art. 473, V (até 2 dias, seguidos ou não)', 'periodo', 2, 'dias', 'evento', true, false, false, 31),
+  ('mesario',         'convocacao', 'Trabalhei de mesário ou na eleição', 'Lei 9.504/1997, art. 98 (folga em dobro dos dias convocados, inclusive treinamento; data combinada com o empregador)', 'periodo', null, 'dias', 'evento', true, false, false, 32),
+  ('outra_convocacao','convocacao', 'Outra: serviço militar, vestibular ou reunião sindical internacional', 'CLT art. 473, VI, VII e IX', 'periodo', null, 'tempo_necessario', 'evento', true, false, false, 33)
 on conflict (codigo) do nothing;
 
 -- Pedido do funcionário --------------------------------------------------------------------------------

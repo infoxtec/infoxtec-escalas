@@ -88,18 +88,29 @@ escolhido já revela saúde.
 - zero "incluir" usado para cobrir ausência;
 - zero acesso a anexo de saúde fora de quem tem a permissão.
 
-## Base legal: conferências (valores ficam em `ponto_motivos`, nunca no texto)
+## Base legal (conferida pela persona `juridico` em 11/10; decisão 58)
 
-| Motivo | Texto do responsável | Situação em 11/10 | Fonte a confirmar (Gabriel) |
-|---|---|---|---|
-| Nascimento de filho | 1 dia | **5 dias** (CF art. 7º XIX, ADCT art. 10 §1º; CLT 473 III pela Lei 14.457/2022). Lei 15.371/2026: 10 dias em 2027, 15 em 2028, 20 em 2029 | Texto oficial e vigência |
-| Pré-natal | 2 dias por gestação | **Até 6 consultas ou exames** por gestação (CLT 473 X) | Redação atual no Planalto |
-| Filho até 6 anos | 1 dia por ano | 1 dia por ano (473 XI) | — |
-| Preventivo de câncer | 3 dias a cada 12 meses | 3 dias a cada 12 meses de trabalho (473 XII). Lei 15.377/2026 obriga o empregador a informar esse direito (§3º) | §3º e alcance |
-| Doação de sangue | 1 a cada 12 meses | 1 dia a cada 12 meses (473 IV) | — |
-| Mesário | — | Fora da CLT: Lei 9.504/97 art. 98 (dobro dos dias convocados) | Incluir no menu |
-| Atestado acima de 15 dias | — | Afastamento previdenciário (INSS) | Alerta "encaminhar ao INSS" |
-| Decreto 10.854/2021 art. 159 | Citado | Não conferido | Confirmar a citação |
+Fontes primárias (Planalto, Câmara, Senado) não abriram daqui: confiança média até alguém conferir.
+Os valores ficam em `ponto_motivos` — corrigir é dado, não código.
+
+| Motivo | Valor | Base legal |
+|---|---|---|
+| Nascimento ou adoção | **5 dias corridos** em 2026; **10 em 2027, 15 em 2028, 20 em 2029** | CF 7º XIX; ADCT 10 §1º; Lei 15.371/2026; 20 dias (Zika): CLT 473 §2º, Lei 15.156/2025 |
+| Pré-natal (acompanhar) | até 6 consultas ou exames por gestação | CLT 473 X (Lei 14.457/2022). A gestante empregada: CLT 392 §4º II, no mínimo 6 |
+| Filho até 6 anos | 1 dia por ano | CLT 473 XI |
+| Preventivo de câncer | até 3 dias a cada 12 meses de trabalho; empresa deve informar o direito | CLT 473 XII e §3º (Lei 15.377/2026) |
+| Doação de sangue | 1 dia a cada 12 meses de trabalho | CLT 473 IV |
+| Falecimento | até 2 dias consecutivos (cônjuge, pais, avós, filhos, netos, irmão, dependente na CTPS) | CLT 473 I |
+| Casamento | até 3 dias consecutivos | CLT 473 II |
+| Título eleitoral | até 2 dias | CLT 473 V |
+| Mesário | dobro dos dias convocados (inclui treinamento), data combinada | Lei 9.504/97 art. 98 |
+| Justiça (audiência, jurado, testemunha) | tempo necessário | CLT 473 VIII; CPP 441; CPC 463 |
+| Serviço militar, vestibular, reunião sindical internacional | tempo necessário / dia da prova | CLT 473 VI, VII, IX |
+| Atestado médico | abona o período de incapacidade; **acima de 15 dias: INSS** | Lei 605/49 art. 6º §1º f e §2º; Lei 8.213/91 art. 60 §3º |
+| Declaração de comparecimento | **sem direito legal**: abono por convenção coletiva ou liberalidade | — |
+| Esqueci, app falhou, atraso | a critério do gestor | Poder diretivo (CLT art. 2º) |
+
+A citação ao Decreto 10.854/2021 art. 159 saiu: não foi confirmada.
 
 ## Textos (`marca`), na voz do Trilha
 
@@ -135,7 +146,7 @@ O gestor analisa cada caso.
 *6* Doei sangue
 *0* Voltar
 
-Não precisa informar a doença. (CLT art. 473; Lei 605/49, art. 6º)
+Não precisa informar a doença. (Lei 605/49, art. 6º; CLT art. 473)
 ```
 
 ```
@@ -150,8 +161,9 @@ Não precisa informar a doença. (CLT art. 473; Lei 605/49, art. 6º)
 ```
 *Convocação.* De quem?
 *1* Justiça: audiência, testemunha ou júri
-*2* Justiça Eleitoral: título ou mesário
-*3* Outra: serviço militar, sindicato ou vestibular
+*2* Título de eleitor
+*3* Mesário ou trabalho na eleição
+*4* Outra: serviço militar, vestibular ou reunião sindical internacional
 *0* Voltar
 ```
 
