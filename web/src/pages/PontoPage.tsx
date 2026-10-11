@@ -4,7 +4,7 @@ import { Button, ErrorBox, Field, Input, Select, SuccessBox, Textarea } from '..
 import { api, erroMsg } from '../lib/api'
 import Cofre from '../components/Cofre'
 import { ALERTA_JORNADA, PONTO_ROTULO, hojeBahia, minutosHm } from '../lib/types'
-import type { Empresa, PontoAbono, PontoAcompanhamento, PontoAjuste, PontoEspelho, PontoGeo, PontoHoje, PontoJustificativa } from '../lib/types'
+import type { Empresa, PontoAbono, PontoAcompanhamento, PontoAjuste, PontoEspelho, PontoGeo, PontoHoje, PontoJustificativa, PontoMetricas } from '../lib/types'
 
 const SITUACAO: Record<PontoHoje['situacao'], { label: string; cor: string }> = {
   sem_entrada: { label: 'Escala sem entrada', cor: 'bg-red-100 text-red-800' },
@@ -23,6 +23,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
   const [espelho, setEspelho] = useState<PontoEspelho[] | null>(null)
   const [ajustes, setAjustes] = useState<PontoAjuste[] | null>(null)
   const [pedidos, setPedidos] = useState<PontoJustificativa[] | null>(null)
+  const [metricas, setMetricas] = useState<PontoMetricas | null>(null)
   const [abonos, setAbonos] = useState<PontoAbono[] | null>(null)
   const [vista, setVista] = useState<'marcacoes' | 'espelho' | 'ajustes'>('marcacoes')
   const [de, setDe] = useState(hoje)
@@ -37,12 +38,12 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
   const carregar = useCallback(async () => {
     setErro(null)
     try {
-      const [s, l, g, j, a, pd, ab] = await Promise.all([api.pontoHoje(), api.pontoAcompanhamento(de, ate, tecnico || null),
+      const [s, l, g, j, a, pd, ab, mt] = await Promise.all([api.pontoHoje(), api.pontoAcompanhamento(de, ate, tecnico || null),
         papel === 'leitura' ? Promise.resolve([]) : api.pontoGeo(de, ate, tecnico || null),
         api.pontoEspelho(de, ate, tecnico || null), api.pontoAjustes(de, ate, tecnico || null),
-        api.pontoJustificativas(de, ate, tecnico || null), api.pontoAbonos(de, ate, tecnico || null)])
+        api.pontoJustificativas(de, ate, tecnico || null), api.pontoAbonos(de, ate, tecnico || null), api.pontoMetricas(de, ate)])
       setSituacao(s); setLista(l); setGeo(Object.fromEntries(g.map(x => [x.id, x]))); setEspelho(j); setAjustes(a)
-      setPedidos(pd); setAbonos(ab)
+      setPedidos(pd); setAbonos(ab); setMetricas(mt)
       setAtualizado(new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Bahia' }))
     } catch (e) { setErro(erroMsg(e)) }
   }, [de, ate, tecnico, papel])
@@ -147,7 +148,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
         </div>
         {vista === 'ajustes' ? (
           <div className="space-y-5">
-            <Pedidos linhas={pedidos} podeDecidir={papel !== 'leitura'} aoDecidir={carregar} />
+            <Pedidos linhas={pedidos} metricas={metricas} podeDecidir={papel !== 'leitura'} aoDecidir={carregar} />
             <Ajustes linhas={ajustes} marcacoes={lista} funcionarios={situacao ?? []} tecnico={tecnico} hoje={hoje}
               podeAjustar={papel !== 'leitura'} aoAjustar={carregar} />
             <Abonos linhas={abonos} podeEstornar={papel !== 'leitura'} aoEstornar={carregar} />
@@ -452,7 +453,7 @@ const STATUS_PEDIDO: Record<PontoJustificativa['status'], { label: string; cor: 
 
 // Pedidos de ajuste dos funcionários (app e WhatsApp, decisão 55): o gestor aprova ou nega.
 // Aprovado: esqueci/falha vira marcação incluída por ajuste; atraso vira abono do período.
-function Pedidos({ linhas, podeDecidir, aoDecidir }: { linhas: PontoJustificativa[] | null; podeDecidir: boolean; aoDecidir: () => Promise<void> }) {
+function Pedidos({ linhas, metricas, podeDecidir, aoDecidir }: { linhas: PontoJustificativa[] | null; metricas: PontoMetricas | null; podeDecidir: boolean; aoDecidir: () => Promise<void> }) {
   const [cofre, setCofre] = useState<PontoJustificativa | null>(null)
   const [negando, setNegando] = useState<string | null>(null)
   const [resposta, setResposta] = useState('')
@@ -467,6 +468,14 @@ function Pedidos({ linhas, podeDecidir, aoDecidir }: { linhas: PontoJustificativ
   return (
     <div className="space-y-2">
       <h3 className="text-sm font-semibold">Pedidos dos funcionários <span className="font-normal text-muted-foreground">· pelo app (aba Ajuste) ou pelo WhatsApp (palavra "ajuste")</span></h3>
+      {metricas && metricas.recebidos > 0 && (
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="rounded border px-2 py-1">Recebidos no período: <strong>{metricas.recebidos}</strong></span>
+          <span className="rounded border px-2 py-1" title="Meta: 90% decididos em até 2 dias úteis">Decididos em até 2 dias úteis: <strong>{metricas.decididos ? Math.round(100 * metricas.no_prazo / metricas.decididos) : 0}%</strong> ({metricas.no_prazo} de {metricas.decididos})</span>
+          <span className={`rounded border px-2 py-1 ${metricas.parados > 0 ? 'border-red-300 bg-red-50 text-red-800' : ''}`}>Parados há mais de 2 dias úteis: <strong>{metricas.parados}</strong></span>
+          <span className={`rounded border px-2 py-1 ${metricas.inclusoes_manuais > 0 ? 'border-amber-300 bg-amber-50 text-amber-800' : ''}`} title="Marcação incluída pelo gestor sem pedido do funcionário. Meta: não usar para cobrir ausência — use abono.">Inclusões manuais do gestor: <strong>{metricas.inclusoes_manuais}</strong></span>
+        </div>
+      )}
       {erro && <ErrorBox>{erro}</ErrorBox>}
       <div className="overflow-x-auto rounded-md border">
         <table className="w-full text-sm">
@@ -481,7 +490,8 @@ function Pedidos({ linhas, podeDecidir, aoDecidir }: { linhas: PontoJustificativ
               <tr key={p.id} className="border-b align-top last:border-0 hover:bg-muted/30">
                 <td className="px-3 py-2 font-mono text-xs">{p.numero}</td>
                 <td className="whitespace-nowrap px-3 py-2 text-xs">{p.data.split('-').reverse().join('/')}</td>
-                <td className="px-3 py-2 text-xs">{p.tecnico}<p className="text-muted-foreground">{p.canal === 'app' ? 'App' : 'WhatsApp'} · {p.criado_em}</p></td>
+                <td className="px-3 py-2 text-xs">{p.tecnico}<p className="text-muted-foreground">{p.canal === 'app' ? 'App' : 'WhatsApp'} · {p.criado_em}</p>
+                  {p.ponto_30d !== null && p.ponto_30d > 1 && <p className={p.ponto_30d >= 3 ? 'text-amber-700' : 'text-muted-foreground'} title="Pedidos de Ponto (esqueci, app falhou, atraso) nos 30 dias até este. Só o fato; atestado e falta prevista em lei não contam">{p.ponto_30d}º pedido de Ponto em 30 dias</p>}</td>
                 <td className="max-w-xs px-3 py-2 text-xs"><p className="font-medium">{p.motivo_nome}</p><p>{p.detalhe}</p>
                   {p.observacao && <p className="text-muted-foreground">“{p.observacao}”</p>}
                   {p.restrito && <p className="text-muted-foreground">Restrito: só quem vê atestados abre e decide.</p>}
@@ -493,7 +503,10 @@ function Pedidos({ linhas, podeDecidir, aoDecidir }: { linhas: PontoJustificativ
                 <td className="px-3 py-2 text-xs"><span className={`rounded px-1.5 py-0.5 font-medium ${STATUS_PEDIDO[p.status].cor}`}>{STATUS_PEDIDO[p.status].label}</span>
                   {p.decidido_em && <p className="mt-1 text-muted-foreground">{p.decidido_por ?? ''} · {p.decidido_em}</p>}
                   {p.resposta && <p className="mt-1 text-muted-foreground">{p.resposta}</p>}
-                  {p.abono_estornado && <p className="mt-1 text-red-700">abono estornado depois</p>}</td>
+                  {p.abono_estornado && <p className="mt-1 text-red-700">abono estornado depois</p>}
+                  {p.dias_uteis_espera !== null && (p.dias_uteis_espera > 2
+                    ? <p className="mt-1 font-medium text-red-700">parado há {p.dias_uteis_espera} dias úteis</p>
+                    : <p className="mt-1 text-muted-foreground">aguardando há {p.dias_uteis_espera} dia(s) útil(eis)</p>)}</td>
                 <td className="px-3 py-2 text-xs">
                   {podeDecidir && p.pode_decidir && p.status === 'pendente' && (negando === p.id ? (
                     <div className="w-80 space-y-1.5">

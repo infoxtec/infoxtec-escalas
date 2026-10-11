@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao } from './types'
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas } from './types'
 
 function traduzir(msg: string): string {
   if (/JWT expired|invalid JWT|not authenticated/i.test(msg)) return 'Sessão expirada. Entre novamente.'
@@ -101,6 +101,7 @@ export const api = {
     rpc<PontoEspelho[]>('app_ponto_espelho', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
   pontoJustificativas: (de: string, ate: string, tecnico: string | null) =>
     rpc<PontoJustificativa[]>('app_ponto_justificativas', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
+  pontoMetricas: (de: string, ate: string) => rpc<PontoMetricas>('app_ponto_justificativas_metricas', { p_de: de, p_ate: ate }),
   pontoDecidir: (id: string, aprovar: boolean, resposta: string | null) =>
     rpc<{ numero: number; status: string }>('app_ponto_decidir', { p_id: id, p_aprovar: aprovar, p_resposta: resposta }),
   pontoAbonar: (tecnico: string, data: string, motivo: string, inicio: string | null, fim: string | null) =>
