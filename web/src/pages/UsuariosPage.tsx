@@ -17,7 +17,7 @@ export default function UsuariosPage() {
   const [lista, setLista] = useState<UsuarioPainel[]>([])
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
-  const [edit, setEdit] = useState<{ email: string; nome: string; papel: Papel; ativo: boolean; novo: boolean } | null>(null)
+  const [edit, setEdit] = useState<{ email: string; nome: string; papel: Papel; ativo: boolean; novo: boolean; ve_saude: boolean; ve_saude_antes: boolean } | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [erroForm, setErroForm] = useState<string | null>(null)
 
@@ -40,6 +40,8 @@ export default function UsuariosPage() {
     setSalvando(true)
     try {
       await api.salvarUsuario({ email: edit.email.trim(), nome: edit.nome.trim(), papel: edit.papel, ativo: edit.ativo })
+      const ve = edit.ve_saude && edit.papel !== 'leitura'
+      if (ve !== edit.ve_saude_antes) await api.definirVeSaude(edit.email.trim(), ve)
       toast(edit.novo ? 'Usuário liberado no painel.' : 'Usuário atualizado.')
       setEdit(null); await carregar()
     } catch (e) { setErroForm(erroMsg(e)) }
@@ -53,7 +55,7 @@ export default function UsuariosPage() {
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" onClick={restaurarTudo} title="Voltar todas as colunas à largura padrão"><Columns3 className="h-3.5 w-3.5" /> Larguras padrão</Button>
           <Button variant="outline" size="sm" onClick={() => void carregar()} disabled={carregando}><RefreshCw className={`h-3.5 w-3.5 ${carregando ? 'animate-spin' : ''}`} /> Atualizar</Button>
-          <Button size="sm" onClick={() => { setEdit({ email: '', nome: '', papel: 'gestor', ativo: true, novo: true }); setErroForm(null) }}><Plus className="h-4 w-4" /> Adicionar usuário</Button>
+          <Button size="sm" onClick={() => { setEdit({ email: '', nome: '', papel: 'gestor', ativo: true, novo: true, ve_saude: false, ve_saude_antes: false }); setErroForm(null) }}><Plus className="h-4 w-4" /> Adicionar usuário</Button>
         </div>
       </div>
 
@@ -81,11 +83,11 @@ export default function UsuariosPage() {
               <tr key={u.email} className={`border-b last:border-0 ${!u.ativo ? 'opacity-50' : ''}`}>
                 <td className="truncate px-3 py-2.5 font-medium" title={u.nome ?? ''}>{u.nome ?? '—'}</td>
                 <td className="truncate px-3 py-2.5 text-xs" title={u.email}>{u.email}</td>
-                <td className="px-3 py-2.5 text-xs">{PAPEL_LABEL[u.papel]}</td>
+                <td className="px-3 py-2.5 text-xs">{PAPEL_LABEL[u.papel]}{u.ve_saude && <span className="ml-1 rounded bg-blue-100 px-1 text-[10px] text-blue-800" title="Vê e decide atestados; vê os documentos do cofre">atestados</span>}</td>
                 <td className="px-3 py-2.5 text-center"><span className={`inline-block h-2 w-2 rounded-full ${u.ativo ? 'bg-green-500' : 'bg-gray-400'}`} /></td>
                 <td className="truncate px-3 py-2.5 text-xs text-muted-foreground">{u.criado_por ?? '—'} · {formatDateTime(u.created_at)}</td>
                 <td className="px-3 py-2.5 text-right">
-                  <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => { setEdit({ email: u.email, nome: u.nome ?? '', papel: u.papel, ativo: u.ativo, novo: false }); setErroForm(null) }}><Edit2 className="h-3.5 w-3.5" /></Button>
+                  <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => { setEdit({ email: u.email, nome: u.nome ?? '', papel: u.papel, ativo: u.ativo, novo: false, ve_saude: u.ve_saude, ve_saude_antes: u.ve_saude }); setErroForm(null) }}><Edit2 className="h-3.5 w-3.5" /></Button>
                 </td>
               </tr>
             ))}
@@ -108,6 +110,10 @@ export default function UsuariosPage() {
               </Select>
             </Field>
             <ToggleRow label="Ativo" description="Desativado, o usuário perde o acesso ao painel na hora." checked={edit.ativo} onChange={v => setEdit({ ...edit, ativo: v })} disabled={salvando} />
+            {edit.papel !== 'leitura' && (
+              <ToggleRow label="Vê atestados" description="Vê e decide pedidos de saúde e abre os documentos do cofre (só visualização; cada abertura fica registrada). Dê só a quem faz o RH."
+                checked={edit.ve_saude} onChange={v => setEdit({ ...edit, ve_saude: v })} disabled={salvando} />
+            )}
             {erroForm && <ErrorBox>{erroForm}</ErrorBox>}
           </div>
         )}

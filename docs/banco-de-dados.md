@@ -235,6 +235,24 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 68 (11/10): atestado e faltas com documento no cofre (084 entrega 3, E2; decisão 56)
+
+- **Cofre:** `ponto_justificativa_anexos` guarda o documento **cifrado** (pgcrypto, AES-256) com a chave
+  `COFRE_PONTO` do Vault, gerada no próprio banco (nunca no repositório). Tipo conferido pelos primeiros
+  bytes (JPG, PNG, PDF), até 5 MB, sha256 registrado. `ponto_anexo_acessos` registra cada abertura.
+  **A chave precisa de cópia fora do Supabase** (ver `docs/operacao.md`): sem ela, um backup restaurado
+  não abre os documentos.
+- **Permissão:** `painel_usuarios.ve_saude` ("vê atestados"), dada pelo admin (`app_definir_ve_saude`);
+  `fn_ve_saude`. Só quem tem vê motivo de saúde, decide pedido de saúde e abre documentos
+  (`app_ponto_anexos`, `app_ponto_anexo_ver`). Leitura nunca. `app_meu_acesso` devolve `ve_saude`.
+- **Pedido:** `ponto_justificar_falta` (app; documento obrigatório quando o motivo exige) com período de
+  dias (`data_fim`, até 31) ou de horas (consulta, pré-natal); `fn_ponto_limite_alerta` grava
+  `alerta_limite` quando passa do limite de `ponto_motivos` (alerta, nunca bloqueia). Saúde, Família e
+  Convocação ativos. `app_ponto_justificativas` ganha `data_fim`, `restrito`, `pode_decidir`, `anexos`,
+  `alerta_limite`, `fora_prazo` (mais de 48 h). Aprovado: abono de cada dia ou do horário; a mensagem ao
+  funcionário não cita motivo de saúde. No WhatsApp, as opções 1 a 3 orientam a usar o app (mídia pelo
+  WhatsApp fica para a E2b). Teste T15.
+
 ### Migration 66 (11/10): justificativa de ponto pelo funcionário (084 entrega 3, E1; decisões 55 a 58)
 
 - **`ponto_motivos`**: motivos e limites legais em dado (base legal, quantidade, unidade, janela, exige

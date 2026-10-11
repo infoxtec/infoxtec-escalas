@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Check, KeyRound, Loader2, MapPin, PencilLine, RefreshCw, ShieldCheck, Undo2, X } from 'lucide-react'
 import { Button, ErrorBox, Field, Input, Select, SuccessBox, Textarea } from '../components/ui'
 import { api, erroMsg } from '../lib/api'
+import Cofre from '../components/Cofre'
 import { ALERTA_JORNADA, PONTO_ROTULO, hojeBahia, minutosHm } from '../lib/types'
 import type { Empresa, PontoAbono, PontoAcompanhamento, PontoAjuste, PontoEspelho, PontoGeo, PontoHoje, PontoJustificativa } from '../lib/types'
 
@@ -452,6 +453,7 @@ const STATUS_PEDIDO: Record<PontoJustificativa['status'], { label: string; cor: 
 // Pedidos de ajuste dos funcionários (app e WhatsApp, decisão 55): o gestor aprova ou nega.
 // Aprovado: esqueci/falha vira marcação incluída por ajuste; atraso vira abono do período.
 function Pedidos({ linhas, podeDecidir, aoDecidir }: { linhas: PontoJustificativa[] | null; podeDecidir: boolean; aoDecidir: () => Promise<void> }) {
+  const [cofre, setCofre] = useState<PontoJustificativa | null>(null)
   const [negando, setNegando] = useState<string | null>(null)
   const [resposta, setResposta] = useState('')
   const [ocupado, setOcupado] = useState<string | null>(null)
@@ -481,13 +483,19 @@ function Pedidos({ linhas, podeDecidir, aoDecidir }: { linhas: PontoJustificativ
                 <td className="whitespace-nowrap px-3 py-2 text-xs">{p.data.split('-').reverse().join('/')}</td>
                 <td className="px-3 py-2 text-xs">{p.tecnico}<p className="text-muted-foreground">{p.canal === 'app' ? 'App' : 'WhatsApp'} · {p.criado_em}</p></td>
                 <td className="max-w-xs px-3 py-2 text-xs"><p className="font-medium">{p.motivo_nome}</p><p>{p.detalhe}</p>
-                  {p.observacao && <p className="text-muted-foreground">“{p.observacao}”</p>}</td>
+                  {p.observacao && <p className="text-muted-foreground">“{p.observacao}”</p>}
+                  {p.restrito && <p className="text-muted-foreground">Restrito: só quem vê atestados abre e decide.</p>}
+                  {p.alerta_limite && <p className="mt-1 rounded bg-amber-50 px-1.5 py-0.5 text-amber-800">{p.alerta_limite}</p>}
+                  {p.fora_prazo && <p className="mt-1 text-amber-700">Enviado depois de 48 h.</p>}
+                  {p.anexos > 0 && !p.restrito && podeDecidir && (
+                    <Button size="sm" variant="outline" className="mt-1" onClick={() => setCofre(p)}><ShieldCheck className="h-3.5 w-3.5" /> Ver documento</Button>
+                  )}</td>
                 <td className="px-3 py-2 text-xs"><span className={`rounded px-1.5 py-0.5 font-medium ${STATUS_PEDIDO[p.status].cor}`}>{STATUS_PEDIDO[p.status].label}</span>
                   {p.decidido_em && <p className="mt-1 text-muted-foreground">{p.decidido_por ?? ''} · {p.decidido_em}</p>}
                   {p.resposta && <p className="mt-1 text-muted-foreground">{p.resposta}</p>}
                   {p.abono_estornado && <p className="mt-1 text-red-700">abono estornado depois</p>}</td>
                 <td className="px-3 py-2 text-xs">
-                  {podeDecidir && p.status === 'pendente' && (negando === p.id ? (
+                  {podeDecidir && p.pode_decidir && p.status === 'pendente' && (negando === p.id ? (
                     <div className="w-80 space-y-1.5">
                       <Textarea rows={3} value={resposta} maxLength={500} autoFocus onChange={e => setResposta(e.target.value)}
                         placeholder="Ex.: não há registro de você na obra nesse horário." />
@@ -518,6 +526,7 @@ function Pedidos({ linhas, podeDecidir, aoDecidir }: { linhas: PontoJustificativ
           </tbody>
         </table>
       </div>
+      {cofre && <Cofre justificativa={cofre.id} numero={cofre.numero} onFechar={() => setCofre(null)} />}
       {podeDecidir && <p className="text-xs text-muted-foreground">Aprovar "Esqueci de marcar" ou "App falhou" inclui a marcação (registro à parte, Portaria 671). Aprovar atraso ou saída antecipada abona o período, sem criar marcação. O funcionário recebe a resposta pelo WhatsApp.</p>}
     </div>
   )

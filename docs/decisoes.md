@@ -669,3 +669,10 @@ não se apaga (trilha do ajuste), mas `observacao` e `resposta` são **anonimiza
 guarda (o gatilho `fn_ponto_justificativa_guarda` permite só isso num pedido decidido). O executor do
 descarte entra com a rotina de guarda do cofre de anexos (E2, decisão 56); o primeiro texto vence em
 10/2031. No painel, o campo da negativa avisa que o texto vai ao funcionário pelo WhatsApp.
+**Decisão 56, implementação (11/10, migration 68):** pgcrypto AES-256 com chave `COFRE_PONTO` gerada no próprio banco
+e guardada no Vault; permissão `ve_saude` em `painel_usuarios`; visualização em canvas com marca d'água
+de quem vê, sem botão de baixar e com a impressão bloqueada enquanto o documento está aberto; foto
+reduzida e regravada no aparelho (sai a localização da foto). **Consequência operacional:** a chave
+precisa de cópia fora do Supabase (`docs/operacao.md`), senão um backup restaurado não abre os
+documentos. Mídia pelo WhatsApp fica para a E2b; até lá, Saúde, Família e Convocação são pelo app.
+

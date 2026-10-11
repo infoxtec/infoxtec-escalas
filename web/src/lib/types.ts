@@ -5,7 +5,7 @@ export type StatusEscala =
   | 'rascunho' | 'agendada' | 'notificada' | 'confirmada' | 'recusada'
   | 'reagendada' | 'em_execucao' | 'concluida' | 'cancelada'
 
-export interface Acesso { email: string | null; papel: Papel | null; nome: string | null }
+export interface Acesso { email: string | null; papel: Papel | null; nome: string | null; ve_saude?: boolean }
 
 export interface EscalaPainel {
   id: string
@@ -113,7 +113,7 @@ export function coordenadasDoLink(link: string): { latitude: number; longitude: 
 
 export interface UsuarioPainel {
   email: string; nome: string | null; papel: Papel; ativo: boolean
-  criado_por: string | null; created_at: string
+  criado_por: string | null; created_at: string; ve_saude: boolean
 }
 
 export interface ResultadoLote { tecnico_id: string; tecnico: string | null; escala_id: string | null; resultado: string }
@@ -358,13 +358,14 @@ export interface PontoJustificativa {
   data: string; detalhe: string; tipo_marcacao: string | null; hora: string | null; hora_ini: string | null; hora_fim: string | null
   observacao: string | null; canal: 'app' | 'whatsapp'; status: 'pendente' | 'aprovada' | 'negada' | 'cancelada'
   decidido_por: string | null; decidido_em: string | null; resposta: string | null; criado_em: string; abono_estornado: boolean
+  data_fim: string | null; restrito: boolean; pode_decidir: boolean; anexos: number; alerta_limite: string | null; fora_prazo: boolean
 }
 export interface PontoAbono {
   id: string; tecnico_id: string; tecnico: string; data: string; detalhe: string; pedido: number | null
   estornado: boolean; motivo: string | null; autor: string | null; criado_em: string
 }
 // App do funcionário: meus pedidos
-export interface PontoMeuPedido { numero: number; motivo: string; data: string; detalhe: string; status: PontoJustificativa['status']; resposta: string | null; criado_em: string }
+export interface PontoMeuPedido { numero: number; motivo: string; data: string; detalhe: string; status: PontoJustificativa['status']; resposta: string | null; criado_em: string; alerta: string | null }
 // Ajuste de ponto com justificativa (backlog 084 entrega 2, migration 65); leitura recebe motivo e autor nulos
 export interface PontoAjuste {
   id: string; tecnico_id: string; tecnico: string; data: string; hora: string
