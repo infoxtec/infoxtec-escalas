@@ -275,10 +275,10 @@ function Aviso({ empresa, onCiente }: { empresa: string; onCiente: () => Promise
 // Aba Ajuste (084 entrega 3, decisão 55; textos da persona marca, sem ameaça — decisão 57).
 // Nesta entrega, só a categoria Ponto; Saúde, Família e Convocação chegam com o anexo (E2).
 const GRUPOS = [
+  { id: 'ponto', titulo: 'Ponto', ajuda: 'esqueci de marcar, atrasei ou o app falhou' },
   { id: 'saude', titulo: 'Saúde', ajuda: 'atestado, consulta ou exame' },
   { id: 'familia', titulo: 'Família', ajuda: 'falecimento, casamento ou nascimento' },
   { id: 'convocacao', titulo: 'Convocação', ajuda: 'justiça, eleição ou outra' },
-  { id: 'ponto', titulo: 'Ponto', ajuda: 'esqueci de marcar, atrasei ou o app falhou' },
 ] as const
 const MOTIVOS_PONTO = [
   { id: 'esqueci_marcar', label: 'Esqueci de marcar' },
@@ -340,8 +340,9 @@ function Ajuste({ token, onSair }: { token: string; onSair: () => void }) {
         <div className="grid grid-cols-2 gap-2">
           {GRUPOS.map(g => (
             <button key={g.id} type="button" onClick={() => { setGrupo(g.id); setMotivo(''); setEnviado(null); setErro(null) }}
-              className={`rounded-lg border p-3 text-left ${grupo === g.id ? 'border-primary bg-primary/5' : 'hover:border-primary'}`}>
-              <p className="text-sm font-semibold">{g.titulo}</p><p className="text-xs text-muted-foreground">{g.ajuda}</p>
+              className={`rounded-lg border p-3 text-left ${grupo === g.id ? 'border-primary bg-primary/5' : 'hover:border-primary'} ${g.id !== 'ponto' ? 'opacity-60' : ''}`}>
+              <p className="text-sm font-semibold">{g.titulo}{g.id !== 'ponto' && <span className="ml-1 text-[10px] font-normal text-muted-foreground">em breve</span>}</p>
+              <p className="text-xs text-muted-foreground">{g.ajuda}</p>
             </button>
           ))}
         </div>
