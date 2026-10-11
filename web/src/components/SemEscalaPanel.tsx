@@ -77,7 +77,8 @@ export default function SemEscalaPanel({ podeEditar, onCriar, atualizarEm }: {
       {aberto && (
         <div className="space-y-3 border-t px-4 py-3">
           {erro && <p className="text-sm text-destructive">{erro}</p>}
-          {p && !p.exige_escala && <p className="text-xs text-muted-foreground">Este dia não exige escala pela configuração atual (dias úteis).</p>}
+          {p && !p.exige_escala && <p className="text-xs text-muted-foreground">{p.feriado ? `Feriado (${p.feriado}): não exige escala. Escala em feriado é excepcional.` : 'Este dia não exige escala pela configuração atual (dias úteis).'}</p>}
+          {p && (p.afastados ?? 0) > 0 && <p className="text-xs text-muted-foreground">{p.afastados} técnico(s) afastado(s) neste dia não entram na conta.</p>}
           {p && qtd === 0 && <p className="text-sm text-green-700 dark:text-green-400">Todos os técnicos ativos têm escala neste dia.</p>}
           {p && qtd > 0 && (
             <div className="flex flex-wrap gap-2">

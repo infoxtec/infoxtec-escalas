@@ -41,6 +41,18 @@ async function emailVerificado(req: Request): Promise<string | null> {
   }
 }
 
+/** Nível da sessão (aal1 só senha; aal2 com o código do autenticador), lido do token já conferido. */
+function nivelDaSessao(req: Request): string | null {
+  try {
+    const parte = (req.headers.get("Authorization") ?? "").split(/\s+/)[1]?.split(".")[1] ?? "";
+    const json = atob(parte.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(parte.length / 4) * 4, "="));
+    const aal = JSON.parse(json)?.aal;
+    return typeof aal === "string" ? aal : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Datas em dd/mm/aaaa, dd-mm-aaaa ou aaaa-mm-dd. Mesma regra de web/src/lib/ocr.ts. */
 function datasEncontradas(texto: string): string[] {
   const achadas = new Set<string>();
@@ -69,9 +81,14 @@ Deno.serve(async (req: Request) => {
   const email = await emailVerificado(req);
   if (!email) return json({ ok: false, erro: "sessao invalida" }, 401);
 
-  const [acesso] = await sql<{ papel: string | null }[]>`select fn_papel(${email}) as papel`;
+  const [acesso] = await sql<{ papel: string | null; mfa: boolean }[]>`
+    select fn_papel(${email}) as papel, coalesce(fn_config('mfa_obrigatorio'), 'false') = 'true' as mfa`;
   if (!acesso?.papel || !["admin", "gestor"].includes(acesso.papel)) {
     return json({ ok: false, erro: "sem permissao" }, 403);
+  }
+  // MFA obrigatório (decisão 67): o token já foi conferido no servidor de autenticação; o nível vem dele
+  if (acesso.mfa && nivelDaSessao(req) !== "aal2") {
+    return json({ ok: false, erro: "confirme o codigo do aplicativo autenticador" }, 403);
   }
 
   let corpo: { base64?: string; mime?: string };

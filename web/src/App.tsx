@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { ArrowLeft, Award, Building2, CalendarDays, LayoutGrid, Settings, Loader2, LogOut, MapPin, Rocket, ShieldCheck, Users } from 'lucide-react'
+import { ArrowLeft, Award, Building2, CalendarDays, KeyRound, LayoutGrid, Settings, Loader2, LogOut, MapPin, Rocket, ShieldCheck, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button, ErrorBox } from './components/ui'
 import { configurado, supabase, tipoDoLink } from './lib/supabase'
@@ -23,6 +23,8 @@ import RoadmapPage from './pages/RoadmapPage'
 import AdminPage from './pages/AdminPage'
 import EmpresasPage from './pages/EmpresasPage'
 import Verificacao from './components/Verificacao'
+import { MfaCadastrar, MfaVerificar, estadoMfa } from './components/Mfa'
+import type { EstadoMfa } from './components/Mfa'
 
 type Aba = 'inicio' | 'empresas' | 'agenda' | 'operacao' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios' | 'roadmap' | 'admin'
 
@@ -92,11 +94,20 @@ function Painel({ email }: { email: string }) {
     } catch (e) { setErro(erroMsg(e)) }
   }, [])
 
+  // verificação em duas etapas (decisão 67): código pendente nesta sessão ou cadastro obrigatório
+  const [mfa, setMfa] = useState<{ estado: EstadoMfa; temFator: boolean } | null>(null)
+  const [cadastrandoMfa, setCadastrandoMfa] = useState(false)
+  const conferirMfa = useCallback(async (a: Acesso) => {
+    const m = await estadoMfa(!!a.mfa_obrigatorio)
+    setMfa(m)
+    if (m.estado === 'ok' && a.papel) void recarregarCadastros()
+  }, [recarregarCadastros])
+
   useEffect(() => {
     api.meuAcesso()
-      .then(a => { setAcesso(a); if (a.papel) void recarregarCadastros() })
+      .then(a => { setAcesso(a); return conferirMfa(a) })
       .catch(e => setErro(erroMsg(e)))
-  }, [recarregarCadastros])
+  }, [conferirMfa])
 
   if (erro && !acesso) return <Centro><div className="max-w-md space-y-3"><ErrorBox>{erro}</ErrorBox><Button variant="outline" onClick={sair}>Sair</Button></div></Centro>
   if (!acesso) return <Centro><Loader2 className="h-5 w-5 animate-spin" /></Centro>
@@ -112,6 +123,12 @@ function Painel({ email }: { email: string }) {
       </Centro>
     )
   }
+
+  if (!mfa) return <Centro><Loader2 className="h-5 w-5 animate-spin" /></Centro>
+  const mfaPronto = () => { setCadastrandoMfa(false); void conferirMfa(acesso) }
+  if (mfa.estado === 'verificar') return <MfaVerificar onOk={mfaPronto} />
+  if (mfa.estado === 'cadastrar') return <MfaCadastrar obrigatorio onOk={mfaPronto} />
+  if (cadastrandoMfa) return <MfaCadastrar obrigatorio={false} onOk={mfaPronto} onCancelar={() => setCadastrandoMfa(false)} />
 
   const papel = acesso.papel
   const podeEditar = papel === 'admin' || papel === 'gestor'
@@ -155,6 +172,11 @@ function Painel({ email }: { email: string }) {
             <p className="text-xs font-medium">{acesso.nome ?? email}</p>
             <p className="text-[11px] text-muted-foreground">{PAPEL_LABEL[papel]}</p>
           </div>
+          {!mfa.temFator && (
+            <Button variant="ghost" size="sm" onClick={() => setCadastrandoMfa(true)} title="Ativar a verificação em duas etapas (código do celular)">
+              <KeyRound className="h-4 w-4 text-amber-600" /> <span className="hidden sm:inline">Ativar duas etapas</span>
+            </Button>
+          )}
           <Button variant="ghost" size="icon" onClick={sair} aria-label="Sair" title="Sair"><LogOut className="h-4 w-4" /></Button>
         </div>
       </header>
