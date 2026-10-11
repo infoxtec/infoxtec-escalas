@@ -756,3 +756,18 @@ usuário, data e hora e o registro de cada abertura continuam sendo o controle q
 aplicativo de desktop próprio para o cofre, com a janela excluída da captura (`setContentProtection` no
 Windows e no macOS); (b) política de DLP/MDM nas máquinas da empresa (ex.: Microsoft Intune/Purview).
 
+## 64. Alta antecipada do afastamento: o gestor registra, com a liberação médica
+
+**Data:** 12/10/2026. **Decisão do responsável (opção A):** o funcionário afastado (decisão 60) que quer voltar
+antes da validade do atestado tem a **liberação médica em mãos e fala com o gestor**; o gestor com "vê
+atestados e documentos" registra a alta no painel (Registro de Ponto › Ajustes › Afastados agora), anexando
+o documento, que vai para o cofre (canal `painel`). A alta já nasce aprovada por quem registrou; o atestado
+é abonado até a véspera, como na decisão 60. A recusa da marcação (migration 73) e os textos do app e do
+WhatsApp passam a orientar assim. O caminho do próprio funcionário (enviar a alta pelo app ou pelo
+WhatsApp) continua existindo. **Revisão (opção B, o funcionário envia e o gestor aprova):** quando o modelo
+estiver maduro ou quando vier o parecer do especialista de RH, que o **PO busca** (backlog), para decidir
+com base em quem conhece a rotina de afastamento e retorno. **Revisão `seguranca` (P3, registrados):** quem
+registrou e quem aprovou coincidem por construção (separar quando vier a opção B); o pedido do gestor conta
+na cota do funcionário (5 em 24 h, 10 em análise); afastamento de 30 dias ou mais pede exame de retorno
+(ASO, NR-7), não só a liberação médica — levar ao `juridico` junto com o parecer de RH.
+

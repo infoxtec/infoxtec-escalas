@@ -3,6 +3,7 @@ import { Check, KeyRound, Loader2, MapPin, PencilLine, RefreshCw, ShieldCheck, U
 import { Button, ErrorBox, Field, Input, Select, SuccessBox, Textarea } from '../components/ui'
 import { api, erroMsg } from '../lib/api'
 import Cofre from '../components/Cofre'
+import { prepararArquivo } from '../lib/arquivo'
 import { ALERTA_JORNADA, PONTO_ROTULO, hojeBahia, minutosHm } from '../lib/types'
 import type { Empresa, PontoAbono, PontoAcompanhamento, PontoAjuste, PontoEspelho, PontoGeo, PontoHoje, PontoJustificativa, PontoMetricas } from '../lib/types'
 
@@ -148,6 +149,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
         </div>
         {vista === 'ajustes' ? (
           <div className="space-y-5">
+            {papel !== 'leitura' && <Afastados hoje={hoje} aoRegistrar={carregar} />}
             <Pedidos linhas={pedidos} metricas={metricas} podeDecidir={papel !== 'leitura'} aoDecidir={carregar} />
             <Ajustes linhas={ajustes} marcacoes={lista} funcionarios={situacao ?? []} tecnico={tecnico} hoje={hoje}
               podeAjustar={papel !== 'leitura'} aoAjustar={carregar} />
@@ -449,6 +451,73 @@ const STATUS_PEDIDO: Record<PontoJustificativa['status'], { label: string; cor: 
   aprovada: { label: 'Aprovado', cor: 'bg-green-100 text-green-800' },
   negada: { label: 'Não aprovado', cor: 'bg-red-100 text-red-800' },
   cancelada: { label: 'Cancelado', cor: 'bg-muted text-muted-foreground' },
+}
+
+// Afastados agora (decisão 60) e alta antecipada registrada pelo gestor com a liberação médica (decisão 64):
+// o documento vai para o cofre e a alta já sai aprovada. Só quem vê atestados registra.
+function Afastados({ hoje, aoRegistrar }: { hoje: string; aoRegistrar: () => Promise<void> }) {
+  const [lista, setLista] = useState<{ tecnico_id: string; tecnico: string; afastado_ate: string; pode_registrar_alta: boolean }[] | null>(null)
+  const [aberto, setAberto] = useState<string | null>(null)
+  const [data, setData] = useState(hoje)
+  const [arquivo, setArquivo] = useState<File | null>(null)
+  const [obs, setObs] = useState('')
+  const [salvando, setSalvando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  const [ok, setOk] = useState<string | null>(null)
+  const carregar = useCallback(async () => {
+    try { setLista(await api.pontoAfastados()) } catch (e) { setErro(erroMsg(e)) }
+  }, [])
+  useEffect(() => { void carregar() }, [carregar])
+  if (!lista || lista.length === 0) return erro ? <ErrorBox>{erro}</ErrorBox> : null
+  const registrar = async (tecnico: string) => {
+    if (!arquivo) return
+    setSalvando(true); setErro(null); setOk(null)
+    try {
+      const f = await prepararArquivo(arquivo)
+      const r = await api.pontoRegistrarAlta(tecnico, data, f.base64, f.tipo, obs.trim() || null)
+      setOk(`Alta registrada (pedido ${r.numero}). ${r.afastado_ate ? `Ainda afastado até ${r.afastado_ate}: confira a data da alta.` : 'O funcionário já pode marcar o ponto e receber escala.'}`)
+      setAberto(null); setArquivo(null); setObs('')
+      await carregar(); await aoRegistrar()
+    } catch (e) { setErro(erroMsg(e)) } finally { setSalvando(false) }
+  }
+  return (
+    <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50/40 p-3">
+      <h3 className="text-sm font-semibold">Afastados agora <span className="font-normal text-muted-foreground">· sem ponto e sem escala até a data</span></h3>
+      {lista.map(a => (
+        <div key={a.tecnico_id} className="space-y-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium">{a.tecnico}</span>
+            <span className="text-muted-foreground">até {a.afastado_ate.split('-').reverse().join('/')}</span>
+            {a.pode_registrar_alta && aberto !== a.tecnico_id && (
+              <Button size="sm" variant="outline" onClick={() => { setAberto(a.tecnico_id); setData(hoje); setArquivo(null); setObs(''); setErro(null) }}>Registrar alta</Button>
+            )}
+          </div>
+          {aberto === a.tecnico_id && (
+            <div className="space-y-2 rounded border bg-card p-2">
+              <div className="flex flex-wrap items-end gap-3">
+                <Field label="Data da alta"><Input type="date" value={data} max={hoje} onChange={e => setData(e.target.value)} /></Field>
+                <Field label="Liberação médica (foto ou PDF, até 5 MB)">
+                  <Input type="file" accept="image/*,application/pdf" onChange={e => setArquivo(e.target.files?.[0] ?? null)} />
+                </Field>
+              </div>
+              <Textarea rows={2} value={obs} maxLength={500} onChange={e => setObs(e.target.value)}
+                placeholder="Observação (opcional). Não escreva diagnóstico, CID nem doença." />
+              <div className="flex gap-2">
+                <Button size="sm" disabled={!arquivo || !data || salvando} onClick={() => void registrar(a.tecnico_id)}>
+                  {salvando && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Registrar alta
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setAberto(null)}>Cancelar</Button>
+              </div>
+              <p className="text-xs text-muted-foreground">O documento vai para o cofre criptografado. A partir da data da alta, o funcionário volta a marcar o ponto e a receber escala; o atestado é abonado até a véspera.</p>
+            </div>
+          )}
+        </div>
+      ))}
+      {!lista[0].pode_registrar_alta && <p className="text-xs text-muted-foreground">Para registrar a alta é preciso a permissão “Vê atestados e documentos”.</p>}
+      {erro && <ErrorBox>{erro}</ErrorBox>}
+      {ok && <SuccessBox>{ok}</SuccessBox>}
+    </div>
+  )
 }
 
 // Pedidos de ajuste dos funcionários (app e WhatsApp, decisão 55): o gestor aprova ou nega.
