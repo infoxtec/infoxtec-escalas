@@ -461,3 +461,20 @@ select pg_terminate_backend(12345);
 **Para escrever sem risco de travar**, use `./scripts/backlog-conferir.sh` como referência: por `psql`,
 com `lock_timeout` de 5s — se a tabela estiver presa, ele falha em 5 segundos dizendo quem prende, em
 vez de esperar para sempre.
+
+## Chave do cofre de documentos do ponto (decisão 56)
+
+O documento das justificativas (atestado, certidão) é cifrado no banco com a chave `COFRE_PONTO` do
+Vault, criada pela migration 68. O backup do banco leva os documentos cifrados, **mas a chave do Vault
+não vai junto** de forma utilizável: sem uma cópia dela, uma restauração não abre nenhum documento.
+Uma vez, logo depois de aplicar a migration 68 na produção, o responsável guarda a chave no seu
+gerenciador de senhas, **num registro separado da `BACKUP_SENHA`** (quem tiver as duas abre os atestados de um backup), nunca no repositório nem em mensagem:
+
+```sql
+-- PRODUÇÃO (zpckrxydqqmmcrphrkxz), SQL Editor. Esperado: 1 linha com 64 caracteres hexadecimais.
+select decrypted_secret as chave_cofre_ponto from vault.decrypted_secrets where name = 'COFRE_PONTO';
+```
+
+Na restauração, antes de abrir documentos, recriar o segredo com o mesmo valor:
+`select vault.create_secret('<valor guardado>', 'COFRE_PONTO');` (se já existir outro, apagar antes).
+

@@ -15,6 +15,7 @@
 -- T12 fuso do motor: fila do WhatsApp na hora local, não em UTC nem no fuso da sessão
 -- T13 habilidades exigidas pelo tipo de atividade (apto, nível abaixo, faltando)
 -- T14 justificativa de ponto: pedido no WhatsApp e no app, aprovar, negar, abono, falta no espelho
+-- T15 atestado no cofre: documento cifrado, só quem vê atestados vê e decide, limite legal, abono por dia
 
 \set ON_ERROR_STOP on
 begin;
@@ -595,7 +596,7 @@ begin
   r := fn_ponto_wh(pg_temp.msg(v_tel, 'J1', '{"conversation":"Ajuste"}'));
   perform pg_temp.ok(r->>'acao' = 'ajuste_menu', '[T14] menu: ' || coalesce(r::text, 'null'));
   r := fn_ponto_wh(pg_temp.msg(v_tel, 'J2', '{"conversation":"2"}'));
-  perform pg_temp.ok(r->>'acao' = 'ajuste_em_breve', '[T14] família: ' || coalesce(r::text, 'null'));
+  perform pg_temp.ok(r->>'acao' = 'ajuste_pelo_app', '[T14] família: ' || coalesce(r::text, 'null'));
   perform fn_ponto_wh(pg_temp.msg(v_tel, 'J3', '{"conversation":"ajuste"}'));
   perform fn_ponto_wh(pg_temp.msg(v_tel, 'J4', '{"conversation":"4"}'));
   r := fn_ponto_wh(pg_temp.msg(v_tel, 'J5', '{"conversation":"1"}'));
@@ -662,7 +663,96 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T14' as resultado,
+-- T15 atestado no cofre (migration 68, decisão 56) -------------------------------------------------------
+do $$
+declare
+  v_tok  text := (select v from qa where k = 'token');
+  v_tec  uuid := (select v::uuid from qa where k = 'tec1');
+  v_hoje date := (now() at time zone 'America/Bahia')::date;
+  d date := v_hoje - 8;
+  v_jpg  bytea := '\xffd8ffe000104a46494600010100000100010000ffd9'::bytea;
+  r jsonb; v_id uuid; v_anexo uuid; v_ok boolean; x record; v_n int;
+begin
+  -- documento obrigatório e conferido pelos primeiros bytes
+  v_ok := false;
+  begin perform ponto_justificar_falta(v_tok, 'atestado', d, d + 1);
+  exception when others then v_ok := sqlerrm like '%Falta o documento%'; end;
+  perform pg_temp.ok(v_ok, '[T15] atestado sem documento aceito');
+  v_ok := false;
+  begin perform ponto_justificar_falta(v_tok, 'atestado', d, d + 1, null, null, null, encode(v_jpg, 'base64'), 'application/pdf');
+  exception when others then v_ok := sqlerrm like '%foto (JPG ou PNG) ou PDF%'; end;
+  perform pg_temp.ok(v_ok, '[T15] tipo falso aceito');
+  r := ponto_justificar_falta(v_tok, 'atestado', d, d + 1, null, null, 'Fui ao posto de saúde', encode(v_jpg, 'base64'), 'image/jpeg');
+  select * into x from ponto_justificativas where numero = (r->>'numero')::bigint;
+  v_id := x.id;
+  perform pg_temp.ok(x.status = 'pendente' and x.data_fim = d + 1 and x.canal = 'app', '[T15] pedido de atestado gravado errado');
+  select id into v_anexo from ponto_justificativa_anexos where justificativa_id = v_id;
+  perform pg_temp.ok((select conteudo from ponto_justificativa_anexos where id = v_anexo) <> v_jpg
+                     and position(v_jpg in (select conteudo from ponto_justificativa_anexos where id = v_anexo)) = 0,
+                     '[T15] documento guardado sem cifrar');
+
+  -- admin sem "vê atestados": vê só que existe, não decide, não abre o documento
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  select * into x from app_ponto_justificativas(d, d, v_tec) a where a.id = v_id;
+  perform pg_temp.ok(x.restrito and not x.pode_decidir and x.motivo_nome = 'Justificativa de saúde' and x.motivo = 'saude'
+                     and x.observacao is null, '[T15] saúde aberta para quem não vê atestados: ' || x.motivo);
+  v_ok := false;
+  begin perform app_ponto_decidir(v_id, true); exception when others then v_ok := sqlerrm like '%atestados%'; end;
+  perform pg_temp.ok(v_ok, '[T15] decidiu saúde sem permissão');
+  v_ok := false;
+  begin perform app_ponto_anexo_ver(v_anexo); exception when others then v_ok := sqlerrm like '%atestados%'; end;
+  perform pg_temp.ok(v_ok, '[T15] abriu documento sem permissão');
+
+  -- com a permissão: abre (registrado), decide, abono de cada dia
+  perform app_definir_ve_saude('qa-admin@teste.local', true);
+  r := app_ponto_anexo_ver(v_anexo);
+  perform pg_temp.ok(decode(r->>'conteudo', 'base64') = v_jpg and r->>'tipo' = 'image/jpeg', '[T15] documento não voltou igual');
+  perform pg_temp.ok((select count(*) from ponto_anexo_acessos where anexo_id = v_anexo) = 1, '[T15] acesso não registrado');
+  select * into x from app_ponto_justificativas(d, d, v_tec) a where a.id = v_id;
+  perform pg_temp.ok(not x.restrito and x.pode_decidir and x.anexos = 1 and x.motivo_nome = 'Atestado médico', '[T15] visão de quem vê atestados');
+  perform app_ponto_decidir(v_id, true);
+  perform pg_temp.ok((select count(*) from ponto_abonos where justificativa_id = v_id and inicio is null) = 2, '[T15] abono dos 2 dias');
+
+  -- limite legal alerta e não bloqueia: doação de sangue duas vezes em 12 meses
+  r := ponto_justificar_falta(v_tok, 'doacao_sangue', d - 20, null, null, null, null, encode(v_jpg, 'base64'), 'image/jpeg');
+  perform pg_temp.ok(r->>'alerta' is null, '[T15] alerta na primeira doação');
+  r := ponto_justificar_falta(v_tok, 'doacao_sangue', d - 10, null, null, null, null, encode(v_jpg, 'base64'), 'image/jpeg');
+  perform pg_temp.ok(r->>'alerta' like 'A lei garante 1 dias a cada 12 meses%', '[T15] limite não alertou: ' || coalesce(r->>'alerta', 'nulo'));
+
+  -- leitura: nunca vê saúde nem ganha a permissão
+  perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
+  select count(*) into v_n from app_ponto_justificativas(d - 20, d, v_tec) a where a.motivo_nome = 'Justificativa de saúde' and a.restrito;
+  perform pg_temp.ok(v_n >= 1, '[T15] leitura viu motivo de saúde');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  v_ok := false;
+  begin perform app_definir_ve_saude('qa-leitura@teste.local', true); exception when others then v_ok := sqlerrm like '%admin ou gestor%'; end;
+  perform pg_temp.ok(v_ok, '[T15] leitura ganhou ver atestados');
+  -- descarte controlado: o documento sai, a marca e o histórico de acesso ficam
+  perform app_definir_ve_saude('qa-admin@teste.local', true);
+  perform app_ponto_anexo_descartar(v_anexo, 'Enviado por engano pelo funcionário');
+  perform pg_temp.ok(not exists (select 1 from ponto_justificativa_anexos where id = v_anexo)
+                     and exists (select 1 from ponto_anexos_descartados where anexo_id = v_anexo)
+                     and (select count(*) from ponto_anexo_acessos where anexo_id = v_anexo) = 1, '[T15] descarte');
+  perform pg_temp.ok((select count(*) from app_ve_saude_historico() h where h.email = 'qa-admin@teste.local') >= 2, '[T15] histórico da permissão');
+  perform app_definir_ve_saude('qa-admin@teste.local', false);
+
+  -- foto pelo WhatsApp: recusada (documento só pelo app)
+  r := fn_ponto_wh(pg_temp.msg((select telefone_e164 from tecnicos where id = v_tec), 'F1',
+                               '{"imageMessage":{"caption":"atestado","mimetype":"image/jpeg"}}'));
+  perform pg_temp.ok(r->>'acao' = 'ponto_midia_recusada', '[T15] foto pelo WhatsApp: ' || coalesce(r::text, 'null'));
+  r := fn_ponto_wh(pg_temp.msg((select telefone_e164 from tecnicos where id = v_tec), 'F2',
+                               '{"ephemeralMessage":{"message":{"imageMessage":{"caption":"x"}}}}'));
+  perform pg_temp.ok(r->>'acao' = 'ponto_midia_recusada', '[T15] foto em mensagem temporária: ' || coalesce(r::text, 'null'));
+  -- família sem a permissão: não decide (documento só para quem vê atestados e documentos)
+  r := ponto_justificar_falta(v_tok, 'casamento', d - 30, d - 28, null, null, null, encode(v_jpg, 'base64'), 'image/jpeg');
+  select * into x from app_ponto_justificativas(d - 30, d - 30, v_tec) a where a.numero = (r->>'numero')::bigint;
+  perform pg_temp.ok(x.restrito and not x.pode_decidir and x.motivo = 'casamento', '[T15] família sem permissão decidível');
+  v_ok := false;
+  begin perform app_ponto_decidir(x.id, true); exception when others then v_ok := sqlerrm like '%documentos%'; end;
+  perform pg_temp.ok(v_ok, '[T15] decidiu família sem permissão');
+end $$;
+
+select 'REGRESSÃO OK: T1 a T15' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

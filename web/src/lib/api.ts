@@ -33,6 +33,11 @@ export const ponto = {
     rpc<{ numero: number; motivo: string; data: string; detalhe: string }>('ponto_justificar', {
       p_token: token, p_motivo: p.motivo, p_data: p.data, p_tipo_marcacao: p.tipo ?? null, p_hora: p.hora ?? null,
       p_hora_ini: p.ini ?? null, p_hora_fim: p.fim ?? null, p_observacao: p.observacao ?? null }),
+  // falta com documento (E2): foto já reduzida no aparelho (sem EXIF) ou PDF, em base64
+  justificarFalta: (token: string, p: { motivo: string; data: string; dataFim?: string | null; ini?: string | null; fim?: string | null; observacao?: string | null; anexo: string; anexoTipo: string }) =>
+    rpc<{ numero: number; motivo: string; data: string; detalhe: string; alerta: string | null }>('ponto_justificar_falta', {
+      p_token: token, p_motivo: p.motivo, p_data: p.data, p_data_fim: p.dataFim ?? null, p_hora_ini: p.ini ?? null, p_hora_fim: p.fim ?? null,
+      p_observacao: p.observacao ?? null, p_anexo: p.anexo, p_anexo_tipo: p.anexoTipo }),
   meusPedidos: (token: string) => rpc<PontoMeuPedido[]>('ponto_minhas_justificativas', { p_token: token }),
 }
 
@@ -98,6 +103,11 @@ export const api = {
     rpc<{ id: string; data: string; detalhe: string }>('app_ponto_abonar', { p_tecnico: tecnico, p_data: data, p_motivo: motivo, p_inicio: inicio, p_fim: fim }),
   pontoAbonos: (de: string, ate: string, tecnico: string | null) =>
     rpc<PontoAbono[]>('app_ponto_abonos', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
+  pontoAnexos: (justificativa: string) =>
+    rpc<{ id: string; tipo: string; tamanho: number; criado_em: string; visualizacoes: number }[]>('app_ponto_anexos', { p_justificativa: justificativa }),
+  pontoAnexoVer: (anexo: string) => rpc<{ tipo: string; conteudo: string; visto_por: string; em: string }>('app_ponto_anexo_ver', { p_anexo: anexo }),
+  pontoAnexoDescartar: (anexo: string, motivo: string) => rpc<void>('app_ponto_anexo_descartar', { p_anexo: anexo, p_motivo: motivo }),
+  veSaudeHistorico: () => rpc<{ email: string; valor: boolean; autor: string; em: string }[]>('app_ve_saude_historico'),
   pontoEstornarAbono: (abono: string, motivo: string) => rpc<{ id: string }>('app_ponto_estornar_abono', { p_abono: abono, p_motivo: motivo }),
   pontoAjustes: (de: string, ate: string, tecnico: string | null) =>
     rpc<PontoAjuste[]>('app_ponto_ajustes', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
@@ -151,6 +161,7 @@ export const api = {
   excluirDocumento: (id: string) => rpc<string>('app_excluir_documento', { p_id: id }),
 
   usuarios: () => rpc<UsuarioPainel[]>('app_usuarios'),
+  definirVeSaude: (email: string, valor: boolean) => rpc<void>('app_definir_ve_saude', { p_email: email, p_valor: valor }),
   salvarUsuario: (u: { email: string; nome: string; papel: Papel; ativo: boolean }) =>
     rpc<string>('app_salvar_usuario', { p_email: u.email, p_nome: u.nome, p_papel: u.papel, p_ativo: u.ativo }),
 }

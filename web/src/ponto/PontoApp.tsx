@@ -9,7 +9,7 @@ import type { PontoComprovante, PontoEu, PontoMarcacao, PontoMeuPedido, PontoTip
 // Login por CPF + código no WhatsApp; o token fica só neste aparelho; sessão única no banco.
 
 const CHAVE_TOKEN = 'trilha.ponto.token'
-const VERSAO_AVISO = 'v3-2026-10-08'
+const VERSAO_AVISO = 'v4-2026-10-11'
 const APP_VERSAO = __APP_VERSION__
 
 const TIPOS: { id: PontoTipo; label: string }[] = [
@@ -263,7 +263,8 @@ function Aviso({ empresa, onCiente }: { empresa: string; onCiente: () => Promise
     <div className="space-y-3 rounded-xl border bg-card p-5 text-sm">
       <div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" /><h1 className="text-base font-semibold">Aviso de privacidade</h1></div>
       <p><strong>{empresa}</strong> registra a sua jornada de trabalho para cumprir a obrigação legal do art. 74 da CLT e da Portaria MTP 671/2021.</p>
-      <p>Em cada marcação guardamos: nome, CPF, data e hora (do servidor, na hora legal brasileira), tipo da marcação, canal e <strong>a sua localização no momento da marcação</strong> — nunca de forma contínua. A localização serve para confirmar o local de trabalho e prevenir fraude. Para mostrar ao gestor o bairro e a cidade, a localização arredondada (cerca de 100 metros), sem nada que identifique você, é consultada no OpenStreetMap, serviço público no Reino Unido. Não coletamos foto nem biometria. Para proteger o seu acesso, o endereço de internet (IP) de cada tentativa de entrada fica guardado por 30 dias.</p>
+      <p>Em cada marcação guardamos: nome, CPF, data e hora (do servidor, na hora legal brasileira), tipo da marcação, canal e <strong>a sua localização no momento da marcação</strong> — nunca de forma contínua. A localização serve para confirmar o local de trabalho e prevenir fraude. Para mostrar ao gestor o bairro e a cidade, a localização arredondada (cerca de 100 metros), sem nada que identifique você, é consultada no OpenStreetMap, serviço público no Reino Unido. Não coletamos foto sua nem biometria. Para proteger o seu acesso, o endereço de internet (IP) de cada tentativa de entrada fica guardado por 30 dias.</p>
+      <p><strong>Justificativas com documento.</strong> Se você pedir um ajuste por falta (atestado, certidão, convocação), o documento que você enviar fica guardado <strong>criptografado</strong>, para cumprir a lei trabalhista e permitir a defesa de direitos (LGPD art. 11, II, a e d). Só as pessoas autorizadas pelo seu empregador para ver atestados abrem o documento, sem baixar, e cada abertura fica registrada. Não precisa informar a doença nem o CID. A foto é reduzida no seu celular antes do envio, o que tira dela a localização.</p>
       <p>Os dados ficam guardados por 5 anos (prazo da prescrição trabalhista). A Infoxtec Tecnologia e Serviços Ltda opera o sistema em nome do seu empregador. Você pode pedir acesso e correção ao seu empregador, e suas marcações ficam disponíveis neste app.</p>
       <Button className="w-full" disabled={ocupado} onClick={async () => { setOcupado(true); try { await onCiente() } finally { setOcupado(false) } }}>
         {ocupado ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Li e estou ciente
@@ -285,6 +286,46 @@ const MOTIVOS_PONTO = [
   { id: 'falha_registro', label: 'O app ou o WhatsApp não funcionou' },
   { id: 'atraso_saida', label: 'Cheguei atrasado ou saí mais cedo' },
 ] as const
+// Faltas com documento (E2). horario: vale só o horário (das/às); senão, dias inteiros. doc: o que anexar
+type MotivoFalta = { id: string; label: string; horario?: boolean; doc: string }
+const MOTIVOS_FALTA: Record<string, MotivoFalta[]> = {
+  saude: [
+    { id: 'atestado', label: 'Atestado médico: vale o dia ou o período indicado', doc: 'atestado' },
+    { id: 'comparecimento', label: 'Declaração de comparecimento: vale só o horário da consulta', horario: true, doc: 'declaração de comparecimento' },
+    { id: 'prenatal', label: 'Acompanhei consulta ou exame do pré-natal', horario: true, doc: 'declaração da consulta do pré-natal' },
+    { id: 'filho_6_anos', label: 'Levei filho de até 6 anos ao médico', doc: 'declaração da consulta do seu filho' },
+    { id: 'preventivo', label: 'Fiz exame preventivo de câncer', doc: 'comprovante do exame' },
+    { id: 'doacao_sangue', label: 'Doei sangue', doc: 'comprovante de doação' },
+  ],
+  familia: [
+    { id: 'falecimento', label: 'Falecimento de cônjuge, pais, avós, filhos, netos, irmão ou dependente: até 2 dias', doc: 'certidão de óbito' },
+    { id: 'casamento', label: 'Casamento: até 3 dias', doc: 'certidão de casamento' },
+    { id: 'nascimento', label: 'Nascimento ou adoção de filho', doc: 'certidão de nascimento ou termo de adoção' },
+  ],
+  convocacao: [
+    { id: 'justica', label: 'Justiça: audiência, testemunha ou júri', doc: 'intimação ou declaração da audiência' },
+    { id: 'eleitoral', label: 'Tirar ou regularizar o título de eleitor', doc: 'comprovante da Justiça Eleitoral' },
+    { id: 'mesario', label: 'Trabalhei de mesário ou na eleição', doc: 'declaração da Justiça Eleitoral' },
+    { id: 'outra_convocacao', label: 'Serviço militar, vestibular ou reunião sindical internacional', doc: 'convocação' },
+  ],
+}
+// Foto: reduzida a 1600 px e regravada em JPEG no próprio aparelho (tira a localização e os dados da foto)
+async function prepararArquivo(f: File): Promise<{ base64: string; tipo: string }> {
+  if (f.type === 'application/pdf') {
+    if (f.size > 5 * 1024 * 1024) throw new Error('O PDF precisa ter até 5 MB.')
+    const buf = new Uint8Array(await f.arrayBuffer())
+    let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000))
+    return { base64: btoa(bin), tipo: 'application/pdf' }
+  }
+  if (!f.type.startsWith('image/')) throw new Error('O documento precisa ser foto ou PDF.')
+  const bmp = await createImageBitmap(f)
+  const escala = Math.min(1, 1600 / Math.max(bmp.width, bmp.height))
+  const c = document.createElement('canvas')
+  c.width = Math.round(bmp.width * escala); c.height = Math.round(bmp.height * escala)
+  c.getContext('2d')!.drawImage(bmp, 0, 0, c.width, c.height)
+  const url = c.toDataURL('image/jpeg', 0.85)
+  return { base64: url.slice(url.indexOf(',') + 1), tipo: 'image/jpeg' }
+}
 const SITUACAO_PEDIDO: Record<PontoMeuPedido['status'], { label: string; cor: string }> = {
   pendente: { label: 'Em análise', cor: 'bg-amber-100 text-amber-800' },
   aprovada: { label: 'Aprovado', cor: 'bg-green-100 text-green-800' },
@@ -303,6 +344,8 @@ function Ajuste({ token, onSair }: { token: string; onSair: () => void }) {
   const [ini, setIni] = useState('')
   const [fim, setFim] = useState('')
   const [obs, setObs] = useState('')
+  const [dataFim, setDataFim] = useState('')
+  const [arquivo, setArquivo] = useState<{ base64: string; tipo: string; nome: string } | null>(null)
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [enviado, setEnviado] = useState<string | null>(null)
@@ -313,11 +356,25 @@ function Ajuste({ token, onSair }: { token: string; onSair: () => void }) {
   }, [token, onSair])
   useEffect(() => { void carregar() }, [carregar])
 
-  const atraso = motivo === 'atraso_saida'
-  const pronto = !!motivo && !!data && (atraso ? !!ini && !!fim && ini < fim : !!hora)
+  const falta = grupo && grupo !== 'ponto' ? MOTIVOS_FALTA[grupo].find(m => m.id === motivo) : undefined
+  const atraso = motivo === 'atraso_saida' || !!falta?.horario
+  const pronto = !!motivo && !!data && (atraso ? !!ini && !!fim && ini < fim : falta ? (!dataFim || dataFim >= data) : !!hora)
+    && (!falta || !!arquivo)
+  const escolherArquivo = async (f: File | undefined) => {
+    setErro(null); setArquivo(null)
+    if (!f) return
+    try { const a = await prepararArquivo(f); setArquivo({ ...a, nome: f.name }) } catch (e) { setErro(erroMsg(e)) }
+  }
   const enviar = async () => {
     setEnviando(true); setErro(null)
     try {
+      if (falta && arquivo) {
+        const r = await ponto.justificarFalta(token, { motivo, data, dataFim: falta.horario ? null : (dataFim || null),
+          ini: falta.horario ? ini : null, fim: falta.horario ? fim : null, observacao: obs.trim() || null, anexo: arquivo.base64, anexoTipo: arquivo.tipo })
+        setEnviado(`Pedido ${r.numero} enviado com o documento. O gestor vai analisar. A resposta chega aqui e no WhatsApp.` + (r.alerta ? ` Atenção: ${r.alerta}` : ''))
+        setGrupo(null); setMotivo(''); setIni(''); setFim(''); setObs(''); setDataFim(''); setArquivo(null)
+        await carregar(); return
+      }
       const r = await ponto.justificar(token, { motivo, data, tipo: atraso ? null : tipo, hora: atraso ? null : hora,
         ini: atraso ? ini : null, fim: atraso ? fim : null, observacao: obs.trim() || null })
       setEnviado(`Pedido ${r.numero} enviado. O gestor vai analisar. A resposta chega aqui e no WhatsApp.`)
@@ -340,15 +397,57 @@ function Ajuste({ token, onSair }: { token: string; onSair: () => void }) {
         <div className="grid grid-cols-2 gap-2">
           {GRUPOS.map(g => (
             <button key={g.id} type="button" onClick={() => { setGrupo(g.id); setMotivo(''); setEnviado(null); setErro(null) }}
-              className={`rounded-lg border p-3 text-left ${grupo === g.id ? 'border-primary bg-primary/5' : 'hover:border-primary'} ${g.id !== 'ponto' ? 'opacity-60' : ''}`}>
-              <p className="text-sm font-semibold">{g.titulo}{g.id !== 'ponto' && <span className="ml-1 text-[10px] font-normal text-muted-foreground">em breve</span>}</p>
+              className={`rounded-lg border p-3 text-left ${grupo === g.id ? 'border-primary bg-primary/5' : 'hover:border-primary'}`}>
+              <p className="text-sm font-semibold">{g.titulo}</p>
               <p className="text-xs text-muted-foreground">{g.ajuda}</p>
             </button>
           ))}
         </div>
-        {grupo && grupo !== 'ponto' && (
-          <p className="rounded-md bg-muted px-3 py-2 text-sm">Este tipo de pedido chega em breve por aqui. Por enquanto, entregue o documento ao seu gestor.</p>
-        )}
+        {grupo && grupo !== 'ponto' && (<>
+          <p className="text-sm font-semibold">Escolha o motivo</p>
+          <div className="space-y-1.5">
+            {MOTIVOS_FALTA[grupo].map(m => (
+              <label key={m.id} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${motivo === m.id ? 'border-primary bg-primary/5' : ''}`}>
+                <input type="radio" name="motivo" checked={motivo === m.id} onChange={() => { setMotivo(m.id); setArquivo(null) }} /> {m.label}
+              </label>
+            ))}
+          </div>
+          {grupo === 'saude' && <p className="text-xs text-muted-foreground">Não precisa informar a doença. (Lei 605/49, art. 6º; CLT art. 473)</p>}
+          {falta && (<>
+            <p className="text-sm font-semibold">Quando foi?</p>
+            {falta.horario ? (<>
+              <Field label="Dia"><Input type="date" value={data} max={hojeLocal()} onChange={e => setData(e.target.value)} /></Field>
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Das"><Input type="time" value={ini} onChange={e => setIni(e.target.value)} /></Field>
+                <Field label="Às"><Input type="time" value={fim} onChange={e => setFim(e.target.value)} /></Field>
+              </div>
+            </>) : (
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Dia"><Input type="date" value={data} max={hojeLocal()} onChange={e => setData(e.target.value)} /></Field>
+                <Field label="Até o dia (se mais de um)"><Input type="date" value={dataFim} min={data} onChange={e => setDataFim(e.target.value)} /></Field>
+              </div>
+            )}
+            <p className="text-sm font-semibold">Documento</p>
+            <p className="text-xs text-muted-foreground">Foto ou PDF do {falta.doc}. {grupo === 'saude' && 'Se o documento tiver o CID (código da doença), você pode cobri-lo antes da foto. '}
+              Fica guardado com segurança e só quem aprova vê.</p>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium hover:border-primary">
+                Tirar foto<input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => void escolherArquivo(e.target.files?.[0])} />
+              </label>
+              <label className="flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium hover:border-primary">
+                Escolher arquivo<input type="file" accept="image/*,application/pdf" className="hidden" onChange={e => void escolherArquivo(e.target.files?.[0])} />
+              </label>
+            </div>
+            {arquivo && <p className="flex items-center gap-1.5 text-xs text-green-800"><CheckCircle2 className="h-3.5 w-3.5" /> {arquivo.tipo === 'application/pdf' ? 'PDF' : 'Foto'} pronta: {arquivo.nome}</p>}
+            <Field label="Observação (opcional)" hint="Não escreva doença nem CID.">
+              <Textarea rows={2} maxLength={500} value={obs} onChange={e => setObs(e.target.value)} />
+            </Field>
+            {erro && <ErrorBox>{erro}</ErrorBox>}
+            <Button className="w-full" disabled={!pronto || enviando} onClick={() => void enviar()}>
+              {enviando && <Loader2 className="h-4 w-4 animate-spin" />} Enviar para o gestor
+            </Button>
+          </>)}
+        </>)}
         {grupo === 'ponto' && (<>
           <p className="text-sm font-semibold">Escolha o motivo</p>
           <div className="space-y-1.5">
@@ -401,6 +500,7 @@ function Ajuste({ token, onSair }: { token: string; onSair: () => void }) {
                 </div>
                 <p className="text-xs text-muted-foreground">{p.motivo} · {p.data} · {p.detalhe}</p>
                 {p.resposta && <p className="text-xs">Gestor: {p.resposta}</p>}
+                {p.alerta && p.status === 'pendente' && <p className="text-xs text-amber-700">{p.alerta}</p>}
               </li>
             ))}
           </ul>
