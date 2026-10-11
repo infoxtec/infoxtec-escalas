@@ -254,6 +254,13 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 77 (11/10): feriado e afastado fora da cobrança; MFA (decisões 65 e 67)
+
+- `fn_pendencias_escala`: feriado não exige escala; técnico afastado no dia não conta como sem escala;
+  devolve `feriado` e `afastados`.
+- `config.mfa_obrigatorio` (nasce `false`). `app_exigir`: com ela ligada, só sessão aal2 (código do
+  aplicativo autenticador). `app_meu_acesso` devolve `mfa_obrigatorio`. Teste T23.
+
 ### Migration 76 (11/10): limpeza da estrutura (decisão 66)
 
 - Checklist Sistema: o item "Tarefas agendadas" aponta, como falha, qualquer uma das 5 tarefas

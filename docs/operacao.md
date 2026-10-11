@@ -494,3 +494,28 @@ read -rs -p "Cole a chave do cofre: " K; echo; K=$(printf '%s' "$K" | tr -d '[:s
 Na restauração, antes de abrir documentos, recriar o segredo com o mesmo valor:
 `select vault.create_secret('<valor guardado>', 'COFRE_PONTO');` (se já existir outro, apagar antes).
 
+## Verificação em duas etapas (MFA) — decisão 67
+
+Cada usuário ativa pelo botão **Ativar duas etapas** no topo do painel (QR no aplicativo autenticador).
+Com todos cadastrados, o responsável liga a obrigatoriedade:
+
+```sql
+-- PRODUÇÃO (zpckrxydqqmmcrphrkxz). Antes: conferir que todos os usuários do painel têm o fator.
+select u.email, count(f.id) filter (where f.status = 'verified') as fatores
+  from auth.users u left join auth.mfa_factors f on f.user_id = u.id
+ where u.email in (select email from painel_usuarios where ativo) group by u.email order by 2, 1;
+-- Ligar (todos com fatores >= 1):
+update config set valor = 'true' where chave = 'mfa_obrigatorio';
+-- Desligar em emergência:
+update config set valor = 'false' where chave = 'mfa_obrigatorio';
+```
+
+**Antes de ligar:** publicar a `documento-ocr` desta versão (`npx supabase functions deploy documento-ocr`),
+que também passa a exigir o código. **Usuário novo** (criado depois de ligar): cadastra o código na hora,
+junto com o administrador — quem tem só a senha de uma conta ainda sem código conseguiria cadastrar o
+próprio celular. **A conta da Infoxtec no Supabase também precisa de MFA**: o SQL Editor é a saída de
+emergência para desligar a obrigatoriedade.
+
+Usuário que perdeu o celular: Supabase › Authentication › Users › o usuário › remover o fator (MFA);
+no próximo acesso ele cadastra de novo.
+

@@ -23,6 +23,7 @@
 -- T20 alta antecipada registrada pelo gestor: só com "vê atestados", documento no cofre, libera o ponto
 -- T21 véspera de feriado: o alerta da escala de amanhã não sai
 -- T22 limpeza da estrutura: objetos sem chamador removidos; Checklist aponta tarefa obrigatória faltando
+-- T23 feriado não exige escala; MFA obrigatório barra sessão sem o código (aal1) e libera com ele (aal2)
 
 \set ON_ERROR_STOP on
 begin;
@@ -1121,7 +1122,35 @@ begin
   end if;
 end $$;
 
-select 'REGRESSÃO OK: T1 a T22' as resultado,
+-- T23 feriado no painel e MFA (migration 77, decisões 65 e 67) ---------------------------------------------
+do $$
+declare v_dia date := '2030-01-08'; r jsonb; v_ok boolean;
+begin
+  update config set valor = '1,2,3,4,5' where chave = 'alerta_dias_semana';
+  insert into feriados (data, nome, abrangencia) values (v_dia, 'QA feriado', 'nacional') on conflict do nothing;
+  r := fn_pendencias_escala(v_dia);
+  perform pg_temp.ok(not (r->>'exige_escala')::boolean and r->>'feriado' is not null and r ? 'afastados', '[T23] feriado exigindo escala: ' || r::text);
+  perform pg_temp.ok((fn_pendencias_escala('2030-01-09')->>'exige_escala')::boolean, '[T23] dia útil sem exigir escala');
+
+  -- MFA: desligado não muda nada; ligado exige aal2
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal1"}', true);
+  perform app_exigir(array['admin']);
+  update config set valor = 'true' where chave = 'mfa_obrigatorio';
+  v_ok := false;
+  begin perform app_exigir(array['admin']);
+  exception when others then v_ok := sqlerrm like '%autenticador%'; end;
+  perform pg_temp.ok(v_ok, '[T23] MFA obrigatório aceitou sessão sem o código');
+  perform pg_temp.ok((app_meu_acesso()->>'mfa_obrigatorio')::boolean, '[T23] painel não sabe que o MFA é obrigatório');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform pg_temp.ok(app_exigir(array['admin']) = 'qa-admin@teste.local', '[T23] sessão com o código barrada');
+  perform pg_temp.ok(app_pode_gerir_documentos(), '[T23] documentos barrados com o código');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal1"}', true);
+  perform pg_temp.ok(not app_pode_gerir_documentos(), '[T23] documentos (Storage) liberados sem o código');
+  update config set valor = 'false' where chave = 'mfa_obrigatorio';
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T23' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

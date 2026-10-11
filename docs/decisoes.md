@@ -792,3 +792,16 @@ retenção da operação). `banco-de-dados.md` ganha o mapa por domínio. **Não
 sem uso ficam (as tabelas ainda são pequenas e eles sustentam as chaves estrangeiras); colunas e chaves de
 `config` sem uso só depois de levantamento uma a uma (remover coluna não tem volta).
 
+## 67. Verificação em duas etapas (MFA) no painel
+
+**Data:** 11/10/2026. **Origem:** backlog 037 (P0): uma senha vazada entregava o banco inteiro, agora
+incluindo os atestados do cofre. **Decisão do responsável:** MFA com código de aplicativo autenticador
+(TOTP do Supabase Auth), entregue junto com o ajuste de feriado (decisão 65) num pacote pequeno.
+**Como (migration 77, painel 3.22.0):** o painel cadastra o aplicativo (QR) e pede o código quando o
+usuário tem fator cadastrado; `app_exigir` exige a sessão confirmada (aal2) quando
+`config.mfa_obrigatorio = 'true'`. **Nasce desligado:** o responsável cadastra o próprio código, os
+demais usuários cadastram, e só então liga a obrigatoriedade — ninguém fica sem acesso. **Perda do
+celular:** um administrador remove o fator do usuário no Supabase (Authentication › Users), e o usuário
+cadastra de novo. **Também (decisão 65 ampliada):** o painel "Técnicos sem escala" e o alerta deixam de
+cobrar escala em feriado e de contar técnico afastado como "sem escala".
+
