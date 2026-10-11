@@ -713,8 +713,12 @@ nada do PDF nem oferecer download); o aviso de escalas aos supervisores, só no 
 que foi saúde — aceito, porque precisam remanejar. **Condição para a produção (revisão `seguranca`,
 P2):** conferir que a Evolution não guarda a mídia (`S3_ENABLED` desligado, `WEBHOOK_BASE64` desligado,
 o que `DATABASE_SAVE_DATA_NEW_MESSAGE` grava) e desligar o download automático de mídia no celular da
-empresa; se algo guardar, definir a limpeza e o prazo aqui. **Revisão:** quando sair a API oficial
-(decisão 33).
+empresa; se algo guardar, definir a limpeza e o prazo aqui. **Conferido em 11/10 (responsável, opção A
+com o CTO):** download automático de mídia desligado no celular da empresa e atestados já baixados
+apagados; no servidor em execução, `DATABASE_SAVE_DATA_NEW_MESSAGE=false` e `S3_ENABLED` e
+`WEBHOOK_BASE64` ausentes (desligados por padrão), igual a `infra/evolution/docker-compose.yml`. Nada no
+sistema depende de mensagem guardada na Evolution. **Revisão:** quando sair a API oficial (decisão 33)
+ou ao trocar a configuração da Evolution.
 
 ## 62. Timbre com registro e QR de verificação no documento do cofre
 
