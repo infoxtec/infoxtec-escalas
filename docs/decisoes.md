@@ -779,3 +779,16 @@ alerta só olhava o dia da semana. **Como (migration 75):** `fn_alerta_prazo_esc
 `feriados` (a mesma da URA, migration 64). Escala para feriado continua podendo ser criada e enviada.
 Teste T21.
 
+## 66. Limpeza da estrutura: tarefas obrigatórias conferidas e objetos sem uso removidos
+
+**Data:** 11/10/2026. **Origem:** diagnóstico do DeepSeek (item 3) aprofundado pelo time. **Achado
+principal:** a tarefa `limpeza-logs` nunca foi agendada na produção — o histórico do agendador crescia
+cerca de 3 mil linhas por dia e o log do webhook passaria do prazo de 30 dias em 21/10. **Decisão do
+responsável:** agendar a limpeza (feito pelo responsável) e, na migration 76: o Checklist Sistema passa a
+apontar tarefa obrigatória faltando; saem 6 objetos sem chamador (conferidos no painel, Edge Functions,
+gatilhos, funções e views): `app_config`, `app_documentos_expirados`, `app_salvar_tecnico_habilidade`,
+`app_ponto_marcacoes`, `vw_resumo_dia`, `fn_set_ator`. `vw_documentos_expirados` fica (consulta de
+retenção da operação). `banco-de-dados.md` ganha o mapa por domínio. **Não feito, de propósito:** índices
+sem uso ficam (as tabelas ainda são pequenas e eles sustentam as chaves estrangeiras); colunas e chaves de
+`config` sem uso só depois de levantamento uma a uma (remover coluna não tem volta).
+

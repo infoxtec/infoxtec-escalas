@@ -148,7 +148,7 @@ cron 7. Todo o resto cresce para sempre.
 | L1 | **Sem inventário formal, base legal, aviso de privacidade e canal do titular** (bloco 2 de segurança, itens 5 a 8, todos abertos). A decisão 32 já reconheceu que o aviso é pré-requisito das etapas 20 e 21 | Alta |
 | L2 | **Saúde acessível ao papel `leitura`** (S1) e **ASO exposto ao `leitura`** em `app_documentos_por_tecnico` | Alta |
 | L3 | **Retenção só para logs** (4.1) | Alta |
-| L4 | **O expurgo de 5 anos não tem executor:** `app_documentos_expirados()` existe e **não é chamado por nenhuma tela**; `desligado_em` é campo opcional. O prazo é declaração, não processo | Alta |
+| L4 | **O expurgo de 5 anos não tem executor:** `app_documentos_expirados()` existia sem tela e foi removida na migration 76 (11/10); a view `vw_documentos_expirados` lista o vencido, mas o expurgo continua sem executor (backlog); `desligado_em` é campo opcional. O prazo é declaração, não processo | Alta |
 | L5 | **Excluir técnico deixa os arquivos no bucket** — o metadado cai em cascata, o objeto não. O direito de eliminação não se cumpre para ASO/NR | Alta |
 | L6 | **Exclusão definitiva apaga demais e registra de menos:** remove escalas, mensagens e auditoria (pode conflitar com guarda de registro trabalhista), sem *legal hold*; `log_exclusoes` guarda só contagem e UUID | Média |
 | L7 | **Após excluir o técnico, telefone e conteúdo continuam no `webhook_eventos` por até 30 dias** | Média |

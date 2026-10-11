@@ -13,7 +13,7 @@ Bucket **privado** `documentos` no Storage do Supabase:
 
 `retencao_documentos_anos` = 5. A contagem comeca na **data de desligamento** do tecnico,
 informada no cadastro (`tecnicos.desligado_em`). A view `vw_documentos_expirados` lista o que ja
-passou do prazo; `app_documentos_expirados()` expoe isso ao administrador.
+passou do prazo (consulta de operacao, em docs/operacao.md).
 
 ```sql
 select * from vw_documentos_expirados;
