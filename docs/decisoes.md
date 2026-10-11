@@ -697,3 +697,22 @@ deixa de bloquear. **Risco aceito pelo responsável:** a Portaria MTP 671/2021 t
 marcação de ponto; bloquear a marcação no afastamento pode ser questionado em fiscalização. A
 alternativa (alertar sem bloquear) foi levantada e não escolhida. **Revisão:** parecer do advogado (076).
 
+## 61. Documento da justificativa também pelo WhatsApp, direto ao cofre
+
+**Data:** 11/10/2026. **Contexto:** a decisão 56 levou o documento só para o app, e o WhatsApp recusava
+foto e arquivo. Muitos funcionários usam só o WhatsApp. **Decisão (E2b, aprovada pelo responsável):** o
+pedido de ajuste no WhatsApp aceita Saúde, Família e Convocação e pede a foto ou o PDF na última etapa.
+**Como (migration 70):** o arquivo só é aceito nessa etapa; a Edge Function `webhook-evolution`, que até
+aqui só repassava, passa a baixar o arquivo da Evolution quando o banco pede (`ponto_baixar_midia`),
+tira os metadados da imagem e entrega ao banco, que confere o tipo pelos bytes e cifra no cofre. O log
+do webhook continua sem mídia (lista de chaves da migration 68); a chave da mídia não é guardada; o
+texto ao funcionário diz só "Saúde". **Limites aceitos:** o arquivo passa pelo WhatsApp (Meta) e pela
+Evolution antes do cofre, como a foto que hoje vai ao celular do gestor; a remoção de EXIF vale para JPG
+e PNG (PDF vai como veio, com o tipo conferido pelos bytes; o painel desenha em canvas, sem executar
+nada do PDF nem oferecer download); o aviso de escalas aos supervisores, só no atestado, deixa deduzir
+que foi saúde — aceito, porque precisam remanejar. **Condição para a produção (revisão `seguranca`,
+P2):** conferir que a Evolution não guarda a mídia (`S3_ENABLED` desligado, `WEBHOOK_BASE64` desligado,
+o que `DATABASE_SAVE_DATA_NEW_MESSAGE` grava) e desligar o download automático de mídia no celular da
+empresa; se algo guardar, definir a limpeza e o prazo aqui. **Revisão:** quando sair a API oficial
+(decisão 33).
+

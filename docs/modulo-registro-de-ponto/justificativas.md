@@ -80,6 +80,7 @@ escolhido já revela saúde.
 |---|---|---|---|
 | **E1** | `ponto_motivos`, `ponto_justificativas` e `ponto_abonos`. Falta e abonado no espelho. Categoria **Ponto** (esqueci de marcar, app falhou, atraso ou saída antecipada) pelo app e pelo WhatsApp, só com texto, comprovante opcional. Painel: lista de pedidos, aprovar ou negar, abono lançado pelo gestor | Não | Sprint 13–23/10 (a folga cobre) |
 | **E2** | Categorias **Saúde**, **Família** e **Convocação**, com anexo obrigatório, visibilidade restrita, alerta de limite e prazo de 48 h | Sim | Próxima sprint, depois das decisões e do parecer do Gabriel |
+| **E2b** | Saúde, Família e Convocação também pelo WhatsApp, com a foto ou o PDF baixado pela Edge Function direto ao cofre (migration 70, decisão 61) | Sim | 11/10 |
 | **E3** | Reincidência (só o fato, nunca o rótulo "desídia"), alerta de pedido parado há mais de 2 dias úteis e métrica | — | Depois da E2 |
 
 **Métrica de 30 dias:**
@@ -116,7 +117,7 @@ A citação ao Decreto 10.854/2021 art. 159 saiu: não foi confirmada.
 
 O menu é organizado pelo que aconteceu, não pelo inciso da lei: 4 opções, com **Ponto** em 4º.
 
-**WhatsApp** (palavra **ajuste**; rodapé *{empresa} · Trilha Ponto*). Até a E2, o menu mostra só a opção 4 e lista 1 a 3 como *em breve* (migration 67). Menu completo, a partir da E2:
+**WhatsApp** (palavra **ajuste**; rodapé *{empresa} · Trilha Ponto*). Até a E2, o menu mostrava só a opção 4 (migration 67); na E2, as opções 1 a 3 mandavam para o app; a partir da E2b (migration 70, decisão 61), o WhatsApp faz o pedido inteiro, com a foto ou o PDF na última etapa. Menu completo:
 
 ```
 Ajuste de ponto, {nome}. O que aconteceu? Toque no botão ou responda o número:

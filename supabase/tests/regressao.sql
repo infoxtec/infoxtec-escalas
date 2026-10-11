@@ -17,6 +17,7 @@
 -- T14 justificativa de ponto: pedido no WhatsApp e no app, aprovar, negar, abono, falta no espelho
 -- T15 atestado no cofre: documento cifrado, só quem vê atestados vê e decide, limite legal, abono por dia
 -- T16 validade do atestado: sem ponto e sem escala no afastamento; alta médica libera
+-- T17 documento pelo WhatsApp: falta com foto ou PDF, arquivo só na etapa do documento, direto ao cofre
 
 \set ON_ERROR_STOP on
 begin;
@@ -597,7 +598,7 @@ begin
   r := fn_ponto_wh(pg_temp.msg(v_tel, 'J1', '{"conversation":"Ajuste"}'));
   perform pg_temp.ok(r->>'acao' = 'ajuste_menu', '[T14] menu: ' || coalesce(r::text, 'null'));
   r := fn_ponto_wh(pg_temp.msg(v_tel, 'J2', '{"conversation":"2"}'));
-  perform pg_temp.ok(r->>'acao' = 'ajuste_pelo_app', '[T14] família: ' || coalesce(r::text, 'null'));
+  perform pg_temp.ok(r->>'acao' = 'ajuste_falta_menu', '[T14] família: ' || coalesce(r::text, 'null'));
   perform fn_ponto_wh(pg_temp.msg(v_tel, 'J3', '{"conversation":"ajuste"}'));
   perform fn_ponto_wh(pg_temp.msg(v_tel, 'J4', '{"conversation":"4"}'));
   r := fn_ponto_wh(pg_temp.msg(v_tel, 'J5', '{"conversation":"1"}'));
@@ -832,7 +833,106 @@ begin
   perform app_definir_ve_saude('qa-admin@teste.local', false);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T16' as resultado,
+-- T17 documento pelo WhatsApp (migration 70, E2b) ----------------------------------------------------
+do $$
+declare
+  v_emp  uuid := (select v::uuid from qa where k = 'emp');
+  v_hoje date := (now() at time zone 'America/Bahia')::date;
+  v_jpg  bytea := '\xffd8ffe000104a46494600010100000100010000ffd9'::bytea;
+  v_tel  text := '557999991717';
+  v_tec  uuid; r jsonb; x record; n int := 0;
+  img    jsonb := '{"imageMessage":{"mimetype":"image/jpeg","fileLength":{"low":1000,"high":0,"unsigned":true}}}';
+begin
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste)
+  values ('QA Documento Reis', v_tel, true, true, pg_temp.cpf('171717101'), v_emp, true) returning id into v_tec;
+
+  -- fora do pedido, arquivo continua recusado
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K0', img));
+  perform pg_temp.ok(r->>'acao' = 'ponto_midia_recusada', '[T17] arquivo fora do pedido: ' || coalesce(r::text, 'null'));
+
+  -- ajuste -> 1 Saúde -> opção inválida -> 1 Atestado -> primeiro dia -> válido até -> documento
+  perform fn_ponto_wh(pg_temp.msg(v_tel, 'K1', '{"conversation":"ajuste"}'));
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K2', '{"conversation":"1"}'));
+  perform pg_temp.ok(r->>'acao' = 'ajuste_falta_menu' and r->>'grupo' = 'saude', '[T17] menu saúde: ' || coalesce(r::text, 'null'));
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K3', '{"conversation":"99"}'));
+  perform pg_temp.ok(r->>'acao' = 'ajuste_falta_menu_repetido', '[T17] opção inexistente aceita');
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K4', '{"conversation":"1"}'));
+  perform pg_temp.ok(r->>'acao' = 'ajuste_falta_pediu_dia', '[T17] motivo: ' || coalesce(r::text, 'null'));
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K5', jsonb_build_object('conversation', to_char(v_hoje - 1, 'DD/MM'))));
+  perform pg_temp.ok(r->>'acao' = 'ajuste_falta_pediu_fim', '[T17] dia: ' || coalesce(r::text, 'null'));
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K6', jsonb_build_object('conversation', to_char(v_hoje + 60, 'DD/MM'))));
+  perform pg_temp.ok(r->>'acao' = 'ajuste_falta_fim_repetido', '[T17] validade longe demais aceita');
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K7', jsonb_build_object('conversation', to_char(v_hoje + 1, 'DD/MM'))));
+  perform pg_temp.ok(r->>'acao' = 'ajuste_pediu_documento', '[T17] validade: ' || coalesce(r::text, 'null'));
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K8', '{"conversation":"já mando"}'));
+  perform pg_temp.ok(r->>'acao' = 'ajuste_aguardando_documento', '[T17] texto na etapa do documento');
+
+  -- formato, tipo e tamanho conferidos antes de baixar
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K9', '{"videoMessage":{"mimetype":"video/mp4"}}'));
+  perform pg_temp.ok(r->>'motivo' = 'formato', '[T17] vídeo aceito: ' || coalesce(r::text, 'null'));
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K10', '{"viewOnceMessageV2":{"message":{"imageMessage":{"mimetype":"image/jpeg"}}}}'));
+  perform pg_temp.ok(r->>'motivo' = 'formato', '[T17] visualização única aceita: ' || coalesce(r::text, 'null'));
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K11', '{"documentMessage":{"mimetype":"application/msword","fileLength":"1000"}}'));
+  perform pg_temp.ok(r->>'motivo' = 'tipo', '[T17] Word aceito');
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K12', '{"documentMessage":{"mimetype":"application/pdf","fileLength":"9000000"}}'));
+  perform pg_temp.ok(r->>'motivo' = 'tamanho', '[T17] PDF de 9 MB aceito');
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K12b', '{"imageMessage":{"mimetype":"image/jpeg"}}'));
+  perform pg_temp.ok(r->>'motivo' = 'tamanho', '[T17] arquivo sem tamanho aceito');
+
+  -- download falhou: libera para reenviar; conteúdo falso: recusado e a etapa continua
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K13', img));
+  perform pg_temp.ok(r->>'acao' = 'ponto_baixar_midia' and r->>'midia_id' = 'K13' and r->>'tecnico' = v_tec::text,
+                     '[T17] baixar: ' || coalesce(r::text, 'null'));
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K13', img));
+  perform pg_temp.ok(r ? 'ignorado', '[T17] arquivo repetido baixado de novo');
+  r := fn_ponto_midia_falhou(v_tec, 'K13');
+  perform pg_temp.ok(r->>'acao' = 'ponto_documento_falhou', '[T17] falha no download: ' || coalesce(r::text, 'null'));
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K14', img));
+  r := fn_ponto_midia_receber(v_tec, 'K14', encode('%PDF-1.4 x'::bytea, 'base64'), 'image/jpeg');
+  perform pg_temp.ok(r->>'motivo' = 'conteudo', '[T17] PDF disfarçado de foto aceito: ' || coalesce(r::text, 'null'));
+  perform pg_temp.ok((select etapa from ponto_conversas where tecnico_id = v_tec and expira_em > now()) = 'aj_documento',
+                     '[T17] etapa do documento fechou depois de arquivo inválido');
+
+  -- arquivo certo: pedido pelo WhatsApp, cifrado no cofre, afastamento valendo
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K15', img));
+  perform pg_temp.ok(fn_ponto_midia_receber(v_tec, 'K13', encode(v_jpg, 'base64'), 'image/jpeg') ? 'ignorado',
+                     '[T17] arquivo de outra mensagem aceito');
+  r := fn_ponto_midia_receber(v_tec, 'K15', encode(v_jpg, 'base64'), 'image/jpeg');
+  perform pg_temp.ok(r->>'acao' = 'ajuste_registrado', '[T17] pedido: ' || coalesce(r::text, 'null'));
+  select * into x from ponto_justificativas where numero = (r->>'numero')::bigint;
+  perform pg_temp.ok(x.motivo = 'atestado' and x.canal = 'whatsapp' and x.data = v_hoje - 1 and x.data_fim = v_hoje + 1,
+                     '[T17] pedido gravado errado');
+  perform pg_temp.ok((select count(*) from ponto_justificativa_anexos a where a.justificativa_id = x.id
+                       and position(v_jpg in a.conteudo) = 0) = 1, '[T17] documento fora do cofre');
+  perform pg_temp.ok(fn_ponto_afastado_ate(v_tec, v_hoje) = v_hoje + 1, '[T17] atestado pelo WhatsApp não afastou');
+  perform pg_temp.ok(not exists (select 1 from ponto_conversas where tecnico_id = v_tec and expira_em > now()), '[T17] conversa ficou aberta');
+  perform pg_temp.ok(fn_ponto_midia_receber(v_tec, 'K15', encode(v_jpg, 'base64'), 'image/jpeg') ? 'ignorado', '[T17] pedido duplicado');
+
+  -- Família: falecimento, último dia "mesmo"; Saúde por horário: declaração de comparecimento
+  perform fn_ponto_wh(pg_temp.msg(v_tel, 'K20', '{"conversation":"ajuste"}'));
+  perform fn_ponto_wh(pg_temp.msg(v_tel, 'K21', '{"conversation":"2"}'));
+  perform fn_ponto_wh(pg_temp.msg(v_tel, 'K22', '{"conversation":"1"}'));
+  perform fn_ponto_wh(pg_temp.msg(v_tel, 'K23', '{"conversation":"ontem"}'));
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K24', '{"conversation":"Mesmo"}'));
+  perform pg_temp.ok(r->>'acao' = 'ajuste_pediu_documento', '[T17] família: ' || coalesce(r::text, 'null'));
+  perform fn_ponto_wh(pg_temp.msg(v_tel, 'K25', '{"documentWithCaptionMessage":{"message":{"documentMessage":{"mimetype":"application/pdf","fileLength":2000}}}}'));
+  r := fn_ponto_midia_receber(v_tec, 'K25', encode('%PDF-1.4 certidao'::bytea, 'base64'), 'application/pdf');
+  select * into x from ponto_justificativas where numero = (r->>'numero')::bigint;
+  perform pg_temp.ok(x.motivo = 'falecimento' and x.data = v_hoje - 1 and x.data_fim = v_hoje - 1, '[T17] falecimento: ' || coalesce(r::text, 'null'));
+  perform fn_ponto_wh(pg_temp.msg(v_tel, 'K30', '{"conversation":"ajuste"}'));
+  perform fn_ponto_wh(pg_temp.msg(v_tel, 'K31', '{"conversation":"1"}'));
+  perform fn_ponto_wh(pg_temp.msg(v_tel, 'K32', '{"conversation":"2"}'));
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K33', jsonb_build_object('conversation', to_char(v_hoje - 2, 'DD/MM'))));
+  perform pg_temp.ok(r->>'acao' = 'ajuste_falta_pediu_periodo', '[T17] comparecimento sem horário: ' || coalesce(r::text, 'null'));
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K34', '{"conversation":"8h às 10h"}'));
+  perform pg_temp.ok(r->>'acao' = 'ajuste_pediu_documento', '[T17] horário: ' || coalesce(r::text, 'null'));
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K35', '{"conversation":"0"}'));
+  perform pg_temp.ok(r->>'acao' = 'ajuste_cancelado', '[T17] cancelar na etapa do documento');
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K36', img));
+  perform pg_temp.ok(r->>'acao' = 'ponto_midia_recusada', '[T17] arquivo aceito depois de cancelar');
+end $$;
+
+select 'REGRESSÃO OK: T1 a T17' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
