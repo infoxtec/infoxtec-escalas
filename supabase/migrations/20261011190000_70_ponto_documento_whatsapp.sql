@@ -84,7 +84,7 @@ begin
   perform fn_ponto_wa(p_tel, 'Agora mande a *foto* ou o *PDF* do ' || v_doc || ': toque no 📎 e escolha Câmera ou Documento.' || E'\n'
     || 'Um arquivo, até 5 MB. Foto de visualização única não vale.'
     || case when p_dados->>'grupo' = 'saude' then E'\n' || 'Se o documento tiver o CID (código da doença), cubra antes da foto.' else '' end
-    || E'\n' || 'O documento vai para o cofre: só quem aprova vê.');
+    || E'\n' || 'O documento fica guardado no cofre e só quem aprova abre.');
   return jsonb_build_object('acao', 'ajuste_pediu_documento');
 end $$;
 
@@ -123,8 +123,9 @@ begin
                                      then (v_doc->'fileLength'->>'high')::numeric * 4294967296
                                           + ((v_doc->'fileLength'->>'low')::numeric + 4294967296) % 4294967296 end
            end;
-  if v_tam > 5242880 then
-    perform fn_ponto_wa(p_tel, 'Arquivo grande demais: até 5 MB. Tire uma foto do documento ou mande um PDF menor.');
+  -- tamanho que não dá para ler é recusado: o download só sai com tamanho conhecido
+  if v_tam is null or v_tam > 5242880 then
+    perform fn_ponto_wa(p_tel, 'Arquivo grande demais ou sem tamanho: até 5 MB. Tire uma foto do documento ou mande um PDF menor.');
     return jsonb_build_object('acao', 'ponto_documento_recusado', 'motivo', 'tamanho');
   end if;
   update ponto_conversas set dados = p_dados || jsonb_build_object('midia_id', p_wa_id, 'midia_em', now()),
@@ -183,7 +184,7 @@ begin
   if d->>'motivo' = 'atestado' then
     v_n := fn_ponto_avisar_afastamento(p_tecnico, (d->>'data')::date, (d->>'data_fim')::date, r->>'numero');
   end if;
-  update ponto_conversas set expira_em = now() where tecnico_id = p_tecnico;
+  update ponto_conversas set expira_em = now(), dados = dados - 'midia_id' - 'midia_em' where tecnico_id = p_tecnico;
   -- motivo de saúde não vai por escrito no WhatsApp: só "Saúde"
   perform fn_ponto_wa(c.tel, '✅ *Pedido ' || (r->>'numero') || ' recebido*' || E'\n'
     || case when d->>'grupo' = 'saude' then 'Saúde' else r->>'motivo' end || ' · ' || (r->>'data') || ' · ' || (r->>'detalhe') || E'\n'

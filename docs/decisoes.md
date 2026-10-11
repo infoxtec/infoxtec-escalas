@@ -708,6 +708,11 @@ tira os metadados da imagem e entrega ao banco, que confere o tipo pelos bytes e
 do webhook continua sem mídia (lista de chaves da migration 68); a chave da mídia não é guardada; o
 texto ao funcionário diz só "Saúde". **Limites aceitos:** o arquivo passa pelo WhatsApp (Meta) e pela
 Evolution antes do cofre, como a foto que hoje vai ao celular do gestor; a remoção de EXIF vale para JPG
-e PNG (PDF vai como veio). **Revisão:** quando sair a API oficial (decisão 33) ou se a Evolution passar a
-guardar mídia em disco.
+e PNG (PDF vai como veio, com o tipo conferido pelos bytes; o painel desenha em canvas, sem executar
+nada do PDF nem oferecer download); o aviso de escalas aos supervisores, só no atestado, deixa deduzir
+que foi saúde — aceito, porque precisam remanejar. **Condição para a produção (revisão `seguranca`,
+P2):** conferir que a Evolution não guarda a mídia (`S3_ENABLED` desligado, `WEBHOOK_BASE64` desligado,
+o que `DATABASE_SAVE_DATA_NEW_MESSAGE` grava) e desligar o download automático de mídia no celular da
+empresa; se algo guardar, definir a limpeza e o prazo aqui. **Revisão:** quando sair a API oficial
+(decisão 33).
 

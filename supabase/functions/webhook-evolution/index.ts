@@ -78,6 +78,35 @@ Deno.serve(async (req: Request) => {
   }
 });
 
+// 5 MB em base64 (~6,7 MB) mais o envelope JSON: acima disso, o download é abortado
+const MIDIA_MAX_BYTES = 7_500_000;
+
+// Lê o corpo em fluxo e aborta acima do teto (o tamanho declarado pelo aparelho não é confiável)
+async function lerComTeto(resp: Response, teto: number): Promise<string> {
+  if (Number(resp.headers.get("content-length") ?? 0) > teto) throw new Error("midia grande demais");
+  if (!resp.body) throw new Error("evolution sem corpo");
+  const leitor = resp.body.getReader();
+  const partes: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await leitor.read();
+    if (done) break;
+    total += value.length;
+    if (total > teto) {
+      await leitor.cancel();
+      throw new Error("midia grande demais");
+    }
+    partes.push(value);
+  }
+  const tudo = new Uint8Array(total);
+  let pos = 0;
+  for (const p of partes) {
+    tudo.set(p, pos);
+    pos += p.length;
+  }
+  return new TextDecoder().decode(tudo);
+}
+
 // Baixa o arquivo da mensagem pela Evolution (getBase64FromMediaMessage) e entrega ao banco
 async function receberMidia(tecnico: string, midiaId: string, data: unknown) {
   try {
@@ -92,10 +121,12 @@ async function receberMidia(tecnico: string, midiaId: string, data: unknown) {
       headers: { apikey: cfg.chave, "Content-Type": "application/json" },
       body: JSON.stringify({ message: { key: d.key, message: d.message }, convertToMp4: false }),
       signal: AbortSignal.timeout(20_000),
+      redirect: "error", // a chave não segue redirecionamento
     });
     if (!resp.ok) throw new Error(`evolution ${resp.status}`);
-    const corpo = await resp.json() as { base64?: string; mimetype?: string };
+    const corpo = JSON.parse(await lerComTeto(resp, MIDIA_MAX_BYTES)) as { base64?: string; mimetype?: string };
     if (!corpo.base64) throw new Error("evolution sem base64");
+    if (corpo.base64.length > 7_200_000) throw new Error("midia grande demais");
     const mime = (corpo.mimetype ?? "").split(";")[0].trim().toLowerCase();
     const base64 = semMetadados(corpo.base64.replace(/^data:[^,]*,/, ""), mime);
     await sql`select fn_ponto_midia_receber(${tecnico}::uuid, ${midiaId}, ${base64}, ${mime})`;
@@ -113,23 +144,31 @@ async function receberMidia(tecnico: string, midiaId: string, data: unknown) {
 // Tira metadados da imagem (EXIF com GPS, XMP, IPTC, textos do PNG), como o app faz ao reduzir a foto.
 // Arquivo que não é imagem, ou fora do padrão, volta como veio (o banco confere o tipo pelos bytes)
 function semMetadados(base64: string, mime: string): string {
+  const original = () => {
+    console.warn("ponto midia: metadados mantidos"); // só o marcador, nunca o conteúdo
+    return base64;
+  };
   if (mime !== "image/jpeg" && mime !== "image/png") return base64;
   let b: Uint8Array;
   try {
     b = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
   } catch {
-    return base64;
+    return original();
   }
   const partes: Uint8Array[] = [];
   if (mime === "image/jpeg") {
-    if (b[0] !== 0xff || b[1] !== 0xd8) return base64;
+    if (b[0] !== 0xff || b[1] !== 0xd8) return original();
     partes.push(b.subarray(0, 2));
     let i = 2;
     while (i + 4 <= b.length && b[i] === 0xff) {
+      if (b[i + 1] === 0xff) { // bytes de preenchimento entre segmentos
+        i++;
+        continue;
+      }
       const marca = b[i + 1];
       if (marca === 0xda) break; // início da imagem: o resto vai inteiro
       const tam = (b[i + 2] << 8) | b[i + 3];
-      if (tam < 2 || i + 2 + tam > b.length) return base64;
+      if (tam < 2 || i + 2 + tam > b.length) return original();
       // APP1 (EXIF, XMP) e APP13 (IPTC) saem; o resto (JFIF, ICC, tabelas) fica
       if (marca !== 0xe1 && marca !== 0xed) partes.push(b.subarray(i, i + 2 + tam));
       i += 2 + tam;
@@ -137,13 +176,13 @@ function semMetadados(base64: string, mime: string): string {
     partes.push(b.subarray(i));
   } else {
     const assinatura = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-    if (!assinatura.every((v, k) => b[k] === v)) return base64;
+    if (!assinatura.every((v, k) => b[k] === v)) return original();
     partes.push(b.subarray(0, 8));
     let i = 8;
     while (i + 12 <= b.length) {
       const tam = ((b[i] << 24) >>> 0) + (b[i + 1] << 16) + (b[i + 2] << 8) + b[i + 3];
       const tipo = String.fromCharCode(b[i + 4], b[i + 5], b[i + 6], b[i + 7]);
-      if (i + 12 + tam > b.length) return base64;
+      if (i + 12 + tam > b.length) return original();
       if (!["eXIf", "tEXt", "zTXt", "iTXt"].includes(tipo)) partes.push(b.subarray(i, i + 12 + tam));
       i += 12 + tam;
       if (tipo === "IEND") break;

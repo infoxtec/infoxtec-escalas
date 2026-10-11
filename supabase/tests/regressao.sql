@@ -876,6 +876,8 @@ begin
   perform pg_temp.ok(r->>'motivo' = 'tipo', '[T17] Word aceito');
   r := fn_ponto_wh(pg_temp.msg(v_tel, 'K12', '{"documentMessage":{"mimetype":"application/pdf","fileLength":"9000000"}}'));
   perform pg_temp.ok(r->>'motivo' = 'tamanho', '[T17] PDF de 9 MB aceito');
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'K12b', '{"imageMessage":{"mimetype":"image/jpeg"}}'));
+  perform pg_temp.ok(r->>'motivo' = 'tamanho', '[T17] arquivo sem tamanho aceito');
 
   -- download falhou: libera para reenviar; conteúdo falso: recusado e a etapa continua
   r := fn_ponto_wh(pg_temp.msg(v_tel, 'K13', img));
