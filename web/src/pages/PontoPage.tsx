@@ -488,13 +488,21 @@ function Pedidos({ linhas, podeDecidir, aoDecidir }: { linhas: PontoJustificativ
                   {p.abono_estornado && <p className="mt-1 text-red-700">abono estornado depois</p>}</td>
                 <td className="px-3 py-2 text-xs">
                   {podeDecidir && p.status === 'pendente' && (negando === p.id ? (
-                    <div className="w-64 space-y-1.5">
-                      <Textarea rows={2} value={resposta} maxLength={500} onChange={e => setResposta(e.target.value)}
-                        placeholder="Motivo da negativa (vai ao funcionário pelo WhatsApp; não escreva doença nem CID)" />
+                    <div className="w-80 space-y-1.5">
+                      <Textarea rows={3} value={resposta} maxLength={500} autoFocus onChange={e => setResposta(e.target.value)}
+                        placeholder="Ex.: não há registro de você na obra nesse horário." />
+                      <p className={`text-[11px] ${resposta.trim().length < 10 ? 'text-amber-700' : 'text-muted-foreground'}`}>
+                        {resposta.trim().length < 10 ? `Motivo com pelo menos 10 letras (faltam ${10 - resposta.trim().length}).` : 'Pronto para negar.'}
+                        {' '}Vai ao funcionário pelo WhatsApp: não escreva doença nem CID.
+                      </p>
                       <div className="flex gap-1.5">
-                        <Button size="sm" variant="outline" onClick={() => { setNegando(null); setResposta('') }}>Voltar</Button>
-                        <Button size="sm" disabled={resposta.trim().length < 10 || ocupado === p.id} onClick={() => void decidir(p, false)}>Negar</Button>
+                        <Button size="sm" variant="outline" onClick={() => { setNegando(null); setResposta(''); setErro(null) }}>Voltar</Button>
+                        <Button size="sm" disabled={ocupado === p.id}
+                          onClick={() => resposta.trim().length < 10 ? setErro('Escreva o motivo da negativa com pelo menos 10 letras.') : void decidir(p, false)}>
+                          {ocupado === p.id && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Negar
+                        </Button>
                       </div>
+                      {erro && negando === p.id && <p className="text-[11px] text-red-700">{erro}</p>}
                     </div>
                   ) : (
                     <div className="flex gap-1.5">
