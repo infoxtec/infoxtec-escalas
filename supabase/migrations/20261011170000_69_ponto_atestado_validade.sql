@@ -21,7 +21,7 @@ returns date language sql stable set search_path = public, extensions as $$
      and p_data between j.data and coalesce(j.data_fim, j.data)
      and not exists (select 1 from ponto_justificativas a
                       where a.tecnico_id = p_tecnico and a.motivo = 'alta_medica' and a.status in ('pendente', 'aprovada')
-                        and a.data <= p_data and a.data >= j.data)
+                        and a.data <= p_data and a.data >= j.data and a.numero > j.numero)
 $$;
 
 -- Ponto: nenhuma marcação dentro do afastamento (vale para app, WhatsApp e qualquer outro canal) --------
@@ -32,7 +32,7 @@ begin
   select coalesce(e.fuso, 'America/Bahia') into v_fuso from empresas e where e.id = new.empresa_id;
   v_ate := fn_ponto_afastado_ate(new.tecnico_id, (new.momento at time zone coalesce(v_fuso, 'America/Bahia'))::date);
   if v_ate is not null then
-    raise exception 'Você está afastado por atestado até %. Para voltar antes, envie o atestado de aptidão (alta médica) no app do ponto, aba Ajuste.',
+    raise exception 'Você está afastado até %. Para voltar antes, use o app do ponto, aba Ajuste.',
       to_char(v_ate, 'DD/MM');
   end if;
   return new;
@@ -168,6 +168,57 @@ create or replace view vw_ligacoes_pendentes as
     AND fn_ponto_afastado_ate(t.id, e.data_servico) IS NULL;
 revoke all on vw_ligacoes_pendentes from anon, authenticated, service_role;
 
+-- Falta com documento: núcleo comum (sem sessão; quem chama tira o funcionário da sessão) --------------
+create or replace function fn_ponto_falta_criar(p_tec uuid, p_motivo text, p_data date, p_data_fim date default null,
+  p_hora_ini time default null, p_hora_fim time default null, p_observacao text default null,
+  p_anexo text default null, p_anexo_tipo text default null)
+returns jsonb language plpgsql volatile set search_path = public, extensions as $$
+declare
+  v_tec   uuid := p_tec;
+  v_mot   record;
+  v_bin   bytea;
+  r       jsonb;
+begin
+  select * into v_mot from ponto_motivos where codigo = p_motivo and ativo and grupo <> 'ponto';
+  if not found then raise exception 'Escolha um motivo válido.'; end if;
+  if p_anexo is not null then
+    if length(p_anexo) > 7200000 then raise exception 'Arquivo grande demais: até 5 MB.'; end if;
+    begin v_bin := decode(p_anexo, 'base64');
+    exception when others then raise exception 'Arquivo inválido. Tire a foto de novo ou escolha outro PDF.'; end;
+    if octet_length(v_bin) > 5242880 then raise exception 'Arquivo grande demais: até 5 MB.'; end if;
+    -- tipo pelos primeiros bytes, nunca pelo que o aparelho diz
+    if not ((p_anexo_tipo = 'image/jpeg' and substring(v_bin from 1 for 3) = '\xffd8ff'::bytea)
+         or (p_anexo_tipo = 'image/png' and substring(v_bin from 1 for 8) = '\x89504e470d0a1a0a'::bytea)
+         or (p_anexo_tipo = 'application/pdf' and substring(v_bin from 1 for 5) = '\x255044462d'::bytea)) then
+      raise exception 'O documento precisa ser foto (JPG ou PNG) ou PDF.';
+    end if;
+  elsif v_mot.exige_anexo then
+    raise exception 'Falta o documento: tire a foto ou escolha o PDF.';
+  end if;
+
+  r := fn_ponto_justificativa_criar(v_tec, p_motivo, p_data, null, null, p_hora_ini, p_hora_fim, p_observacao, 'app', p_data_fim);
+  if v_bin is not null then
+    insert into ponto_justificativa_anexos (justificativa_id, tipo, tamanho, sha256, conteudo)
+    values ((r->>'id')::uuid, p_anexo_tipo, octet_length(v_bin), encode(extensions.digest(v_bin, 'sha256'), 'hex'),
+            fn_ponto_cofre_cifrar(v_bin));
+  end if;
+  return r - 'id' - 'exige_anexo';
+end $$;
+
+-- App: falta com documento, menos atestado e alta (que têm validade e regras próprias, decisão 60)
+create or replace function ponto_justificar_falta(p_token text, p_motivo text, p_data date, p_data_fim date default null,
+  p_hora_ini time default null, p_hora_fim time default null, p_observacao text default null,
+  p_anexo text default null, p_anexo_tipo text default null)
+returns jsonb language plpgsql volatile security definer set search_path = public, extensions as $$
+declare
+  v_tec uuid := fn_ponto_sessao(p_token);
+begin
+  if p_motivo in ('atestado', 'alta_medica') then
+    raise exception 'Atestado e alta médica têm envio próprio: atualize o app do ponto.';
+  end if;
+  return fn_ponto_falta_criar(v_tec, p_motivo, p_data, p_data_fim, p_hora_ini, p_hora_fim, p_observacao, p_anexo, p_anexo_tipo);
+end $$;
+
 -- App: atestado exige a validade; alta médica é de um dia. Gestor avisado das escalas no afastamento ----
 create or replace function ponto_justificar_atestado(p_token text, p_motivo text, p_data date, p_valido_ate date default null,
   p_observacao text default null, p_anexo text default null, p_anexo_tipo text default null)
@@ -180,11 +231,11 @@ declare
 begin
   if p_motivo not in ('atestado', 'alta_medica') then raise exception 'Use este envio só para atestado ou alta médica.'; end if;
   if p_motivo = 'atestado' and p_valido_ate is null then raise exception 'Informe até quando vale o atestado.'; end if;
-  r := ponto_justificar_falta(p_token, p_motivo, p_data, case when p_motivo = 'atestado' then p_valido_ate end,
-                              null, null, p_observacao, p_anexo, p_anexo_tipo);
+  r := fn_ponto_falta_criar(v_tec, p_motivo, p_data, case when p_motivo = 'atestado' then p_valido_ate end,
+                            null, null, p_observacao, p_anexo, p_anexo_tipo);
   if p_motivo = 'atestado' then
     select count(*), min(t.nome) into v_n, v_nome from escalas e join tecnicos t on t.id = e.tecnico_id
-     where e.tecnico_id = v_tec and e.data_servico between p_data and p_valido_ate
+     where e.tecnico_id = v_tec and e.data_servico between greatest(p_data, (now() at time zone 'America/Bahia')::date) and p_valido_ate
        and e.status not in ('cancelada', 'recusada', 'concluida');
     if v_n > 0 then
       perform fn_ponto_avisar_supervisores(v_tec, '⚠️ *Ponto · ' || split_part(trim(v_nome), ' ', 1) || '*: afastado de '
@@ -292,7 +343,13 @@ begin
       || 'Abonado ' || fn_ponto_pedido_detalhe(j.motivo, null, null, j.hora_ini, j.hora_fim, j.data, null) || ': esse período não é descontado.';
   else
     -- dias inteiros: um abono por dia (dia já abonado fica como está)
-    for v_dia in select g::date from generate_series(j.data, coalesce(j.data_fim, j.data), interval '1 day') g loop
+    -- atestado com alta antes da validade: abona só até a véspera da alta (depois ele trabalhou)
+    for v_dia in select g::date from generate_series(j.data,
+                   case when j.motivo = 'atestado' then coalesce(
+                     (select min(a.data) - 1 from ponto_justificativas a
+                       where a.tecnico_id = j.tecnico_id and a.motivo = 'alta_medica' and a.status in ('pendente', 'aprovada')
+                         and a.data >= j.data and a.data <= coalesce(j.data_fim, j.data) and a.numero > j.numero),
+                     coalesce(j.data_fim, j.data)) else coalesce(j.data_fim, j.data) end, interval '1 day') g loop
       if not exists (select 1 from ponto_abonos a where a.tecnico_id = j.tecnico_id and a.data = v_dia and a.inicio is null
                       and a.estorno_de is null and not exists (select 1 from ponto_abonos x where x.estorno_de = a.id)) then
         insert into ponto_abonos (empresa_id, tecnico_id, data, justificativa_id, motivo, autor)
