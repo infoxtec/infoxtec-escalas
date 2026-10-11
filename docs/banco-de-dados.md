@@ -235,6 +235,28 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 66 (11/10): justificativa de ponto pelo funcionário (084 entrega 3, E1; decisões 55 a 58)
+
+- **`ponto_motivos`**: motivos e limites legais em dado (base legal, quantidade, unidade, janela, exige
+  anexo, é saúde, ativo). Nesta entrega só os três da categoria Ponto ficam ativos; Saúde, Família e
+  Convocação estão cadastrados e inativos até a E2 (anexo no cofre, decisão 56).
+- **`ponto_justificativas`**: pedido do funcionário (número sequencial, motivo, dia, marcação e hora
+  ou período, observação até 500 letras, canal app/WhatsApp, situação pendente → aprovada/negada,
+  quem decidiu, resposta). Não se apaga. No máximo 10 pendentes por funcionário; pedido igual em
+  análise é recusado; só os últimos 62 dias, nunca o futuro.
+- **`ponto_abonos`**: falta ou atraso abonado (dia inteiro ou período), sem marcação. Imutável; estorno
+  é uma linha nova (`estorno_de`, único). `ponto_ajustes` ganha `justificativa_id`.
+- **Funções:** `ponto_justificar` e `ponto_minhas_justificativas` (app, funcionário da sessão);
+  `fn_ponto_wh_ajuste` (WhatsApp: palavra **ajuste**, menu de 4 opções, conversa de 15 min em
+  `ponto_conversas.dados`); `app_ponto_justificativas` (pendentes sempre + período; leitura sem
+  observação nem resposta), `app_ponto_decidir` (esqueci/app falhou → `ponto_ajustes incluir` ligado
+  ao pedido; atraso → abono; negar exige 10 letras e vai ao funcionário), `app_ponto_abonar`,
+  `app_ponto_estornar_abono`, `app_ponto_abonos`. Supervisores da empresa são avisados do pedido só com
+  o primeiro nome e o número.
+- **Espelho:** `fn_ponto_jornada_dia` devolve `falta` (dia com escala, já passado, sem marcação),
+  `falta_abonada`, `atraso_abonado`, `abono` e `abonado_min`; `app_ponto_espelho` lista também dias
+  com escala e com abono e ganha a coluna `abono`. Teste T14 em `supabase/tests/regressao.sql`.
+
 ### Migration 65 (10/10): ajustes de ponto com justificativa (backlog 084, entrega 2; decisão 52)
 
 - **`app_ponto_ajustar(técnico, ação, motivo, marcação, ajuste, data, hora, tipo)`** (admin e gestor):

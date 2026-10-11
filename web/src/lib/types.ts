@@ -350,8 +350,21 @@ export interface PontoEspelho {
   tecnico_id: string; tecnico: string; data: string; escala_hora: string | null
   entrada: string | null; saida_almoco: string | null; volta_almoco: string | null; saida: string | null
   trabalhado_min: number | null; intervalo_min: number | null; he_min: number | null
-  atraso_min: number | null; interjornada_min: number | null; alertas: string[]; ajustes: number
+  atraso_min: number | null; interjornada_min: number | null; alertas: string[]; ajustes: number; abono: string | null
 }
+// Pedido de ajuste do funcionário (084 entrega 3, migration 66); leitura recebe observação e resposta nulas
+export interface PontoJustificativa {
+  id: string; numero: number; tecnico_id: string; tecnico: string; motivo: string; motivo_nome: string; grupo: string
+  data: string; detalhe: string; tipo_marcacao: string | null; hora: string | null; hora_ini: string | null; hora_fim: string | null
+  observacao: string | null; canal: 'app' | 'whatsapp'; status: 'pendente' | 'aprovada' | 'negada' | 'cancelada'
+  decidido_por: string | null; decidido_em: string | null; resposta: string | null; criado_em: string; abono_estornado: boolean
+}
+export interface PontoAbono {
+  id: string; tecnico_id: string; tecnico: string; data: string; detalhe: string; pedido: number | null
+  estornado: boolean; motivo: string | null; autor: string | null; criado_em: string
+}
+// App do funcionário: meus pedidos
+export interface PontoMeuPedido { numero: number; motivo: string; data: string; detalhe: string; status: PontoJustificativa['status']; resposta: string | null; criado_em: string }
 // Ajuste de ponto com justificativa (backlog 084 entrega 2, migration 65); leitura recebe motivo e autor nulos
 export interface PontoAjuste {
   id: string; tecnico_id: string; tecnico: string; data: string; hora: string
@@ -362,7 +375,7 @@ export interface PontoAjuste {
 export const ALERTA_JORNADA: Record<string, string> = {
   intervalo_curto: 'Intervalo abaixo do mínimo', intervalo_longo: 'Intervalo acima de 2 h',
   sem_intervalo: 'Sem intervalo', he_acima_limite: 'HE acima de 2 h', interjornada_curta: 'Interjornada < 11 h',
-  atraso: 'Atraso', incompleta: 'Marcação faltando',
+  atraso: 'Atraso', incompleta: 'Marcação faltando', falta: 'Falta', falta_abonada: 'Falta abonada', atraso_abonado: 'Atraso abonado',
 }
 export function minutosHm(m: number | null | undefined): string {
   if (m == null) return '—'

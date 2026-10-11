@@ -14,6 +14,7 @@
 -- T11 ajustes de ponto com justificativa (incluir, desconsiderar, papéis, imutável)
 -- T12 fuso do motor: fila do WhatsApp na hora local, não em UTC nem no fuso da sessão
 -- T13 habilidades exigidas pelo tipo de atividade (apto, nível abaixo, faltando)
+-- T14 justificativa de ponto: pedido no WhatsApp e no app, aprovar, negar, abono, falta no espelho
 
 \set ON_ERROR_STOP on
 begin;
@@ -545,7 +546,123 @@ begin
   update tecnicos set ativo = true where id = t3;
 end $$;
 
-select 'REGRESSÃO OK: T1 a T13' as resultado,
+-- T14 justificativa de ponto (migration 66, decisões 55 a 58) ----------------------------------------
+do $$
+declare
+  v_emp uuid := (select v::uuid from qa where k = 'emp');
+  v_loc uuid := (select v::uuid from qa where k = 'loc');
+  v_hoje date := (now() at time zone 'America/Bahia')::date;
+  d1 date := v_hoje - 5; d2 date := v_hoje - 3; d3 date := v_hoje - 2;
+  v_tec uuid; v_tel text := '557999990909'; r jsonb; j jsonb; v_ok boolean; v_id uuid; v_ab uuid; v_n int; x record;
+begin
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste)
+  values ('QA Justifica Souza', v_tel, true, true, pg_temp.cpf('909909901'), v_emp, true) returning id into v_tec;
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, d1, '08:00', 'QA falta', 'notificada', 'qa'), (v_tec, v_loc, d3, '08:00', 'QA atraso', 'notificada', 'qa');
+  alter table ponto_marcacoes disable trigger user;
+  insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, latitude, longitude, hash_anterior, hash)
+  values (v_emp, 920001, v_tec, (select cpf from tecnicos where id = v_tec), (d3 + time '08:40') at time zone 'America/Bahia',
+          'entrada', 'app', -12.9, -38.4, 'qa', md5(random()::text));
+  alter table ponto_marcacoes enable trigger user;
+
+  -- falta: dia com escala, já passado, sem marcação
+  j := fn_ponto_jornada_dia(v_tec, d1);
+  perform pg_temp.ok(j->'alertas' ? 'falta', '[T14] falta não apareceu: ' || coalesce(j::text, 'null'));
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  select count(*) into v_n from app_ponto_espelho(d1, d1, v_tec) e where 'falta' = any(e.alertas);
+  perform pg_temp.ok(v_n = 1, '[T14] falta fora do espelho');
+
+  -- abono direto do gestor, repetido recusado, estorno devolve a falta
+  r := app_ponto_abonar(v_tec, d1, 'Falta justificada com documento entregue ao RH');
+  v_ab := (r->>'id')::uuid;
+  perform pg_temp.ok(fn_ponto_jornada_dia(v_tec, d1)->'alertas' ? 'falta_abonada', '[T14] abono não cobriu a falta');
+  v_ok := false;
+  begin perform app_ponto_abonar(v_tec, d1, 'Falta justificada com documento entregue ao RH');
+  exception when others then v_ok := sqlerrm like '%já foi lançado%'; end;
+  perform pg_temp.ok(v_ok, '[T14] abono repetido aceito');
+  perform app_ponto_estornar_abono(v_ab, 'Abono lançado no dia errado');
+  perform pg_temp.ok(fn_ponto_jornada_dia(v_tec, d1)->'alertas' ? 'falta', '[T14] estorno não devolveu a falta');
+  v_ok := false;
+  begin perform app_ponto_estornar_abono(v_ab, 'Abono lançado no dia errado');
+  exception when others then v_ok := sqlerrm like '%já foi estornado%'; end;
+  perform pg_temp.ok(v_ok, '[T14] estorno repetido aceito');
+  v_ok := false;
+  begin update ponto_abonos set motivo = 'trocado depois do fato' where id = v_ab;
+  exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T14] abono foi alterado');
+
+  -- pedido pelo WhatsApp: ajuste -> 4 Ponto -> 1 Esqueci -> dia -> 4 Saída -> 17h05
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'J1', '{"conversation":"Ajuste"}'));
+  perform pg_temp.ok(r->>'acao' = 'ajuste_menu', '[T14] menu: ' || coalesce(r::text, 'null'));
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'J2', '{"conversation":"2"}'));
+  perform pg_temp.ok(r->>'acao' = 'ajuste_em_breve', '[T14] família: ' || coalesce(r::text, 'null'));
+  perform fn_ponto_wh(pg_temp.msg(v_tel, 'J3', '{"conversation":"ajuste"}'));
+  perform fn_ponto_wh(pg_temp.msg(v_tel, 'J4', '{"conversation":"4"}'));
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'J5', '{"conversation":"1"}'));
+  perform pg_temp.ok(r->>'acao' = 'ajuste_pediu_dia', '[T14] motivo: ' || coalesce(r::text, 'null'));
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'J6', '{"conversation":"amanhã"}'));
+  perform pg_temp.ok(r->>'acao' = 'ajuste_dia_repetido', '[T14] dia inválido aceito');
+  perform fn_ponto_wh(pg_temp.msg(v_tel, 'J7', jsonb_build_object('conversation', to_char(d2, 'DD/MM'))));
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'J8', '{"conversation":"4"}'));
+  perform pg_temp.ok(r->>'acao' = 'ajuste_pediu_hora', '[T14] marcação: ' || coalesce(r::text, 'null'));
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'J9', '{"conversation":"17h05"}'));
+  perform pg_temp.ok(r->>'acao' = 'ajuste_registrado', '[T14] pedido pelo WhatsApp: ' || coalesce(r::text, 'null'));
+  select * into x from ponto_justificativas where tecnico_id = v_tec and canal = 'whatsapp';
+  perform pg_temp.ok(x.status = 'pendente' and x.motivo = 'esqueci_marcar' and x.data = d2 and x.tipo_marcacao = 'saida'
+                     and x.hora = time '17:05', '[T14] pedido gravado errado');
+  -- fora da conversa, número volta a ser das escalas
+  perform pg_temp.ok(fn_ponto_wh(pg_temp.msg(v_tel, 'J10', '{"conversation":"1"}')) is null, '[T14] conversa não terminou');
+
+  -- aprovar: marcação incluída por ajuste ligado ao pedido; decidir de novo é recusado
+  r := app_ponto_decidir(x.id, true);
+  perform pg_temp.ok(exists (select 1 from ponto_ajustes where justificativa_id = x.id and acao = 'incluir' and tipo = 'saida'),
+                     '[T14] aprovação sem ajuste');
+  perform pg_temp.ok(fn_ponto_jornada_dia(v_tec, d2)->>'saida' = '17:05', '[T14] saída fora do espelho');
+  v_ok := false;
+  begin perform app_ponto_decidir(x.id, false, 'motivo qualquer longo');
+  exception when others then v_ok := sqlerrm like '%já foi decidido%'; end;
+  perform pg_temp.ok(v_ok, '[T14] pedido decidido duas vezes');
+
+  -- atraso de 40 min: pedido pelo app (função comum), aprovado vira abono
+  perform pg_temp.ok(fn_ponto_jornada_dia(v_tec, d3)->'alertas' ? 'atraso', '[T14] atraso não apareceu');
+  r := fn_ponto_justificativa_criar(v_tec, 'atraso_saida', d3, null, null, '08:00', '08:40', 'Ônibus quebrou na BR', 'app');
+  v_ok := false;
+  begin perform fn_ponto_justificativa_criar(v_tec, 'atraso_saida', d3, null, null, '08:00', '08:40', null, 'app');
+  exception when others then v_ok := sqlerrm like '%pedido igual%'; end;
+  perform pg_temp.ok(v_ok, '[T14] pedido repetido aceito');
+  perform app_ponto_decidir((r->>'id')::uuid, true);
+  perform pg_temp.ok(fn_ponto_jornada_dia(v_tec, d3)->'alertas' ? 'atraso_abonado', '[T14] atraso não abonado: '
+                     || (fn_ponto_jornada_dia(v_tec, d3))::text);
+
+  -- negar exige motivo; dia futuro e sessão inválida recusados
+  r := fn_ponto_justificativa_criar(v_tec, 'falha_registro', d1, 'entrada', '08:00', null, null, null, 'app');
+  v_ok := false;
+  begin perform app_ponto_decidir((r->>'id')::uuid, false, 'curto');
+  exception when others then v_ok := sqlerrm like '%pelo menos 10%'; end;
+  perform pg_temp.ok(v_ok, '[T14] negativa sem motivo aceita');
+  perform app_ponto_decidir((r->>'id')::uuid, false, 'Não há registro do funcionário na obra nesse dia');
+  perform pg_temp.ok((select status from ponto_justificativas where id = (r->>'id')::uuid) = 'negada', '[T14] negativa não gravou');
+  v_ok := false;
+  begin perform fn_ponto_justificativa_criar(v_tec, 'esqueci_marcar', v_hoje + 1, 'entrada', '08:00', null, null, null, 'app');
+  exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T14] pedido para o futuro aceito');
+  v_ok := false;
+  begin perform ponto_justificar('token-invalido', 'esqueci_marcar', d2, 'entrada', '08:00');
+  exception when others then v_ok := sqlerrm like '%Sessão%'; end;
+  perform pg_temp.ok(v_ok, '[T14] app sem sessão aceito');
+
+  -- leitura: vê os pedidos sem observação nem resposta, e não decide
+  perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
+  select count(*) into v_n from app_ponto_justificativas(d1, v_hoje, v_tec) a where a.observacao is null and a.resposta is null;
+  perform pg_temp.ok(v_n = 3, '[T14] leitura viu observação ou resposta: ' || v_n);
+  v_ok := false;
+  begin perform app_ponto_abonar(v_tec, d1, 'Falta justificada com documento entregue');
+  exception when others then v_ok := sqlerrm like '%Sem permissão%'; end;
+  perform pg_temp.ok(v_ok, '[T14] leitura abonou');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T14' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

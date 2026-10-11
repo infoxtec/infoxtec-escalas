@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste,
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido,
 } from './types'
 
 function traduzir(msg: string): string {
@@ -28,6 +28,12 @@ export const ponto = {
     rpc<PontoComprovante>('ponto_bater', { p_token: token, p_tipo: tipo, p_lat: lat, p_lng: lng, p_precisao: precisao, p_app_versao: appVersao }),
   avisoPrevio: (token: string, tipo: PontoTipo) => rpc<string | null>('ponto_aviso_previo', { p_token: token, p_tipo: tipo }),
   minhasMarcacoes: (token: string, dias: number) => rpc<PontoMarcacao[]>('ponto_minhas_marcacoes', { p_token: token, p_dias: dias }),
+  // pedido de ajuste (084 entrega 3): o funcionário vem da sessão
+  justificar: (token: string, p: { motivo: string; data: string; tipo?: string | null; hora?: string | null; ini?: string | null; fim?: string | null; observacao?: string | null }) =>
+    rpc<{ numero: number; motivo: string; data: string; detalhe: string }>('ponto_justificar', {
+      p_token: token, p_motivo: p.motivo, p_data: p.data, p_tipo_marcacao: p.tipo ?? null, p_hora: p.hora ?? null,
+      p_hora_ini: p.ini ?? null, p_hora_fim: p.fim ?? null, p_observacao: p.observacao ?? null }),
+  meusPedidos: (token: string) => rpc<PontoMeuPedido[]>('ponto_minhas_justificativas', { p_token: token }),
 }
 
 export const api = {
@@ -84,6 +90,15 @@ export const api = {
     rpc<PontoAcompanhamento[]>('app_ponto_acompanhamento', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
   pontoEspelho: (de: string, ate: string, tecnico: string | null) =>
     rpc<PontoEspelho[]>('app_ponto_espelho', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
+  pontoJustificativas: (de: string, ate: string, tecnico: string | null) =>
+    rpc<PontoJustificativa[]>('app_ponto_justificativas', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
+  pontoDecidir: (id: string, aprovar: boolean, resposta: string | null) =>
+    rpc<{ numero: number; status: string }>('app_ponto_decidir', { p_id: id, p_aprovar: aprovar, p_resposta: resposta }),
+  pontoAbonar: (tecnico: string, data: string, motivo: string, inicio: string | null, fim: string | null) =>
+    rpc<{ id: string; data: string; detalhe: string }>('app_ponto_abonar', { p_tecnico: tecnico, p_data: data, p_motivo: motivo, p_inicio: inicio, p_fim: fim }),
+  pontoAbonos: (de: string, ate: string, tecnico: string | null) =>
+    rpc<PontoAbono[]>('app_ponto_abonos', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
+  pontoEstornarAbono: (abono: string, motivo: string) => rpc<{ id: string }>('app_ponto_estornar_abono', { p_abono: abono, p_motivo: motivo }),
   pontoAjustes: (de: string, ate: string, tecnico: string | null) =>
     rpc<PontoAjuste[]>('app_ponto_ajustes', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
   // incluir: data e hora locais (o fuso é o da empresa, no banco); desconsiderar: marcação ou inclusão
