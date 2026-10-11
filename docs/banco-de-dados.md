@@ -235,6 +235,17 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 71 (12/10): registro do documento e QR de verificação (decisão 62)
+
+- `ponto_documento_registros` (só inclusão, sem FK para o anexo, sobrevive ao descarte): registro sequencial
+  por empresa, `codigo` de verificação (16 caracteres base32), SHA-256, recebimento e canal. Numerado pelo
+  gatilho `trg_ponto_documento_registrar` com `ponto_documento_sequencia`, na mesma transação do documento
+  (sem lacuna). Documentos que já existiam foram numerados pela ordem de chegada.
+- `app_ponto_anexo_ver` devolve também registro, código, empresa, pedido, recebimento, canal, SHA-256 e
+  `integro` (recalculado a cada abertura). `app_ponto_verificar_documento(código)` (admin, gestor;
+  até 20 por minuto por usuário): conferência do QR, sem o documento; motivo de saúde mascarado sem `ve_saude`; registra em
+  `ponto_documento_verificacoes`. Teste T18.
+
 ### Migration 70 (11/10): documento da justificativa pelo WhatsApp (084 entrega 3, E2b; decisão 61)
 
 - O "ajuste" no WhatsApp aceita Saúde, Família e Convocação: menu do grupo (`fn_ponto_menu_falta`,

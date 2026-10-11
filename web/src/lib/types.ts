@@ -383,3 +383,17 @@ export function minutosHm(m: number | null | undefined): string {
   if (m == null) return '—'
   return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}`
 }
+
+// Documento aberto no cofre, com os dados do timbre (migration 71, decisão 62)
+export interface PontoDocumento {
+  tipo: string; conteudo: string; visto_por: string; em: string
+  registro: string | null; codigo: string | null; empresa: string; pedido: number
+  recebido_em: string | null; canal: string; sha256: string; integro: boolean
+}
+
+// Conferência do QR do documento
+export type PontoVerificacao = { encontrado: false } | {
+  encontrado: true; registro: string; empresa: string; pedido: number; tecnico: string; motivo: string
+  periodo: string; recebido_em: string; canal: string; status: string; decidido_por: string | null
+  decidido_em: string | null; sha256: string; integro: boolean | null; descartado: boolean; descartado_em: string | null
+}

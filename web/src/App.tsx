@@ -22,6 +22,7 @@ import HabilidadesPage from './pages/HabilidadesPage'
 import RoadmapPage from './pages/RoadmapPage'
 import AdminPage from './pages/AdminPage'
 import EmpresasPage from './pages/EmpresasPage'
+import Verificacao from './components/Verificacao'
 
 type Aba = 'inicio' | 'empresas' | 'agenda' | 'operacao' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios' | 'roadmap' | 'admin'
 
@@ -78,6 +79,8 @@ function Painel({ email }: { email: string }) {
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([])
   const [locais, setLocais] = useState<Local[]>([])
   const [tipos, setTipos] = useState<TipoAtividade[]>([])
+  // QR do timbre de documento (decisão 62): ?verificar=CODIGO abre a conferência depois do login
+  const [verificar, setVerificar] = useState<string | null>(() => new URLSearchParams(window.location.search).get('verificar'))
 
   // local: sai só deste navegador, sem derrubar o painel aberto no celular ou em outro computador
   const sair = () => { void supabase.auth.signOut({ scope: 'local' }) }
@@ -156,6 +159,7 @@ function Painel({ email }: { email: string }) {
         </div>
       </header>
       <main className="mx-auto w-full max-w-screen-2xl flex-1 px-4 py-5">
+        {verificar && <Verificacao codigo={verificar} onFechar={() => { setVerificar(null); window.history.replaceState(null, '', window.location.pathname) }} />}
         {erro && <div className="mb-4"><ErrorBox>{erro}</ErrorBox></div>}
         {aba === 'inicio' && (
           <div className="mx-auto grid max-w-4xl grid-cols-2 gap-4 py-4 sm:grid-cols-3 lg:grid-cols-4">
