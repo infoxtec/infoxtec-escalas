@@ -805,3 +805,15 @@ celular:** um administrador remove o fator do usuário no Supabase (Authenticati
 cadastra de novo. **Também (decisão 65 ampliada):** o painel "Técnicos sem escala" e o alerta deixam de
 cobrar escala em feriado e de contar técnico afastado como "sem escala".
 
+
+## 68. Duas etapas opcional por usuário; teto nos avisos aos supervisores
+
+**Data:** 12/10/2026. **Decisão do responsável:** a verificação em duas etapas fica **opcional por
+gestor**: cada usuário ativa ou desativa a sua no topo do painel ("Ativar duas etapas" / "Duas etapas
+ativas"); desativar pede um código atual do aplicativo. `config.mfa_obrigatorio` continua `false`; ligá-la segue possível (decisão 67), e aí o botão
+de desativar some. Desativar exige a sessão já confirmada com o código (regra do Supabase Auth): quem
+só tem a senha não consegue tirar o código de outra pessoa. **Teto (diagnóstico do DeepSeek, item 2):**
+a fase 3 do motor avisa no máximo `config.supervisor_avisos_por_execucao` escalas (5) por execução, as
+mais antigas primeiro; o resto vai no minuto seguinte (o teto conta escalas: o pico é 5 × supervisores
+ativos por minuto; escala que falha não ocupa o teto). Evita rajada no número do WhatsApp depois de uma
+queda da Evolution ou do motor (migration 78, painel 3.23.0, teste T24).
