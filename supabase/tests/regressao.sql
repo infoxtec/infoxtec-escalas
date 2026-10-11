@@ -791,7 +791,7 @@ begin
   -- sem ponto, sem escala nova e o motor não envia a escala antiga
   v_ok := false;
   begin perform ponto_bater(v_tok, 'entrada', -12.900100, -38.400100, 10, 'qa');
-  exception when others then v_ok := sqlerrm like '%afastado até%'; end;
+  exception when others then v_ok := sqlerrm like '%afastado até%' and sqlerrm like '%liberação médica em mãos%gestor%'; end;
   perform pg_temp.ok(v_ok, '[T16] afastado bateu ponto');
   v_ok := false;
   begin

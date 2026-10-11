@@ -235,6 +235,11 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 73 (12/10): texto da marcação recusada no afastamento
+
+- `fn_ponto_bloquear_afastado`: "Você está afastado até DD/MM. Para voltar antes, tenha a liberação médica
+  em mãos e entre em contato com seu gestor." (pedido do responsável). A regra não muda.
+
 ### Migration 72 (12/10): justificativa E3 — reincidência, pedido parado e métrica
 
 - `fn_dias_uteis(de, até)`: dias de segunda a sexta, fora de `feriados`, depois de `de` até `até` (a regra
