@@ -235,6 +235,17 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 72 (12/10): justificativa E3 — reincidência, pedido parado e métrica
+
+- `fn_dias_uteis(de, até)`: dias de segunda a sexta, fora de `feriados`, depois de `de` até `até` (a regra
+  da URA). `app_ponto_justificativas` ganhou `ponto_30d` (reincidência, só o fato e só de pedidos de
+  Ponto — atestado e falta legal nunca contam; nulo para o papel leitura) e `dias_uteis_espera`.
+- `fn_ponto_alerta_pedidos_parados`: pedido pendente há mais de 2 dias úteis avisa os supervisores, um
+  aviso por empresa por dia útil, das 08:00 às 18:00 (sem nome nem motivo). Chamado por
+  `fn_ponto_lembrete_almoco`, que já roda no cron do ponto a cada 15 minutos: nada muda no cron.
+- `app_ponto_justificativas_metricas(de, até)`: recebidos, decididos, decididos em até 2 dias úteis,
+  pendentes, parados e inclusões manuais do gestor (`incluir` sem pedido). Teste T19.
+
 ### Migration 71 (12/10): registro do documento e QR de verificação (decisão 62)
 
 - `ponto_documento_registros` (só inclusão, sem FK para o anexo, sobrevive ao descarte): registro sequencial

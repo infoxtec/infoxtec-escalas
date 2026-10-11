@@ -19,6 +19,7 @@
 -- T16 validade do atestado: sem ponto e sem escala no afastamento; alta médica libera
 -- T17 documento pelo WhatsApp: falta com foto ou PDF, arquivo só na etapa do documento, direto ao cofre
 -- T18 registro do documento: número sequencial por empresa, QR de verificação, integridade e descarte
+-- T19 E3: dias úteis, reincidência (só o fato), pedido parado, alerta aos supervisores e métrica
 
 \set ON_ERROR_STOP on
 begin;
@@ -988,7 +989,54 @@ begin
   perform app_definir_ve_saude('qa-admin@teste.local', false);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T18' as resultado,
+-- T19 reincidência, pedido parado e métrica (migration 72, E3) ----------------------------------------
+do $$
+declare
+  v_tec  uuid := (select id from tecnicos where telefone_e164 = '557999991717');
+  v_hoje date := (now() at time zone 'America/Bahia')::date;
+  v_id   uuid; x record; m jsonb; v_n int;
+  v_janela boolean := extract(isodow from now() at time zone 'America/Bahia') between 1 and 5
+                      and (now() at time zone 'America/Bahia')::time between time '08:00' and time '18:00'
+                      and not exists (select 1 from feriados f where f.data = (now() at time zone 'America/Bahia')::date);
+begin
+  -- 04/01/2030 é sexta; 08/01 vira feriado só neste teste: até a quarta, 09/01, sobram 2 dias úteis (07 e 09)
+  insert into feriados (data, nome, abrangencia) values ('2030-01-08', 'QA', 'nacional') on conflict do nothing;
+  perform pg_temp.ok(fn_dias_uteis('2030-01-04', '2030-01-09') = 2, '[T19] dias úteis: ' || fn_dias_uteis('2030-01-04', '2030-01-09'));
+  perform pg_temp.ok(fn_dias_uteis('2030-01-09', '2030-01-04') = 0, '[T19] intervalo invertido');
+
+  -- reincidência só de Ponto: atestado e falecimento (T17) não contam; dois pedidos de Ponto contam 2
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  select * into x from app_ponto_justificativas(v_hoje - 3, v_hoje, v_tec) a where a.motivo = 'falecimento';
+  perform pg_temp.ok(x.ponto_30d is null and x.dias_uteis_espera is not null, '[T19] falta legal contada como reincidência');
+  perform fn_ponto_justificativa_criar(v_tec, 'esqueci_marcar', v_hoje - 1, 'entrada', time '08:00', null, null, null, 'app');
+  perform fn_ponto_justificativa_criar(v_tec, 'esqueci_marcar', v_hoje - 2, 'entrada', time '08:00', null, null, null, 'app');
+  select max(a.ponto_30d) into v_n from app_ponto_justificativas(v_hoje - 3, v_hoje, v_tec) a where a.grupo = 'ponto';
+  perform pg_temp.ok(v_n = 2, '[T19] reincidência de Ponto: ' || coalesce(v_n::text, 'null'));
+
+  -- pedido parado: o falecimento passa a ter 10 dias
+  v_id := x.id;
+  alter table ponto_justificativas disable trigger user;
+  update ponto_justificativas set created_at = now() - interval '10 days' where id = v_id;
+  alter table ponto_justificativas enable trigger user;
+  select * into x from app_ponto_justificativas(v_hoje - 3, v_hoje, v_tec) a where a.id = v_id;
+  perform pg_temp.ok(x.dias_uteis_espera > 2, '[T19] pedido de 10 dias não aparece parado: ' || coalesce(x.dias_uteis_espera::text, 'null'));
+  m := app_ponto_justificativas_metricas(v_hoje - 30, v_hoje);
+  perform pg_temp.ok((m->>'parados')::int >= 1 and m ? 'no_prazo' and m ? 'inclusoes_manuais', '[T19] métrica: ' || m::text);
+
+  -- alerta: um por empresa por dia útil, dentro do horário; o cron do ponto chama sem quebrar o lembrete
+  delete from alertas_enviados where tipo like 'ponto_parados_%';
+  v_n := fn_ponto_alerta_pedidos_parados();
+  if v_janela then
+    perform pg_temp.ok(v_n >= 1, '[T19] alerta de pedido parado não saiu');
+    perform pg_temp.ok(fn_ponto_alerta_pedidos_parados() = 0, '[T19] alerta repetido no mesmo dia');
+  else
+    perform pg_temp.ok(v_n = 0, '[T19] alerta fora do dia útil ou do horário');
+    raise notice 'T19: fora de dia útil ou do horário; envio do alerta não conferido';
+  end if;
+  perform fn_ponto_lembrete_almoco();
+end $$;
+
+select 'REGRESSÃO OK: T1 a T19' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

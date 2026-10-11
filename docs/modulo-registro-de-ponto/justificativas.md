@@ -82,7 +82,7 @@ escolhido já revela saúde.
 | **E2** | Categorias **Saúde**, **Família** e **Convocação**, com anexo obrigatório, visibilidade restrita, alerta de limite e prazo de 48 h | Sim | Próxima sprint, depois das decisões e do parecer do Gabriel |
 | **E2b** | Saúde, Família e Convocação também pelo WhatsApp, com a foto ou o PDF baixado pela Edge Function direto ao cofre (migration 70, decisão 61) | Sim | 11/10 |
 | **E2c** | Timbre com QR no documento do cofre: registro sequencial por empresa, recebimento, integridade e conferência pelo QR com login (migration 71, decisão 62) | Sim | 12/10 |
-| **E3** | Reincidência (só o fato, nunca o rótulo "desídia"), alerta de pedido parado há mais de 2 dias úteis e métrica | — | Depois da E2 |
+| **E3** | Reincidência (só o fato, nunca o rótulo "desídia"), alerta de pedido parado há mais de 2 dias úteis e métrica (migration 72, painel 3.20.0) | — | 12/10 |
 
 **Métrica de 30 dias:**
 

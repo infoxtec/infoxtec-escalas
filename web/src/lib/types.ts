@@ -360,7 +360,10 @@ export interface PontoJustificativa {
   observacao: string | null; canal: 'app' | 'whatsapp'; status: 'pendente' | 'aprovada' | 'negada' | 'cancelada'
   decidido_por: string | null; decidido_em: string | null; resposta: string | null; criado_em: string; abono_estornado: boolean
   data_fim: string | null; restrito: boolean; pode_decidir: boolean; anexos: number; alerta_limite: string | null; fora_prazo: boolean
+  ponto_30d: number | null; dias_uteis_espera: number | null
 }
+// Métrica dos pedidos no período (migration 72, E3)
+export interface PontoMetricas { recebidos: number; decididos: number; no_prazo: number; pendentes: number; parados: number; inclusoes_manuais: number }
 export interface PontoAbono {
   id: string; tecnico_id: string; tecnico: string; data: string; detalhe: string; pedido: number | null
   estornado: boolean; motivo: string | null; autor: string | null; criado_em: string
