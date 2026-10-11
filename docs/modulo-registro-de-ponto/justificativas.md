@@ -207,5 +207,6 @@ ato do empregador e cabe no regulamento da empresa, não na tela.
 - reincidência mostrada só como fato;
 - entidade chamada "justificativa"; "ajuste" fica sendo a palavra do WhatsApp e o nome da aba.
 
-**Com o responsável** (precisam de resposta só antes da E2): veja a mensagem de 11/10 e o registro
-em `docs/decisoes.md` quando forem decididas.
+**Decididas pelo responsável em 11/10:** decisões 55 a 58 (abono; cofre criptografado só para
+visualização por quem tem "vê saúde"; sem justa causa no texto; seguir sem o parecer, com a persona
+`juridico`).

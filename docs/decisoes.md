@@ -607,3 +607,52 @@ aparecer `assinatura da Twilio invalida` no log com ligações legítimas fora d
 escala de segunda-feira antes das 08:00, notificada na sexta à noite, não recebe ligação (o primeiro
 horário permitido já é depois do início); feriados a partir de 2031 precisam ser incluídos antes do fim
 de 2030.
+
+## 55. Justificativa de ponto pelo funcionário: abono como registro próprio
+
+**Data:** 11/10/2026. **Contexto:** planejamento com o time todo (PO, CTO, `seguranca`, `marca`) do
+pedido do responsável — o funcionário justifica falta, atraso ou falha no registro pelo WhatsApp
+(palavra *ajuste*) ou pelo app (aba Ajuste), e o gestor aprova ou nega. Análise e textos em
+`docs/modulo-registro-de-ponto/justificativas.md`. **Decisão (todas as recomendações do PO
+aprovadas pelo responsável):** ausência ou atraso aprovado vira **abono** (`ponto_abonos`, só
+inclusão), nunca marcação; falha de registro aprovada vira `ponto_ajustes incluir` ligado ao pedido;
+o espelho passa a mostrar falta (dia com escala e sem marcação) e abonado. Menu em dois níveis com 4
+opções (Saúde, Família, Convocação, Ponto); limite legal em tabela editável por empresa, que **alerta
+e nunca bloqueia**; atestado depois de 48 h aceito como "fora do prazo"; declaração de comparecimento
+abona só o horário; comprovante opcional em Ponto e obrigatório nas faltas; reincidência só como fato.
+Entregas: E1 (Ponto, sem dado de saúde) na sprint de 13 a 23/10; E2 (saúde, família, convocação, com
+anexo); E3 (reincidência e alertas).
+
+## 56. Anexo de justificativa: cofre criptografado, só visualização dentro do sistema
+
+**Data:** 11/10/2026. **Decisão do responsável:** o documento da justificativa (atestado, certidão,
+convocação) fica num **repositório secreto e criptografado**, visto **só por pessoa autorizada**,
+**dentro do sistema**, para aprovar ou negar — nunca impresso nem baixado. **Como:** o arquivo é
+cifrado no banco (chave no Vault, nunca no repositório nem no navegador), em tabela com RLS e sem
+políticas, sem Storage e sem chave secreta nova (coerente com a decisão 51); entra no backup
+criptografado e é apagado junto com o funcionário e ao fim da guarda (5 anos). Quem vê: usuário do
+painel com a permissão **"vê saúde"**, dada por nome pelo admin (fecha a consequência 3 da decisão
+39); o papel `leitura` nunca vê motivo de saúde nem anexo. Visualização por uma função `app_*` que
+confere a permissão e **registra cada acesso**; o painel mostra o documento numa área de
+visualização sem botão de baixar ou imprimir, com marca d'água (nome de quem vê, data e hora).
+Sem OCR e sem CID. **Limite técnico, registrado:** nenhum sistema impede foto da tela; a marca d'água
+e o registro de acesso tornam o vazamento rastreável.
+
+## 57. Texto da justificativa sem ameaça de punição
+
+**Data:** 11/10/2026. **Decisão do responsável**, seguindo o time: justa causa e desídia (CLT 482)
+**não aparecem** no WhatsApp nem no app. O aviso legal diz só que falta ou atraso sem justificativa
+pode ser descontado, conforme as regras da empresa. Medida disciplinar é ato do empregador e cabe no
+regulamento interno.
+
+## 58. Seguir sem o parecer do advogado, com consultor jurídico de apoio
+
+**Data:** 11/10/2026. **Decisão do responsável:** seguir com a justificativa de ponto, inclusive até a
+produção, **sem esperar** as respostas do Gabriel (076). Criada a persona **`juridico`**
+(`.claude/agents/juridico.md`, `.dsh/skills/juridico/`): perfil de advogado trabalhista e cível, com
+domínio da CLT, da Constituição e de convenções coletivas, que confere base legal, prazos e textos.
+**Limite registrado:** é uma persona de IA, sem inscrição na OAB; não assina parecer nem substitui o
+advogado da empresa. **Risco aceito pelo responsável:** valor legal errado na tabela de motivos ou texto
+impreciso ao funcionário. **Mitigação:** os valores ficam em `ponto_motivos` (corrigir é dado, não
+código), o sistema alerta e não bloqueia, e as perguntas seguem para o Gabriel quando ele puder
+responder.
