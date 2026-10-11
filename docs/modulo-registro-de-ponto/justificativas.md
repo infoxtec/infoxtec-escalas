@@ -116,7 +116,7 @@ A citação ao Decreto 10.854/2021 art. 159 saiu: não foi confirmada.
 
 O menu é organizado pelo que aconteceu, não pelo inciso da lei: 4 opções, com **Ponto** em 4º.
 
-**WhatsApp** (palavra **ajuste**; rodapé *{empresa} · Trilha Ponto*):
+**WhatsApp** (palavra **ajuste**; rodapé *{empresa} · Trilha Ponto*). Até a E2, o menu mostra só a opção 4 e lista 1 a 3 como *em breve* (migration 67). Menu completo, a partir da E2:
 
 ```
 Ajuste de ponto, {nome}. O que aconteceu? Toque no botão ou responda o número:
