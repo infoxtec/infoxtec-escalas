@@ -235,6 +235,24 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 70 (11/10): documento da justificativa pelo WhatsApp (084 entrega 3, E2b; decisão 61)
+
+- O "ajuste" no WhatsApp aceita Saúde, Família e Convocação: menu do grupo (`fn_ponto_menu_falta`,
+  `fn_ponto_motivos_grupo`, pela ordem de `ponto_motivos`) → dia → último dia ou validade (`mesmo` = um
+  dia) ou horário (motivo por horário) → documento (`fn_ponto_pedir_documento`, conversa aberta 30 min).
+  Etapas novas em `ponto_conversas_etapa_ck`: `aj_falta_motivo`, `aj_falta_dia`, `aj_falta_fim`,
+  `aj_falta_periodo`, `aj_documento`.
+- `fn_ponto_wh`: foto ou arquivo só é aceito na etapa `aj_documento`; fora dela, continua recusado.
+  `fn_ponto_documento_recebido` confere formato (nada de visualização única, vídeo ou figurinha), tipo
+  declarado (JPG, PNG, PDF) e tamanho (até 5 MB), grava só o id da mensagem na conversa e devolve
+  `ponto_baixar_midia`.
+- A Edge Function `webhook-evolution` baixa o arquivo pela Evolution (`getBase64FromMediaMessage`), tira
+  EXIF/XMP/IPTC e textos do PNG e chama `fn_ponto_midia_receber` (cria o pedido com
+  `fn_ponto_falta_criar(..., 'whatsapp')`, que confere o tipo pelos bytes e cifra no cofre) ou
+  `fn_ponto_midia_falhou`. `fn_ponto_falta_criar` ganhou `p_canal` (padrão `app`). Atestado avisa os
+  supervisores das escalas no período (`fn_ponto_avisar_afastamento`). O texto ao funcionário diz só
+  "Saúde", nunca o motivo. Teste T17.
+
 ### Migration 69 (11/10): validade do atestado bloqueia ponto e escala (decisão 60)
 
 - Motivo `alta_medica` (atestado de aptidão). `fn_ponto_afastado_ate(técnico, dia)`: data final do
