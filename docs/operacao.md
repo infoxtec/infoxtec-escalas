@@ -475,6 +475,22 @@ gerenciador de senhas, **num registro separado da `BACKUP_SENHA`** (quem tiver a
 select decrypted_secret as chave_cofre_ponto from vault.decrypted_secrets where name = 'COFRE_PONTO';
 ```
 
+Pelo painel do Supabase: Project Settings › Vault › `COFRE_PONTO` › copiar o **Value** (não o ID).
+Cada projeto tem a sua chave: a da homologação é outra e não abre documento da produção.
+
+**Conferir a cópia guardada sem expor a chave** (feito em 11/10): as duas impressões digitais (SHA-256)
+precisam ser iguais.
+
+```sql
+-- PRODUÇÃO (zpckrxydqqmmcrphrkxz), SQL Editor. Esperado: 64 caracteres; comparar com o Linux abaixo.
+select encode(extensions.digest(fn_segredo('COFRE_PONTO'), 'sha256'), 'hex') as impressao_digital;
+```
+
+```bash
+# Linux: cole a chave do gerenciador de senhas (não aparece na tela nem fica no histórico)
+read -rs -p "Cole a chave do cofre: " K; echo; K=$(printf '%s' "$K" | tr -d '[:space:]'); printf '%s' "$K" | sha256sum | cut -d' ' -f1; unset K
+```
+
 Na restauração, antes de abrir documentos, recriar o segredo com o mesmo valor:
 `select vault.create_secret('<valor guardado>', 'COFRE_PONTO');` (se já existir outro, apagar antes).
 
