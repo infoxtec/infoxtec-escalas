@@ -174,7 +174,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Painel de controle interno: 47 temas pendentes com referência exata e as avaliações de segurança, infraestrutura e código atualizadas (28/09)
 - [x] Evolution própria na Oracle Cloud, versão 2.4 com botões; produção virada e SEG-01/SEG-02 fechados (28/09)
 - [x] Migration 51 e painel 3.6.0: Administração do Sistema > Checklist, estado de saúde da plataforma (homologação, 29/09)
-- [ ] Migration 66 e painel 3.15.0: **justificativa de ponto pelo funcionário** — app (aba Ajuste) e WhatsApp (palavra *ajuste*), aprovação do gestor, **abono** sem marcação e **falta** no espelho (084 entrega 3, E1; decisões 55 a 58)
+- [x] Migration 66 e painel 3.15.1: **justificativa de ponto pelo funcionário** — app (aba Ajuste) e WhatsApp (palavra *ajuste*), aprovação do gestor, **abono** sem marcação e **falta** no espelho (084 entrega 3, E1; decisões 55 a 59; produção, 11/10)
 - [x] Migration 65 e painel 3.14.0: **ajustes de ponto com justificativa** (incluir marcação esquecida, desconsiderar marcação errada; original guardada, funcionário avisado sem o motivo) e aba **Ajustes** no Registro de Ponto; leitura sem motivo nem autor, aviso ao gestor só com o primeiro nome (084 entrega 2, decisão 52; produção, 10/10)
 - [x] Migration 62: nenhuma função interna executável pelo `service_role`, função nova nasce fechada e **suíte de regressão e carga** no CI (decisão 51, produção, 08/10)
 - [x] Backup diário com **âncora da cadeia do ponto**, conferida no dia seguinte e na restauração (decisão 51, parte 2, 09/10)
