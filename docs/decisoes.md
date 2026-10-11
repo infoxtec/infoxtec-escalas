@@ -771,3 +771,11 @@ registrou e quem aprovou coincidem por construção (separar quando vier a opç�
 na cota do funcionário (5 em 24 h, 10 em análise); afastamento de 30 dias ou mais pede exame de retorno
 (ASO, NR-7), não só a liberação médica — levar ao `juridico` junto com o parecer de RH.
 
+## 65. Véspera de feriado sem alerta de escala
+
+**Data:** 11/10/2026. **Decisão do responsável:** trabalho em feriado é excepcional; na véspera de feriado
+não sai o alerta da escala de amanhã (aviso das 16h e prazo das 18h). Saiu na véspera de 12/10 porque o
+alerta só olhava o dia da semana. **Como (migration 75):** `fn_alerta_prazo_escala` consulta a tabela
+`feriados` (a mesma da URA, migration 64). Escala para feriado continua podendo ser criada e enviada.
+Teste T21.
+

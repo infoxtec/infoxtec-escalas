@@ -235,6 +235,11 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 75 (11/10): alerta da escala de amanhã sem véspera de feriado (decisão 65)
+
+- `fn_alerta_prazo_escala`: não avisa (16h) nem cobra o prazo (18h) quando amanhã está em `feriados`.
+  Teste T21.
+
 ### Migration 74 (12/10): alta antecipada registrada pelo gestor (decisão 64)
 
 - `ponto_justificativas.canal` aceita `painel`. `app_ponto_afastados()` (admin, gestor): quem está afastado

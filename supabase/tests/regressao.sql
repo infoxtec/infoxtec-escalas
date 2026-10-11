@@ -21,6 +21,7 @@
 -- T18 registro do documento: número sequencial por empresa, QR de verificação, integridade e descarte
 -- T19 E3: dias úteis, reincidência (só o fato), pedido parado, alerta aos supervisores e métrica
 -- T20 alta antecipada registrada pelo gestor: só com "vê atestados", documento no cofre, libera o ponto
+-- T21 véspera de feriado: o alerta da escala de amanhã não sai
 
 \set ON_ERROR_STOP on
 begin;
@@ -1076,7 +1077,28 @@ begin
   perform app_definir_ve_saude('qa-admin@teste.local', false);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T20' as resultado,
+-- T21 alerta da escala de amanhã na véspera de feriado (migration 75, decisão 65) --------------------------
+do $$
+declare v_amanha date := (now() at time zone fn_config('fuso'))::date + 1;
+begin
+  insert into feriados (data, nome, abrangencia) values (v_amanha, 'QA feriado', 'nacional') on conflict do nothing;
+  delete from alertas_enviados where tipo in ('aviso', 'prazo') and data_ref = v_amanha;
+  update config set valor = '00:00' where chave = 'alerta_escala_aviso';
+  update config set valor = '23:59' where chave = 'alerta_escala_prazo';
+  update config set valor = '1,2,3,4,5,6,7' where chave = 'alerta_dias_semana';
+  perform fn_alerta_prazo_escala();
+  perform pg_temp.ok(not exists (select 1 from alertas_enviados where tipo in ('aviso', 'prazo') and data_ref = v_amanha),
+                     '[T21] alerta da escala saiu na véspera de feriado');
+  -- sem o feriado, o mesmo horário gera o registro do aviso
+  delete from feriados where data = v_amanha and nome = 'QA feriado';
+  if not exists (select 1 from feriados where data = v_amanha) then
+    perform fn_alerta_prazo_escala();
+    perform pg_temp.ok(exists (select 1 from alertas_enviados where tipo = 'aviso' and data_ref = v_amanha),
+                       '[T21] sem feriado, o aviso não foi registrado');
+  end if;
+end $$;
+
+select 'REGRESSÃO OK: T1 a T21' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
