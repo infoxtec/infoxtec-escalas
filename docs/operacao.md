@@ -468,7 +468,7 @@ O documento das justificativas (atestado, certidão) é cifrado no banco com a c
 Vault, criada pela migration 68. O backup do banco leva os documentos cifrados, **mas a chave do Vault
 não vai junto** de forma utilizável: sem uma cópia dela, uma restauração não abre nenhum documento.
 Uma vez, logo depois de aplicar a migration 68 na produção, o responsável guarda a chave no seu
-gerenciador de senhas (nunca no repositório, nunca em mensagem):
+gerenciador de senhas, **num registro separado da `BACKUP_SENHA`** (quem tiver as duas abre os atestados de um backup), nunca no repositório nem em mensagem:
 
 ```sql
 -- PRODUÇÃO (zpckrxydqqmmcrphrkxz), SQL Editor. Esperado: 1 linha com 64 caracteres hexadecimais.

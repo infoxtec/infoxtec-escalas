@@ -674,5 +674,12 @@ e guardada no Vault; permissão `ve_saude` em `painel_usuarios`; visualização 
 de quem vê, sem botão de baixar e com a impressão bloqueada enquanto o documento está aberto; foto
 reduzida e regravada no aparelho (sai a localização da foto). **Consequência operacional:** a chave
 precisa de cópia fora do Supabase (`docs/operacao.md`), senão um backup restaurado não abre os
-documentos. Mídia pelo WhatsApp fica para a E2b; até lá, Saúde, Família e Convocação são pelo app.
+documentos. Mídia pelo WhatsApp fica para a E2b; até lá, Saúde, Família e Convocação são pelo app, e foto ou
+arquivo mandado pelo WhatsApp é recusado e não fica no log do webhook. **Da revisão do `seguranca`:** pedido com
+documento (saúde, família e convocação) só é decidido por quem tem "vê atestados e documentos" — o
+repositório é visto só por pessoa autorizada, como pedido; o código do motivo de saúde sai mascarado;
+cada concessão da permissão fica registrada; documento enviado por engano ou a pedido do titular é
+descartado pelo painel, ficando a marca. **Limites registrados:** "sem baixar" é dissuasão (o conteúdo passa
+pelo navegador de quem vê, e a tela pode ser fotografada); a limpeza dos dados da foto é feita no app —
+quem contornar o app pode enviar PDF ou JPEG com metadados.
 

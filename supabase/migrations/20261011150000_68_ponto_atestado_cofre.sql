@@ -11,10 +11,15 @@
 --     O papel leitura nunca vê. O documento só é mostrado no painel (sem baixar nem imprimir).
 --   * Limite legal (ponto_motivos) alerta e nunca bloqueia (decisão 55); atestado fora de 48 h é sinalizado.
 --   * Aprovado: abono do período (dias inteiros ou horário), nunca marcação.
+--   * Revisão do seguranca (11/10): código do motivo de saúde mascarado para quem não vê; pedido com
+--     documento (saúde, família, convocação) só é decidido por quem tem "vê atestados e documentos";
+--     foto/arquivo mandado pelo WhatsApp não fica no log do webhook e o funcionário é orientado a usar o
+--     app; registro de acesso independente do anexo e descarte controlado (enviado por engano, pedido do
+--     titular); histórico de quem deu a permissão.
 
 -- Permissão "vê atestados" -----------------------------------------------------------------------------
 alter table painel_usuarios add column if not exists ve_saude boolean not null default false;
-comment on column painel_usuarios.ve_saude is 'Vê e decide justificativas de saúde e vê documentos do cofre (decisão 56). Dado por nome pelo admin.';
+comment on column painel_usuarios.ve_saude is 'Vê atestados e documentos: decide pedidos com documento, vê motivo de saúde e abre o cofre (decisão 56). Dado por nome pelo admin.';
 
 create or replace function fn_ve_saude(p_email text)
 returns boolean language sql stable set search_path = public, extensions as $$
@@ -36,6 +41,18 @@ as $function$
   )
 $function$;
 
+create table if not exists painel_ve_saude_log (
+  id     bigint generated always as identity primary key,
+  email  text not null,
+  valor  boolean not null,
+  autor  text not null,
+  em     timestamptz not null default now()
+);
+comment on table painel_ve_saude_log is 'Quem deu ou tirou "vê atestados e documentos", para quem e quando (prestação de contas, LGPD art. 37). Só inclusão.';
+alter table painel_ve_saude_log enable row level security;
+create or replace trigger trg_painel_ve_saude_log_imutavel before update or delete on painel_ve_saude_log
+  for each row execute function fn_ponto_imutavel();
+
 create or replace function app_definir_ve_saude(p_email text, p_valor boolean)
 returns void language plpgsql security definer set search_path = public, extensions as $$
 declare
@@ -46,6 +63,16 @@ begin
   if not found then raise exception 'Usuário não encontrado.'; end if;
   if p_valor and v_papel not in ('admin', 'gestor') then raise exception 'Só admin ou gestor pode ver atestados.'; end if;
   update painel_usuarios set ve_saude = p_valor, updated_at = now() where email = lower(trim(p_email));
+  insert into painel_ve_saude_log (email, valor, autor) values (lower(trim(p_email)), p_valor, v_email);
+end $$;
+
+create or replace function app_ve_saude_historico()
+returns table (email text, valor boolean, autor text, em text)
+language plpgsql stable security definer set search_path = public, extensions as $$
+begin
+  perform app_exigir(array['admin']);
+  return query select l.email, l.valor, l.autor, to_char(l.em at time zone 'America/Bahia', 'DD/MM/YYYY HH24:MI')
+                 from painel_ve_saude_log l order by l.id desc limit 100;
 end $$;
 
 -- Chave do cofre: gerada no próprio banco, guardada no Vault --------------------------------------------
@@ -101,6 +128,7 @@ create table if not exists ponto_justificativa_anexos (
   tamanho          int not null check (tamanho between 1 and 5242880),
   sha256           text not null,
   conteudo         bytea not null,
+  chave_versao     int not null default 1,
   created_at       timestamptz not null default now()
 );
 comment on table ponto_justificativa_anexos is 'Cofre: documento da justificativa cifrado (AES-256, chave no Vault). Só visualização no painel por quem tem ve_saude (decisão 56).';
@@ -109,17 +137,55 @@ create index if not exists ponto_justificativa_anexos_just_idx on ponto_justific
 create or replace trigger trg_ponto_anexos_imutavel before update on ponto_justificativa_anexos
   for each row execute function fn_ponto_imutavel();
 
+-- registro de acesso não depende do anexo: o anexo pode ser descartado e o histórico fica
 create table if not exists ponto_anexo_acessos (
-  id        bigint generated always as identity primary key,
-  anexo_id  uuid not null references ponto_justificativa_anexos(id),
-  email     text not null,
-  em        timestamptz not null default now()
+  id               bigint generated always as identity primary key,
+  anexo_id         uuid not null,
+  justificativa_id uuid not null,
+  sha256           text not null,
+  email            text not null,
+  em               timestamptz not null default now()
 );
 comment on table ponto_anexo_acessos is 'Quem viu cada documento do cofre e quando (decisão 56). Só inclusão.';
 alter table ponto_anexo_acessos enable row level security;
 create index if not exists ponto_anexo_acessos_anexo_idx on ponto_anexo_acessos (anexo_id);
 create or replace trigger trg_ponto_anexo_acessos_imutavel before update or delete on ponto_anexo_acessos
   for each row execute function fn_ponto_imutavel();
+
+-- Descarte controlado (enviado por engano, pedido do titular, fim da guarda): o documento sai, a marca fica
+create table if not exists ponto_anexos_descartados (
+  id               bigint generated always as identity primary key,
+  anexo_id         uuid not null,
+  justificativa_id uuid not null,
+  sha256           text not null,
+  motivo           text not null check (length(trim(motivo)) between 10 and 500),
+  autor            text not null,
+  em               timestamptz not null default now()
+);
+comment on table ponto_anexos_descartados is 'Marca de documento do cofre descartado (quem, quando, por quê). Só inclusão.';
+alter table ponto_anexos_descartados enable row level security;
+create or replace trigger trg_ponto_anexos_descartados_imutavel before update or delete on ponto_anexos_descartados
+  for each row execute function fn_ponto_imutavel();
+
+create or replace function fn_ponto_anexo_descartar(p_anexo uuid, p_motivo text, p_autor text)
+returns void language plpgsql volatile set search_path = public, extensions as $$
+declare a record;
+begin
+  select id, justificativa_id, sha256 into a from ponto_justificativa_anexos where id = p_anexo;
+  if not found then raise exception 'Documento não encontrado.'; end if;
+  insert into ponto_anexos_descartados (anexo_id, justificativa_id, sha256, motivo, autor)
+  values (a.id, a.justificativa_id, a.sha256, trim(p_motivo), p_autor);
+  delete from ponto_justificativa_anexos where id = p_anexo;
+end $$;
+
+create or replace function app_ponto_anexo_descartar(p_anexo uuid, p_motivo text)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+declare v_email text := app_exigir(array['admin','gestor']);
+begin
+  if not fn_ve_saude(v_email) then raise exception 'Só quem tem permissão de ver atestados e documentos descarta documentos.'; end if;
+  if length(trim(coalesce(p_motivo, ''))) not between 10 and 500 then raise exception 'Escreva o motivo do descarte (10 a 500 letras).'; end if;
+  perform fn_ponto_anexo_descartar(p_anexo, p_motivo, v_email);
+end $$;
 
 -- Motivos da E2 passam a valer
 update ponto_motivos set ativo = true where grupo in ('saude', 'familia', 'convocacao');
@@ -325,7 +391,8 @@ declare
 begin
   if p_ate < p_de or p_ate - p_de > 62 then raise exception 'Período de até 62 dias.'; end if;
   return query
-    select j.id, j.numero, j.tecnico_id, t.nome, j.motivo,
+    select j.id, j.numero, j.tecnico_id, t.nome,
+           case when m.saude and not v_saude then 'saude' else j.motivo end,
            case when m.saude and not v_saude then 'Justificativa de saúde' else m.nome end,
            m.grupo, j.data,
            fn_ponto_pedido_detalhe(j.motivo, j.tipo_marcacao, j.hora, j.hora_ini, j.hora_fim, j.data, j.data_fim),
@@ -337,8 +404,8 @@ begin
            to_char(j.created_at at time zone e.fuso, 'DD/MM/YYYY HH24:MI'),
            exists (select 1 from ponto_abonos x where x.estorno_de = j.abono_id),
            j.data_fim,
-           m.saude and not v_saude,
-           not v_leitura and (not m.saude or v_saude),
+           m.grupo <> 'ponto' and not v_saude,
+           not v_leitura and (m.grupo = 'ponto' or v_saude),
            (select count(*)::int from ponto_justificativa_anexos a where a.justificativa_id = j.id),
            case when v_leitura or (m.saude and not v_saude) then null else j.alerta_limite end,
            m.grupo <> 'ponto' and j.created_at > ((coalesce(j.data_fim, j.data) + 1)::timestamp at time zone e.fuso) + interval '48 hours'
@@ -371,8 +438,8 @@ begin
   select * into j from ponto_justificativas where id = p_id for update;
   if not found then raise exception 'Pedido não encontrado.'; end if;
   select * into v_mot from ponto_motivos where codigo = j.motivo;
-  if v_mot.saude and not fn_ve_saude(v_email) then
-    raise exception 'Pedido de saúde: só quem tem permissão de ver atestados decide.';
+  if v_mot.grupo <> 'ponto' and not fn_ve_saude(v_email) then
+    raise exception 'Pedido com documento: só quem tem permissão de ver atestados e documentos decide.';
   end if;
   if j.status <> 'pendente' then raise exception 'Este pedido já foi decidido.'; end if;
   select t.nome, t.telefone_e164, t.ativo, t.opt_in, coalesce(e.fuso, 'America/Bahia') as fuso
@@ -446,7 +513,7 @@ language plpgsql stable security definer set search_path = public, extensions as
 declare
   v_email text := app_exigir(array['admin','gestor']);
 begin
-  if not fn_ve_saude(v_email) then raise exception 'Só quem tem permissão de ver atestados vê os documentos.'; end if;
+  if not fn_ve_saude(v_email) then raise exception 'Só quem tem permissão de ver atestados e documentos vê os documentos.'; end if;
   return query
     select a.id, a.tipo, a.tamanho, to_char(a.created_at at time zone 'America/Bahia', 'DD/MM/YYYY HH24:MI'),
            (select count(*) from ponto_anexo_acessos x where x.anexo_id = a.id)
@@ -459,10 +526,10 @@ declare
   v_email text := app_exigir(array['admin','gestor']);
   a       record;
 begin
-  if not fn_ve_saude(v_email) then raise exception 'Só quem tem permissão de ver atestados vê os documentos.'; end if;
-  select x.id, x.tipo, x.conteudo, x.sha256 into a from ponto_justificativa_anexos x where x.id = p_anexo;
+  if not fn_ve_saude(v_email) then raise exception 'Só quem tem permissão de ver atestados e documentos vê os documentos.'; end if;
+  select x.id, x.justificativa_id, x.tipo, x.conteudo, x.sha256 into a from ponto_justificativa_anexos x where x.id = p_anexo;
   if not found then raise exception 'Documento não encontrado.'; end if;
-  insert into ponto_anexo_acessos (anexo_id, email) values (a.id, v_email);
+  insert into ponto_anexo_acessos (anexo_id, justificativa_id, sha256, email) values (a.id, a.justificativa_id, a.sha256, v_email);
   return jsonb_build_object('tipo', a.tipo, 'conteudo', encode(fn_ponto_cofre_decifrar(a.conteudo), 'base64'),
     'visto_por', v_email, 'em', to_char(now() at time zone 'America/Bahia', 'DD/MM/YYYY HH24:MI'));
 end $$;
@@ -592,6 +659,286 @@ begin
     || (r->>'motivo') || ' · ' || (r->>'data') || ' · ' || (r->>'detalhe') || E'\n'
     || 'O gestor vai analisar. A resposta chega aqui e na aba Ajuste do app.');
   return jsonb_build_object('acao', 'ajuste_registrado', 'numero', r->'numero');
+end $$;
+
+-- Log do webhook sem mídia (base: definição atual da homologação) ---------------------------------------
+create or replace function fn_webhook_evolution(p_token text, p_payload jsonb)
+ returns jsonb
+ language plpgsql
+ security definer
+ set search_path to 'public', 'extensions'
+as $function$
+declare
+  v_log    bigint;
+  v_evento text := lower(replace(coalesce(p_payload->>'event', ''), '_', '.'));
+  v_res    jsonb;
+  v_pl     jsonb := p_payload - 'apikey';
+  v_msg    jsonb;
+  v_permitidas text[] := array['conversation', 'extendedTextMessage', 'buttonsResponseMessage', 'templateButtonReplyMessage',
+                               'interactiveResponseMessage', 'listResponseMessage', 'messageContextInfo', 'localizacao',
+                               'reactionMessage', 'protocolMessage'];
+begin
+  if p_token is null or p_token = '' or p_token is distinct from fn_segredo('WEBHOOK_TOKEN') then
+    raise exception 'token invalido';
+  end if;
+
+  -- LGPD: a localização do ponto já fica na marcação; o log do webhook não guarda outra cópia
+  if v_pl->'data'->'message' ?| array['locationMessage', 'liveLocationMessage'] then
+    v_pl := jsonb_set(v_pl, '{data,message}',
+      ((v_pl->'data'->'message') - 'locationMessage' - 'liveLocationMessage') || '{"localizacao": true}');
+  end if;
+  -- LGPD (decisão 56): o log guarda só texto, botão e a marca da localização (tirada acima). Foto, vídeo,
+  -- áudio, arquivo, mensagem temporária ou de visualização única e a mensagem citada saem (miniatura,
+  -- legenda, URL e chave da mídia); fica só a marca "midia"
+  if jsonb_typeof(v_pl->'data'->'message') = 'object' then
+    select coalesce(jsonb_object_agg(e.k, case when e.k = 'extendedTextMessage' then e.v #- '{contextInfo,quotedMessage}' else e.v end), '{}')
+      into v_msg
+      from jsonb_each(v_pl->'data'->'message') e(k, v)
+     where e.k = any(v_permitidas);
+    if exists (select 1 from jsonb_object_keys(v_pl->'data'->'message') k where k <> all(v_permitidas)) then
+      v_msg := v_msg || '{"midia": true}';
+    end if;
+    v_pl := jsonb_set(v_pl, '{data,message}', v_msg);
+  end if;
+  v_pl := v_pl #- '{data,contextInfo,quotedMessage}';
+  insert into webhook_eventos (evento, payload)
+  values (v_evento, v_pl)
+  returning id into v_log;
+
+  begin
+    if v_evento = 'messages.update' then
+      v_res := fn_wh_status(p_payload->'data');
+    elsif v_evento = 'messages.upsert' then
+      begin
+        v_res := fn_ponto_wh(p_payload->'data');
+      exception when others then
+        -- falha no ponto não pode derrubar a resposta das escalas
+        v_res := null;
+        raise warning 'ponto: %', sqlerrm;
+      end;
+      if v_res is null then
+        v_res := fn_wh_mensagem(p_payload->'data');
+      end if;
+    else
+      v_res := jsonb_build_object('ignorado', v_evento);
+    end if;
+    update webhook_eventos set resultado = v_res::text where id = v_log;
+  exception when others then
+    update webhook_eventos set resultado = 'ERRO: ' || sqlerrm where id = v_log;
+    v_res := jsonb_build_object('erro', sqlerrm);
+  end;
+
+  return v_res;
+end $function$;
+
+
+-- Conversa do ponto (definição da migration 66) recusando mídia: documento só pelo app -----------------
+create or replace function fn_ponto_wh(p_data jsonb)
+returns jsonb language plpgsql volatile set search_path = public, extensions as $$
+declare
+  v_key    jsonb := p_data->'key';
+  v_msg    jsonb := p_data->'message';
+  v_wa_id  text  := p_data->'key'->>'id';
+  v_jid    text;
+  v_tec    record;
+  v_conv   record;
+  v_norm   text;
+  v_ultima text;
+  v_tipo   text;
+  v_loc    jsonb;
+  v_lat    numeric;
+  v_lng    numeric;
+  v_prec   int;
+  c        jsonb;
+  v_btn    text;
+  v_citou  boolean;
+  v_aviso  text;
+begin
+  if coalesce((v_key->>'fromMe')::boolean, false) or v_wa_id is null then return null; end if;
+  -- grupo, status e canal não são do ponto
+  if coalesce(v_key->>'remoteJid', '') ~ '@(g\.us|broadcast|newsletter)$' then return null; end if;
+  select j into v_jid from unnest(array[v_key->>'remoteJid', v_key->>'remoteJidAlt',
+                                        v_key->>'senderPn', p_data->>'sender']) as j
+   where j like '%@s.whatsapp.net' limit 1;
+  if v_jid is null then return null; end if;
+
+  select t.id, t.nome, t.telefone_e164, t.cpf, t.empresa_id, coalesce(e.fuso, 'America/Bahia') as fuso
+    into v_tec from tecnicos t left join empresas e on e.id = t.empresa_id
+   where fn_tel_canonico(t.telefone_e164) = fn_tel_canonico(split_part(v_jid, '@', 1)) and t.ativo;
+  -- telefone canônico ambíguo (com e sem o 9): não arrisca marcar no funcionário errado
+  if (select count(*) from tecnicos t where t.ativo
+        and fn_tel_canonico(t.telefone_e164) = fn_tel_canonico(split_part(v_jid, '@', 1))) > 1 then
+    return null;
+  end if;
+  -- só quem está cadastrado para o ponto (CPF e empresa) conversa com o ponto
+  if v_tec.id is null or v_tec.cpf is null or v_tec.empresa_id is null then return null; end if;
+
+  -- trava a conversa: duas localizações simultâneas não geram duas marcações
+  select * into v_conv from ponto_conversas where tecnico_id = v_tec.id and expira_em > now() for update;
+  v_norm := lower(trim(translate(coalesce(v_msg->>'conversation', v_msg->'extendedTextMessage'->>'text', ''),
+                                 'áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ', 'aaaaeeiooouc' || 'aaaaeeiooouc')));
+  v_norm := regexp_replace(v_norm, '[.!?]+$', '');
+  v_loc := coalesce(v_msg->'liveLocationMessage', v_msg->'locationMessage');
+  -- resposta de botão (mesmos formatos de fn_wh_mensagem) e mensagem que cita outra
+  v_btn := coalesce(v_msg->'buttonsResponseMessage'->>'selectedButtonId',
+                    v_msg->'templateButtonReplyMessage'->>'selectedId');
+  if v_btn is null and v_msg ? 'interactiveResponseMessage' then
+    begin
+      v_btn := ((v_msg->'interactiveResponseMessage'->'nativeFlowResponseMessage'->>'paramsJson')::jsonb)->>'id';
+    exception when others then v_btn := null; end;
+  end if;
+  v_citou := v_msg->'extendedTextMessage'->'contextInfo'->>'stanzaId' is not null;
+
+  -- Foto, vídeo ou arquivo pelo WhatsApp: o documento vai só pelo app (cofre, decisão 56). Nada é guardado
+  if v_msg ?| array['imageMessage', 'documentMessage', 'documentWithCaptionMessage', 'videoMessage', 'stickerMessage']
+     or exists (select 1 from unnest(array['ephemeralMessage', 'viewOnceMessage', 'viewOnceMessageV2', 'viewOnceMessageV2Extension']) w
+                 where v_msg->w->'message' ?| array['imageMessage', 'documentMessage', 'documentWithCaptionMessage', 'videoMessage']) then
+    perform fn_ponto_wa(v_tec.telefone_e164, 'Por aqui não recebemos fotos nem arquivos. Para enviar atestado ou outro documento, '
+      || 'use o *app do ponto*, aba *Ajuste*: é mais seguro e só quem aprova vê.');
+    return jsonb_build_object('acao', 'ponto_midia_recusada');
+  end if;
+
+  -- 0. Pedido de ajuste (decisão 55): a palavra "ajuste" abre a conversa; dentro dela, as respostas
+  -- são do pedido (resposta citando outra mensagem segue para as escalas)
+  -- escala enviada ou ocorrência aberta depois do início do pedido: a resposta é da escala, e a conversa
+  -- de ajuste termina (o funcionário recomeça com "ajuste")
+  if v_conv.tecnico_id is not null and v_conv.etapa like 'aj\_%'
+     and (exists (select 1 from ocorrencias o join escalas e on e.id = o.escala_id
+                   where e.tecnico_id = v_tec.id and o.status = 'aberta' and o.detalhe is null
+                     and o.created_at > now() - interval '2 hours')
+          or exists (select 1 from notificacoes n join escalas e on e.id = n.escala_id
+                      where e.tecnico_id = v_tec.id
+                        and n.created_at > coalesce((v_conv.dados->>'inicio')::timestamptz, now() - interval '15 minutes'))) then
+    update ponto_conversas set expira_em = now() where tecnico_id = v_tec.id;
+    v_conv.tecnico_id := null;
+  end if;
+  if v_loc is null and v_btn is null and not v_citou
+     and (v_norm in ('ajuste', 'justificar', 'justificativa')
+          or (v_conv.tecnico_id is not null and v_conv.etapa like 'aj\_%' and v_norm <> '')) then
+    return fn_ponto_wh_ajuste(v_tec.id, v_tec.nome, v_tec.telefone_e164, v_tec.fuso,
+                              case when v_conv.etapa like 'aj\_%' then v_conv.etapa end, v_conv.dados, v_norm);
+  end if;
+
+  select m.tipo into v_ultima from ponto_marcacoes m
+   where m.tecnico_id = v_tec.id and (m.momento at time zone v_tec.fuso)::date = (now() at time zone v_tec.fuso)::date
+   order by m.nsr desc limit 1;
+
+  -- 1. Localização
+  if v_loc is not null then
+    if exists (select 1 from ponto_marcacoes where origem ->> 'msg_id' = v_wa_id) then
+      return jsonb_build_object('ignorado', 'ponto: evento duplicado');
+    end if;
+    if v_conv.tecnico_id is null or v_conv.etapa <> 'aguardando_local' then
+      -- atualização da localização em tempo real fora da conversa: ignora em silêncio
+      if v_msg ? 'liveLocationMessage' then return jsonb_build_object('ignorado', 'ponto: localização sem conversa'); end if;
+      perform fn_ponto_wa(v_tec.telefone_e164, 'Para bater o ponto, escreva *ponto* primeiro e depois mande a localização.');
+      return jsonb_build_object('acao', 'ponto_localizacao_sem_conversa');
+    end if;
+    -- lugar escolhido no mapa traz nome ou endereço; a localização atual não
+    if v_msg ? 'locationMessage' and (coalesce(v_loc->>'name', '') <> '' or coalesce(v_loc->>'address', '') <> '') then
+      perform fn_ponto_wa(v_tec.telefone_e164, 'Essa localização é um lugar escolhido no mapa. Mande a sua *localização atual*: 📎 → Localização → *Enviar localização atual*.');
+      return jsonb_build_object('acao', 'ponto_localizacao_recusada');
+    end if;
+    -- localização encaminhada (de outra pessoa ou uma antiga do próprio funcionário). A Evolution 2.x
+    -- traz o contexto em data.contextInfo; o protocolo o põe dentro da localização (messageContextInfo
+    -- fica por garantia)
+    if exists (select 1 from (values (v_loc->'contextInfo'), (p_data->'contextInfo'), (v_msg->'messageContextInfo')) x(ci)
+                where coalesce(ci->>'isForwarded', '') = 'true'
+                   or coalesce(nullif(ci->>'forwardingScore', ''), '0') <> '0') then
+      perform fn_ponto_wa(v_tec.telefone_e164, 'Localização encaminhada não vale para o ponto. Mande a *sua localização atual*: 📎 → Localização → *Enviar localização atual*.');
+      return jsonb_build_object('acao', 'ponto_localizacao_encaminhada');
+    end if;
+    v_lat := (v_loc->>'degreesLatitude')::numeric;
+    v_lng := (v_loc->>'degreesLongitude')::numeric;
+    v_prec := nullif(v_loc->>'accuracyInMeters', '')::numeric::int;
+    if v_lat is null or v_lng is null then return null; end if;
+    -- localização FIXA com a coordenada exata (6 casas, ~10 cm) de uma marcação anterior: pode ser
+    -- reenviada. Pede a localização em tempo real, que não pode ser encaminhada e é sempre leitura nova
+    -- (GPS com cache dentro de prédio também repete coordenada: o funcionário honesto tem saída)
+    if v_msg ? 'locationMessage' and exists (select 1 from ponto_marcacoes m
+                where m.tecnico_id = v_tec.id and m.momento > now() - interval '60 days'
+                  and m.latitude = round(v_lat, 6) and m.longitude = round(v_lng, 6)) then
+      perform fn_ponto_wa(v_tec.telefone_e164, 'Essa localização é igual à de uma marcação anterior. Mande a sua *localização em tempo real*: 📎 → Localização → *Compartilhar localização em tempo real* (pode ser por 15 minutos).');
+      return jsonb_build_object('acao', 'ponto_localizacao_repetida');
+    end if;
+    begin
+      c := fn_ponto_registrar(v_tec.id, v_conv.tipo, 'whatsapp', v_lat, v_lng, v_prec,
+                              jsonb_build_object('msg_id', v_wa_id));
+    exception when unique_violation then
+      return jsonb_build_object('ignorado', 'ponto: evento duplicado');   -- entrega simultânea
+    when others then
+      -- só a mensagem de regra (raise exception) vai ao funcionário; o detalhe técnico fica no log
+      perform fn_ponto_wa(v_tec.telefone_e164, case when sqlstate = 'P0001'
+        then 'Não foi possível registrar o ponto: ' || sqlerrm
+        else 'Não foi possível registrar o ponto agora. Tente de novo ou fale com o gestor.' end);
+      return jsonb_build_object('acao', 'ponto_erro', 'erro', sqlerrm);
+    end;
+    update ponto_conversas set expira_em = now() where tecnico_id = v_tec.id;
+    -- comprovante no WhatsApp: CPF mascarado (o canal passa por terceiros)
+    perform fn_ponto_wa(v_tec.telefone_e164,
+      '✅ *Ponto registrado*' || E'\n\n'
+      || '*' || fn_ponto_rotulo(c->>'tipo') || '* — ' || (c->>'data') || ' às ' || (c->>'hora') || E'\n'
+      || 'NSR ' || (c->>'nsr') || ' · ' || (c->>'empresa') || E'\n'
+      || (c->>'trabalhador') || ' · CPF ***.' || substr(c->>'cpf', 4, 3) || '.' || substr(c->>'cpf', 7, 3) || '-**' || E'\n'
+      || coalesce('Local: ' || (c->>'local') || case when (c->>'dentro_area')::boolean is false
+                   then ' (a ' || (c->>'distancia_m') || ' m: o gestor será avisado)' else '' end || E'\n', '')
+      || 'Autenticação: ' || (c->>'autenticacao')
+      -- avisos de jornada (intervalo, hora extra, interjornada): a marcação vale, o gestor é avisado
+      || coalesce(E'\n\n' || array_to_string(fn_ponto_avisar(v_tec.id, c->>'tipo'), E'\n'), ''));
+    return jsonb_build_object('acao', 'ponto_registrado', 'nsr', c->'nsr');
+  end if;
+
+  -- 2. Botão, número do menu ou palavra do ponto
+  if v_btn is not null then
+    -- botão de outro fluxo (escala) segue para as escalas
+    if v_btn !~ '^ponto:(entrada|saida_almoco|volta_almoco|saida|inicio_he|fim_he)$' then return null; end if;
+    v_tipo := substring(v_btn from 7);
+  elsif v_conv.tecnico_id is not null and v_conv.etapa = 'escolher_tipo' and v_norm ~ '^[1-6]$' and not v_citou then
+    -- número só vale como escolha do menu se não for resposta citando outra mensagem (ex.: a escala)
+    v_tipo := (array['entrada','saida_almoco','volta_almoco','saida','inicio_he','fim_he'])[v_norm::int];
+  elsif v_conv.tecnico_id is not null and not v_citou and v_norm in ('0', 'cancelar', 'sair') then
+    update ponto_conversas set expira_em = now() where tecnico_id = v_tec.id;
+    perform fn_ponto_wa(v_tec.telefone_e164, 'Registro de ponto cancelado. Para recomeçar, escreva *ponto*.');
+    return jsonb_build_object('acao', 'ponto_cancelado');
+  elsif v_norm in ('entrada', 'entrei', 'cheguei', 'inicio do expediente') then
+    v_tipo := 'entrada';
+  elsif v_norm in ('almoco', 'saida almoco', 'saida para almoco', 'saida para o almoco', 'sai para almoco', 'intervalo') then
+    v_tipo := case when v_ultima = 'saida_almoco' then 'volta_almoco' else 'saida_almoco' end;
+  elsif v_norm in ('volta', 'volta do almoco', 'voltei', 'retorno', 'retorno do almoco') then
+    v_tipo := 'volta_almoco';
+  elsif v_norm in ('saida', 'fim do expediente') then
+    v_tipo := 'saida';
+  elsif v_norm in ('he', 'hora extra', 'horas extras') then
+    v_tipo := case when v_ultima = 'inicio_he' then 'fim_he' else 'inicio_he' end;
+  elsif v_norm in ('ponto', 'bater ponto', 'registro de ponto', 'registrar ponto', 'marcar ponto') then
+    perform fn_ponto_menu(v_tec.id, v_tec.nome, v_tec.telefone_e164, v_ultima, null);
+    return jsonb_build_object('acao', 'ponto_menu');
+  elsif v_norm ~ '^(1|2|s|n|sim|nao|ok|ciente|confirmado|confirmada|confirmo|ciente, confirmado|problema|tenho um problema)$'
+     or exists (select 1 from ocorrencias o join escalas e on e.id = o.escala_id
+                 where e.tecnico_id = v_tec.id and o.status = 'aberta' and o.detalhe is null
+                   and o.created_at > now() - interval '2 hours') then
+    -- resposta típica de escala, ou detalhe de ocorrência aberta (como em fn_wh_mensagem): segue
+    -- para as escalas mesmo dentro da conversa do ponto
+    return null;
+  elsif v_conv.tecnico_id is not null and not v_citou and v_norm <> '' then
+    -- dentro da conversa do ponto, resposta que não é opção válida volta para o menu
+    perform fn_ponto_menu(v_tec.id, v_tec.nome, v_tec.telefone_e164, v_ultima, 'Não entendi essa opção.');
+    return jsonb_build_object('acao', 'ponto_menu_repetido');
+  else
+    return null;   -- não é do ponto: segue para as escalas
+  end if;
+
+  insert into ponto_conversas (tecnico_id, etapa, tipo, expira_em)
+  values (v_tec.id, 'aguardando_local', v_tipo, now() + interval '10 minutes')
+  on conflict (tecnico_id) do update set etapa = 'aguardando_local', tipo = excluded.tipo, expira_em = excluded.expira_em;
+  -- aviso ANTES de registrar a volta do almoço com intervalo abaixo do mínimo (não bloqueia)
+  v_aviso := fn_ponto_aviso_previo(v_tec.id, v_tipo);
+  perform fn_ponto_wa(v_tec.telefone_e164,
+    coalesce(v_aviso || E'\n\n', '')
+    || '*' || fn_ponto_rotulo(v_tipo) || '*. Agora mande a sua *localização atual*:' || E'\n'
+    || '📎 → Localização → *Enviar localização atual*.' || E'\n\n'
+    || 'A hora registrada é a do recebimento da localização.');
+  return jsonb_build_object('acao', 'ponto_pediu_localizacao', 'tipo', v_tipo);
 end $$;
 
 -- Permissões por laço (decisões 12, 49 e 51) -------------------------------------------------------

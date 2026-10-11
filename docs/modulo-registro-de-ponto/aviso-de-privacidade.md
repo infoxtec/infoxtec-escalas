@@ -32,3 +32,18 @@ do seu empregador (operadora).
 **Seus direitos:** você pode pedir acesso, correção e informações sobre o uso dos seus dados pelo
 canal **[e-mail do encarregado de dados]**. Suas marcações e comprovantes ficam disponíveis para você
 no app.
+
+## Versão v4 (11/10/2026): justificativas com documento
+
+Acrescentado ao aviso do app (`VERSAO_AVISO = 'v4-2026-10-11'`; todo funcionário dá ciência de novo):
+
+> **Justificativas com documento.** Se você pedir um ajuste por falta (atestado, certidão, convocação), o
+> documento que você enviar fica guardado **criptografado**, para cumprir a lei trabalhista e permitir a
+> defesa de direitos (LGPD art. 11, II, a e d). Só as pessoas autorizadas pelo seu empregador para ver
+> atestados abrem o documento, sem baixar, e cada abertura fica registrada. Não precisa informar a doença
+> nem o CID. A foto é reduzida no seu celular antes do envio, o que tira dela a localização.
+
+Guarda: 5 anos (prescrição trabalhista); descarte do documento enviado por engano ou a pedido do titular
+pelo painel (`app_ponto_anexo_descartar`). Revisão jurídica: persona `juridico` (decisão 58); parecer do
+advogado (076) quando disponível.
+

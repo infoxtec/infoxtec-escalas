@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, ShieldCheck, X } from 'lucide-react'
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
-import { Button, ErrorBox } from './ui'
+import { Button, ErrorBox, Input } from './ui'
 import { api, erroMsg } from '../lib/api'
 
 // Visualizador do cofre (decisão 56): o documento da justificativa só é visto aqui, desenhado em tela
@@ -13,6 +13,10 @@ export default function Cofre({ justificativa, numero, onFechar }: { justificati
   const [erro, setErro] = useState<string | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [marca, setMarca] = useState('')
+  const [anexos, setAnexos] = useState<{ id: string; tipo: string }[]>([])
+  const [aviso, setAviso] = useState<string | null>(null)
+  const [descartando, setDescartando] = useState<string | null>(null)
+  const [motivo, setMotivo] = useState('')
 
   useEffect(() => {
     document.body.classList.add('cofre-aberto')
@@ -20,7 +24,8 @@ export default function Cofre({ justificativa, numero, onFechar }: { justificati
     const desenhar = async () => {
       try {
         const lista = await api.pontoAnexos(justificativa)
-        if (lista.length === 0) { setErro('Este pedido não tem documento.'); return }
+        if (lista.length === 0) { setErro('Este pedido não tem documento (ou ele foi descartado).'); return }
+        setAnexos(lista)
         for (const item of lista) {
           const doc = await api.pontoAnexoVer(item.id)
           if (cancelado || !area.current) return
@@ -31,6 +36,7 @@ export default function Cofre({ justificativa, numero, onFechar }: { justificati
             const pdfjs = await import('pdfjs-dist')
             pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
             const pdf = await pdfjs.getDocument({ data: bytes }).promise
+            if (pdf.numPages > 10) setAviso(`O PDF tem ${pdf.numPages} páginas; aqui aparecem as 10 primeiras.`)
             for (let i = 1; i <= Math.min(pdf.numPages, 10); i++) {
               const pagina = await pdf.getPage(i)
               const base = pagina.getViewport({ scale: 1 })
@@ -72,8 +78,22 @@ export default function Cofre({ justificativa, numero, onFechar }: { justificati
         </div>
         <p className="text-xs text-muted-foreground">Cofre criptografado: só visualização, sem baixar nem imprimir. Esta abertura ficou registrada{marca ? ` (${marca})` : ''}. Não fotografe nem compartilhe a tela.</p>
         {erro && <ErrorBox>{erro}</ErrorBox>}
+        {aviso && <p className="text-xs text-amber-700">{aviso}</p>}
         {carregando && <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin" /></div>}
         <div ref={area} className="space-y-3 [&>canvas]:mx-auto [&>canvas]:max-w-full [&>canvas]:rounded [&>canvas]:border" />
+        {anexos.length > 0 && (
+          <div className="space-y-1.5 border-t pt-2 text-xs">
+            <p className="text-muted-foreground">Documento errado (outra pessoa, com CID, foto ilegível) ou pedido do funcionário? Descarte: o arquivo sai do cofre e fica só o registro de que existiu.</p>
+            {anexos.map((a, i) => descartando === a.id ? (
+              <div key={a.id} className="flex items-center gap-1.5">
+                <Input value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Motivo do descarte" className="h-8" />
+                <Button size="sm" variant="outline" disabled={motivo.trim().length < 10} onClick={async () => {
+                  try { await api.pontoAnexoDescartar(a.id, motivo.trim()); onFechar() } catch (e) { setErro(erroMsg(e)) }
+                }}>Descartar</Button>
+              </div>
+            ) : <Button key={a.id} size="sm" variant="ghost" onClick={() => { setDescartando(a.id); setMotivo('') }}>Descartar documento {i + 1}</Button>)}
+          </div>
+        )}
       </div>
     </div>
   )

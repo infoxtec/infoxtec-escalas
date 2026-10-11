@@ -17,12 +17,14 @@ export default function UsuariosPage() {
   const [lista, setLista] = useState<UsuarioPainel[]>([])
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const [historico, setHistorico] = useState<{ email: string; valor: boolean; autor: string; em: string }[]>([])
   const [edit, setEdit] = useState<{ email: string; nome: string; papel: Papel; ativo: boolean; novo: boolean; ve_saude: boolean; ve_saude_antes: boolean } | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [erroForm, setErroForm] = useState<string | null>(null)
 
   const carregar = useCallback(async () => {
     setCarregando(true); setErro(null)
+    api.veSaudeHistorico().then(setHistorico).catch(() => setHistorico([]))
     try { setLista(await api.usuarios()) } catch (e) { setErro(erroMsg(e)) }
     finally { setCarregando(false) }
   }, [])
@@ -83,7 +85,7 @@ export default function UsuariosPage() {
               <tr key={u.email} className={`border-b last:border-0 ${!u.ativo ? 'opacity-50' : ''}`}>
                 <td className="truncate px-3 py-2.5 font-medium" title={u.nome ?? ''}>{u.nome ?? '—'}</td>
                 <td className="truncate px-3 py-2.5 text-xs" title={u.email}>{u.email}</td>
-                <td className="px-3 py-2.5 text-xs">{PAPEL_LABEL[u.papel]}{u.ve_saude && <span className="ml-1 rounded bg-blue-100 px-1 text-[10px] text-blue-800" title="Vê e decide atestados; vê os documentos do cofre">atestados</span>}</td>
+                <td className="px-3 py-2.5 text-xs">{PAPEL_LABEL[u.papel]}{u.ve_saude && <span className="ml-1 rounded bg-blue-100 px-1 text-[10px] text-blue-800" title="Vê atestados e documentos; decide pedidos com documento">atestados</span>}</td>
                 <td className="px-3 py-2.5 text-center"><span className={`inline-block h-2 w-2 rounded-full ${u.ativo ? 'bg-green-500' : 'bg-gray-400'}`} /></td>
                 <td className="truncate px-3 py-2.5 text-xs text-muted-foreground">{u.criado_por ?? '—'} · {formatDateTime(u.created_at)}</td>
                 <td className="px-3 py-2.5 text-right">
@@ -94,6 +96,17 @@ export default function UsuariosPage() {
           </tbody>
         </table>
       </div>
+
+      {historico.length > 0 && (
+        <div className="space-y-1 rounded-md border p-3 text-xs">
+          <p className="font-semibold">Histórico de "Vê atestados e documentos"</p>
+          <ul className="space-y-0.5 text-muted-foreground">
+            {historico.slice(0, 20).map((h, i) => (
+              <li key={i}>{h.em} · {h.autor} {h.valor ? 'deu a permissão a' : 'tirou a permissão de'} <span className="text-foreground">{h.email}</span></li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <Modal open={!!edit} onClose={() => { if (!salvando) setEdit(null) }} title={edit?.novo ? 'Adicionar usuário' : 'Editar usuário'} width="max-w-md"
         footer={<>
@@ -111,7 +124,7 @@ export default function UsuariosPage() {
             </Field>
             <ToggleRow label="Ativo" description="Desativado, o usuário perde o acesso ao painel na hora." checked={edit.ativo} onChange={v => setEdit({ ...edit, ativo: v })} disabled={salvando} />
             {edit.papel !== 'leitura' && (
-              <ToggleRow label="Vê atestados" description="Vê e decide pedidos de saúde e abre os documentos do cofre (só visualização; cada abertura fica registrada). Dê só a quem faz o RH."
+              <ToggleRow label="Vê atestados e documentos" description="Vê e decide pedidos com documento (atestado, certidão, convocação) e abre o cofre: só visualização, cada abertura fica registrada. Dê só a quem faz o RH."
                 checked={edit.ve_saude} onChange={v => setEdit({ ...edit, ve_saude: v })} disabled={salvando} />
             )}
             {erroForm && <ErrorBox>{erroForm}</ErrorBox>}
