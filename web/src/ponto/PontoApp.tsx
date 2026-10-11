@@ -171,7 +171,13 @@ function Painel({ token, onSair }: { token: string; onSair: () => void }) {
             className={`rounded-md py-2 text-sm font-semibold ${aba === id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}>{rotulo}</button>
         ))}
       </div>
-      {aba === 'ajuste' ? <Ajuste token={token} onSair={onSair} /> : (<>
+      {aba === 'ajuste' ? <Ajuste token={token} onSair={onSair} onMudou={() => void carregar()} /> : (<>
+      {eu.afastado_ate && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          Você está <strong>afastado por atestado até {eu.afastado_ate.slice(0, 5)}</strong>: não marca ponto nem recebe escala. Melhoras!
+          Para voltar antes, passe por nova avaliação médica e envie o <strong>atestado de aptidão</strong> na aba Ajuste.
+        </div>
+      )}
 
       {lembrarAlmoco && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
@@ -181,7 +187,7 @@ function Painel({ token, onSair }: { token: string; onSair: () => void }) {
 
       <div className="grid grid-cols-2 gap-3">
         {TIPOS.map(t => (
-          <button key={t.id} onClick={() => void escolher(t.id)} disabled={!!batendo}
+          <button key={t.id} onClick={() => void escolher(t.id)} disabled={!!batendo || !!eu.afastado_ate}
             className={`flex min-h-[88px] flex-col items-center justify-center gap-1 rounded-xl border p-3 text-center text-sm font-semibold transition-colors disabled:opacity-60 ${t.id === sugerido ? 'border-primary bg-primary text-primary-foreground' : 'bg-card hover:border-primary'}`}>
             {batendo === t.id ? <Loader2 className="h-6 w-6 animate-spin" /> : <Clock className="h-6 w-6" />}
             {t.label}
@@ -291,6 +297,7 @@ type MotivoFalta = { id: string; label: string; horario?: boolean; doc: string }
 const MOTIVOS_FALTA: Record<string, MotivoFalta[]> = {
   saude: [
     { id: 'atestado', label: 'Atestado médico: vale o dia ou o período indicado', doc: 'atestado' },
+    { id: 'alta_medica', label: 'Atestado de aptidão (alta médica): estou liberado para trabalhar', doc: 'atestado de aptidão' },
     { id: 'comparecimento', label: 'Declaração de comparecimento: vale só o horário da consulta', horario: true, doc: 'declaração de comparecimento' },
     { id: 'prenatal', label: 'Acompanhei consulta ou exame do pré-natal', horario: true, doc: 'declaração da consulta do pré-natal' },
     { id: 'filho_6_anos', label: 'Levei filho de até 6 anos ao médico', doc: 'declaração da consulta do seu filho' },
@@ -334,7 +341,7 @@ const SITUACAO_PEDIDO: Record<PontoMeuPedido['status'], { label: string; cor: st
 }
 function hojeLocal() { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10) }
 
-function Ajuste({ token, onSair }: { token: string; onSair: () => void }) {
+function Ajuste({ token, onSair, onMudou }: { token: string; onSair: () => void; onMudou: () => void }) {
   const [pedidos, setPedidos] = useState<PontoMeuPedido[] | null>(null)
   const [grupo, setGrupo] = useState<string | null>(null)
   const [motivo, setMotivo] = useState<string>('')
@@ -358,7 +365,9 @@ function Ajuste({ token, onSair }: { token: string; onSair: () => void }) {
 
   const falta = grupo && grupo !== 'ponto' ? MOTIVOS_FALTA[grupo].find(m => m.id === motivo) : undefined
   const atraso = motivo === 'atraso_saida' || !!falta?.horario
-  const pronto = !!motivo && !!data && (atraso ? !!ini && !!fim && ini < fim : falta ? (!dataFim || dataFim >= data) : !!hora)
+  const ehAtestado = motivo === 'atestado', ehAlta = motivo === 'alta_medica'
+  const pronto = !!motivo && !!data && (atraso ? !!ini && !!fim && ini < fim
+    : falta ? (ehAtestado ? !!dataFim && dataFim >= data : ehAlta || !dataFim || dataFim >= data) : !!hora)
     && (!falta || !!arquivo)
   const escolherArquivo = async (f: File | undefined) => {
     setErro(null); setArquivo(null)
@@ -368,6 +377,15 @@ function Ajuste({ token, onSair }: { token: string; onSair: () => void }) {
   const enviar = async () => {
     setEnviando(true); setErro(null)
     try {
+      if ((ehAtestado || ehAlta) && arquivo) {
+        const r = await ponto.justificarAtestado(token, { motivo: ehAtestado ? 'atestado' : 'alta_medica', data, validoAte: ehAtestado ? dataFim : null,
+          observacao: obs.trim() || null, anexo: arquivo.base64, anexoTipo: arquivo.tipo })
+        setEnviado(ehAtestado
+          ? `Pedido ${r.numero} enviado. Até ${dataFim.split('-').reverse().join('/')} você fica afastado: não marca ponto nem recebe escala. Melhoras! Para voltar antes, envie o atestado de aptidão (alta médica).`
+          : `Pedido ${r.numero} enviado. Você está liberado para marcar o ponto e receber escala.`)
+        setGrupo(null); setMotivo(''); setObs(''); setDataFim(''); setArquivo(null)
+        await carregar(); onMudou(); return
+      }
       if (falta && arquivo) {
         const r = await ponto.justificarFalta(token, { motivo, data, dataFim: falta.horario ? null : (dataFim || null),
           ini: falta.horario ? ini : null, fim: falta.horario ? fim : null, observacao: obs.trim() || null, anexo: arquivo.base64, anexoTipo: arquivo.tipo })
@@ -421,12 +439,15 @@ function Ajuste({ token, onSair }: { token: string; onSair: () => void }) {
                 <Field label="Das"><Input type="time" value={ini} onChange={e => setIni(e.target.value)} /></Field>
                 <Field label="Às"><Input type="time" value={fim} onChange={e => setFim(e.target.value)} /></Field>
               </div>
-            </>) : (
+            </>) : ehAlta ? (
+              <Field label="Liberado a partir de"><Input type="date" value={data} max={hojeLocal()} onChange={e => setData(e.target.value)} /></Field>
+            ) : (
               <div className="grid grid-cols-2 gap-2">
-                <Field label="Dia"><Input type="date" value={data} max={hojeLocal()} onChange={e => setData(e.target.value)} /></Field>
-                <Field label="Até o dia (se mais de um)"><Input type="date" value={dataFim} min={data} onChange={e => setDataFim(e.target.value)} /></Field>
+                <Field label={ehAtestado ? 'Primeiro dia' : 'Dia'}><Input type="date" value={data} max={hojeLocal()} onChange={e => setData(e.target.value)} /></Field>
+                <Field label={ehAtestado ? 'Válido até (último dia)' : 'Até o dia (se mais de um)'}><Input type="date" value={dataFim} min={data} onChange={e => setDataFim(e.target.value)} /></Field>
               </div>
             )}
+            {ehAtestado && <p className="text-xs text-amber-800">Durante a validade do atestado você não marca ponto nem recebe escala. Para voltar antes, passe por nova avaliação médica e envie o atestado de aptidão (alta médica).</p>}
             <p className="text-sm font-semibold">Documento</p>
             <p className="text-xs text-muted-foreground">Foto ou PDF do {falta.doc}. {grupo === 'saude' && 'Se o documento tiver o CID (código da doença), você pode cobri-lo antes da foto. '}
               Fica guardado com segurança e só quem aprova vê.</p>

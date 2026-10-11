@@ -16,6 +16,7 @@
 -- T13 habilidades exigidas pelo tipo de atividade (apto, nível abaixo, faltando)
 -- T14 justificativa de ponto: pedido no WhatsApp e no app, aprovar, negar, abono, falta no espelho
 -- T15 atestado no cofre: documento cifrado, só quem vê atestados vê e decide, limite legal, abono por dia
+-- T16 validade do atestado: sem ponto e sem escala no afastamento; alta médica libera
 
 \set ON_ERROR_STOP on
 begin;
@@ -752,7 +753,62 @@ begin
   perform pg_temp.ok(v_ok, '[T15] decidiu família sem permissão');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T15' as resultado,
+-- T16 validade do atestado bloqueia ponto e escala; alta médica libera (migration 69, decisão 60) -------
+do $$
+declare
+  v_emp  uuid := (select v::uuid from qa where k = 'emp');
+  v_loc  uuid := (select v::uuid from qa where k = 'loc');
+  v_hoje date := (now() at time zone 'America/Bahia')::date;
+  v_jpg  bytea := '\xffd8ffe000104a46494600010100000100010000ffd9'::bytea;
+  v_tec uuid; v_cpf text := pg_temp.cpf('161616101'); v_tok text; r jsonb; v_ok boolean; c jsonb;
+begin
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste)
+  values ('QA Afastado Lima', '557999991616', true, true, v_cpf, v_emp, true) returning id into v_tec;
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  c := app_ponto_gerar_codigo(v_tec);
+  v_tok := ponto_entrar(v_cpf, c->>'codigo')->>'token';
+  perform ponto_registrar_ciencia(v_tok, 'qa');
+
+  -- validade obrigatória
+  v_ok := false;
+  begin perform ponto_justificar_atestado(v_tok, 'atestado', v_hoje - 1, null, null, encode(v_jpg, 'base64'), 'image/jpeg');
+  exception when others then v_ok := sqlerrm like '%até quando vale%'; end;
+  perform pg_temp.ok(v_ok, '[T16] atestado sem validade aceito');
+  r := ponto_justificar_atestado(v_tok, 'atestado', v_hoje - 1, v_hoje + 2, null, encode(v_jpg, 'base64'), 'image/jpeg');
+  perform pg_temp.ok(ponto_eu(v_tok, 'qa')->>'afastado_ate' = to_char(v_hoje + 2, 'DD/MM/YYYY'), '[T16] app não sabe do afastamento');
+
+  -- sem ponto e sem escala dentro da validade
+  v_ok := false;
+  begin perform ponto_bater(v_tok, 'entrada', -12.900100, -38.400100, 10, 'qa');
+  exception when others then v_ok := sqlerrm like '%afastado por atestado%'; end;
+  perform pg_temp.ok(v_ok, '[T16] afastado bateu ponto');
+  v_ok := false;
+  begin
+    insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+    values (v_tec, v_loc, v_hoje + 1, '08:00', 'QA afastado', 'agendada', 'qa');
+  exception when others then v_ok := sqlerrm like '%afastado%'; end;
+  perform pg_temp.ok(v_ok, '[T16] afastado recebeu escala');
+  -- depois da validade, escala normal
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, v_hoje + 3, '08:00', 'QA depois do afastamento', 'agendada', 'qa');
+
+  -- alta médica hoje libera ponto e escala
+  r := ponto_justificar_atestado(v_tok, 'alta_medica', v_hoje, null, null, encode(v_jpg, 'base64'), 'image/jpeg');
+  perform pg_temp.ok(ponto_eu(v_tok, 'qa')->>'afastado_ate' is null, '[T16] alta não liberou');
+  c := ponto_bater(v_tok, 'entrada', -12.900100, -38.400100, 10, 'qa');
+  perform pg_temp.ok(c ? 'nsr', '[T16] liberado não bateu ponto');
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, v_hoje + 1, '08:00', 'QA liberado', 'agendada', 'qa');
+
+  -- aprovar a alta não gera abono
+  perform app_definir_ve_saude('qa-admin@teste.local', true);
+  perform app_ponto_decidir((select id from ponto_justificativas where numero = (r->>'numero')::bigint), true);
+  perform pg_temp.ok(not exists (select 1 from ponto_abonos a join ponto_justificativas j on j.id = a.justificativa_id
+                                  where j.numero = (r->>'numero')::bigint), '[T16] alta gerou abono');
+  perform app_definir_ve_saude('qa-admin@teste.local', false);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T16' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
