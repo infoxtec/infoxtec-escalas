@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Loader2, ShieldCheck, X } from 'lucide-react'
+import { EyeOff, Loader2, ShieldCheck, X } from 'lucide-react'
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import qrcode from 'qrcode-generator'
 import type { PontoDocumento } from '../lib/types'
@@ -11,7 +11,11 @@ import { api, erroMsg } from '../lib/api'
 // registrada no banco. Limite registrado na decisão: nada impede foto da tela; a marca d'água torna
 // o vazamento rastreável. Por cima de cada página vai o timbre com o registro do documento, a data e a
 // hora do recebimento, a integridade (SHA-256) e o QR de verificação (decisão 62). O arquivo do cofre não
-// muda: timbre e QR existem só na tela.
+// muda: timbre e QR existem só na tela. Contra print de tela (decisão 63): o navegador não consegue
+// impedir a captura do sistema operacional; o cofre dificulta — termo de sigilo antes de abrir, documento
+// oculto quando a janela perde o foco, quando o cursor sai dela ou ao apertar as teclas de captura
+// (PrintScreen, Win/Cmd + Shift), e fechamento automático em 3 minutos.
+const TEMPO_ABERTO_MS = 3 * 60 * 1000
 export default function Cofre({ justificativa, numero, onFechar }: { justificativa: string; numero: number; onFechar: () => void }) {
   const area = useRef<HTMLDivElement>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -22,8 +26,41 @@ export default function Cofre({ justificativa, numero, onFechar }: { justificati
   const [descartando, setDescartando] = useState<string | null>(null)
   const [motivo, setMotivo] = useState('')
   const [timbre, setTimbre] = useState<PontoDocumento | null>(null)
+  const [aceito, setAceito] = useState(false)
+  const [oculto, setOculto] = useState(false)
+  const fechar = useRef(onFechar)
+  fechar.current = onFechar
+
+  // Esconde o documento a qualquer sinal de captura; só volta com um clique (o foco voltando não basta)
+  useEffect(() => {
+    if (!aceito) return
+    const esconder = () => setOculto(true)
+    const tecla = (e: KeyboardEvent) => {
+      if (e.key === 'PrintScreen' || e.key === 'Meta' || e.key === 'OS' || e.metaKey
+          || (e.shiftKey && (e.ctrlKey || e.altKey))) {
+        setOculto(true)
+        if (e.key === 'PrintScreen') void navigator.clipboard?.writeText('').catch(() => undefined)
+      }
+    }
+    const visibilidade = () => { if (document.hidden) setOculto(true) }
+    window.addEventListener('blur', esconder)
+    document.documentElement.addEventListener('mouseleave', esconder)
+    document.addEventListener('visibilitychange', visibilidade)
+    window.addEventListener('keydown', tecla, true)
+    window.addEventListener('keyup', tecla, true)
+    const fim = window.setTimeout(() => fechar.current(), TEMPO_ABERTO_MS)
+    return () => {
+      window.removeEventListener('blur', esconder)
+      document.documentElement.removeEventListener('mouseleave', esconder)
+      document.removeEventListener('visibilitychange', visibilidade)
+      window.removeEventListener('keydown', tecla, true)
+      window.removeEventListener('keyup', tecla, true)
+      window.clearTimeout(fim)
+    }
+  }, [aceito])
 
   useEffect(() => {
+    if (!aceito) return
     document.body.classList.add('cofre-aberto')
     let cancelado = false
     const desenhar = async () => {
@@ -64,7 +101,7 @@ export default function Cofre({ justificativa, numero, onFechar }: { justificati
     }
     void desenhar()
     return () => { cancelado = true; document.body.classList.remove('cofre-aberto') }
-  }, [justificativa, numero])
+  }, [aceito, justificativa, numero])
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 select-none"
@@ -76,12 +113,28 @@ export default function Cofre({ justificativa, numero, onFechar }: { justificati
           <p className="flex items-center gap-1.5 text-sm font-semibold"><ShieldCheck className="h-4 w-4 text-green-700" /> Documento do pedido {numero}</p>
           <Button variant="ghost" size="sm" onClick={onFechar}><X className="h-4 w-4" /> Fechar</Button>
         </div>
-        <p className="text-xs text-muted-foreground">Cofre criptografado: só visualização, sem baixar nem imprimir. Esta abertura ficou registrada{marca ? ` (${marca})` : ''}. Não fotografe nem compartilhe a tela.</p>
+        {!aceito ? (
+          <div className="space-y-3 rounded-lg border bg-muted/40 p-4 text-sm">
+            <p className="font-semibold">Termo de sigilo</p>
+            <p>Este documento contém dado pessoal e pode conter dado de saúde do funcionário (LGPD, art. 11). Ao abrir, você
+              se compromete a usá-lo só para analisar este pedido e a <strong>não fotografar, capturar a tela, copiar ou compartilhar</strong> o
+              conteúdo. A abertura fica registrada com o seu usuário, a data e a hora, que também aparecem na marca d'água de
+              cada página. O documento fecha sozinho em 3 minutos e some da tela se a janela perder o foco.</p>
+            <Button size="sm" onClick={() => setAceito(true)}><ShieldCheck className="h-4 w-4" /> Li e concordo — abrir o documento</Button>
+          </div>
+        ) : <p className="text-xs text-muted-foreground">Cofre criptografado: só visualização, sem baixar nem imprimir. Esta abertura ficou registrada{marca ? ` (${marca})` : ''}. Não fotografe nem compartilhe a tela.</p>}
         {timbre && !timbre.integro && <ErrorBox>Atenção: o arquivo não confere com o SHA-256 gravado no recebimento. Não use este documento e avise o administrador.</ErrorBox>}
         {erro && <ErrorBox>{erro}</ErrorBox>}
         {aviso && <p className="text-xs text-amber-700">{aviso}</p>}
-        {carregando && <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin" /></div>}
-        <div ref={area} className="space-y-3 [&>canvas]:mx-auto [&>canvas]:max-w-full [&>canvas]:rounded [&>canvas]:border" />
+        {aceito && carregando && <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin" /></div>}
+        {oculto && (
+          <div className="flex flex-col items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 p-6 text-center text-sm text-amber-900">
+            <EyeOff className="h-6 w-6" />
+            <p>Documento oculto: a janela perdeu o foco, o cursor saiu dela ou foi usada uma tecla de captura de tela.</p>
+            <Button size="sm" variant="outline" onClick={() => setOculto(false)}>Mostrar de novo</Button>
+          </div>
+        )}
+        <div ref={area} className={`space-y-3 [&>canvas]:mx-auto [&>canvas]:max-w-full [&>canvas]:rounded [&>canvas]:border ${oculto ? 'hidden' : ''}`} />
         {anexos.length > 0 && (
           <div className="space-y-1.5 border-t pt-2 text-xs">
             <p className="text-muted-foreground">Documento errado (outra pessoa, com CID, foto ilegível) ou pedido do funcionário? Descarte: o arquivo sai do cofre e fica só o registro de que existiu.</p>

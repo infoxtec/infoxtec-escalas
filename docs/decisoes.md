@@ -737,3 +737,18 @@ vale para o arquivo guardado, não para a foto ou cópia em mãos de quem confer
 conferências seguem a guarda da justificativa (5 anos, executor pendente no plano). **Não escolhido:**
 página pública de verificação (exporia dado de saúde de um empregado a quem tivesse a foto do QR).
 
+## 63. Print de tela no cofre: dificultar e rastrear, não bloquear
+
+**Data:** 12/10/2026. **Pedido do responsável:** impedir o print de tela do documento do cofre no Windows
+e no Mac (o teste mostrou que a captura funcionava). **Fato técnico:** uma página no navegador não consegue
+impedir a captura do sistema operacional (PrintScreen, Win+Shift+S, Cmd+Shift+3/4/5, ferramentas de
+terceiros) nem a foto com o celular; nenhum navegador oferece isso. **Decisão (painel 3.19.0):** dificultar
+e rastrear: (1) termo de sigilo antes de abrir; (2) documento oculto quando a janela perde o foco, quando o
+cursor sai dela, quando a aba fica escondida e ao apertar teclas de captura (PrintScreen, Win/Cmd, Shift
+com Ctrl ou Alt), e só volta com um clique; (3) fechamento automático em 3 minutos; (4) a marca d'água com
+usuário, data e hora e o registro de cada abertura continuam sendo o controle que identifica quem vazou.
+**Limite aceito:** a captura feita no instante exato de uma tecla que o sistema não repassa ao navegador
+(ex.: PrintScreen no Windows) e a foto com celular passam. **Bloqueio real, a decidir (custo):** (a)
+aplicativo de desktop próprio para o cofre, com a janela excluída da captura (`setContentProtection` no
+Windows e no macOS); (b) política de DLP/MDM nas máquinas da empresa (ex.: Microsoft Intune/Purview).
+
