@@ -87,12 +87,15 @@ raiz. Ele é lido automaticamente em toda sessão.
    **No mesmo pacote, antes do PR (decisão 71):** plano (`[x]` e linha na tabela), README, backlog,
    sprint, `banco-de-dados.md` e `decisoes.md`. Nunca um PR depois da produção só para registrar; a
    conferência da produção entra no próximo PR que já for abrir.
+   **Ritmo (decisão 77):** no máximo 2 pacotes abertos; um pacote por PR; nunca force-push em branch com
+   PR aberto; teste que depende do relógio usa stub.
 2. **Revisar.** O Claude Code abre o PR. O CI roda e a Vercel publica um preview.
 3. **Aplicar no dev.** Na máquina Linux, com o projeto dev ligado: `npx supabase db push`.
    Na fase 3 do roteiro isso passa a ser automático.
 4. **Testar.** Abrir o preview da Vercel (que aponta para o dev) e conferir a tela.
 5. **Juntar.** Merge do PR em `main`. A Vercel publica o painel em produção.
-6. **Aplicar na produção.** Rodar a migration na produção. A ordem importa:
+6. **Aplicar na produção.** Só depois de o PR aparecer **"Merged"** no GitHub (decisão 77). Rodar a
+   migration na produção. A ordem importa:
    - Mudança de estrutura (tabela, coluna, função nova) **antes** do painel que a usa.
    - Dado novo que a tela precisa saber exibir **depois** do painel publicado (decisão 24).
 7. **Conferir.** O carimbo de versão no topo do painel diz qual build está no ar.

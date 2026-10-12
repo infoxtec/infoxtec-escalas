@@ -201,6 +201,24 @@ que entrega é a prova. Cada eixo ganha uma frase verificável no produto:
 | **Segurança** | "Fica registrado quem foi avisado, quando, e se leu." | Cada notificação guarda horário de envio, entrega, leitura e a resposta do técnico |
 | **Eficiência** | "Quem não respondeu deixa de ser ligação e vira alerta ao supervisor em minutos." | Reenvio a cada 30 minutos, até 3 vezes, e escalonamento; alertas das 16h e das 18h |
 
+### Seriedade: o atributo que sustenta os três eixos (13/10/2026)
+
+O responsável pediu que a seriedade com que o produto é feito apareça na marca. Ela não vira adjetivo
+("seguro", "confiável"): vira prova que o cliente pode conferir. O PO e o CTO respondem por manter esta
+lista igual à matriz de capacidade (`docs/plano-comercial.md` §2) — o que sai de lá sai daqui.
+
+| O que dizemos | Por que é verdade |
+|---|---|
+| "Verificação em duas etapas para quem quiser; a pedido do cliente, obrigatória para todos." | Verificação em duas etapas por usuário, com histórico de quem ativou e desativou (decisões 67, 68 e 72) |
+| "Nenhum dado fica exposto direto na internet: tudo passa por regras que conferem quem pede." | Nenhuma tabela acessível pela API; acesso só por funções com papel conferido (decisão 51, migrations 62 e 63) |
+| "O dado de saúde não passa pelo WhatsApp." | O motivo de saúde nunca vai em mensagem (decisão 40) |
+| "Todo dia uma cópia cifrada do banco; todo mês provamos que ela abre." | Backup diário cifrado e teste mensal de restauração (decisão 70) |
+| "Nenhuma mudança de banco vai ao ar sem 30 testes automáticos e revisão de segurança." | Regressão T1 a T30 em todo pull request; revisão do especialista de segurança em toda mudança de banco e de integração |
+| "Você escolhe o canal do WhatsApp e sabe o risco de cada um." | Evolution com aceite escrito do risco, ou API oficial da Meta (decisão 74) |
+
+O que **não** dizemos: "certificado", "à prova de invasão", "100% seguro", "homologado" — nenhum desses
+tem lastro, e prometer o que não se prova é o contrário de seriedade.
+
 ## 9. Identidade e aplicação
 
 Aprovada em 04/10/2026 (decisão 46); a descrição completa da logo está na seção 1.
