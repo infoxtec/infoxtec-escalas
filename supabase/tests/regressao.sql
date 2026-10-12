@@ -1501,14 +1501,14 @@ end $$;
 -- Escala cancelada e de outro local ficam de fora.
 do $$
 declare
-  v_loc uuid := (select v::uuid from qa where k = 'loc');
   v_dia date := current_date + 10;
-  v_ta uuid; v_d1 uuid; v_d2 uuid; v_t1 uuid; v_t2 uuid; v_t3 uuid; v_t4 uuid; v_loc2 uuid; r jsonb; v_ok boolean;
+  v_loc uuid; v_ta uuid; v_d1 uuid; v_d2 uuid; v_t1 uuid; v_t2 uuid; v_t3 uuid; v_t4 uuid; v_loc2 uuid; r jsonb; v_ok boolean;
 begin
   insert into tipos_atividade (nome) values ('QA Dossiê altura') returning id into v_ta;
-  insert into tipos_documento (nome, ordem) values ('QA NR-35', 1) returning id into v_d1;
-  insert into tipos_documento (nome, ordem) values ('QA ASO', 2) returning id into v_d2;
+  insert into tipos_documento (nome, ordem) values ('QA T32 NR-35', 1) returning id into v_d1;
+  insert into tipos_documento (nome, ordem) values ('QA T32 ASO', 2) returning id into v_d2;
   insert into tipo_atividade_documentos (tipo_id, tipo_documento_id) values (v_ta, v_d1), (v_ta, v_d2);
+  insert into locais (nome, cliente, cidade) values ('QA Dossiê local', 'QA', 'Aracaju') returning id into v_loc;
   insert into locais (nome, cliente, cidade) values ('QA Dossiê outro local', 'QA', 'Aracaju') returning id into v_loc2;
 
   insert into tecnicos (nome, telefone_e164, ativo, opt_in) values ('QA Dossiê Um', '5579999993201', true, true) returning id into v_t1;
@@ -1531,12 +1531,12 @@ begin
   perform pg_temp.ok(not (r->'tecnicos')::text like '%QA Dossiê Três%', '[T32] escala cancelada ou de outro local entrou: ' || r::text);
   perform pg_temp.ok(exists (select 1 from jsonb_array_elements(r->'tecnicos') t
                               where t->>'tecnico' = 'QA Dossiê Um' and not (t->>'apto')::boolean
-                                and t->'documentos' @> '[{"documento":"QA NR-35","situacao":"vencido"}]'
-                                and t->'documentos' @> '[{"documento":"QA ASO","situacao":"valido"}]'),
+                                and t->'documentos' @> '[{"documento":"QA T32 NR-35","situacao":"vencido"}]'
+                                and t->'documentos' @> '[{"documento":"QA T32 ASO","situacao":"valido"}]'),
                      '[T32] vencido na data do serviço não barrou: ' || r::text);
   perform pg_temp.ok(exists (select 1 from jsonb_array_elements(r->'tecnicos') t
                               where t->>'tecnico' = 'QA Dossiê Dois' and (t->>'apto')::boolean
-                                and t->'documentos' @> '[{"documento":"QA ASO","situacao":"vencendo"}]'),
+                                and t->'documentos' @> '[{"documento":"QA T32 ASO","situacao":"vencendo"}]'),
                      '[T32] documento vencendo: ' || r::text);
   -- escala sem tipo de atividade: exigência desconhecida, nunca apto
   perform pg_temp.ok(exists (select 1 from jsonb_array_elements(r->'tecnicos') t
@@ -1550,7 +1550,7 @@ begin
   r := app_dossie_local(v_loc, v_dia);
   perform pg_temp.ok(exists (select 1 from jsonb_array_elements(r->'tecnicos') t
                               where t->>'tecnico' = 'QA Dossiê Dois' and not (t->>'apto')::boolean
-                                and t->'documentos' @> '[{"documento":"QA NR-35","situacao":"nao_cadastrado"}]'),
+                                and t->'documentos' @> '[{"documento":"QA T32 NR-35","situacao":"nao_cadastrado"}]'),
                      '[T32] documento não cadastrado: ' || r::text);
   -- o papel leitura gera o dossiê; sem sessão do painel é barrado
   perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
