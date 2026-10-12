@@ -8,45 +8,53 @@ insert into config (chave, valor, descricao) values
   ('app_url', 'https://infoxtec-escalas.vercel.app', 'Endereço do painel e do app do ponto, usado nos links enviados pelo WhatsApp')
 on conflict (chave) do nothing;
 
--- Hash da assinatura: espelho + imagem + hora (UTC, microssegundos) + origem ------------------------------
+-- Hash da assinatura: espelho + imagem + hora (UTC, microssegundos) + IP + aparelho, tudo como texto (não
+-- depende da forma do jsonb, que pode mudar entre versões do Postgres)
 create or replace function fn_ponto_assinatura_hash(p_sha_espelho text, p_png text, p_assinado_em timestamptz, p_origem jsonb)
 returns text language sql immutable set search_path = public, extensions as $function$
   select encode(sha256(convert_to(
     p_sha_espelho || '|' || p_png || '|' || to_char(p_assinado_em at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')
-    || '|' || coalesce(p_origem::text, ''), 'UTF8')), 'hex')
+    || '|' || coalesce(p_origem ->> 'ip', '') || '|' || coalesce(p_origem ->> 'aparelho', ''), 'UTF8')), 'hex')
 $function$;
 
--- Envio do link pelo WhatsApp (painel) ------------------------------------------------------------------
-create or replace function app_ponto_enviar_espelhos(p_competencia date)
+-- Envio do link pelo WhatsApp (painel). Sem p_espelho: os pendentes do mês. Com p_espelho: reenvia aquele,
+-- mesmo já enviado (a mensagem pode não ter chegado); enviado_em guarda só o primeiro envio. Desligado não
+-- recebe: não consegue entrar no app (a sessão exige funcionário ativo) e recebe o espelho em papel.
+create or replace function app_ponto_enviar_espelhos(p_competencia date, p_espelho uuid default null)
 returns jsonb language plpgsql volatile security definer set search_path = public, extensions as $function$
 declare
   v_email text := app_exigir(array['admin','gestor']);
   v_url   text := rtrim(coalesce(nullif(fn_config('app_url'), ''), 'https://infoxtec-escalas.vercel.app'), '/');
   e       record;
-  v_env   int := 0; v_sem int := 0; v_falha int := 0;
+  v_req   bigint;
+  v_env   int := 0; v_sem int := 0; v_falha int := 0; v_desl int := 0;
 begin
-  for e in select p.id, t.nome, t.telefone_e164, t.opt_in, to_char(p.competencia, 'MM/YYYY') as mes
+  for e in select p.id, p.enviado_em, t.nome, t.telefone_e164, t.opt_in, t.ativo, to_char(p.competencia, 'MM/YYYY') as mes
              from ponto_espelhos p join tecnicos t on t.id = p.tecnico_id
             where p.competencia = date_trunc('month', p_competencia)::date and p.substituido_em is null
-              and p.assinado_em is null and p.enviado_em is null
+              and p.assinado_em is null
+              and (p.id = p_espelho or (p_espelho is null and p.enviado_em is null))
             order by t.nome
               for update of p loop
+    if not e.ativo then v_desl := v_desl + 1; continue; end if;
     if not e.opt_in or e.telefone_e164 is null or not fn_pode_enviar(e.telefone_e164) then
       v_sem := v_sem + 1; continue;
     end if;
     begin
-      perform fn_evo_post('/message/sendText/' || fn_config('evolution_instancia'),
+      v_req := fn_evo_post('/message/sendText/' || fn_config('evolution_instancia'),
         jsonb_build_object('number', e.telefone_e164,
           'text', 'Trilha Ponto: ' || split_part(trim(e.nome), ' ', 1) || ', o seu espelho de ponto de ' || e.mes
                   || ' está pronto para conferir e assinar: ' || v_url || '/ponto?espelho=' || e.id
                   || chr(10) || 'Entre com o seu CPF e o código. Se algo estiver errado, peça o ajuste antes de assinar.'));
-      update ponto_espelhos set enviado_em = now() where id = e.id;
+      -- nulo: envio barrado pela trava da homologação; o pedido ao WhatsApp é assíncrono (pg_net)
+      if v_req is null then v_sem := v_sem + 1; continue; end if;
+      if e.enviado_em is null then update ponto_espelhos set enviado_em = now() where id = e.id; end if;
       v_env := v_env + 1;
     exception when others then
       v_falha := v_falha + 1;
     end;
   end loop;
-  return jsonb_build_object('enviados', v_env, 'sem_whatsapp', v_sem, 'falhas', v_falha);
+  return jsonb_build_object('enviados', v_env, 'sem_whatsapp', v_sem, 'falhas', v_falha, 'desligados', v_desl);
 end $function$;
 
 -- Espelho completo para o gestor (ver e imprimir com a assinatura) ---------------------------------------
@@ -65,8 +73,9 @@ begin
 end $function$;
 
 -- App do funcionário: os seus espelhos vigentes -------------------------------------------------------
+-- volatile: fn_ponto_sessao grava o último uso da sessão (stable rodaria em transação só de leitura no PostgREST)
 create or replace function ponto_meus_espelhos(p_token text)
-returns jsonb language plpgsql stable security definer set search_path = public, extensions as $function$
+returns jsonb language plpgsql volatile security definer set search_path = public, extensions as $function$
 declare
   v_tec uuid := fn_ponto_sessao(p_token);
 begin
@@ -76,7 +85,7 @@ begin
 end $function$;
 
 create or replace function ponto_meu_espelho(p_token text, p_id uuid)
-returns jsonb language plpgsql stable security definer set search_path = public, extensions as $function$
+returns jsonb language plpgsql volatile security definer set search_path = public, extensions as $function$
 declare
   v_tec uuid := fn_ponto_sessao(p_token);
   v     jsonb;
@@ -101,10 +110,12 @@ declare
   v_origem jsonb;
 begin
   if p_ciente is not true then raise exception 'Confirme que conferiu o espelho antes de assinar.'; end if;
-  if p_assinatura is null or p_assinatura !~ '^data:image/png;base64,[A-Za-z0-9+/=]+$' then
+  if p_assinatura is null or length(p_assinatura) > 300000 then raise exception 'Assinatura inválida ou grande demais: desenhe de novo.'; end if;
+  -- data URL de PNG, e os bytes começam com a assinatura de arquivo PNG
+  if p_assinatura !~ '^data:image/png;base64,[A-Za-z0-9+/=]+$'
+     or substr(decode(split_part(p_assinatura, ',', 2), 'base64'), 1, 8) <> '\x89504e470d0a1a0a'::bytea then
     raise exception 'Assinatura inválida: desenhe de novo.';
   end if;
-  if length(p_assinatura) > 300000 then raise exception 'Assinatura grande demais: desenhe de novo.'; end if;
   select e.id, e.sha256, e.substituido_em, e.assinado_em into v_e from ponto_espelhos e
    where e.id = p_id and e.tecnico_id = v_tec for update;
   if not found then raise exception 'Espelho não encontrado.'; end if;

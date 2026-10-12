@@ -52,6 +52,6 @@ advogado (076) quando disponível.
 
 Quando o empregador envia o espelho de ponto do mês, o funcionário confere no app e, se concordar, assina
 desenhando com o dedo. Ficam guardados com o espelho: o desenho da assinatura, a data, a hora, o endereço de
-internet (IP) e o tipo de aparelho, para comprovar a ciência (obrigação legal, LGPD art. 7º, II), pelo mesmo
-prazo do ponto (5 anos). A conferência pública do QR do espelho não mostra o desenho, o nome nem o CPF. A
+internet (IP) e o tipo de aparelho, para comprovar a ciência do funcionário (exercício regular de direitos,
+LGPD art. 7º, VI — a confirmar com o `juridico`), pelo mesmo prazo do ponto (5 anos). A conferência pública do QR do espelho não mostra o desenho, o nome nem o CPF. A
 informação é dada na própria tela de assinatura.

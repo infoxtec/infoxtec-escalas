@@ -1005,4 +1005,10 @@ que viu for o da versão vigente. Ficam gravados a imagem (PNG validado, até 30
 aparelho, e o hash da assinatura amarra o hash do espelho, a imagem, a hora e a origem — a conferência
 pública diz se a assinatura confere, sem mostrar a imagem. A informação ao titular é dada no momento da
 coleta, na própria tela de assinatura. O espelho (assinado ou não) sai em PDF pela impressão do navegador,
-com o QR. O gestor vê e imprime o espelho com a assinatura; o papel leitura não.
+com o QR. O gestor vê e imprime o espelho com a assinatura; o papel leitura não. **Revisão do `seguranca`
+(aplicada):** as funções do app que abrem o espelho são `volatile` (a sessão grava o último uso; `stable` roda
+só leitura no PostgREST); desligado não recebe o link (não entra no app; recebe em papel); envio barrado não
+marca enviado, e o gestor pode reenviar um espelho; o PNG é conferido pelos bytes; o hash da assinatura usa IP
+e aparelho como texto. **Pendentes (decisão do responsável e do `juridico`):** base legal da origem (art. 7º,
+VI, em vez de II); HMAC com chave no Vault para a assinatura não poder ser refeita por quem administra o banco;
+testar a impressão de um mês cheio no Chrome e no Safari do iOS.

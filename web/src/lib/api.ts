@@ -140,8 +140,8 @@ export const api = {
     rpc<{ emitidos: number; sem_mudanca: number; ja_assinados: number; sem_dados: number }>('app_ponto_emitir_espelhos', { p_competencia: competencia, p_tecnico: tecnico }),
   pontoEspelhosEmitidos: (competencia: string) => rpc<PontoEspelhoEmitido[]>('app_ponto_espelhos', { p_competencia: competencia }),
   verificarEspelho: (codigo: string) => rpc<ConferenciaEspelho>('ponto_verificar_espelho', { p_codigo: codigo }),
-  pontoEnviarEspelhos: (competencia: string) =>
-    rpc<{ enviados: number; sem_whatsapp: number; falhas: number }>('app_ponto_enviar_espelhos', { p_competencia: competencia }),
+  pontoEnviarEspelhos: (competencia: string, espelho: string | null = null) =>
+    rpc<{ enviados: number; sem_whatsapp: number; falhas: number; desligados: number }>('app_ponto_enviar_espelhos', { p_competencia: competencia, p_espelho: espelho }),
   pontoEspelhoVer: (id: string) => rpc<EspelhoCompleto>('app_ponto_espelho_ver', { p_id: id }),
   pontoVerificar: (empresa: string) =>
     rpc<{ integra: boolean; conferidas: number; nsr?: number; motivo?: string }>('app_ponto_verificar', { p_empresa: empresa }),

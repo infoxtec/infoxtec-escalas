@@ -58,7 +58,8 @@ export default function EspelhosApp({ token, onSair, inicial }: { token: string;
           <p className="text-sm font-semibold">Assinar o espelho</p>
           <p className="text-xs text-muted-foreground">
             Confira os dias acima. Se algo estiver errado, não assine: peça o ajuste na aba Ajuste ou ao seu gestor.
-            Ao assinar, ficam guardados com este espelho o desenho da sua assinatura, a data, a hora e o aparelho usado.
+            Ao assinar, ficam guardados com este espelho, por 5 anos, o desenho da sua assinatura, a data, a hora, o endereço de
+            internet (IP) e o tipo de aparelho, para comprovar a sua ciência. A conferência pública do QR não mostra nada disso.
           </p>
           <AssinaturaCanvas onMudou={setPng} desabilitado={assinando} />
           <label className="flex items-start gap-2 text-sm">

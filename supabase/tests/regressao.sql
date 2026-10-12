@@ -1772,6 +1772,15 @@ begin
   v_ok := false;
   begin perform ponto_meu_espelho(v_tok, (select id from ponto_espelhos where tecnico_id = v_tec2)); exception when others then v_ok := true; end;
   perform pg_temp.ok(v_ok, '[T36] abriu espelho de outro funcionário');
+  v_ok := false;
+  begin perform ponto_assinar_espelho(v_tok, (select id from ponto_espelhos where tecnico_id = v_tec2),
+                                      (select sha256 from ponto_espelhos where tecnico_id = v_tec2), v_png, true);
+  exception when others then v_ok := sqlerrm like '%não encontrado%'; end;
+  perform pg_temp.ok(v_ok, '[T36] assinou espelho de outro funcionário');
+  -- data URL de PNG com bytes que não são PNG: recusado
+  v_ok := false;
+  begin perform ponto_assinar_espelho(v_tok, v_id, v_sha, 'data:image/png;base64,QUJDREVGR0g=', true); exception when others then v_ok := sqlerrm like '%inválida%'; end;
+  perform pg_temp.ok(v_ok, '[T36] PNG falso aceito');
   -- sem ciência, desenho inválido ou versão diferente da vista: recusado
   v_ok := false;
   begin perform ponto_assinar_espelho(v_tok, v_id, v_sha, v_png, false); exception when others then v_ok := sqlerrm like '%Confirme%'; end;
@@ -1795,10 +1804,22 @@ begin
   -- assinado não é reemitido; o envio só considera os pendentes
   r := app_ponto_emitir_espelhos(v_mes, v_tec);
   perform pg_temp.ok((r->>'ja_assinados')::int = 1, '[T36] assinado reemitido: ' || r::text);
+  -- desligado não recebe o link; sem WhatsApp liberado não fica marcado como enviado
+  update tecnicos set ativo = false, desligado_em = current_date where id = v_tec2;
+  r := app_ponto_enviar_espelhos(v_mes, (select id from ponto_espelhos where tecnico_id = v_tec2));
+  perform pg_temp.ok((r->>'desligados')::int = 1 and (r->>'enviados')::int = 0, '[T36] envio a desligado: ' || r::text);
+  update tecnicos set ativo = true, desligado_em = null, opt_in = false where id = v_tec2;
+  r := app_ponto_enviar_espelhos(v_mes, (select id from ponto_espelhos where tecnico_id = v_tec2));
+  perform pg_temp.ok((r->>'sem_whatsapp')::int = 1 and (select enviado_em from ponto_espelhos where tecnico_id = v_tec2) is null,
+                     '[T36] envio sem opt-in: ' || r::text);
   select count(*) into v_n from ponto_espelhos where competencia = v_mes and substituido_em is null and assinado_em is null and enviado_em is null;
   r := app_ponto_enviar_espelhos(v_mes);
-  perform pg_temp.ok((r->>'enviados')::int + (r->>'sem_whatsapp')::int + (r->>'falhas')::int = v_n, '[T36] envio: ' || r::text || ' de ' || v_n);
+  perform pg_temp.ok((r->>'enviados')::int + (r->>'sem_whatsapp')::int + (r->>'falhas')::int + (r->>'desligados')::int = v_n,
+                     '[T36] envio: ' || r::text || ' de ' || v_n);
   perform pg_temp.ok((select enviado_em from ponto_espelhos where id = v_id) is null, '[T36] envio de espelho já assinado');
+  -- as funções do app gravam o uso da sessão: não podem ser stable (PostgREST roda stable só leitura)
+  perform pg_temp.ok(not exists (select 1 from pg_proc where proname like 'ponto\_%' and provolatile <> 'v'
+                                   and pg_get_functiondef(oid) ilike '%fn_ponto_sessao(p_token)%'), '[T36] função de sessão marcada stable');
   -- o gestor vê o espelho com a assinatura; o leitura não
   perform pg_temp.ok(app_ponto_espelho_ver(v_id)->>'assinatura_png' = v_png, '[T36] gestor vê a assinatura');
   perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);

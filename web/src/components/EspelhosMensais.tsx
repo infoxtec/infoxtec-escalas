@@ -41,11 +41,11 @@ export default function EspelhosMensais({ hoje, podeEmitir }: { hoje: string; po
     finally { setEmitindo(false) }
   }
 
-  const enviar = async () => {
+  const enviar = async (espelho: string | null = null) => {
     setErro(null); setOk(null); setEnviando(true)
     try {
-      const r = await api.pontoEnviarEspelhos(`${mes}-01`)
-      setOk(`${r.enviados} enviado(s) pelo WhatsApp; ${r.sem_whatsapp} sem WhatsApp liberado; ${r.falhas} falha(s) no envio.`)
+      const r = await api.pontoEnviarEspelhos(`${mes}-01`, espelho)
+      setOk(`${r.enviados} enviado(s) pelo WhatsApp; ${r.sem_whatsapp} sem WhatsApp liberado; ${r.desligados} desligado(s), entregar em papel; ${r.falhas} falha(s).`)
       await carregar()
     } catch (e) { setErro(erroMsg(e)) }
     finally { setEnviando(false) }
@@ -67,7 +67,7 @@ export default function EspelhosMensais({ hoje, podeEmitir }: { hoje: string; po
       <div className="flex flex-wrap items-end gap-2">
         <Field label="Mês"><Input type="month" value={mes} max={mesAnterior(hoje)} onChange={e => setMes(e.target.value)} disabled={emitindo} /></Field>
         {podeEmitir && <Button size="sm" disabled={emitindo || !mes} onClick={() => void emitir()}><FileSignature className="h-3.5 w-3.5" /> {emitindo ? 'Emitindo...' : 'Emitir espelhos do mês'}</Button>}
-        {podeEmitir && <Button size="sm" variant="outline" disabled={enviando || pendentes === 0} onClick={() => void enviar()}>
+        {podeEmitir && <Button size="sm" variant="outline" disabled={enviando || pendentes === 0} onClick={() => void enviar(null)}>
           <Send className="h-3.5 w-3.5" /> {enviando ? 'Enviando...' : `Enviar pelo WhatsApp (${pendentes})`}</Button>}
         <Button variant="outline" size="sm" onClick={() => void carregar()}><RefreshCw className="h-3.5 w-3.5" /> Atualizar</Button>
       </div>
@@ -98,7 +98,10 @@ export default function EspelhosMensais({ hoje, podeEmitir }: { hoje: string; po
                       {e.codigo} <ExternalLink className="h-3 w-3" />
                     </a>
                   </td>
-                  {podeEmitir && <td className="px-3 py-2 text-right"><Button variant="ghost" size="sm" onClick={() => void ver(e.id)}><Eye className="h-3.5 w-3.5" /> Ver</Button></td>}
+                  {podeEmitir && <td className="whitespace-nowrap px-3 py-2 text-right">
+                    {e.enviado_em && !e.assinado_em && <Button variant="ghost" size="sm" disabled={enviando} onClick={() => void enviar(e.id)} title="Reenviar o link pelo WhatsApp"><Send className="h-3.5 w-3.5" /> Reenviar</Button>}
+                    <Button variant="ghost" size="sm" onClick={() => void ver(e.id)}><Eye className="h-3.5 w-3.5" /> Ver</Button>
+                  </td>}
                 </tr>
               ))}
             </tbody>
