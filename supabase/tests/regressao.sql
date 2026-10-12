@@ -30,6 +30,7 @@
 -- T27 monitor_ping_url só aceita https://hc-ping.com/<uuid> ou vazio
 -- T28 quem ativou e desativou a verificação em duas etapas fica registrado; o admin vê
 -- T29 jornada de mais de 4 h e até 6 h sem intervalo gera aviso (CLT art. 71, §1º)
+-- T30 palavra e número do ponto não são capturados enquanto o técnico explica uma recusa de escala
 
 \set ON_ERROR_STOP on
 begin;
@@ -1393,7 +1394,42 @@ begin
   perform pg_temp.ok(j->'alertas' ? 'sem_intervalo', '[T29] 4 h 01 sem intervalo sem aviso: ' || j::text);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T29' as resultado,
+-- T30 palavra do ponto não é interceptada enquanto o técnico explica uma recusa (migration 84) -----------
+do $$
+declare
+  v_emp uuid := (select v::uuid from qa where k = 'emp');
+  v_loc uuid := (select v::uuid from qa where k = 'loc');
+  v_tec uuid; v_esc uuid; v_tel text := '5579999993030'; r jsonb;
+begin
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste)
+  values ('QA Recusa Ponto', v_tel, true, true, pg_temp.cpf('303030301'), v_emp, true) returning id into v_tec;
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, current_date + 2, time '09:00', 'QA recusa', 'notificada', 'qa') returning id into v_esc;
+
+  -- menu do ponto aberto; o técnico recusa a escala pelo botão: a recusa fecha a conversa do ponto
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'P1', '{"conversation":"ponto"}'));
+  perform pg_temp.ok(r->>'acao' = 'ponto_menu', '[T30] menu: ' || coalesce(r::text, 'null'));
+  r := fn_wh_mensagem(pg_temp.msg(v_tel, 'P2', jsonb_build_object('buttonsResponseMessage', jsonb_build_object('selectedButtonId', 'prob:' || v_esc))));
+  perform pg_temp.ok(r->>'acao' = 'recusada', '[T30] recusa: ' || coalesce(r::text, 'null'));
+  perform pg_temp.ok(not exists (select 1 from ponto_conversas where tecnico_id = v_tec and expira_em > now()), '[T30] conversa do ponto seguiu aberta');
+
+  -- antes do motivo: "almoço" é a resposta do técnico e "1" é o motivo, não a Entrada
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'P3', '{"conversation":"almoço"}'));
+  perform pg_temp.ok(r is null, '[T30] resposta à recusa virou ponto: ' || coalesce(r::text, 'null'));
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'P4', '{"conversation":"1"}'));
+  perform pg_temp.ok(r is null, '[T30] motivo virou ponto: ' || coalesce(r::text, 'null'));
+  r := fn_wh_mensagem(pg_temp.msg(v_tel, 'P4', '{"conversation":"1"}'));
+  perform pg_temp.ok(r->>'acao' = 'motivo_recusa', '[T30] motivo não registrado: ' || coalesce(r::text, 'null'));
+  -- o botão do ponto vale sempre
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'P5', '{"buttonsResponseMessage":{"selectedButtonId":"ponto:entrada"}}'));
+  perform pg_temp.ok(r->>'acao' = 'ponto_pediu_localizacao', '[T30] botão do ponto barrado: ' || coalesce(r::text, 'null'));
+  update ponto_conversas set expira_em = now() where tecnico_id = v_tec;
+  -- motivo dado (detalhe é opcional): o atalho do ponto volta a valer
+  r := fn_ponto_wh(pg_temp.msg(v_tel, 'P6', '{"conversation":"entrada"}'));
+  perform pg_temp.ok(r->>'acao' = 'ponto_pediu_localizacao', '[T30] atalho do ponto barrado depois do motivo: ' || coalesce(r::text, 'null'));
+end $$;
+
+select 'REGRESSÃO OK: T1 a T30' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
