@@ -254,6 +254,18 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 87 (13/10): AFD do REP-P, versão de conferência (backlog 085, decisão 81)
+
+- `app_ponto_afd(p_empresa, p_de, p_ate)` (só admin): texto do AFD no leiaute do Anexo V da Portaria 671 —
+  cabeçalho (tipo 1) com CRC-16/KERMIT, marcações do REP-P (tipo 7) com SHA-256 dos campos 1 a 7 mais o hash
+  do registro anterior (encadeado desde a primeira marcação da empresa, mesmo fora do período), trailer (tipo
+  9); ISO 8859-1, CR LF. Devolve nome, conteúdo, quantidade, sha256 e o aviso de versão de conferência.
+- Auxiliares `fn_afd_crc16`, `fn_afd_a` (alfanumérico com espaço, só ISO 8859-1), `fn_afd_n` (numérico com
+  zeros), `fn_afd_dh` (data e hora com fuso, segundos 00).
+- Tabela `ponto_afd_geracoes` (quem, empresa, período, quantidade, sha256; sem CPF): só inclusão. Config
+  `rep_p_inpi` e `rep_p_desenvolvedor_cnpj` (vazias) e `afd_leiaute_conferido` (`false`: nome com
+  `_CONFERENCIA`). Teste T34.
+
 ### Migration 86 (13/10): dossiê de conformidade por local (backlog 100, decisão 79)
 
 - Tabela `dossie_geracoes` (email, local, data, técnicos, quando): RLS ligado sem políticas, só inclusão

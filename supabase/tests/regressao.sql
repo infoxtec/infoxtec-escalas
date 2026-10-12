@@ -34,6 +34,7 @@
 -- T31 painel gerencial: semanas acima de 44 h, sábado sem expediente abonado, escala por WhatsApp e URA
 -- T32 dossiê de conformidade por local: documento vencido na data do serviço, vencendo, não cadastrado
 -- T33 demonstração com dados fictícios: criar e apagar (supabase/demo) não deixam resto
+-- T34 AFD do REP-P (versão de conferência): tamanhos do leiaute, CRC-16, hash encadeado, trailer e permissão
 
 \set ON_ERROR_STOP on
 begin;
@@ -1595,7 +1596,59 @@ begin
 end $$;
 \ir ../demo/apagar.sql
 
-select 'REGRESSÃO OK: T1 a T33' as resultado,
+-- T34 AFD do REP-P, versão de conferência (migration 87, backlog 085) ---------------------------------------
+do $$
+declare
+  v_emp uuid := (select v::uuid from qa where k = 'emp');
+  r jsonb; r2 jsonb; l text[]; l2 text[]; i int; v_ok boolean; v_n int;
+begin
+  perform pg_temp.ok(fn_afd_crc16(convert_to('123456789', 'LATIN1')) = '2189', '[T34] CRC-16/KERMIT de referência');
+  perform pg_temp.ok(fn_afd_a('Ação ✓', 7) = 'Ação   ', '[T34] campo alfanumérico fora da ISO 8859-1: ' || fn_afd_a('Ação ✓', 7));
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  r := app_ponto_afd(v_emp, current_date - 40, current_date - 1);
+  perform pg_temp.ok(right(r->>'conteudo', 2) = E'\r\n', '[T34] última linha sem CR LF');
+  l := string_to_array(left(r->>'conteudo', -2), E'\r\n');
+  v_n := array_length(l, 1);
+  perform pg_temp.ok((r->>'marcacoes')::int >= 1 and v_n = (r->>'marcacoes')::int + 2, '[T34] linhas: ' || v_n || ' para ' || (r->>'marcacoes'));
+  perform pg_temp.ok(length(l[1]) = 302 and left(l[1], 10) = '0000000001'
+                     and right(l[1], 4) = fn_afd_crc16(convert_to(left(l[1], 298), 'LATIN1')), '[T34] cabeçalho fora do leiaute (tamanho ' || length(l[1]) || ')');
+  for i in 2 .. v_n - 1 loop
+    perform pg_temp.ok(length(l[i]) = 137 and substr(l[i], 10, 1) = '7', '[T34] marcação fora do leiaute: NSR ' || left(l[i], 9) || ', tamanho ' || length(l[i]));
+    if i > 2 then
+      perform pg_temp.ok(left(l[i], 9) > left(l[i - 1], 9), '[T34] NSR fora de ordem');
+    end if;
+  end loop;
+  -- o hash do 2º registro é o SHA-256 dos campos 1 a 7 dele mais o hash do 1º (quando são consecutivos)
+  if v_n > 3 and left(l[3], 9)::bigint = left(l[2], 9)::bigint + 1 then
+    perform pg_temp.ok(right(l[3], 64) = encode(sha256(convert_to(left(l[3], 73) || right(l[2], 64), 'LATIN1')), 'hex'), '[T34] hash não encadeado');
+  end if;
+  perform pg_temp.ok(length(l[v_n]) = 64 and left(l[v_n], 9) = '999999999' and right(l[v_n], 1) = '9'
+                     and substr(l[v_n], 55, 9)::int = (r->>'marcacoes')::int, '[T34] trailer fora do leiaute (tamanho ' || length(l[v_n]) || ')');
+  perform pg_temp.ok(r->>'nome' ~ '^AFD[0-9]{17}[0-9]{14}REP_P_CONFERENCIA\.txt$' and (r->>'conferencia')::boolean, '[T34] nome: ' || (r->>'nome'));
+  -- o encadeamento vem de antes do período: o último registro tem o mesmo hash num período mais curto
+  r2 := app_ponto_afd(v_emp, current_date - 10, current_date - 1);
+  l2 := string_to_array(left(r2->>'conteudo', -2), E'\r\n');
+  if array_length(l2, 1) > 2 then
+    perform pg_temp.ok(l2[array_length(l2, 1) - 1] = l[v_n - 1], '[T34] hash depende do início do período');
+  end if;
+  perform pg_temp.ok(exists (select 1 from ponto_afd_geracoes where empresa_id = v_emp and sha256 = r->>'sha256'), '[T34] geração não registrada');
+  -- data futura recusada; o papel leitura não gera (o arquivo tem o CPF de todos)
+  v_ok := false;
+  begin perform app_ponto_afd(v_emp, current_date, current_date + 1); exception when others then v_ok := sqlerrm like '%Período inválido%'; end;
+  perform pg_temp.ok(v_ok, '[T34] período futuro aceito');
+  insert into painel_usuarios (email, nome, papel, ativo) values ('qa-gestor-afd@teste.local', 'QA gestor', 'gestor', true) on conflict do nothing;
+  perform set_config('request.jwt.claims', '{"email":"qa-gestor-afd@teste.local","role":"authenticated"}', true);
+  v_ok := false;
+  begin perform app_ponto_afd(v_emp, current_date - 1, current_date - 1); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T34] gestor gerou o AFD');
+  perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
+  v_ok := false;
+  begin perform app_ponto_afd(v_emp, current_date - 1, current_date - 1); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T34] leitura gerou o AFD');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T34' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

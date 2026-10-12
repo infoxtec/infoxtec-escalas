@@ -429,3 +429,6 @@ export interface DossieLocal {
     documentos: { documento: string; validade: string | null; situacao: SituacaoDossie }[]
   }[]
 }
+
+/** AFD do REP-P, versão de conferência (migration 87, backlog 085): texto ISO 8859-1 com CR LF. */
+export interface PontoAfd { nome: string; conteudo: string; marcacoes: number; sha256: string; conferencia: boolean; aviso: string }
