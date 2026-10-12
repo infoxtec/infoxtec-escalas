@@ -80,8 +80,9 @@ flowchart LR
 ### F5 · Arquivos legais — backlog **085**
 - **AFD** e **AEJ** no layout da Portaria 671/2021, com a assinatura definida no parecer L1.
 - **Aceite:** arquivos validados pela contadora contra o layout oficial.
-- **Espelho mensal assinado (decisão 82):** parte A em revisão em 13/10 (migration 88: emissão congelada,
-  registro, QR público sem dado pessoal); parte B: WhatsApp, assinatura desenhada no app e PDF.
+- **Espelho mensal assinado (decisão 82):** parte A na produção em 13/10 (migration 88: emissão congelada,
+  registro, QR público sem dado pessoal); parte B em revisão (migration 89: WhatsApp, assinatura desenhada no
+  app e PDF).
 - **Estado (13/10):** AFD entrega 1 concluída (migration 87, painel 3.27.0, decisão 81): tipos 1, 7 e 9 no leiaute
   do Anexo V (`docs/AFD.pdf`), versão de conferência sem assinatura e sem INPI. O Anexo V foi revogado pela
   Portaria 1.486/2022 (leiaute agora no portal gov.br): a Andreia confere contra a versão vigente.

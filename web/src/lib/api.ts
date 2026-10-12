@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho } from './types'
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto } from './types'
 
 function traduzir(msg: string): string {
   if (/JWT expired|invalid JWT|not authenticated/i.test(msg)) return 'Sessão expirada. Entre novamente.'
@@ -18,6 +18,11 @@ async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
 // API do funcionário (funções ponto_*, decisão 49): sem login do Supabase, validada pelo token da sessão
 export const ponto = {
   pedirCodigo: (cpf: string) => rpc<{ mensagem: string }>('ponto_pedir_codigo', { p_cpf: cpf }),
+  meusEspelhos: (token: string) =>
+    rpc<{ id: string; competencia: string; registro: number; assinado_em: string | null }[]>('ponto_meus_espelhos', { p_token: token }),
+  meuEspelho: (token: string, id: string) => rpc<EspelhoCompleto>('ponto_meu_espelho', { p_token: token, p_id: id }),
+  assinarEspelho: (token: string, id: string, sha256: string, assinatura: string) =>
+    rpc<{ assinado_em: string }>('ponto_assinar_espelho', { p_token: token, p_id: id, p_sha256: sha256, p_assinatura: assinatura, p_ciente: true }),
   entrar: (cpf: string, codigo: string) =>
     rpc<{ token?: string; nome?: string; empresa?: string; erro?: string }>('ponto_entrar', { p_cpf: cpf, p_codigo: codigo }),
   sair: (token: string) => rpc<void>('ponto_sair', { p_token: token }),
@@ -135,6 +140,9 @@ export const api = {
     rpc<{ emitidos: number; sem_mudanca: number; ja_assinados: number; sem_dados: number }>('app_ponto_emitir_espelhos', { p_competencia: competencia, p_tecnico: tecnico }),
   pontoEspelhosEmitidos: (competencia: string) => rpc<PontoEspelhoEmitido[]>('app_ponto_espelhos', { p_competencia: competencia }),
   verificarEspelho: (codigo: string) => rpc<ConferenciaEspelho>('ponto_verificar_espelho', { p_codigo: codigo }),
+  pontoEnviarEspelhos: (competencia: string) =>
+    rpc<{ enviados: number; sem_whatsapp: number; falhas: number }>('app_ponto_enviar_espelhos', { p_competencia: competencia }),
+  pontoEspelhoVer: (id: string) => rpc<EspelhoCompleto>('app_ponto_espelho_ver', { p_id: id }),
   pontoVerificar: (empresa: string) =>
     rpc<{ integra: boolean; conferidas: number; nsr?: number; motivo?: string }>('app_ponto_verificar', { p_empresa: empresa }),
 

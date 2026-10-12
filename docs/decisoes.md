@@ -997,3 +997,12 @@ uma só versão vigente por mês); assinatura entra inteira ou não entra. **Gua
 **Requisito da parte B:** o hash da assinatura amarra a versão assinada (SHA-256 do hash do espelho com o PNG,
 a hora e a origem), para a assinatura não poder ser transplantada. **Parte B:** envio do link pelo WhatsApp, tela do espelho no app do funcionário, desenho da
 assinatura, registro de quando e de qual aparelho, e o espelho assinado para baixar em PDF com o QR.
+
+**Parte B (13/10/2026, migration 89, painel 3.29.0):** o gestor envia o link pelo WhatsApp
+(`/ponto?espelho=id`, só para quem tem WhatsApp liberado; a trava da homologação vale). O funcionário entra
+no app pelo CPF e código, confere o espelho, desenha a assinatura e marca a ciência; só assina se o hash do
+que viu for o da versão vigente. Ficam gravados a imagem (PNG validado, até 300 KB), a hora, o IP e o
+aparelho, e o hash da assinatura amarra o hash do espelho, a imagem, a hora e a origem — a conferência
+pública diz se a assinatura confere, sem mostrar a imagem. A informação ao titular é dada no momento da
+coleta, na própria tela de assinatura. O espelho (assinado ou não) sai em PDF pela impressão do navegador,
+com o QR. O gestor vê e imprime o espelho com a assinatura; o papel leitura não.

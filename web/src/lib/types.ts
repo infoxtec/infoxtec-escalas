@@ -444,3 +444,19 @@ export interface ConferenciaEspelho {
   emitido_em?: string; substituido?: boolean; integro?: boolean; assinado_em?: string | null
   assinatura_integra?: boolean | null; sha256?: string
 }
+
+/** Conteúdo congelado do espelho mensal (fn_ponto_espelho_conteudo, Portaria 671 Art. 84). */
+export interface EspelhoConteudo {
+  empregador: { razao_social: string; cnpj: string }
+  trabalhador: { nome: string; cpf: string; admissao: string | null; funcao: string | null }
+  competencia: string; de: string; ate: string
+  jornada: { dia_util_min: number; sabado_min: number; intervalo_min: number }
+  dias: ({ data: string } & Partial<Omit<PontoEspelho, 'alertas'>> & { alertas?: string[]; abonado_min?: number })[]
+  ajustes: { acao: 'incluir' | 'desconsiderar'; data: string; hora: string; tipo: string; motivo: string }[]
+  totais: { trabalhado_min: number; he_min: number; faltas: number; atrasos: number; dias_abonados: number }
+}
+/** Espelho emitido com o conteúdo e a assinatura (app do funcionário e painel do gestor). */
+export interface EspelhoCompleto {
+  id: string; registro: number; versao: number; codigo: string; sha256: string; emitido_em: string
+  substituido: boolean; conteudo: EspelhoConteudo | null; assinado_em: string | null; assinatura_png: string | null
+}

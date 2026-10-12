@@ -254,6 +254,18 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 89 (13/10): espelho mensal, parte B — envio e assinatura (decisão 82)
+
+- `app_ponto_enviar_espelhos(p_competencia)` (admin, gestor): manda pelo WhatsApp o link
+  `app_url/ponto?espelho=id` dos espelhos vigentes não assinados e não enviados (respeita `opt_in` e
+  `fn_pode_enviar`); grava `enviado_em`. Config nova `app_url`.
+- `app_ponto_espelho_ver(p_id)` (admin, gestor): conteúdo e assinatura para ver e imprimir.
+- `ponto_meus_espelhos(p_token)`, `ponto_meu_espelho(p_token, p_id)` e
+  `ponto_assinar_espelho(p_token, p_id, p_sha256, p_assinatura, p_ciente)`: só o próprio funcionário; assina
+  só a versão vigente cujo hash ele viu; PNG em data URL até 300 KB; grava IP e aparelho.
+- `fn_ponto_assinatura_hash`: SHA-256 de hash do espelho, imagem, hora (UTC) e origem;
+  `ponto_verificar_espelho` passa a conferir a assinatura por ele. Teste T36.
+
 ### Migration 88 (13/10): espelho de ponto mensal com registro e QR (decisão 82, parte A)
 
 - Tabela `ponto_espelhos`: cópia congelada do espelho de um funcionário num mês (`conteudo` jsonb, Portaria

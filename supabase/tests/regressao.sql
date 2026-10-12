@@ -36,6 +36,7 @@
 -- T33 demonstração com dados fictícios: criar e apagar (supabase/demo) não deixam resto
 -- T34 AFD do REP-P (versão de conferência): tamanhos do leiaute, CRC-16, hash encadeado, trailer e permissão
 -- T35 espelho mensal congelado: emissão, registro sem lacuna, imutável, conferência pública sem dado pessoal
+-- T36 assinatura do espelho pelo funcionário: só o próprio, só a versão vista, uma vez, hash amarrado; envio
 
 \set ON_ERROR_STOP on
 begin;
@@ -1735,7 +1736,79 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T35' as resultado,
+-- T36 assinatura do espelho pelo funcionário e envio pelo WhatsApp (migration 89, decisão 82) -----------------
+do $$
+declare
+  v_emp uuid := (select v::uuid from qa where k = 'emp');
+  v_mes date := date_trunc('month', current_date - interval '1 month')::date;
+  v_png text := 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  v_tec uuid; v_tec2 uuid; v_cpf text := pg_temp.cpf('363636301'); v_tok text; c jsonb; r jsonb; v_id uuid; v_sha text;
+  v_cod text; v_ok boolean; v_n int;
+begin
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA Assina Espelho', '5579999993636', true, true, v_cpf, v_emp, false, v_mes - 60) returning id into v_tec;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA Recebe Espelho', '5579999993637', true, true, pg_temp.cpf('363636302'), v_emp, false, v_mes - 60) returning id into v_tec2;
+  alter table ponto_marcacoes disable trigger user;
+  insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, hash_anterior, hash)
+  select v_emp, 936000 + k, x.t, (select cpf from tecnicos where id = x.t), ((v_mes + 5) + h) at time zone 'America/Bahia',
+         'entrada', 'ura', 'qa', md5(random()::text)
+    from (values (1, v_tec, time '08:00'), (2, v_tec2, time '08:05')) x(k, t, h);
+  alter table ponto_marcacoes enable trigger user;
+
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  perform app_ponto_emitir_espelhos(v_mes, v_tec);
+  perform app_ponto_emitir_espelhos(v_mes, v_tec2);
+  c := app_ponto_gerar_codigo(v_tec);
+  v_tok := ponto_entrar(v_cpf, c->>'codigo')->>'token';
+
+  r := ponto_meus_espelhos(v_tok);
+  perform pg_temp.ok(jsonb_array_length(r) = 1, '[T36] meus espelhos: ' || r::text);
+  v_id := (r->0->>'id')::uuid;
+  r := ponto_meu_espelho(v_tok, v_id);
+  v_sha := r->>'sha256';
+  perform pg_temp.ok(r->'conteudo'->'trabalhador'->>'nome' = 'QA Assina Espelho' and r->>'codigo' is not null, '[T36] espelho do funcionário');
+  -- o espelho de outro funcionário não abre
+  v_ok := false;
+  begin perform ponto_meu_espelho(v_tok, (select id from ponto_espelhos where tecnico_id = v_tec2)); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T36] abriu espelho de outro funcionário');
+  -- sem ciência, desenho inválido ou versão diferente da vista: recusado
+  v_ok := false;
+  begin perform ponto_assinar_espelho(v_tok, v_id, v_sha, v_png, false); exception when others then v_ok := sqlerrm like '%Confirme%'; end;
+  perform pg_temp.ok(v_ok, '[T36] assinou sem ciência');
+  v_ok := false;
+  begin perform ponto_assinar_espelho(v_tok, v_id, v_sha, 'javascript:alert(1)', true); exception when others then v_ok := sqlerrm like '%inválida%'; end;
+  perform pg_temp.ok(v_ok, '[T36] assinatura que não é PNG aceita');
+  v_ok := false;
+  begin perform ponto_assinar_espelho(v_tok, v_id, repeat('0', 64), v_png, true); exception when others then v_ok := sqlerrm like '%mudou%'; end;
+  perform pg_temp.ok(v_ok, '[T36] assinou versão diferente da vista');
+  -- assina; a segunda vez é recusada; a conferência pública confirma a assinatura amarrada à versão
+  r := ponto_assinar_espelho(v_tok, v_id, v_sha, v_png, true);
+  perform pg_temp.ok(r->>'assinado_em' is not null, '[T36] assinatura');
+  v_ok := false;
+  begin perform ponto_assinar_espelho(v_tok, v_id, v_sha, v_png, true); exception when others then v_ok := sqlerrm like '%já foi assinado%'; end;
+  perform pg_temp.ok(v_ok, '[T36] assinou duas vezes');
+  select codigo into v_cod from ponto_espelhos where id = v_id;
+  r := ponto_verificar_espelho(v_cod);
+  perform pg_temp.ok((r->>'assinatura_integra')::boolean and r->>'assinado_em' is not null, '[T36] conferência da assinatura: ' || (r - 'sha256')::text);
+  perform pg_temp.ok(r::text not like '%iVBOR%', '[T36] imagem da assinatura na conferência pública');
+  -- assinado não é reemitido; o envio só considera os pendentes
+  r := app_ponto_emitir_espelhos(v_mes, v_tec);
+  perform pg_temp.ok((r->>'ja_assinados')::int = 1, '[T36] assinado reemitido: ' || r::text);
+  select count(*) into v_n from ponto_espelhos where competencia = v_mes and substituido_em is null and assinado_em is null and enviado_em is null;
+  r := app_ponto_enviar_espelhos(v_mes);
+  perform pg_temp.ok((r->>'enviados')::int + (r->>'sem_whatsapp')::int + (r->>'falhas')::int = v_n, '[T36] envio: ' || r::text || ' de ' || v_n);
+  perform pg_temp.ok((select enviado_em from ponto_espelhos where id = v_id) is null, '[T36] envio de espelho já assinado');
+  -- o gestor vê o espelho com a assinatura; o leitura não
+  perform pg_temp.ok(app_ponto_espelho_ver(v_id)->>'assinatura_png' = v_png, '[T36] gestor vê a assinatura');
+  perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
+  v_ok := false;
+  begin perform app_ponto_espelho_ver(v_id); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T36] leitura viu o espelho');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T36' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

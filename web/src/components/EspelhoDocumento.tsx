@@ -1,0 +1,99 @@
+import qrcode from 'qrcode-generator'
+import { ALERTA_JORNADA, PONTO_ROTULO, minutosHm } from '../lib/types'
+import type { EspelhoCompleto } from '../lib/types'
+
+// Espelho de ponto mensal como documento (decisão 82): conteúdo congelado, registro, QR de conferência pública
+// e, quando houver, a assinatura do funcionário. O mesmo componente serve ao app do funcionário, ao painel do
+// gestor e à impressão (classe area-impressao: só ela sai no papel ou no PDF).
+
+function Qr({ texto, lado = 104 }: { texto: string; lado?: number }) {
+  const qr = qrcode(0, 'M')
+  qr.addData(texto)
+  qr.make()
+  const n = qr.getModuleCount()
+  const cel: [number, number][] = []
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) cel.push([c, r])
+  return (
+    <svg viewBox={`-1 -1 ${n + 2} ${n + 2}`} width={lado} height={lado} shapeRendering="crispEdges" role="img" aria-label="QR de conferência">
+      <rect x={-1} y={-1} width={n + 2} height={n + 2} fill="#fff" />
+      {cel.map(([x, y]) => <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} fill="#000" />)}
+    </svg>
+  )
+}
+
+const dataBr = (d: string | null | undefined) => d ? d.slice(0, 10).split('-').reverse().join('/') : '—'
+const cpfFmt = (c: string) => c.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4')
+const cnpjFmt = (c: string) => c.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
+const dataHora = (s: string) => new Date(s).toLocaleString('pt-BR', { timeZone: 'America/Bahia', dateStyle: 'short', timeStyle: 'short' })
+const SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
+
+export default function EspelhoDocumento({ e }: { e: EspelhoCompleto }) {
+  const c = e.conteudo
+  if (!c) return <p className="text-sm text-muted-foreground">Esta versão do espelho foi substituída por uma mais nova.</p>
+  const url = `${window.location.origin}/v?c=${e.codigo}`
+  return (
+    <div className="area-impressao space-y-3 bg-white text-[12px] text-black">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-0.5">
+          <p className="text-sm font-semibold">Espelho de ponto · {c.competencia}</p>
+          <p>{c.empregador.razao_social} · CNPJ {cnpjFmt(c.empregador.cnpj)}</p>
+          <p>{c.trabalhador.nome} · CPF {cpfFmt(c.trabalhador.cpf)}</p>
+          <p>Função: {c.trabalhador.funcao ?? '—'} · Admissão: {dataBr(c.trabalhador.admissao)}</p>
+          <p>Jornada: {minutosHm(c.jornada.dia_util_min)} de segunda a sexta, {minutosHm(c.jornada.sabado_min)} no sábado, intervalo de {minutosHm(c.jornada.intervalo_min)}</p>
+          <p className="text-[11px] text-gray-600">Período {dataBr(c.de)} a {dataBr(c.ate)} · Registro nº {e.registro}{e.versao > 1 ? ` (versão ${e.versao})` : ''} · emitido em {dataHora(e.emitido_em)}</p>
+        </div>
+        <div className="shrink-0 text-center">
+          <Qr texto={url} />
+          <p className="font-mono text-[9px]">{e.codigo}</p>
+        </div>
+      </div>
+
+      <table className="w-full border-collapse text-[11px]">
+        <thead><tr className="border-b border-gray-400 text-left">
+          <th className="py-1 pr-2">Dia</th><th className="pr-2">Entrada</th><th className="pr-2">Saída almoço</th><th className="pr-2">Volta</th>
+          <th className="pr-2">Saída</th><th className="pr-2">Trabalhado</th><th className="pr-2">HE</th><th>Observação</th>
+        </tr></thead>
+        <tbody>
+          {c.dias.length === 0 ? <tr><td colSpan={8} className="py-2 text-center text-gray-600">Sem marcações no mês</td></tr>
+            : c.dias.map(d => (
+              <tr key={d.data} className="border-b border-gray-200">
+                <td className="py-0.5 pr-2 whitespace-nowrap">{dataBr(d.data)} {SEMANA[new Date(d.data + 'T12:00:00').getDay()]}</td>
+                <td className="pr-2">{d.entrada ?? '—'}</td><td className="pr-2">{d.saida_almoco ?? '—'}</td>
+                <td className="pr-2">{d.volta_almoco ?? '—'}</td><td className="pr-2">{d.saida ?? '—'}</td>
+                <td className="pr-2">{minutosHm(d.trabalhado_min)}</td><td className="pr-2">{d.he_min ? minutosHm(d.he_min) : '—'}</td>
+                <td>{[...(d.alertas ?? []).map(a => ALERTA_JORNADA[a] ?? a), d.abono ? `Abono: ${d.abono}` : null, d.ajustes ? 'Ajustado' : null].filter(Boolean).join(' · ') || ''}</td>
+              </tr>
+            ))}
+        </tbody>
+      </table>
+
+      <p>
+        <strong>Totais:</strong> trabalhado {minutosHm(c.totais.trabalhado_min)} · hora extra {minutosHm(c.totais.he_min)} ·
+        faltas {c.totais.faltas} · atrasos {c.totais.atrasos} · dias abonados {c.totais.dias_abonados}
+      </p>
+
+      {c.ajustes.length > 0 && (
+        <div>
+          <p className="font-semibold">Marcações tratadas pelo gestor</p>
+          <ul className="list-disc pl-5">
+            {c.ajustes.map((a, i) => (
+              <li key={i}>{dataBr(a.data)} {a.hora} · {PONTO_ROTULO[a.tipo as keyof typeof PONTO_ROTULO] ?? a.tipo} · {a.acao === 'incluir' ? 'incluída' : 'desconsiderada'} · {a.motivo}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="flex items-end justify-between gap-4 border-t border-gray-400 pt-2">
+        <div>
+          {e.assinado_em && e.assinatura_png
+            ? <><img src={e.assinatura_png} alt="Assinatura do funcionário" className="h-16 max-w-[240px] object-contain" />
+                <p className="border-t border-gray-500 pt-0.5">{c.trabalhador.nome} · assinado em {dataHora(e.assinado_em)}</p></>
+            : <p className="text-gray-600">Ainda não assinado pelo funcionário.</p>}
+        </div>
+        <p className="max-w-[45%] text-right text-[9px] text-gray-600">
+          Confira a autenticidade pelo QR ou em {window.location.host}/v com o código {e.codigo}. SHA-256 {e.sha256.slice(0, 16)}…
+        </p>
+      </div>
+    </div>
+  )
+}
