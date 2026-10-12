@@ -254,6 +254,21 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 82 (13/10): registro das duas etapas (backlog 097, decisão 68)
+
+- `painel_mfa_log` (só inclusão): e-mail, `ativou` ou `desativou`, hora. Gravado por `fn_mfa_registrar`,
+  gatilho em `auth.mfa_factors` (fator confirmado = ativou; fator confirmado removido = desativou; cadastro
+  abandonado não conta). Não depende do painel. Falha no registro nunca impede o login. Usuário removido
+  do Auth: a remoção em cascata pode registrar `(usuário removido)` no lugar do e-mail.
+- `app_usuarios_mfa()` (admin): quem tem a verificação ativa e desde quando, e os últimos 100 registros.
+  Painel 3.24.0, tela Usuários: coluna "Duas etapas" e histórico. Teste T28.
+
+### Migration 81 (13/10): endurecimento (pendências do PR #3)
+
+- `fn_validar_config`: `monitor_ping_url` só `https://hc-ping.com/<uuid>` ou vazio. Teste T27.
+- Fora do banco, no mesmo pacote: `webhook-evolution` lê o corpo em fluxo com teto de 5 MB (com ou sem
+  `content-length`); `documento-ocr` responde CORS só aos domínios do painel.
+
 ### Migration 80 (13/10): pendências das migrations 78 e 79
 
 - Checklist Sistema, "Erros em tabelas" › "Supervisores e técnicos sem empresa": falha com mais de uma

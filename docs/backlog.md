@@ -534,6 +534,34 @@ decisões, plano por fases, parte legal (Gabriel Pirolli e Andreia Monteiro) e a
 **Tarefas:** itens **076 a 089** (L1–L4 legalização, F1–F8 desenvolvimento). Decisão 48.
 **Substitui** a opção de só integrar com um ponto de terceiros (item 4, VRmais).
 
+## 037. MFA em todas as contas administrativas — ENTREGUE opcional (11 e 12/10/2026)
+
+Verificação em duas etapas (código do aplicativo autenticador) no painel, migrations 77 e 78, painel 3.22.0
+e 3.23.0 (decisões 67 e 68). **Opcional por gestor**: cada um ativa ou desativa a sua; desativar pede o
+código atual. A obrigatoriedade (`mfa_obrigatorio`) existe e está desligada por decisão do responsável.
+Pendente (097): registro de auditoria quando alguém desativa.
+
+## 095. Avisos aos supervisores: teto e filtro por empresa — ENTREGUE (12/10/2026)
+
+Diagnóstico do DeepSeek, itens 1 e 2. Teto de 5 escalas avisadas por minuto na fase 3 do motor
+(migration 78) e avisos só aos supervisores da empresa do técnico (migration 79, decisão 69), com o
+Checklist apontando cadastro sem empresa (migration 80). **Antes do 2º cliente:** cadastrar a empresa de
+todo supervisor e técnico — o Checklist vira falha com duas empresas ativas.
+
+## 096. Endurecimento: pendências baixas da revisão do PR #3 — em revisão (13/10/2026)
+
+`monitor_ping_url` só `https://hc-ping.com/<uuid>` (migration 81); corpo do `webhook-evolution` lido em
+fluxo com teto de 5 MB, com ou sem `content-length` (o 411 pedido derrubaria a Evolution se ela enviar em
+partes); CORS da `documento-ocr` só dos domínios do painel; decisão 70 (cópia cifrada do banco no GitHub,
+tratamento LGPD).
+
+## 097. Registro de auditoria ao desativar as duas etapas — em revisão (13/10/2026)
+
+Achado P3 do `seguranca` na migration 78: hoje só o log de autenticação do Supabase registra a remoção do
+fator. Registrar no banco quem desativou e quando (sem o código), visível ao administrador.
+**Entrega (migration 82, painel 3.24.0):** gatilho em `auth.mfa_factors` grava ativação e desativação em
+`painel_mfa_log`; a tela Usuários mostra quem tem a verificação ativa e o histórico.
+
 ## Plano Diretor Comercial do Trilha
 
 **Pedido em 27/09/2026.** Guarda-chuva comercial do produto, registrado no grupo `saas` do Roadmap.

@@ -116,6 +116,9 @@ end $$;
   `docs/plano-comercial.md`; nome, mote e posicionamento em `docs/marca.md`. Preço, SLA, garantia e
   aceitar risco são decisão do responsável, não do material de venda.
 - Trabalhar sempre em branch e abrir pull request. Nada vai direto para `main`.
+- **O pacote já leva o próprio registro** (decisão 71): plano, README, backlog, sprint e documentação são
+  atualizados no mesmo PR da entrega, antes do merge. Nunca abrir PR depois da produção só para registrar;
+  a conferência da produção entra no próximo PR que já for abrir.
 - **Toda instrução SQL vem com o comando pronto para executar** (exigência do responsável, 28/09):
   bloco cercado, completo, com o projeto onde roda (produção ou homologação) e o que se espera de
   resultado. Nunca só descrever a consulta em texto, nem entregar fragmento que precise ser montado.

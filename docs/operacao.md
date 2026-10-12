@@ -498,7 +498,15 @@ Na restauração, antes de abrir documentos, recriar o segredo com o mesmo valor
 
 Cada usuário ativa pelo botão **Ativar duas etapas** no topo do painel (QR no aplicativo autenticador)
 e pode desativar pelo mesmo lugar (**Duas etapas ativas**), enquanto a obrigatoriedade estiver desligada
-(decisão 68).
+(decisão 68). Quem ativou e desativou, e quando, aparece na tela **Usuários** (coluna "Duas etapas" e
+histórico; migration 82). **Gatilho no schema `auth`:** `trg_mfa_registrar` em `auth.mfa_factors` (decisão
+72). Se uma atualização do Supabase Auth falhar por causa dele, remova-o e avise o time — o login volta e
+só o histórico para:
+
+```sql
+-- PRODUÇÃO ou HOMOLOGAÇÃO (SQL Editor) — espera: DROP TRIGGER
+drop trigger if exists trg_mfa_registrar on auth.mfa_factors;
+```
 Com todos cadastrados, o responsável liga a obrigatoriedade:
 
 ```sql

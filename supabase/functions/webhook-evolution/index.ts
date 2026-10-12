@@ -39,16 +39,14 @@ Deno.serve(async (req: Request) => {
   }
   if (!token) return json({ ok: false, erro: "token ausente" }, 401);
 
-  if (Number(req.headers.get("content-length") ?? 0) > CORPO_MAX_BYTES) {
-    return json({ ok: false, erro: "payload grande demais" }, 413);
-  }
-
+  // lido em fluxo com teto: sem content-length (envio em partes) também não passa de CORPO_MAX_BYTES
   let payload: Record<string, unknown>;
   try {
-    const bruto = await req.text();
-    if (bruto.length > CORPO_MAX_BYTES) return json({ ok: false, erro: "payload grande demais" }, 413);
-    payload = JSON.parse(bruto);
-  } catch {
+    payload = JSON.parse(await lerComTeto(req, CORPO_MAX_BYTES));
+  } catch (e) {
+    if (e instanceof Error && e.message === "grande demais") {
+      return json({ ok: false, erro: "payload grande demais" }, 413);
+    }
     return json({ ok: false, erro: "json invalido" }, 400);
   }
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
@@ -81,11 +79,12 @@ Deno.serve(async (req: Request) => {
 // 5 MB em base64 (~6,7 MB) mais o envelope JSON: acima disso, o download é abortado
 const MIDIA_MAX_BYTES = 7_500_000;
 
-// Lê o corpo em fluxo e aborta acima do teto (o tamanho declarado pelo aparelho não é confiável)
-async function lerComTeto(resp: Response, teto: number): Promise<string> {
-  if (Number(resp.headers.get("content-length") ?? 0) > teto) throw new Error("midia grande demais");
-  if (!resp.body) throw new Error("evolution sem corpo");
-  const leitor = resp.body.getReader();
+// Lê o corpo em fluxo e aborta acima do teto (o tamanho declarado não é confiável nem obrigatório).
+// Serve à requisição recebida e à resposta da Evolution; acima do teto, erro "grande demais".
+async function lerComTeto(msg: Request | Response, teto: number): Promise<string> {
+  if (Number(msg.headers.get("content-length") ?? 0) > teto) throw new Error("grande demais");
+  if (!msg.body) throw new Error("sem corpo");
+  const leitor = msg.body.getReader();
   const partes: Uint8Array[] = [];
   let total = 0;
   while (true) {
@@ -94,7 +93,7 @@ async function lerComTeto(resp: Response, teto: number): Promise<string> {
     total += value.length;
     if (total > teto) {
       await leitor.cancel();
-      throw new Error("midia grande demais");
+      throw new Error("grande demais");
     }
     partes.push(value);
   }

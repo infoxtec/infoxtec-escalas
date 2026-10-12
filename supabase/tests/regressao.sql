@@ -27,6 +27,8 @@
 -- T24 motor: no máximo 5 escalas avisadas aos supervisores por execução; o resto na seguinte
 -- T25 avisos aos supervisores só da empresa do técnico (função comum e motor)
 -- T26 Checklist aponta supervisor ou técnico sem empresa; alerta de documentos aceita domingo (7)
+-- T27 monitor_ping_url só aceita https://hc-ping.com/<uuid> ou vazio
+-- T28 quem ativou e desativou a verificação em duas etapas fica registrado; o admin vê
 
 \set ON_ERROR_STOP on
 begin;
@@ -1315,7 +1317,47 @@ begin
   update config set valor = '1' where chave = 'alerta_certificacoes_dow';
 end $$;
 
-select 'REGRESSÃO OK: T1 a T26' as resultado,
+-- T27 monitor_ping_url só aceita o ping do healthchecks.io (migration 81) --------------------------------
+do $$
+declare v_ok boolean;
+begin
+  update config set valor = 'https://hc-ping.com/0f0e0d0c-0b0a-4908-8706-050403020100' where chave = 'monitor_ping_url';
+  update config set valor = '' where chave = 'monitor_ping_url';
+  v_ok := false;
+  begin update config set valor = 'https://exemplo.com/coleta' where chave = 'monitor_ping_url';
+  exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T27] monitor_ping_url aceitou endereço fora do healthchecks.io');
+end $$;
+
+-- T28 registro da verificação em duas etapas (migration 82, backlog 097) ---------------------------------
+-- Cadastro abandonado não conta; confirmar = ativou; remover o fator confirmado = desativou. Admin vê.
+do $$
+declare v_user uuid := gen_random_uuid(); v_fator uuid := gen_random_uuid(); v_n int; r jsonb;
+begin
+  insert into auth.users (id, email) values (v_user, 'qa-mfa@teste.local');
+  insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at)
+  values (v_fator, v_user, 'QA', 'totp', 'unverified', now(), now());
+  select count(*) into v_n from painel_mfa_log where email = 'qa-mfa@teste.local';
+  perform pg_temp.ok(v_n = 0, '[T28] cadastro não confirmado registrado');
+  update auth.mfa_factors set status = 'verified', updated_at = now() where id = v_fator;
+  -- um segundo usuário ativo: a lista tem mais de uma linha
+  insert into auth.users (id, email) values (gen_random_uuid(), 'qa-mfa2@teste.local');
+  insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at)
+  select gen_random_uuid(), id, 'QA2', 'totp', 'verified', now(), now() from auth.users where email = 'qa-mfa2@teste.local';
+  perform pg_temp.ok(exists (select 1 from painel_mfa_log where email = 'qa-mfa@teste.local' and acao = 'ativou'), '[T28] ativação não registrada');
+
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  r := app_usuarios_mfa();
+  perform pg_temp.ok(r->'ativos' @> '[{"email":"qa-mfa@teste.local"}]', '[T28] admin não vê a verificação ativa');
+
+  delete from auth.mfa_factors where id = v_fator;
+  perform pg_temp.ok(exists (select 1 from painel_mfa_log where email = 'qa-mfa@teste.local' and acao = 'desativou'), '[T28] desativação não registrada');
+  r := app_usuarios_mfa();
+  perform pg_temp.ok(not (r->'ativos' @> '[{"email":"qa-mfa@teste.local"}]')
+                     and r->'historico' @> '[{"email":"qa-mfa@teste.local","acao":"desativou"}]', '[T28] tela não reflete a desativação');
+end $$;
+
+select 'REGRESSÃO OK: T1 a T28' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

@@ -84,6 +84,9 @@ raiz. Ele é lido automaticamente em toda sessão.
 
 1. **Pedir.** No Claude Code, descrever a mudança. Ele cria a branch, escreve a migration nova
    (`npx supabase migration new 39_descricao`), altera o painel e confere o build.
+   **No mesmo pacote, antes do PR (decisão 71):** plano (`[x]` e linha na tabela), README, backlog,
+   sprint, `banco-de-dados.md` e `decisoes.md`. Nunca um PR depois da produção só para registrar; a
+   conferência da produção entra no próximo PR que já for abrir.
 2. **Revisar.** O Claude Code abre o PR. O CI roda e a Vercel publica um preview.
 3. **Aplicar no dev.** Na máquina Linux, com o projeto dev ligado: `npx supabase db push`.
    Na fase 3 do roteiro isso passa a ser automático.

@@ -117,6 +117,7 @@ export const api = {
   pontoVerificarDocumento: (codigo: string) => rpc<PontoVerificacao>('app_ponto_verificar_documento', { p_codigo: codigo }),
   pontoAnexoDescartar: (anexo: string, motivo: string) => rpc<void>('app_ponto_anexo_descartar', { p_anexo: anexo, p_motivo: motivo }),
   veSaudeHistorico: () => rpc<{ email: string; valor: boolean; autor: string; em: string }[]>('app_ve_saude_historico'),
+  usuariosMfa: () => rpc<{ ativos: { email: string; desde: string }[]; historico: { email: string; acao: 'ativou' | 'desativou'; em: string }[] }>('app_usuarios_mfa'),
   pontoEstornarAbono: (abono: string, motivo: string) => rpc<{ id: string }>('app_ponto_estornar_abono', { p_abono: abono, p_motivo: motivo }),
   pontoAjustes: (de: string, ate: string, tecnico: string | null) =>
     rpc<PontoAjuste[]>('app_ponto_ajustes', { p_de: de, p_ate: ate, p_tecnico: tecnico }),

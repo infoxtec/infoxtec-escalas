@@ -829,3 +829,35 @@ de todas e **técnico sem empresa** avisa todos, até o cadastro estar completo.
 quando houver mais de uma cadastrada). **Continuam para todos:** alertas de sistema (motor parado, teto do
 app do ponto). **Antes do 2º cliente:** cadastrar a empresa de todo supervisor e técnico — supervisor sem
 empresa veria nomes dos dois clientes.
+
+## 70. Cópia cifrada do banco guardada no GitHub (tratamento LGPD)
+
+**Data:** 13/10/2026. **Origem:** pendência da revisão de segurança do PR #3. **Registro:** o backup
+diário (`.github/workflows/backup.yml`) leva ao GitHub uma cópia do banco de produção (sem `webhook_eventos`
+e sem os arquivos do Storage), com dados
+pessoais dos funcionários (nome, telefone, CPF, marcações de ponto e documentos já cifrados no cofre),
+**cifrada com `BACKUP_SENHA`** e guardada 30 dias como artefato (âncora do ponto, 90 dias). O GitHub atua
+como operador de armazenamento (LGPD art. 39); a medida de segurança é a cifra (art. 46). **Repositório
+público:** artefato de repositório público pode ser baixado por qualquer conta do GitHub — por isso a cifra
+é obrigatória, a senha fica só no ambiente `producao-backup` (segredo de ambiente, liberado só para a
+`main`) e com o responsável, nunca em log, e a restauração mensal
+(`restauracao.yml`) prova que a cópia abre com ela. Tornar o repositório privado é a decisão E (21/10).
+**Se a senha vazar:** trocar `BACKUP_SENHA`, apagar os artefatos antigos na aba Actions e rodar um backup
+novo. Entra no registro de operações de tratamento quando ele for feito (legalização, etapa 26).
+
+## 71. Registro do pacote vai no próprio pacote
+
+**Data:** 13/10/2026. **Decisão do responsável:** plano, README, backlog, sprint e documentação são
+atualizados **no mesmo PR** da entrega, antes do merge — nunca num PR depois da produção. O que só se sabe
+depois da produção (conferência) é registrado no PR seguinte que já vai abrir, sem PR próprio.
+
+## 72. Gatilho nosso no schema `auth` (registro das duas etapas)
+
+**Data:** 13/10/2026. **Contexto:** backlog 097, migration 82. O registro de quem ativa e desativa a
+verificação em duas etapas nasce num gatilho em `auth.mfa_factors`, tabela do Supabase Auth: assim não
+depende do painel nem pode ser pulado por quem chama a API do Auth direto. **Cuidados:** é o primeiro
+objeto nosso em `auth.*`; o gatilho não lista colunas (não prende `status` a uma migration do Auth), toda a
+lógica fica dentro de um bloco que só avisa em caso de erro (nunca barra login nem cadastro) e grava só
+e-mail, ação e hora. **Plano B:** se uma atualização do Supabase Auth falhar por causa dele, `drop trigger
+trg_mfa_registrar on auth.mfa_factors` (`docs/operacao.md`) — perde-se só o histórico daí em diante.
+

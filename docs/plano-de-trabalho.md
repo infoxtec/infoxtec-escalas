@@ -153,10 +153,10 @@ Pedidos em 26/09. Análise em [backlog.md](backlog.md), itens 14 a 16. Envolvem 
 
 ### Pendências da revisão de segurança do PR #3 (baixas)
 
-- [ ] `monitor_ping_url` aceitar só `https://hc-ping.com/<uuid>`.
-- [ ] `webhook-evolution` recusar corpo sem `content-length` (411) antes de ler.
-- [ ] CORS da `documento-ocr` limitado aos domínios do painel.
-- [ ] Registrar em `decisoes.md` que o GitHub guarda cópia cifrada dos dados (tratamento LGPD).
+- [x] `monitor_ping_url` aceitar só `https://hc-ping.com/<uuid>`. *Migration 81, 13/10.*
+- [x] `webhook-evolution` recusar corpo sem `content-length` (411) antes de ler. *Feito de outro jeito em 13/10: o corpo é lido em fluxo com teto de 5 MB (413 acima), com ou sem `content-length` — o 411 derrubaria a Evolution se ela enviar em partes.*
+- [x] CORS da `documento-ocr` limitado aos domínios do painel. *13/10: produção, pré-visualizações da Vercel e `localhost:5173`.*
+- [x] Registrar em `decisoes.md` que o GitHub guarda cópia cifrada dos dados (tratamento LGPD). *Decisão 70, 13/10.*
 
 ### Bloco 9: produto (análise global de 27/09, aprovado pelo responsável)
 
@@ -244,3 +244,6 @@ avaliação.
 | 11/10 | Feriado e afastado fora da cobrança de escala no painel (decisão 65) e verificação em duas etapas opcional, com regra de obrigatoriedade pronta e desligada (migration 77, painel 3.22.0, decisão 67); `seguranca`: Storage e `documento-ocr` passam a exigir aal2 quando ligada | CI T1 a T23 verde; produção conferida (versão 77, `mfa_obrigatorio` = false, `app_exigir` e Storage com aal2, `documento-ocr` publicada com a checagem, 5 tarefas, `service_role` 0) | Concluído: PR #95. Ligar a obrigatoriedade depois que todos cadastrarem o autenticador (`docs/operacao.md`) |
 | 12/10 | Teto nos avisos aos supervisores (5 escalas por execução, diagnóstico do DeepSeek item 2) e duas etapas opcional por usuário, desativar pede o código (migration 78, painel 3.23.0, decisão 68) | CI T1 a T24 verde; produção conferida (versão 78, teto 5, motor rodando com o teto, `mfa_obrigatorio` = false, 5 tarefas, `service_role` 0) | Concluído: PR #97. Backlog: registro de auditoria ao desativar as duas etapas (P3 do `seguranca`) |
 | 12/10 | Avisos aos supervisores só da empresa do técnico (diagnóstico do DeepSeek item 1, pré-requisito do 2º cliente; migration 79, decisão 69) | CI T1 a T25 verde (T25b dos alertas agrupados pulado no domingo e na véspera de feriado: conferir no CI da terça); produção conferida (versão 79, função comum com empresa, motor e alertas por empresa, 1 empresa ativa — nada muda hoje, motor rodando, 5 tarefas, `service_role` 0) | Concluído: PR #99. Pendências: alerta no Checklist para supervisor ou técnico sem empresa (antes do 2º cliente); `alerta_certificacoes_dow` aceita 0 a 6 mas o alerta usa 1 a 7 (domingo impossível); registro de auditoria ao desativar as duas etapas |
+| 13/10 | Checklist aponta supervisor ou técnico sem empresa; alerta de documentos aceita domingo (migration 80, pendências de 78 e 79) | CI T1 a T26 verde; produção conferida (versão 80, validação 0 a 7, item no Checklist, 5 tarefas, `service_role` 0) | Concluído: PR #100 |
+| 13/10 | Endurecimento do PR #3 (pendências baixas): `monitor_ping_url` só healthchecks.io (migration 81), corpo do webhook lido com teto, CORS da `documento-ocr` só do painel, decisão 70 (cópia cifrada no GitHub). Processo: registro de plano, README, backlog e sprint passa a ir no próprio pacote | CI e `seguranca` antes do merge | Em andamento: aplicar migration e publicar `webhook-evolution` e `documento-ocr` |
+| 13/10 | Registro de quem ativou e desativou as duas etapas, com coluna e histórico na tela Usuários (migration 82, painel 3.24.0, backlog 097) | CI T1 a T28 e `seguranca` antes do merge | Em andamento: aplicar migration |
