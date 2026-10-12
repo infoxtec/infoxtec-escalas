@@ -254,6 +254,18 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 90 (13/10): resumo de pagamento no espelho, em horas (decisão 83)
+
+- `fn_ponto_noturno_dia(tecnico, data, fuso)`: minutos de relógio trabalhados entre 22 h e 5 h no dia, pelos
+  pares de marcações efetivas.
+- `fn_ponto_espelho_conteudo` recriada: todos os dias do vínculo no mês (a partir da primeira marcação), com
+  `previsto_min`, `he50_min`, `he100_min`, `noturno_min`, `debito_min` e `feriado` por dia (o motivo de saúde
+  não entra: o atestado só muda o cálculo); bloco
+  `resumo` com `a_pagar` (HE 50%, HE 100%, noturnas reduzidas, intervalo não concedido), `a_descontar`
+  (débito, dias sem registro, semanas com falta) e `informativo` (previstas, trabalhadas, abonadas com
+  justificativa e pela empresa, dias abonados com justificativa, feriados e alertas); `avisos` ao funcionário. Mês sem
+  nenhum registro continua sem espelho. Teste T37.
+
 ### Migration 89 (13/10): espelho mensal, parte B — envio e assinatura (decisão 82)
 
 - `app_ponto_enviar_espelhos(p_competencia, p_espelho)` (admin, gestor): manda pelo WhatsApp o link

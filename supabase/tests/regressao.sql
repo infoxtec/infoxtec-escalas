@@ -37,6 +37,7 @@
 -- T34 AFD do REP-P (versão de conferência): tamanhos do leiaute, CRC-16, hash encadeado, trailer e permissão
 -- T35 espelho mensal congelado: emissão, registro sem lacuna, imutável, conferência pública sem dado pessoal
 -- T36 assinatura do espelho pelo funcionário: só o próprio, só a versão vista, uma vez, hash amarrado; envio
+-- T37 resumo do espelho: HE 50% e 100%, noturno reduzido, débito com tolerância, atestado e abono da empresa
 
 \set ON_ERROR_STOP on
 begin;
@@ -1829,7 +1830,70 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T36' as resultado,
+-- T37 resumo de pagamento do espelho (migration 90, decisão 83) ------------------------------------------------
+-- Setembro de 2026: ter 01 com 2 h extras, qua 02 das 17h às 23h (1 h noturna), qui 03 com atestado, sex 04 com
+-- 2 h abonadas pela empresa, dom 06 trabalhado, seg 07 feriado, ter 08 sem registro.
+do $$
+declare
+  v_emp uuid := (select v::uuid from qa where k = 'emp');
+  v_tec uuid; v_tec2 uuid; v_j uuid; c jsonb; d jsonb; n int := 937000;
+begin
+  insert into feriados (data, nome, abrangencia) values ('2026-09-07', 'Independência do Brasil', 'nacional') on conflict do nothing;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA Resumo Espelho', '5579999993737', true, true, pg_temp.cpf('373737301'), v_emp, false, '2026-08-01') returning id into v_tec;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA Resumo Vazio', '5579999993738', true, true, pg_temp.cpf('373737302'), v_emp, false, '2026-08-01') returning id into v_tec2;
+  alter table ponto_marcacoes disable trigger user;
+  insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, hash_anterior, hash)
+  select v_emp, n + row_number() over (), v_tec, (select cpf from tecnicos where id = v_tec),
+         (x.dia + x.h) at time zone 'America/Bahia', x.tipo, 'ura', 'qa', md5(random()::text)
+    from (values (date '2026-09-01', time '08:00', 'entrada'), ('2026-09-01', '12:00', 'saida_almoco'),
+                 ('2026-09-01', '13:00', 'volta_almoco'), ('2026-09-01', '19:00', 'saida'),
+                 ('2026-09-02', '17:00', 'entrada'), ('2026-09-02', '23:00', 'saida'),
+                 ('2026-09-04', '10:00', 'entrada'), ('2026-09-04', '12:00', 'saida_almoco'),
+                 ('2026-09-04', '13:00', 'volta_almoco'), ('2026-09-04', '17:00', 'saida'),
+                 ('2026-09-06', '08:00', 'entrada'), ('2026-09-06', '12:00', 'saida')) x(dia, h, tipo);
+  alter table ponto_marcacoes enable trigger user;
+  insert into ponto_justificativas (empresa_id, tecnico_id, motivo, data, canal, status)
+  values (v_emp, v_tec, 'atestado', '2026-09-03', 'app', 'aprovada') returning id into v_j;
+  insert into ponto_abonos (empresa_id, tecnico_id, data, justificativa_id, motivo, autor)
+  values (v_emp, v_tec, '2026-09-03', v_j, 'Atestado médico apresentado', 'qa');
+  insert into ponto_abonos (empresa_id, tecnico_id, data, inicio, fim, motivo, autor)
+  values (v_emp, v_tec, '2026-09-04', '08:00', '10:00', 'Liberado pela empresa de manhã', 'qa');
+
+  c := fn_ponto_espelho_conteudo(v_tec, '2026-09-01');
+  perform pg_temp.ok((c->'resumo'->'a_pagar'->>'he50_min')::int = 120, '[T37] HE 50%: ' || (c->'resumo'->'a_pagar')::text);
+  perform pg_temp.ok((c->'resumo'->'a_pagar'->>'he100_min')::int = 240, '[T37] HE 100% do domingo');
+  perform pg_temp.ok((c->'resumo'->'a_pagar'->>'noturno_reduzidas_min')::int = 69
+                     and (c->'resumo'->'informativo'->>'noturno_relogio_min')::int = 60, '[T37] hora noturna reduzida');
+  perform pg_temp.ok((c->'resumo'->'a_pagar'->>'intervalo_nao_concedido_min')::int = 15, '[T37] intervalo não concedido');
+  select x into d from jsonb_array_elements(c->'dias') x where x->>'data' = '2026-09-02';
+  perform pg_temp.ok((d->>'debito_min')::int = 111, '[T37] débito com a hora noturna reduzida: ' || d::text);
+  select x into d from jsonb_array_elements(c->'dias') x where x->>'data' = '2026-09-03';
+  perform pg_temp.ok((d->>'debito_min')::int = 0 and d->>'abono' is not null, '[T37] atestado descontado');
+  perform pg_temp.ok(c::text not ilike '%atestado%', '[T37] motivo de saúde no espelho');
+  select x into d from jsonb_array_elements(c->'dias') x where x->>'data' = '2026-09-04';
+  perform pg_temp.ok((d->>'debito_min')::int = 0 and (c->'resumo'->'informativo'->>'abonado_empresa_min')::int = 120,
+                     '[T37] abono da empresa');
+  select x into d from jsonb_array_elements(c->'dias') x where x->>'data' = '2026-09-07';
+  perform pg_temp.ok(d->>'feriado' is not null and (d->>'debito_min')::int = 0, '[T37] feriado');
+  select x into d from jsonb_array_elements(c->'dias') x where x->>'data' = '2026-09-08';
+  perform pg_temp.ok((d->>'debito_min')::int = (c->'jornada'->>'dia_util_min')::int, '[T37] dia útil sem registro');
+  perform pg_temp.ok((c->'resumo'->'informativo'->>'dias_abonados_justificados')::int = 1 and jsonb_array_length(c->'avisos') = 7,
+                     '[T37] informativo e avisos');
+  -- funcionário sem nenhum registro no mês: espelho vazio (o emissor pula)
+  c := fn_ponto_espelho_conteudo(v_tec2, '2026-09-01');
+  perform pg_temp.ok(jsonb_array_length(c->'dias') = 0, '[T37] mês sem registro gerou dias: ' || (c->'dias')::text);
+  -- quem nunca marcou ponto, mas tem abono no mês: aparece, sem débito (o ponto ainda não foi implantado para ele)
+  insert into ponto_abonos (empresa_id, tecnico_id, data, inicio, fim, motivo, autor)
+  values (v_emp, v_tec2, '2026-09-10', '08:00', '09:00', 'Liberado pela empresa de manhã', 'qa');
+  c := fn_ponto_espelho_conteudo(v_tec2, '2026-09-01');
+  perform pg_temp.ok(exists (select 1 from jsonb_array_elements(c->'dias') x where x->>'data' = '2026-09-10')
+                     and (c->'resumo'->'a_descontar'->>'debito_min')::int = 0,
+                     '[T37] débito antes da primeira marcação: ' || (c->'resumo'->'a_descontar')::text);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T37' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

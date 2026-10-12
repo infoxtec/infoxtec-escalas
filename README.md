@@ -188,6 +188,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Migration 87 e painel 3.27.0: **AFD do ponto, versão de conferência** — Arquivo Fonte de Dados no leiaute da Portaria 671 para a contadora validar, ainda sem assinatura e sem INPI (13/10)
 - [x] Migration 88 e painel 3.28.0: **Espelho mensal com registro e QR público** (parte A) — o gestor emite o espelho do mês congelado; o QR confere a autenticidade sem mostrar dado pessoal. Parte B: envio pelo WhatsApp e assinatura do funcionário (13/10)
 - [ ] Migration 89 e painel 3.29.0: **Espelho mensal assinado** (parte B) — link pelo WhatsApp, assinatura desenhada no app do ponto, PDF com QR (13/10)
+- [ ] Migration 90 e painel 3.30.0: **Resumo de pagamento no espelho** — HE 50% e 100%, adicional noturno, débito e abonos por dia, e o quadro *a pagar / a descontar* em HH:MM (13/10)
 - [x] Migration 84: **recusa de escala não vira ponto** — o motivo ("1") e a explicação do técnico não são mais capturados pelo ponto (13/10)
 - [x] Migration 83: **intervalo de 15 minutos** — jornada de mais de 4 h sem intervalo gera aviso (CLT art. 71, §1º) (13/10)
 - [x] Migration 82 e painel 3.24.0: **registro das duas etapas** — quem ativou e desativou, visível na tela Usuários (13/10)
