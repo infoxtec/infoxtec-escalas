@@ -20,7 +20,9 @@ arquivo="supabase/demo/$acao.sql"
 [ -f "$arquivo" ] || { echo "Arquivo $arquivo nao encontrado."; exit 1; }
 
 echo "== Demonstracao: $acao na HOMOLOGACAO ($DEV)"
-npx --yes supabase@2.118.0 db query --project-ref "$DEV" --file "$arquivo"
+npx --yes supabase@2.118.0 link --project-ref "$DEV"
+[ "$(cat supabase/.temp/project-ref)" = "$DEV" ] || { echo "O link nao ficou na homologacao. Nada foi feito."; exit 1; }
+npx --yes supabase@2.118.0 db query --linked --file "$arquivo"
 echo
 if [ "$acao" = criar ]; then
   echo "Pronto. No painel da homologacao: Escalas (semana atual), Indicadores (ultimos dias) e Locais > Dossie"
