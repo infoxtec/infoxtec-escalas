@@ -850,3 +850,14 @@ novo. Entra no registro de operações de tratamento quando ele for feito (legal
 **Data:** 13/10/2026. **Decisão do responsável:** plano, README, backlog, sprint e documentação são
 atualizados **no mesmo PR** da entrega, antes do merge — nunca num PR depois da produção. O que só se sabe
 depois da produção (conferência) é registrado no PR seguinte que já vai abrir, sem PR próprio.
+
+## 72. Gatilho nosso no schema `auth` (registro das duas etapas)
+
+**Data:** 13/10/2026. **Contexto:** backlog 097, migration 82. O registro de quem ativa e desativa a
+verificação em duas etapas nasce num gatilho em `auth.mfa_factors`, tabela do Supabase Auth: assim não
+depende do painel nem pode ser pulado por quem chama a API do Auth direto. **Cuidados:** é o primeiro
+objeto nosso em `auth.*`; o gatilho não lista colunas (não prende `status` a uma migration do Auth), toda a
+lógica fica dentro de um bloco que só avisa em caso de erro (nunca barra login nem cadastro) e grava só
+e-mail, ação e hora. **Plano B:** se uma atualização do Supabase Auth falhar por causa dele, `drop trigger
+trg_mfa_registrar on auth.mfa_factors` (`docs/operacao.md`) — perde-se só o histórico daí em diante.
+

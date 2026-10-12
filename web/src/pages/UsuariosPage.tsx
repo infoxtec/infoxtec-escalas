@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Columns3, Edit2, Info, Plus, RefreshCw } from 'lucide-react'
+import { Columns3, Edit2, Info, Plus, RefreshCw, ShieldCheck } from 'lucide-react'
 import { Button, ErrorBox, Field, Input, Modal, Select, ToggleRow, useToast } from '../components/ui'
 import { PlainTh, SortableTh, useColumnWidths, useSortable } from '../components/SortableTh'
 import { api, erroMsg } from '../lib/api'
@@ -18,6 +18,8 @@ export default function UsuariosPage() {
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [historico, setHistorico] = useState<{ email: string; valor: boolean; autor: string; em: string }[]>([])
+  // null = ainda sem a informação (ou o banco sem a migration 82): a coluna mostra "?", nunca "—" falso
+  const [mfa, setMfa] = useState<{ ativos: Map<string, string>; historico: { email: string; acao: 'ativou' | 'desativou'; em: string }[] } | null>(null)
   const [edit, setEdit] = useState<{ email: string; nome: string; papel: Papel; ativo: boolean; novo: boolean; ve_saude: boolean; ve_saude_antes: boolean } | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [erroForm, setErroForm] = useState<string | null>(null)
@@ -25,6 +27,8 @@ export default function UsuariosPage() {
   const carregar = useCallback(async () => {
     setCarregando(true); setErro(null)
     api.veSaudeHistorico().then(setHistorico).catch(() => setHistorico([]))
+    api.usuariosMfa().then(m => setMfa({ ativos: new Map(m.ativos.map(a => [a.email, a.desde])), historico: m.historico }))
+      .catch(() => setMfa(null))
     try { setLista(await api.usuarios()) } catch (e) { setErro(erroMsg(e)) }
     finally { setCarregando(false) }
   }, [])
@@ -32,8 +36,9 @@ export default function UsuariosPage() {
 
   const { sorted, thProps } = useSortable(lista, {
     nome: u => u.nome ?? u.email, email: u => u.email, papel: u => PAPEL_LABEL[u.papel], ativo: u => u.ativo,
+    mfa: u => !!mfa?.ativos.has(u.email.toLowerCase()),
   }, { key: 'nome' })
-  const { col, total, restaurarTudo } = useColumnWidths('usuarios', { nome: 200, email: 260, papel: 150, ativo: 90, criado: 260, acoes: 70 })
+  const { col, total, restaurarTudo } = useColumnWidths('usuarios', { nome: 200, email: 260, papel: 150, ativo: 90, mfa: 120, criado: 260, acoes: 70 })
 
   const salvar = async () => {
     if (!edit) return
@@ -76,6 +81,7 @@ export default function UsuariosPage() {
               <SortableTh {...thProps('email')} {...col('email')}>E-mail</SortableTh>
               <SortableTh {...thProps('papel')} {...col('papel')}>Papel</SortableTh>
               <SortableTh {...thProps('ativo')} {...col('ativo')} align="center">Ativo</SortableTh>
+              <SortableTh {...thProps('mfa')} {...col('mfa')} align="center">Duas etapas</SortableTh>
               <PlainTh {...col('criado')}>Criado por</PlainTh>
               <PlainTh {...col('acoes')} />
             </tr>
@@ -87,6 +93,12 @@ export default function UsuariosPage() {
                 <td className="truncate px-3 py-2.5 text-xs" title={u.email}>{u.email}</td>
                 <td className="px-3 py-2.5 text-xs">{PAPEL_LABEL[u.papel]}{u.ve_saude && <span className="ml-1 rounded bg-blue-100 px-1 text-[10px] text-blue-800" title="Vê atestados e documentos; decide pedidos com documento">atestados</span>}</td>
                 <td className="px-3 py-2.5 text-center"><span className={`inline-block h-2 w-2 rounded-full ${u.ativo ? 'bg-green-500' : 'bg-gray-400'}`} /></td>
+                <td className="px-3 py-2.5 text-center text-xs">
+                  {!mfa ? <span className="text-muted-foreground" title="Informação indisponível">?</span>
+                    : mfa.ativos.has(u.email.toLowerCase())
+                      ? <span title={`Ativa desde ${mfa.ativos.get(u.email.toLowerCase())}`}><ShieldCheck className="inline h-4 w-4 text-green-700" /></span>
+                      : <span className="text-muted-foreground">—</span>}
+                </td>
                 <td className="truncate px-3 py-2.5 text-xs text-muted-foreground">{u.criado_por ?? '—'} · {formatDateTime(u.created_at)}</td>
                 <td className="px-3 py-2.5 text-right">
                   <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => { setEdit({ email: u.email, nome: u.nome ?? '', papel: u.papel, ativo: u.ativo, novo: false, ve_saude: u.ve_saude, ve_saude_antes: u.ve_saude }); setErroForm(null) }}><Edit2 className="h-3.5 w-3.5" /></Button>
@@ -103,6 +115,17 @@ export default function UsuariosPage() {
           <ul className="space-y-0.5 text-muted-foreground">
             {historico.slice(0, 20).map((h, i) => (
               <li key={i}>{h.em} · {h.autor} {h.valor ? 'deu a permissão a' : 'tirou a permissão de'} <span className="text-foreground">{h.email}</span></li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {mfa && mfa.historico.length > 0 && (
+        <div className="space-y-1 rounded-md border p-3 text-xs">
+          <p className="font-semibold">Histórico da verificação em duas etapas</p>
+          <ul className="space-y-0.5 text-muted-foreground">
+            {mfa.historico.slice(0, 20).map((h, i) => (
+              <li key={i}>{h.em} · <span className="text-foreground">{h.email}</span> {h.acao === 'ativou' ? 'ativou' : 'desativou'} a verificação</li>
             ))}
           </ul>
         </div>

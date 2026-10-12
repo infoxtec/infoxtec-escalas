@@ -555,10 +555,12 @@ fluxo com teto de 5 MB, com ou sem `content-length` (o 411 pedido derrubaria a E
 partes); CORS da `documento-ocr` só dos domínios do painel; decisão 70 (cópia cifrada do banco no GitHub,
 tratamento LGPD).
 
-## 097. Registro de auditoria ao desativar as duas etapas — planejado (P3)
+## 097. Registro de auditoria ao desativar as duas etapas — em revisão (13/10/2026)
 
 Achado P3 do `seguranca` na migration 78: hoje só o log de autenticação do Supabase registra a remoção do
 fator. Registrar no banco quem desativou e quando (sem o código), visível ao administrador.
+**Entrega (migration 82, painel 3.24.0):** gatilho em `auth.mfa_factors` grava ativação e desativação em
+`painel_mfa_log`; a tela Usuários mostra quem tem a verificação ativa e o histórico.
 
 ## Plano Diretor Comercial do Trilha
 
