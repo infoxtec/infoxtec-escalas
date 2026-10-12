@@ -934,3 +934,19 @@ impresso — o e-mail de quem gerou não vai ao cliente. Finalidade: prestação
 7º, II e IX); guarda alinhada à dos documentos trabalhistas (5 anos). Papéis admin, gestor e leitura
 (gerar só lê e registra; o responsável confirma no teste da homologação se o leitura deve entregar o dossiê). A impressão é do navegador (salvar como PDF); PDF assinado fica para quando um
 cliente pedir.
+
+## 80. Demonstração com dados fictícios, só na homologação
+
+**Data:** 13/10/2026. **Pedido do responsável** (pacote comercial, backlog 101). Para mostrar o produto a
+um cliente sem expor ninguém real, `./scripts/demo-homologacao.sh criar` monta na homologação uma empresa
+fictícia (CNPJ 99.999.999/0001-91) com 10 técnicos de nomes inventados, 5 locais de clientes fictícios e
+uma semana de escalas com respostas, ligações da URA e documentos; `apagar` remove tudo. **Nunca na
+produção:** o comando só aponta para o projeto de homologação, e o SQL exige `config.ambiente =
+homologacao` (migration 39) e nenhuma tarefa no pg_cron — mesmo colado no editor da produção, recusa. **Nada sai para fora:** telefones com DDD 00, que
+não existe, e a homologação não tem o motor no cron nem os segredos da Evolution e da Twilio. **Sem CPF:**
+os técnicos da demonstração não entram no ponto, porque marcação de ponto é imutável e impediria apagar.
+Diferente dos scripts de uma vez só de `supabase/setup/`, este fica no repositório (`supabase/demo/`)
+porque é reusado a cada apresentação; o T33 do CI cria e apaga para ele não envelhecer com o esquema.
+O `apagar` só remove tipo "(demo)" que nada fora da demonstração usa, e recusa se houver ponto da empresa.
+Nomes de locais e clientes inventados, sem lembrar empresa real. Pendente: conferir na Receita que o CNPJ
+de exemplo não pertence a empresa ativa (os dígitos precisam ser válidos para o cadastro aceitar).

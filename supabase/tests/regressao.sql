@@ -33,6 +33,7 @@
 -- T30 palavra e número do ponto não são capturados enquanto o técnico explica uma recusa de escala
 -- T31 painel gerencial: semanas acima de 44 h, sábado sem expediente abonado, escala por WhatsApp e URA
 -- T32 dossiê de conformidade por local: documento vencido na data do serviço, vencendo, não cadastrado
+-- T33 demonstração com dados fictícios: criar e apagar (supabase/demo) não deixam resto
 
 \set ON_ERROR_STOP on
 begin;
@@ -1562,7 +1563,39 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T32' as resultado,
+-- T33 demonstração com dados fictícios (supabase/demo, backlog 101) -----------------------------------------
+-- O mesmo SQL do ./scripts/demo-homologacao.sh: cria, confere, apaga e confere que não sobrou nada.
+-- a demonstração pode estar montada na homologação: apaga antes (o rollback do fim a devolve)
+update config set valor = 'homologacao' where chave = 'ambiente';
+\ir ../demo/apagar.sql
+create temp view t33_contagem as
+  select (select count(*) from tecnicos) as tec, (select count(*) from locais) as loc, (select count(*) from escalas) as esc,
+         (select count(*) from empresas) as emp, (select count(*) from tipos_documento) as tdoc, (select count(*) from tipos_atividade) as tati,
+         (select count(*) from tecnico_documentos) as tdocs, (select count(*) from tipo_atividade_documentos) as tad,
+         (select count(*) from notificacoes) as notif, (select count(*) from respostas) as resp, (select count(*) from ligacoes) as lig,
+         (select count(*) from escala_eventos) as ev;
+create temp table t33_antes on commit drop as select * from t33_contagem;
+\ir ../demo/criar.sql
+do $$
+declare v_emp uuid := (select id from empresas where cnpj = '99999999000191');
+begin
+  perform pg_temp.ok(v_emp is not null, '[T33] empresa da demonstração');
+  perform pg_temp.ok((select count(*) from tecnicos where empresa_id = v_emp) = 10, '[T33] 10 técnicos');
+  perform pg_temp.ok((select count(*) from locais where cliente_empresa_id = v_emp) = 5, '[T33] 5 locais');
+  perform pg_temp.ok((select count(*) from escalas e join tecnicos t on t.id = e.tecnico_id where t.empresa_id = v_emp) >= 45, '[T33] uma semana de escalas');
+  perform pg_temp.ok(not exists (select 1 from tecnicos where empresa_id = v_emp and telefone_e164 not like '550090000%'), '[T33] telefone fora do DDD 00');
+  perform pg_temp.ok(not exists (select 1 from tecnicos where empresa_id = v_emp and cpf is not null), '[T33] técnico da demonstração com CPF');
+end $$;
+\ir ../demo/apagar.sql
+do $$
+begin
+  perform pg_temp.ok(not exists (select 1 from empresas where cnpj = '99999999000191'), '[T33] empresa ficou');
+  perform pg_temp.ok((select row(a.*) = row(c.*) from t33_antes a, t33_contagem c), '[T33] apagar deixou resto: '
+                     || (select row_to_json(a)::text || ' depois ' || row_to_json(c)::text from t33_antes a, t33_contagem c));
+end $$;
+\ir ../demo/apagar.sql
+
+select 'REGRESSÃO OK: T1 a T33' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

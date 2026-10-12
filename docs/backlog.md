@@ -577,7 +577,7 @@ de marcações ajustadas, dias abonados, desvios da jornada da CLT: 8 h por dia,
 por mês, com o sábado de 4 h — e o sábado sem expediente abonado por decisão interna da Infoxtec).
 Sem nome de técnico nos indicadores agregados.
 
-## 100. Dossiê de conformidade por local — em revisão (13/10/2026; migration 86, painel 3.26.0, decisão 79)
+## 100. Dossiê de conformidade por local — concluído (13/10/2026; migration 86, painel 3.26.0, decisão 79)
 
 O que o RH entrega ao cliente tomador: para um local e uma data, a situação de ASO, NR e CNH de cada
 técnico escalado, com o vencido em destaque. Só a situação, sem abrir arquivo (LGPD); cada geração fica
@@ -590,10 +590,17 @@ geração registrada com número. **Critério de aceite:** no local de teste, um
 vencendo antes da data aparece pendente; o mesmo dossiê sai impresso com o número do registro.
 **Depois, se um cliente pedir:** PDF assinado e dossiê por cliente tomador (vários locais).
 
-## 101. Demonstração com dados fictícios na homologação — planejado (P2, comercial)
+## 101. Demonstração com dados fictícios na homologação — em revisão (13/10/2026; decisão 80)
 
 Mostrar o produto sem expor técnicos reais: um comando cria uma empresa fictícia com 10 técnicos, 5
 locais e uma semana de escalas, sem telefone real; outro comando apaga tudo.
+
+**Entregue:** `./scripts/demo-homologacao.sh criar` e `./scripts/demo-homologacao.sh apagar` (SQL em
+`supabase/demo/`). A semana vai de 3 dias atrás a 3 dias à frente, sem domingo: escalas concluídas,
+confirmadas pelo WhatsApp e pela URA, uma recusa, notificadas e agendadas; documentos com um vencido, um
+vencendo e um não cadastrado, para o Dossiê. **Critério de aceite:** depois do `criar`, Escalas,
+Indicadores e o Dossiê da "Torre Comercial Vento Leste" (hoje) mostram a demonstração; depois do
+`apagar`, nada dela sobra. **Fica de fora:** ponto (marcação é imutável e impediria apagar).
 
 ## Plano Diretor Comercial do Trilha
 
