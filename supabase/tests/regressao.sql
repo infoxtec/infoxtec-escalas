@@ -25,6 +25,7 @@
 -- T22 limpeza da estrutura: objetos sem chamador removidos; Checklist aponta tarefa obrigatória faltando
 -- T23 feriado não exige escala; MFA obrigatório barra sessão sem o código (aal1) e libera com ele (aal2)
 -- T24 motor: no máximo 5 escalas avisadas aos supervisores por execução; o resto na seguinte
+-- T25 avisos aos supervisores só da empresa do técnico (função comum e motor)
 
 \set ON_ERROR_STOP on
 begin;
@@ -1187,7 +1188,108 @@ begin
   perform pg_temp.ok(v_n = 8, '[T24] 2ª execução deixou escala sem aviso: ' || v_n || ' de 8');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T24' as resultado,
+-- T25 avisos aos supervisores só da empresa do técnico (migration 79, decisão 69) ---------------------------
+-- Supervisor da empresa do técnico e supervisor sem empresa recebem; supervisor de outra empresa, não.
+-- Vale para a função comum (recusa, detalhe, URA) e para a fase 3 do motor. Envio por stub, desfeito no fim.
+create or replace function fn_wa_texto(p_telefone text, p_texto text) returns bigint language sql as $$
+  insert into qa values ('wa:' || p_telefone, '1') on conflict do nothing; select 0::bigint $$;
+create or replace function fn_evo_post(p_path text, p_body jsonb) returns bigint language sql as $$
+  insert into qa values ('evo:' || coalesce(p_body->>'number', ''), '1') on conflict do nothing; select 0::bigint $$;
+do $$
+declare
+  v_emp  uuid := (select v::uuid from qa where k = 'emp');
+  v_tec  uuid := (select v::uuid from qa where k = 'tec2');
+  v_loc  uuid := (select v::uuid from qa where k = 'loc');
+  v_emp2 uuid; v_id uuid; v_n int;
+begin
+  insert into empresas (cnpj, razao_social, nome_fantasia, fuso, empregadora, ativo)
+  values ('11222333000181', 'QA Outra Ltda', 'QA2', 'America/Bahia', true, true) returning id into v_emp2;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, is_supervisor) values
+    ('QA Sup A',    '5579999990001', true, true, pg_temp.cpf('700000001'), v_emp,  true, true),
+    ('QA Sup B',    '5579999990002', true, true, pg_temp.cpf('700000002'), v_emp2, true, true),
+    ('QA Sup Todas','5579999990003', true, true, pg_temp.cpf('700000003'), null,   true, true);
+
+  perform fn_avisar_supervisores('QA aviso', v_tec);
+  perform pg_temp.ok(exists (select 1 from qa where k = 'wa:5579999990001'), '[T25] supervisor da empresa não recebeu');
+  perform pg_temp.ok(exists (select 1 from qa where k = 'wa:5579999990003'), '[T25] supervisor sem empresa não recebeu');
+  perform pg_temp.ok(not exists (select 1 from qa where k = 'wa:5579999990002'), '[T25] supervisor de outra empresa recebeu');
+  -- alerta de sistema (sem técnico nem empresa) continua para todos
+  perform fn_avisar_supervisores('QA sistema');
+  perform pg_temp.ok(exists (select 1 from qa where k = 'wa:5579999990002'), '[T25] alerta de sistema não chegou a todos');
+
+  if (now() at time zone 'America/Bahia')::time >= time '23:59' then
+    raise notice 'T25: 23:59 local, fase 3 do motor não conferida';
+    return;
+  end if;
+  update config set valor = '00:00' where chave = 'janela_envio_inicio';
+  update config set valor = '23:59' where chave = 'janela_envio_fim';
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, date '2031-04-01', time '09:00', 'QA empresa supervisor', 'notificada', 'qa') returning id into v_id;
+  insert into notificacoes (escala_id, tipo, tentativa, template_nome, status_envio, enviada_em)
+  values (v_id, 'lembrete', fn_config_int('max_tentativas'), 'texto_evolution', 'falha', now() - interval '2 hours');
+  update escalas set supervisor_avisado_em = now() where supervisor_avisado_em is null and id <> v_id;
+  perform fn_dispatcher_whatsapp();
+  select count(*) into v_n from escalas where id = v_id and supervisor_avisado_em is not null;
+  perform pg_temp.ok(v_n = 1, '[T25] motor não avisou a escala');
+  perform pg_temp.ok(exists (select 1 from qa where k = 'evo:5579999990001'), '[T25] motor: supervisor da empresa não recebeu');
+  perform pg_temp.ok(not exists (select 1 from qa where k = 'evo:5579999990002'), '[T25] motor: supervisor de outra empresa recebeu');
+  perform pg_temp.ok(exists (select 1 from qa where k = 'evo:5579999990003'), '[T25] motor: supervisor sem empresa não recebeu');
+end $$;
+
+-- T25b alertas agrupados por empresa: escala de amanhã e documentos a vencer, sem nome de outra empresa
+create or replace function fn_wa_texto(p_telefone text, p_texto text) returns bigint language sql as $$
+  insert into qa values ('txt:' || p_telefone, p_texto) on conflict (k) do update set v = qa.v || ' | ' || excluded.v;
+  select 0::bigint $$;
+do $$
+declare
+  v_emp  uuid := (select v::uuid from qa where k = 'emp');
+  v_emp2 uuid := (select id from empresas where cnpj = '11222333000181');
+  v_fuso text := fn_config('fuso');
+  v_agora timestamp := now() at time zone fn_config('fuso');
+  v_tipo uuid; v_a uuid; v_b uuid; v_txt text;
+begin
+  if v_agora::time not between time '00:02' and time '21:50' then
+    raise notice 'T25b: fora da janela do teste (00:02 a 21:50 local); alertas por empresa não conferidos';
+    return;
+  end if;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste) values
+    ('QA Tecnico Alfa', '5579999990011', true, true, pg_temp.cpf('700000011'), v_emp,  false) returning id into v_a;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste) values
+    ('QA Tecnico Beta', '5579999990012', true, true, pg_temp.cpf('700000012'), v_emp2, false) returning id into v_b;
+
+  -- documentos vencidos dos dois
+  insert into tipos_documento (nome) values ('QA NR-35') returning id into v_tipo;
+  insert into tecnico_documentos (tecnico_id, tipo_documento_id, validade) values
+    (v_a, v_tipo, v_agora::date - 1), (v_b, v_tipo, v_agora::date - 1);
+  update config set valor = extract(isodow from v_agora)::text where chave = 'alerta_certificacoes_dow';
+  update config set valor = to_char(v_agora - interval '1 minute', 'HH24:MI') where chave = 'alerta_certificacoes_hora';
+  delete from alertas_enviados where tipo = 'certificacoes' and data_ref = v_agora::date;
+  perform fn_alerta_certificacoes();
+  v_txt := (select v from qa where k = 'txt:5579999990002');
+  perform pg_temp.ok(v_txt like '%QA Tecnico Beta%', '[T25b] documentos: supervisor B não recebeu o técnico dele');
+  perform pg_temp.ok(v_txt not like '%QA Tecnico Alfa%', '[T25b] documentos: supervisor B recebeu técnico de outra empresa');
+  v_txt := (select v from qa where k = 'txt:5579999990001');
+  perform pg_temp.ok(v_txt like '%QA Tecnico Alfa%' and v_txt not like '%QA Tecnico Beta%', '[T25b] documentos: supervisor A errado');
+
+  -- escala de amanhã: os dois sem escala
+  if exists (select 1 from feriados where data = v_agora::date + 1) then
+    raise notice 'T25b: amanhã é feriado; alerta da escala não conferido';
+    return;
+  end if;
+  delete from qa where k like 'txt:%';
+  update config set valor = '1,2,3,4,5,6,7' where chave = 'alerta_dias_semana';
+  update config set valor = to_char(v_agora - interval '1 minute', 'HH24:MI') where chave = 'alerta_escala_aviso';
+  update config set valor = '23:59' where chave = 'alerta_escala_prazo';
+  delete from alertas_enviados where tipo in ('aviso', 'prazo') and data_ref = v_agora::date + 1;
+  perform fn_alerta_prazo_escala();
+  v_txt := (select v from qa where k = 'txt:5579999990002');
+  perform pg_temp.ok(v_txt like '%QA Tecnico Beta%', '[T25b] escala: supervisor B não recebeu o técnico dele');
+  perform pg_temp.ok(v_txt not like '%QA Tecnico Alfa%', '[T25b] escala: supervisor B recebeu técnico de outra empresa');
+  v_txt := (select v from qa where k = 'txt:5579999990003');
+  perform pg_temp.ok(v_txt like '%QA Tecnico Alfa%' and v_txt like '%QA Tecnico Beta%', '[T25b] escala: supervisor sem empresa não recebeu as duas');
+end $$;
+
+select 'REGRESSÃO OK: T1 a T25' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
