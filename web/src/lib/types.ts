@@ -418,3 +418,14 @@ export interface PainelGerencial {
                tolerancia_dia_min: number }
   }
 }
+
+/** Dossiê de conformidade por local (migration 86, backlog 100): situação dos documentos na data do serviço. */
+export type SituacaoDossie = 'valido' | 'vencendo' | 'vencido' | 'sem_data' | 'nao_cadastrado'
+export interface DossieLocal {
+  registro: number; gerado_em: string; gerado_por: string; data: string; aviso_dias: number
+  local: { nome: string; cliente: string | null; endereco: string | null; cidade: string | null }
+  tecnicos: {
+    tecnico: string; funcao: string | null; hora: string; atividades: string | null; sem_atividade: boolean; apto: boolean
+    documentos: { documento: string; validade: string | null; situacao: SituacaoDossie }[]
+  }[]
+}

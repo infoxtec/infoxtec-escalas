@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Columns3, Crosshair, Edit2, ExternalLink, MapPin, Plus, RefreshCw } from 'lucide-react'
+import { Columns3, Crosshair, Edit2, ExternalLink, FileCheck2, MapPin, Plus, RefreshCw } from 'lucide-react'
 import { Button, ErrorBox, Field, Input, Modal, Select, ToggleRow } from '../components/ui'
+import DossieLocal from '../components/DossieLocal'
 import { PlainTh, SortableTh, useColumnWidths, useSortable } from '../components/SortableTh'
 import { api, erroMsg } from '../lib/api'
 import { coordenadasDoLink } from '../lib/types'
@@ -16,13 +17,14 @@ export default function LocaisPage({ locais, recarregar, podeEditar }: {
   const [erro, setErro] = useState<string | null>(null)
   const [atualizando, setAtualizando] = useState(false)
   const [empresas, setEmpresas] = useState<Empresa[]>([])
+  const [dossie, setDossie] = useState<Local | null>(null)
   useEffect(() => { api.empresas().then(setEmpresas).catch(() => { /* cadastro funciona sem empresas */ }) }, [])
 
   const { sorted, thProps } = useSortable(locais, {
     nome: l => l.nome, cliente: l => l.cliente, endereco: l => l.endereco, cidade: l => l.cidade,
     referencia: l => l.referencia, contato: l => l.contato_local, maps: l => !!l.link_maps, area: l => l.latitude != null, ativo: l => l.ativo,
   }, { key: 'nome' })
-  const { col, total, restaurarTudo } = useColumnWidths('locais', { nome: 200, cliente: 150, endereco: 280, cidade: 110, referencia: 160, contato: 160, maps: 80, area: 110, ativo: 80, acoes: 70 })
+  const { col, total, restaurarTudo } = useColumnWidths('locais', { nome: 200, cliente: 150, endereco: 280, cidade: 110, referencia: 160, contato: 160, maps: 80, area: 110, ativo: 80, acoes: 90 })
 
   const set = (k: keyof Local, v: string | boolean | number | null) => setEdit(p => ({ ...p, [k]: v }))
   const num = (v: string) => v.trim() === '' ? null : Number(v.replace(',', '.'))
@@ -88,7 +90,7 @@ export default function LocaisPage({ locais, recarregar, podeEditar }: {
                   <td className="px-3 py-2.5 text-center">{l.link_maps ? <a href={l.link_maps} target="_blank" rel="noopener noreferrer" className="inline-flex text-primary"><ExternalLink className="h-3.5 w-3.5" /></a> : <span className="text-xs text-muted-foreground">—</span>}</td>
                   <td className="px-3 py-2.5 text-center text-xs">{l.latitude != null ? <span className="inline-flex items-center gap-1 text-primary" title={`${l.latitude}, ${l.longitude}`}><MapPin className="h-3.5 w-3.5" />{l.raio_m} m</span> : <span className="text-muted-foreground">—</span>}</td>
                   <td className="px-3 py-2.5 text-center"><span className={`inline-block h-2 w-2 rounded-full ${l.ativo ? 'bg-green-500' : 'bg-gray-400'}`} /></td>
-                  <td className="px-3 py-2.5 text-right">{podeEditar && <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => { setEdit({ ...l }); setErro(null) }}><Edit2 className="h-3.5 w-3.5" /></Button>}</td>
+                  <td className="px-3 py-2.5 text-right"><Button variant="ghost" size="icon" aria-label="Dossiê de conformidade" title="Dossiê de conformidade" onClick={() => setDossie(l)}><FileCheck2 className="h-3.5 w-3.5" /></Button>{podeEditar && <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => { setEdit({ ...l }); setErro(null) }}><Edit2 className="h-3.5 w-3.5" /></Button>}</td>
                 </tr>
               ))}
             </tbody>
@@ -140,6 +142,7 @@ export default function LocaisPage({ locais, recarregar, podeEditar }: {
           </div>
         )}
       </Modal>
+      {dossie && <DossieLocal local={dossie} onClose={() => setDossie(null)} />}
     </div>
   )
 }
