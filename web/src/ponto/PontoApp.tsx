@@ -4,6 +4,7 @@ import { Button, ErrorBox, Field, Input, Select, Textarea } from '../components/
 import { erroMsg, ponto } from '../lib/api'
 import { formatCpf } from '../lib/types'
 import { prepararArquivo } from '../lib/arquivo'
+import EspelhosApp from './EspelhosApp'
 import type { PontoComprovante, PontoEu, PontoMarcacao, PontoMeuPedido, PontoTipo } from '../lib/types'
 
 // App do funcionário (Módulo Registro de Ponto, docs/modulo-registro-de-ponto/). Abre em /ponto.
@@ -114,7 +115,9 @@ function Painel({ token, onSair }: { token: string; onSair: () => void }) {
   const [batendo, setBatendo] = useState<PontoTipo | null>(null)
   const [comprovante, setComprovante] = useState<PontoComprovante | null>(null)
   const [previo, setPrevio] = useState<{ tipo: PontoTipo; texto: string } | null>(null)
-  const [aba, setAba] = useState<'ponto' | 'ajuste'>('ponto')
+  // link do WhatsApp do espelho mensal: /ponto?espelho=id abre direto nele (decisão 82)
+  const [espelhoLink] = useState(() => new URLSearchParams(window.location.search).get('espelho'))
+  const [aba, setAba] = useState<'ponto' | 'ajuste' | 'espelho'>(() => espelhoLink ? 'espelho' : 'ponto')
 
   const carregar = useCallback(async () => {
     try {
@@ -166,13 +169,14 @@ function Painel({ token, onSair }: { token: string; onSair: () => void }) {
         <Button variant="ghost" size="sm" onClick={onSair}><LogOut className="h-4 w-4" /> Sair</Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-1 rounded-lg border p-0.5">
-        {([['ponto', 'Ponto'], ['ajuste', 'Ajuste']] as const).map(([id, rotulo]) => (
+      <div className="grid grid-cols-3 gap-1 rounded-lg border p-0.5">
+        {([['ponto', 'Ponto'], ['ajuste', 'Ajuste'], ['espelho', 'Espelho']] as const).map(([id, rotulo]) => (
           <button key={id} type="button" onClick={() => setAba(id)}
             className={`rounded-md py-2 text-sm font-semibold ${aba === id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}>{rotulo}</button>
         ))}
       </div>
-      {aba === 'ajuste' ? <Ajuste token={token} onSair={onSair} onMudou={() => void carregar()} /> : (<>
+      {aba === 'espelho' ? <EspelhosApp token={token} onSair={onSair} inicial={espelhoLink} />
+        : aba === 'ajuste' ? <Ajuste token={token} onSair={onSair} onMudou={() => void carregar()} /> : (<>
       {eu.afastado_ate && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           Você está <strong>afastado por atestado até {eu.afastado_ate.slice(0, 5)}</strong>: não marca ponto nem recebe escala. Melhoras!

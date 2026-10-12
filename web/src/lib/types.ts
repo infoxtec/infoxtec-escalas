@@ -444,3 +444,36 @@ export interface ConferenciaEspelho {
   emitido_em?: string; substituido?: boolean; integro?: boolean; assinado_em?: string | null
   assinatura_integra?: boolean | null; sha256?: string
 }
+
+/** Conteúdo congelado do espelho mensal (fn_ponto_espelho_conteudo, Portaria 671 Art. 84). */
+export interface EspelhoConteudo {
+  empregador: { razao_social: string; cnpj: string }
+  trabalhador: { nome: string; cpf: string; admissao: string | null; funcao: string | null }
+  competencia: string; de: string; ate: string
+  jornada: { dia_util_min: number; sabado_min: number; intervalo_min: number }
+  dias: ({ data: string } & Partial<Omit<PontoEspelho, 'alertas'>> & {
+    alertas?: string[]; abonado_min?: number
+    // a partir da migration 90 (decisão 83); espelhos emitidos antes não têm
+    previsto_min?: number; he50_min?: number; he100_min?: number; noturno_min?: number; debito_min?: number
+    feriado?: string | null
+  })[]
+  ajustes: { acao: 'incluir' | 'desconsiderar'; data: string; hora: string; tipo: string; motivo: string }[]
+  totais: { trabalhado_min: number; he_min: number; faltas: number; atrasos: number; dias_abonados: number }
+  resumo?: EspelhoResumo
+  avisos?: string[]
+}
+/** Resumo de horas do espelho: o que será pago e o que será descontado (decisão 83). Tudo em minutos. */
+export interface EspelhoResumo {
+  a_pagar: { he50_min: number; he100_min: number; noturno_reduzidas_min: number; intervalo_nao_concedido_min: number }
+  a_descontar: { debito_min: number; dias_sem_registro: number; semanas_com_falta: number }
+  informativo: {
+    previsto_min: number; trabalhado_min: number; noturno_relogio_min: number; abonado_justificado_min: number
+    abonado_empresa_min: number; sabados_sem_expediente: number; dias_abonados_justificados: number; dias_trabalhados: number
+    dias_he_acima_2h: number; interjornada_curta: number; registros: number; feriados: string[]
+  }
+}
+/** Espelho emitido com o conteúdo e a assinatura (app do funcionário e painel do gestor). */
+export interface EspelhoCompleto {
+  id: string; registro: number; versao: number; codigo: string; sha256: string; emitido_em: string
+  substituido: boolean; conteudo: EspelhoConteudo | null; assinado_em: string | null; assinatura_png: string | null
+}

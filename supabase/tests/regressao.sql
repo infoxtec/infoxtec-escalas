@@ -36,6 +36,8 @@
 -- T33 demonstração com dados fictícios: criar e apagar (supabase/demo) não deixam resto
 -- T34 AFD do REP-P (versão de conferência): tamanhos do leiaute, CRC-16, hash encadeado, trailer e permissão
 -- T35 espelho mensal congelado: emissão, registro sem lacuna, imutável, conferência pública sem dado pessoal
+-- T36 assinatura do espelho pelo funcionário: só o próprio, só a versão vista, uma vez, hash amarrado; envio
+-- T37 resumo do espelho: HE 50% e 100%, noturno reduzido, débito com tolerância, atestado e abono da empresa
 
 \set ON_ERROR_STOP on
 begin;
@@ -1735,7 +1737,163 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T35' as resultado,
+-- T36 assinatura do espelho pelo funcionário e envio pelo WhatsApp (migration 89, decisão 82) -----------------
+do $$
+declare
+  v_emp uuid := (select v::uuid from qa where k = 'emp');
+  v_mes date := date_trunc('month', current_date - interval '1 month')::date;
+  v_png text := 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  v_tec uuid; v_tec2 uuid; v_cpf text := pg_temp.cpf('363636301'); v_tok text; c jsonb; r jsonb; v_id uuid; v_sha text;
+  v_cod text; v_ok boolean; v_n int;
+begin
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA Assina Espelho', '5579999993636', true, true, v_cpf, v_emp, false, v_mes - 60) returning id into v_tec;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA Recebe Espelho', '5579999993637', true, true, pg_temp.cpf('363636302'), v_emp, false, v_mes - 60) returning id into v_tec2;
+  alter table ponto_marcacoes disable trigger user;
+  insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, hash_anterior, hash)
+  select v_emp, 936000 + k, x.t, (select cpf from tecnicos where id = x.t), ((v_mes + 5) + h) at time zone 'America/Bahia',
+         'entrada', 'ura', 'qa', md5(random()::text)
+    from (values (1, v_tec, time '08:00'), (2, v_tec2, time '08:05')) x(k, t, h);
+  alter table ponto_marcacoes enable trigger user;
+
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  perform app_ponto_emitir_espelhos(v_mes, v_tec);
+  perform app_ponto_emitir_espelhos(v_mes, v_tec2);
+  c := app_ponto_gerar_codigo(v_tec);
+  v_tok := ponto_entrar(v_cpf, c->>'codigo')->>'token';
+
+  r := ponto_meus_espelhos(v_tok);
+  perform pg_temp.ok(jsonb_array_length(r) = 1, '[T36] meus espelhos: ' || r::text);
+  v_id := (r->0->>'id')::uuid;
+  r := ponto_meu_espelho(v_tok, v_id);
+  v_sha := r->>'sha256';
+  perform pg_temp.ok(r->'conteudo'->'trabalhador'->>'nome' = 'QA Assina Espelho' and r->>'codigo' is not null, '[T36] espelho do funcionário');
+  -- o espelho de outro funcionário não abre
+  v_ok := false;
+  begin perform ponto_meu_espelho(v_tok, (select id from ponto_espelhos where tecnico_id = v_tec2)); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T36] abriu espelho de outro funcionário');
+  v_ok := false;
+  begin perform ponto_assinar_espelho(v_tok, (select id from ponto_espelhos where tecnico_id = v_tec2),
+                                      (select sha256 from ponto_espelhos where tecnico_id = v_tec2), v_png, true);
+  exception when others then v_ok := sqlerrm like '%não encontrado%'; end;
+  perform pg_temp.ok(v_ok, '[T36] assinou espelho de outro funcionário');
+  -- data URL de PNG com bytes que não são PNG: recusado
+  v_ok := false;
+  begin perform ponto_assinar_espelho(v_tok, v_id, v_sha, 'data:image/png;base64,QUJDREVGR0g=', true); exception when others then v_ok := sqlerrm like '%inválida%'; end;
+  perform pg_temp.ok(v_ok, '[T36] PNG falso aceito');
+  -- sem ciência, desenho inválido ou versão diferente da vista: recusado
+  v_ok := false;
+  begin perform ponto_assinar_espelho(v_tok, v_id, v_sha, v_png, false); exception when others then v_ok := sqlerrm like '%Confirme%'; end;
+  perform pg_temp.ok(v_ok, '[T36] assinou sem ciência');
+  v_ok := false;
+  begin perform ponto_assinar_espelho(v_tok, v_id, v_sha, 'javascript:alert(1)', true); exception when others then v_ok := sqlerrm like '%inválida%'; end;
+  perform pg_temp.ok(v_ok, '[T36] assinatura que não é PNG aceita');
+  v_ok := false;
+  begin perform ponto_assinar_espelho(v_tok, v_id, repeat('0', 64), v_png, true); exception when others then v_ok := sqlerrm like '%mudou%'; end;
+  perform pg_temp.ok(v_ok, '[T36] assinou versão diferente da vista');
+  -- assina; a segunda vez é recusada; a conferência pública confirma a assinatura amarrada à versão
+  r := ponto_assinar_espelho(v_tok, v_id, v_sha, v_png, true);
+  perform pg_temp.ok(r->>'assinado_em' is not null, '[T36] assinatura');
+  v_ok := false;
+  begin perform ponto_assinar_espelho(v_tok, v_id, v_sha, v_png, true); exception when others then v_ok := sqlerrm like '%já foi assinado%'; end;
+  perform pg_temp.ok(v_ok, '[T36] assinou duas vezes');
+  select codigo into v_cod from ponto_espelhos where id = v_id;
+  r := ponto_verificar_espelho(v_cod);
+  perform pg_temp.ok((r->>'assinatura_integra')::boolean and r->>'assinado_em' is not null, '[T36] conferência da assinatura: ' || (r - 'sha256')::text);
+  perform pg_temp.ok(r::text not like '%iVBOR%', '[T36] imagem da assinatura na conferência pública');
+  -- assinado não é reemitido; o envio só considera os pendentes
+  r := app_ponto_emitir_espelhos(v_mes, v_tec);
+  perform pg_temp.ok((r->>'ja_assinados')::int = 1, '[T36] assinado reemitido: ' || r::text);
+  -- desligado não recebe o link; sem WhatsApp liberado não fica marcado como enviado
+  update tecnicos set ativo = false, desligado_em = current_date where id = v_tec2;
+  r := app_ponto_enviar_espelhos(v_mes, (select id from ponto_espelhos where tecnico_id = v_tec2));
+  perform pg_temp.ok((r->>'desligados')::int = 1 and (r->>'enviados')::int = 0, '[T36] envio a desligado: ' || r::text);
+  update tecnicos set ativo = true, desligado_em = null, opt_in = false where id = v_tec2;
+  r := app_ponto_enviar_espelhos(v_mes, (select id from ponto_espelhos where tecnico_id = v_tec2));
+  perform pg_temp.ok((r->>'sem_whatsapp')::int = 1 and (select enviado_em from ponto_espelhos where tecnico_id = v_tec2) is null,
+                     '[T36] envio sem opt-in: ' || r::text);
+  select count(*) into v_n from ponto_espelhos where competencia = v_mes and substituido_em is null and assinado_em is null and enviado_em is null;
+  r := app_ponto_enviar_espelhos(v_mes);
+  perform pg_temp.ok((r->>'enviados')::int + (r->>'sem_whatsapp')::int + (r->>'falhas')::int + (r->>'desligados')::int = v_n,
+                     '[T36] envio: ' || r::text || ' de ' || v_n);
+  perform pg_temp.ok((select enviado_em from ponto_espelhos where id = v_id) is null, '[T36] envio de espelho já assinado');
+  -- as funções do app gravam o uso da sessão: não podem ser stable (PostgREST roda stable só leitura)
+  perform pg_temp.ok(not exists (select 1 from pg_proc where proname like 'ponto\_%' and provolatile <> 'v'
+                                   and pg_get_functiondef(oid) ilike '%fn_ponto_sessao(p_token)%'), '[T36] função de sessão marcada stable');
+  -- o gestor vê o espelho com a assinatura; o leitura não
+  perform pg_temp.ok(app_ponto_espelho_ver(v_id)->>'assinatura_png' = v_png, '[T36] gestor vê a assinatura');
+  perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
+  v_ok := false;
+  begin perform app_ponto_espelho_ver(v_id); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T36] leitura viu o espelho');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+end $$;
+
+-- T37 resumo de pagamento do espelho (migration 90, decisão 83) ------------------------------------------------
+-- Setembro de 2026: ter 01 com 2 h extras, qua 02 das 17h às 23h (1 h noturna), qui 03 com atestado, sex 04 com
+-- 2 h abonadas pela empresa, dom 06 trabalhado, seg 07 feriado, ter 08 sem registro.
+do $$
+declare
+  v_emp uuid := (select v::uuid from qa where k = 'emp');
+  v_tec uuid; v_tec2 uuid; v_j uuid; c jsonb; d jsonb; n int := 937000;
+begin
+  insert into feriados (data, nome, abrangencia) values ('2026-09-07', 'Independência do Brasil', 'nacional') on conflict do nothing;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA Resumo Espelho', '5579999993737', true, true, pg_temp.cpf('373737301'), v_emp, false, '2026-08-01') returning id into v_tec;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA Resumo Vazio', '5579999993738', true, true, pg_temp.cpf('373737302'), v_emp, false, '2026-08-01') returning id into v_tec2;
+  alter table ponto_marcacoes disable trigger user;
+  insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, hash_anterior, hash)
+  select v_emp, n + row_number() over (), v_tec, (select cpf from tecnicos where id = v_tec),
+         (x.dia + x.h) at time zone 'America/Bahia', x.tipo, 'ura', 'qa', md5(random()::text)
+    from (values (date '2026-09-01', time '08:00', 'entrada'), ('2026-09-01', '12:00', 'saida_almoco'),
+                 ('2026-09-01', '13:00', 'volta_almoco'), ('2026-09-01', '19:00', 'saida'),
+                 ('2026-09-02', '17:00', 'entrada'), ('2026-09-02', '23:00', 'saida'),
+                 ('2026-09-04', '10:00', 'entrada'), ('2026-09-04', '12:00', 'saida_almoco'),
+                 ('2026-09-04', '13:00', 'volta_almoco'), ('2026-09-04', '17:00', 'saida'),
+                 ('2026-09-06', '08:00', 'entrada'), ('2026-09-06', '12:00', 'saida')) x(dia, h, tipo);
+  alter table ponto_marcacoes enable trigger user;
+  insert into ponto_justificativas (empresa_id, tecnico_id, motivo, data, canal, status)
+  values (v_emp, v_tec, 'atestado', '2026-09-03', 'app', 'aprovada') returning id into v_j;
+  insert into ponto_abonos (empresa_id, tecnico_id, data, justificativa_id, motivo, autor)
+  values (v_emp, v_tec, '2026-09-03', v_j, 'Atestado médico apresentado', 'qa');
+  insert into ponto_abonos (empresa_id, tecnico_id, data, inicio, fim, motivo, autor)
+  values (v_emp, v_tec, '2026-09-04', '08:00', '10:00', 'Liberado pela empresa de manhã', 'qa');
+
+  c := fn_ponto_espelho_conteudo(v_tec, '2026-09-01');
+  perform pg_temp.ok((c->'resumo'->'a_pagar'->>'he50_min')::int = 120, '[T37] HE 50%: ' || (c->'resumo'->'a_pagar')::text);
+  perform pg_temp.ok((c->'resumo'->'a_pagar'->>'he100_min')::int = 240, '[T37] HE 100% do domingo');
+  perform pg_temp.ok((c->'resumo'->'a_pagar'->>'noturno_reduzidas_min')::int = 69
+                     and (c->'resumo'->'informativo'->>'noturno_relogio_min')::int = 60, '[T37] hora noturna reduzida');
+  perform pg_temp.ok((c->'resumo'->'a_pagar'->>'intervalo_nao_concedido_min')::int = 15, '[T37] intervalo não concedido');
+  select x into d from jsonb_array_elements(c->'dias') x where x->>'data' = '2026-09-02';
+  perform pg_temp.ok((d->>'debito_min')::int = 111, '[T37] débito com a hora noturna reduzida: ' || d::text);
+  select x into d from jsonb_array_elements(c->'dias') x where x->>'data' = '2026-09-03';
+  perform pg_temp.ok((d->>'debito_min')::int = 0 and d->>'abono' is not null, '[T37] atestado descontado');
+  perform pg_temp.ok(c::text not ilike '%atestado%', '[T37] motivo de saúde no espelho');
+  select x into d from jsonb_array_elements(c->'dias') x where x->>'data' = '2026-09-04';
+  perform pg_temp.ok((d->>'debito_min')::int = 0 and (c->'resumo'->'informativo'->>'abonado_empresa_min')::int = 120,
+                     '[T37] abono da empresa');
+  select x into d from jsonb_array_elements(c->'dias') x where x->>'data' = '2026-09-07';
+  perform pg_temp.ok(d->>'feriado' is not null and (d->>'debito_min')::int = 0, '[T37] feriado');
+  select x into d from jsonb_array_elements(c->'dias') x where x->>'data' = '2026-09-08';
+  perform pg_temp.ok((d->>'debito_min')::int = (c->'jornada'->>'dia_util_min')::int, '[T37] dia útil sem registro');
+  perform pg_temp.ok((c->'resumo'->'informativo'->>'dias_abonados_justificados')::int = 1 and jsonb_array_length(c->'avisos') = 7,
+                     '[T37] informativo e avisos');
+  -- funcionário sem nenhum registro no mês: espelho vazio (o emissor pula)
+  c := fn_ponto_espelho_conteudo(v_tec2, '2026-09-01');
+  perform pg_temp.ok(jsonb_array_length(c->'dias') = 0, '[T37] mês sem registro gerou dias: ' || (c->'dias')::text);
+  -- quem nunca marcou ponto, mas tem abono no mês: aparece, sem débito (o ponto ainda não foi implantado para ele)
+  insert into ponto_abonos (empresa_id, tecnico_id, data, inicio, fim, motivo, autor)
+  values (v_emp, v_tec2, '2026-09-10', '08:00', '09:00', 'Liberado pela empresa de manhã', 'qa');
+  c := fn_ponto_espelho_conteudo(v_tec2, '2026-09-01');
+  perform pg_temp.ok(exists (select 1 from jsonb_array_elements(c->'dias') x where x->>'data' = '2026-09-10')
+                     and (c->'resumo'->'a_descontar'->>'debito_min')::int = 0,
+                     '[T37] débito antes da primeira marcação: ' || (c->'resumo'->'a_descontar')::text);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T37' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

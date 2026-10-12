@@ -35,3 +35,11 @@
 
 * { border-color: hsl(var(--border)); }
 body { @apply bg-background text-foreground antialiased; }
+
+/* Impressão do espelho de ponto (decisão 82): só a área do documento vai para o papel ou o PDF */
+@media print {
+  body * { visibility: hidden; }
+  .area-impressao, .area-impressao * { visibility: visible; }
+  .area-impressao { position: absolute; left: 0; top: 0; width: 100%; padding: 12mm; }
+  @page { size: A4; margin: 0; }
+}

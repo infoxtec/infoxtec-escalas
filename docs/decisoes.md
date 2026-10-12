@@ -997,3 +997,50 @@ uma só versão vigente por mês); assinatura entra inteira ou não entra. **Gua
 **Requisito da parte B:** o hash da assinatura amarra a versão assinada (SHA-256 do hash do espelho com o PNG,
 a hora e a origem), para a assinatura não poder ser transplantada. **Parte B:** envio do link pelo WhatsApp, tela do espelho no app do funcionário, desenho da
 assinatura, registro de quando e de qual aparelho, e o espelho assinado para baixar em PDF com o QR.
+
+**Parte B (13/10/2026, migration 89, painel 3.29.0):** o gestor envia o link pelo WhatsApp
+(`/ponto?espelho=id`, só para quem tem WhatsApp liberado; a trava da homologação vale). O funcionário entra
+no app pelo CPF e código, confere o espelho, desenha a assinatura e marca a ciência; só assina se o hash do
+que viu for o da versão vigente. Ficam gravados a imagem (PNG validado, até 300 KB), a hora, o IP e o
+aparelho, e o hash da assinatura amarra o hash do espelho, a imagem, a hora e a origem — a conferência
+pública diz se a assinatura confere, sem mostrar a imagem. A informação ao titular é dada no momento da
+coleta, na própria tela de assinatura. O espelho (assinado ou não) sai em PDF pela impressão do navegador,
+com o QR. O gestor vê e imprime o espelho com a assinatura; o papel leitura não. **Revisão do `seguranca`
+(aplicada):** as funções do app que abrem o espelho são `volatile` (a sessão grava o último uso; `stable` roda
+só leitura no PostgREST); desligado não recebe o link (não entra no app; recebe em papel); envio barrado não
+marca enviado, e o gestor pode reenviar um espelho; o PNG é conferido pelos bytes; o hash da assinatura usa IP
+e aparelho como texto. **Pendentes (decisão do responsável e do `juridico`):** base legal da origem (art. 7º,
+VI, em vez de II); HMAC com chave no Vault para a assinatura não poder ser refeita por quem administra o banco;
+testar a impressão de um mês cheio no Chrome e no Safari do iOS.
+
+## 83. Resumo de pagamento no espelho mensal, em horas
+
+**Data:** 13/10/2026. **Pedido do responsável:** o AFD foi validado; o espelho para assinatura deve contar
+HE total, 50% e 100%, adicional noturno, horas em débito, horas abonadas e dias com atestado, e trazer um
+resumo do que será pago e do que será descontado do funcionário, em horas (HH:MM). **Decisão (migration 90,
+painel 3.30.0):** o conteúdo congelado do espelho passa a ter, por dia, a jornada prevista, HE 50%, HE 100%,
+minutos noturnos e débito, e no fim um bloco `resumo` com **a pagar**, **a descontar** e **informativo**, mais
+sete avisos ao funcionário. Em reais, nada: o valor é da folha. **Critérios (parecer do `juridico`):**
+jornada prevista de 8 h de segunda a sexta e 4 h no sábado (decisão 78), domingo e feriado 0, ponto
+facultativo é dia útil; HE 50% é o que passa da jornada do dia (art. 59), inclusive além de 2 h, que vira só
+contagem de alerta (Súmula 376); HE 100% é todo o domingo e feriado trabalhado (Lei 605/49, art. 9º; Súmula
+146); adicional noturno pela hora reduzida de 52'30" entre 22 h e 5 h (art. 73), que também conta na jornada
+do dia; débito é falta, atraso e saída antecipada não abonados, com tolerância de 10 min no dia (art. 58, §1º);
+atestado de dia inteiro nunca gera débito (o parcial desconta só as horas abonadas); abono separado entre o justificado pelo funcionário e o dado pela empresa
+(liberalidade); intervalo não concedido sai a pagar (art. 71, §4º, indenização de 50%); faltas aparecem
+como semanas que podem perder o DSR (Lei 605/49, art. 6º), só a contagem; interjornada curta é só alerta;
+HE e débito não se compensam (não há banco de horas). **Motivo de saúde fora do documento (revisão do `seguranca`, escolha do responsável):** o espelho é
+visto por qualquer gestor, sai impresso para a contabilidade e fica congelado depois de assinado, então não
+diz "atestado" (decisão 56): o dia aparece como abono, sem débito, e o resumo conta "dias abonados com
+justificativa". A contagem de atestados, inclusive os 15 dias do INSS, fica no módulo de justificativas, para
+quem tem "vê atestados". **Limites assumidos:** a jornada só é cobrada a partir da primeira marcação do
+funcionário (implantação do ponto no meio do mês, ou quem nunca marcou, não vira débito), mas os dias com
+registro antes dela continuam listados; tolerância fixa de 10 min no dia; prorrogação após as 5 h da
+jornada noturna não entra como noturna; jornada que cruza a meia-noite fica dividida entre os dois dias;
+folga compensatória de domingo ou feriado ainda não é registrada, então o domingo trabalhado sai sempre a
+100%; convenção coletiva com percentual diferente não é lida (o aviso diz isso). Espelhos emitidos antes da
+migration 90 são cópias congeladas e continuam mostrando os totais antigos. **AFD:** a Andreia validou o
+arquivo; `afd_leiaute_conferido` continua `false` até a assinatura CAdES (decisão 81) — ligar é decisão do
+responsável. **Pendentes:** motivo "folga compensatória" para domingo e feriado (`juridico`); dia útil sem escala
+nem marcação conta como débito (jornada da decisão 78), a confirmar com o `juridico` para técnico escalado;
+medir a emissão de um mês cheio com muitos funcionários (duas leituras de marcações por dia).

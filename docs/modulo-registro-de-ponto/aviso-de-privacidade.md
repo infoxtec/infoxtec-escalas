@@ -47,3 +47,11 @@ Guarda: 5 anos (prescrição trabalhista); descarte do documento enviado por eng
 pelo painel (`app_ponto_anexo_descartar`). Revisão jurídica: persona `juridico` (decisão 58); parecer do
 advogado (076) quando disponível.
 
+
+## Assinatura do espelho mensal (decisão 82)
+
+Quando o empregador envia o espelho de ponto do mês, o funcionário confere no app e, se concordar, assina
+desenhando com o dedo. Ficam guardados com o espelho: o desenho da assinatura, a data, a hora, o endereço de
+internet (IP) e o tipo de aparelho, para comprovar a ciência do funcionário (exercício regular de direitos,
+LGPD art. 7º, VI — a confirmar com o `juridico`), pelo mesmo prazo do ponto (5 anos). A conferência pública do QR do espelho não mostra o desenho, o nome nem o CPF. A
+informação é dada na própria tela de assinatura.

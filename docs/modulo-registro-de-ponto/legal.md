@@ -9,6 +9,11 @@ Monteiro** (contadora). Este documento organiza as perguntas; não substitui o p
 |---|---|
 | **CLT art. 74** | Registro obrigatório acima de 20 empregados; o §2º **permite** pré-assinalar o intervalo |
 | **CLT arts. 59 e 71** | Hora extra limitada a 2 h/dia; intervalo de 1 a 2 h para jornada acima de 6 h |
+| **CLT art. 71, §4º** | Intervalo não concedido, total ou parcial: paga só o tempo suprimido, com 50% (natureza indenizatória desde a Lei 13.467/2017) — no resumo do espelho (decisão 83) |
+| **CLT art. 73** | Adicional noturno de 20%, hora noturna reduzida de 52'30" entre 22 h e 5 h |
+| **CLT art. 58, §1º** | Variação de até 5 min por marcação e 10 min no dia não é descontada nem paga como extra |
+| **Lei 605/1949, arts. 6º e 9º; Súmula 146 do TST** | Falta sem justificativa pode tirar o DSR da semana; domingo e feriado trabalhados sem folga compensatória são pagos em dobro |
+| **Súmula 376 do TST** | HE acima de 2 h por dia continua devida e integra as demais verbas; o limite é infração administrativa, não perda do pagamento |
 | **Portaria MTP 671/2021** | Registro eletrônico de ponto: REP-C, REP-A e **REP-P**; NSR, comprovante, AFD e AEJ, Atestado Técnico |
 | **Convenção coletiva da categoria** | Tolerâncias, banco de horas, adicional de HE, intervalos — a jornada é do sindicato, não do município |
 | **Súmula 338 do TST** | A prova da jornada é do empregador: o registro precisa ser íntegro |

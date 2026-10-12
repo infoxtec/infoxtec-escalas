@@ -254,6 +254,31 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 90 (13/10): resumo de pagamento no espelho, em horas (decisão 83)
+
+- `fn_ponto_noturno_dia(tecnico, data, fuso)`: minutos de relógio trabalhados entre 22 h e 5 h no dia, pelos
+  pares de marcações efetivas.
+- `fn_ponto_espelho_conteudo` recriada: todos os dias do vínculo no mês (a partir da primeira marcação), com
+  `previsto_min`, `he50_min`, `he100_min`, `noturno_min`, `debito_min` e `feriado` por dia (o motivo de saúde
+  não entra: o atestado só muda o cálculo); bloco
+  `resumo` com `a_pagar` (HE 50%, HE 100%, noturnas reduzidas, intervalo não concedido), `a_descontar`
+  (débito, dias sem registro, semanas com falta) e `informativo` (previstas, trabalhadas, abonadas com
+  justificativa e pela empresa, dias abonados com justificativa, feriados e alertas); `avisos` ao funcionário. Mês sem
+  nenhum registro continua sem espelho. Teste T37.
+
+### Migration 89 (13/10): espelho mensal, parte B — envio e assinatura (decisão 82)
+
+- `app_ponto_enviar_espelhos(p_competencia, p_espelho)` (admin, gestor): manda pelo WhatsApp o link
+  `app_url/ponto?espelho=id` dos espelhos vigentes não assinados e não enviados, ou reenvia um (`p_espelho`);
+  pula desligado, sem `opt_in` e barrado por `fn_pode_enviar`; `enviado_em` guarda o primeiro envio. Config
+  nova `app_url`.
+- `app_ponto_espelho_ver(p_id)` (admin, gestor): conteúdo e assinatura para ver e imprimir.
+- `ponto_meus_espelhos(p_token)`, `ponto_meu_espelho(p_token, p_id)` e
+  `ponto_assinar_espelho(p_token, p_id, p_sha256, p_assinatura, p_ciente)`: só o próprio funcionário; assina
+  só a versão vigente cujo hash ele viu; PNG em data URL até 300 KB; grava IP e aparelho.
+- `fn_ponto_assinatura_hash`: SHA-256 de hash do espelho, imagem, hora (UTC), IP e aparelho (como texto);
+  `ponto_verificar_espelho` passa a conferir a assinatura por ele. Teste T36.
+
 ### Migration 88 (13/10): espelho de ponto mensal com registro e QR (decisão 82, parte A)
 
 - Tabela `ponto_espelhos`: cópia congelada do espelho de um funcionário num mês (`conteudo` jsonb, Portaria
