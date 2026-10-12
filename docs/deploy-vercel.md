@@ -1,6 +1,8 @@
 # Publicar o painel no Vercel
 
 > **Endereço de produção:** https://infoxtec-escalas.vercel.app
+> Mudou o domínio (Cloudflare Pages, domínio próprio)? Atualizar `ORIGEM_PAINEL` em
+> `supabase/functions/documento-ocr/index.ts`, ou a leitura de documento passa a ser barrada pelo navegador.
 > O projeto no Vercel usa **Root Directory `web`**. O carimbo de versão no topo do painel
 > (ex.: `v1.3 · 22/09 16:40`) diz qual build está no ar.
 

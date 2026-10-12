@@ -829,3 +829,24 @@ de todas e **técnico sem empresa** avisa todos, até o cadastro estar completo.
 quando houver mais de uma cadastrada). **Continuam para todos:** alertas de sistema (motor parado, teto do
 app do ponto). **Antes do 2º cliente:** cadastrar a empresa de todo supervisor e técnico — supervisor sem
 empresa veria nomes dos dois clientes.
+
+## 70. Cópia cifrada do banco guardada no GitHub (tratamento LGPD)
+
+**Data:** 13/10/2026. **Origem:** pendência da revisão de segurança do PR #3. **Registro:** o backup
+diário (`.github/workflows/backup.yml`) leva ao GitHub uma cópia do banco de produção (sem `webhook_eventos`
+e sem os arquivos do Storage), com dados
+pessoais dos funcionários (nome, telefone, CPF, marcações de ponto e documentos já cifrados no cofre),
+**cifrada com `BACKUP_SENHA`** e guardada 30 dias como artefato (âncora do ponto, 90 dias). O GitHub atua
+como operador de armazenamento (LGPD art. 39); a medida de segurança é a cifra (art. 46). **Repositório
+público:** artefato de repositório público pode ser baixado por qualquer conta do GitHub — por isso a cifra
+é obrigatória, a senha fica só no ambiente `producao-backup` (segredo de ambiente, liberado só para a
+`main`) e com o responsável, nunca em log, e a restauração mensal
+(`restauracao.yml`) prova que a cópia abre com ela. Tornar o repositório privado é a decisão E (21/10).
+**Se a senha vazar:** trocar `BACKUP_SENHA`, apagar os artefatos antigos na aba Actions e rodar um backup
+novo. Entra no registro de operações de tratamento quando ele for feito (legalização, etapa 26).
+
+## 71. Registro do pacote vai no próprio pacote
+
+**Data:** 13/10/2026. **Decisão do responsável:** plano, README, backlog, sprint e documentação são
+atualizados **no mesmo PR** da entrega, antes do merge — nunca num PR depois da produção. O que só se sabe
+depois da produção (conferência) é registrado no PR seguinte que já vai abrir, sem PR próprio.

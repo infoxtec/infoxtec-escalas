@@ -254,6 +254,12 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 81 (13/10): endurecimento (pendências do PR #3)
+
+- `fn_validar_config`: `monitor_ping_url` só `https://hc-ping.com/<uuid>` ou vazio. Teste T27.
+- Fora do banco, no mesmo pacote: `webhook-evolution` lê o corpo em fluxo com teto de 5 MB (com ou sem
+  `content-length`); `documento-ocr` responde CORS só aos domínios do painel.
+
 ### Migration 80 (13/10): pendências das migrations 78 e 79
 
 - Checklist Sistema, "Erros em tabelas" › "Supervisores e técnicos sem empresa": falha com mais de uma
