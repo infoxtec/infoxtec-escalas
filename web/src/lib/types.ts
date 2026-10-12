@@ -442,7 +442,7 @@ export interface PontoEspelhoEmitido {
 export interface ConferenciaEspelho {
   encontrado: boolean; registro?: number; versao?: number; empresa?: string; cnpj?: string; competencia?: string
   emitido_em?: string; substituido?: boolean; integro?: boolean; assinado_em?: string | null
-  assinatura_integra?: boolean | null; sha256?: string
+  assinatura_integra?: boolean | null; assinatura_chave_indisponivel?: boolean; sha256?: string
 }
 
 /** Conteúdo congelado do espelho mensal (fn_ponto_espelho_conteudo, Portaria 671 Art. 84). */

@@ -27,6 +27,109 @@ begin
     convert_to(v_chave, 'UTF8'), 'sha256'), 'hex');
 end $function$;
 
+-- Qual chave assinou: os 8 primeiros hexadecimais do SHA-256 da chave (não ajudam a descobri-la). Na conferência,
+-- chave diferente da deste banco vira "chave indisponível", nunca "assinatura não confere" (revisão do seguranca)
+create or replace function fn_ponto_assinatura_chave()
+returns text language sql stable set search_path = public, extensions as $function$
+  select left(encode(extensions.digest(fn_segredo('ESPELHO_ASSINATURA'), 'sha256'), 'hex'), 8)
+$function$;
+
+alter table ponto_espelhos add column if not exists assinatura_chave text;
+comment on column ponto_espelhos.assinatura_chave is 'Impressão (8 hexadecimais do SHA-256) da chave do HMAC que assinou (decisão 84).';
+
+-- a impressão da chave entra no que não muda depois da assinatura
+create or replace function fn_ponto_espelho_imutavel()
+returns trigger language plpgsql set search_path = public, extensions as $function$
+begin
+  if tg_op = 'DELETE' then raise exception 'Espelho emitido não pode ser apagado.'; end if;
+  if tg_op = 'INSERT' then
+    if new.substituido_em is not null or new.enviado_em is not null or new.assinado_em is not null or new.assinatura_chave is not null then
+      raise exception 'Espelho nasce sem envio, substituição e assinatura.';
+    end if;
+    return new;
+  end if;
+  if (new.id, new.empresa_id, new.tecnico_id, new.competencia, new.versao, new.registro, new.codigo, new.conteudo,
+      new.conteudo_texto, new.sha256, new.emitido_em, new.emitido_por)
+     is distinct from
+     (old.id, old.empresa_id, old.tecnico_id, old.competencia, old.versao, old.registro, old.codigo, old.conteudo,
+      old.conteudo_texto, old.sha256, old.emitido_em, old.emitido_por) then
+    raise exception 'O conteúdo do espelho emitido não muda: emita uma nova versão.';
+  end if;
+  if (old.substituido_em is not null and new.substituido_em is distinct from old.substituido_em)
+     or (old.enviado_em is not null and new.enviado_em is distinct from old.enviado_em)
+     or (old.assinado_em is not null and (new.assinado_em, new.assinatura_png, new.assinatura_sha256, new.assinatura_origem, new.assinatura_chave)
+                                         is distinct from (old.assinado_em, old.assinatura_png, old.assinatura_sha256, old.assinatura_origem, old.assinatura_chave)) then
+    raise exception 'Envio, substituição e assinatura do espelho são gravados uma vez só.';
+  end if;
+  if new.assinado_em is not null and old.assinado_em is null and old.substituido_em is not null then
+    raise exception 'Este espelho foi substituído por uma versão mais nova.';
+  end if;
+  if new.substituido_em is not null and old.substituido_em is null and (old.assinado_em is not null or new.assinado_em is not null) then
+    raise exception 'Espelho assinado não é substituído.';
+  end if;
+  return new;
+end $function$;
+
+create or replace function ponto_assinar_espelho(p_token text, p_id uuid, p_sha256 text, p_assinatura text, p_ciente boolean)
+returns jsonb language plpgsql volatile security definer set search_path = public, extensions as $function$
+declare
+  v_tec    uuid := fn_ponto_sessao(p_token);
+  v_e      record;
+  v_agora  timestamptz;
+  v_origem jsonb;
+begin
+  if p_ciente is not true then raise exception 'Confirme que conferiu o espelho antes de assinar.'; end if;
+  if p_assinatura is null or length(p_assinatura) > 300000 then raise exception 'Assinatura inválida ou grande demais: desenhe de novo.'; end if;
+  -- data URL de PNG, e os bytes começam com a assinatura de arquivo PNG
+  if p_assinatura !~ '^data:image/png;base64,[A-Za-z0-9+/=]+$'
+     or substr(decode(split_part(p_assinatura, ',', 2), 'base64'), 1, 8) <> '\x89504e470d0a1a0a'::bytea then
+    raise exception 'Assinatura inválida: desenhe de novo.';
+  end if;
+  select e.id, e.sha256, e.substituido_em, e.assinado_em into v_e from ponto_espelhos e
+   where e.id = p_id and e.tecnico_id = v_tec for update;
+  if not found then raise exception 'Espelho não encontrado.'; end if;
+  if v_e.assinado_em is not null then raise exception 'Este espelho já foi assinado.'; end if;
+  if v_e.substituido_em is not null or v_e.sha256 is distinct from p_sha256 then
+    raise exception 'O espelho mudou depois que você abriu: abra de novo e confira antes de assinar.';
+  end if;
+  v_agora := now();
+  v_origem := jsonb_build_object('ip', fn_ponto_ip(),
+                'aparelho', left(coalesce(current_setting('request.headers', true)::jsonb ->> 'user-agent', ''), 300));
+  update ponto_espelhos
+     set assinado_em = v_agora, assinatura_png = p_assinatura, assinatura_origem = v_origem,
+         assinatura_sha256 = fn_ponto_assinatura_hash(v_e.sha256, p_assinatura, v_agora, v_origem),
+         assinatura_chave = fn_ponto_assinatura_chave()
+   where id = p_id;
+  return jsonb_build_object('assinado_em', to_char(v_agora at time zone 'America/Bahia', 'DD/MM/YYYY HH24:MI'));
+end $function$;
+
+create or replace function ponto_verificar_espelho(p_codigo text)
+returns jsonb language plpgsql stable security definer set search_path = public, extensions as $function$
+declare
+  v record;
+begin
+  select e.registro, e.versao, e.competencia, e.emitido_em, e.substituido_em, e.assinado_em, e.sha256,
+         e.assinatura_png, e.assinatura_sha256, e.assinatura_origem, e.assinatura_chave,
+         encode(sha256(convert_to(e.conteudo_texto, 'UTF8')), 'hex') as sha_atual, m.razao_social, m.cnpj
+    into v
+    from ponto_espelhos e join empresas m on m.id = e.empresa_id
+   where e.codigo = upper(regexp_replace(coalesce(p_codigo, ''), '[^A-Za-z2-7]', '', 'g'));
+  if not found then return jsonb_build_object('encontrado', false); end if;
+  return jsonb_build_object(
+    'encontrado', true, 'registro', v.registro, 'versao', v.versao,
+    'empresa', v.razao_social, 'cnpj', v.cnpj, 'competencia', to_char(v.competencia, 'MM/YYYY'),
+    'emitido_em', to_char(v.emitido_em at time zone 'America/Bahia', 'DD/MM/YYYY HH24:MI'),
+    'substituido', v.substituido_em is not null,
+    'integro', v.sha_atual = v.sha256,
+    'assinado_em', to_char(v.assinado_em at time zone 'America/Bahia', 'DD/MM/YYYY HH24:MI'),
+    -- nulo quando a chave que assinou não está neste banco (restauração sem a chave): não é adulteração
+    'assinatura_integra', case when v.assinado_em is null or v.assinatura_chave is distinct from fn_ponto_assinatura_chave() then null
+                               else fn_ponto_assinatura_hash(v.sha256, v.assinatura_png, v.assinado_em, v.assinatura_origem)
+                                    = v.assinatura_sha256 end,
+    'assinatura_chave_indisponivel', v.assinado_em is not null and v.assinatura_chave is distinct from fn_ponto_assinatura_chave(),
+    'sha256', v.sha256);
+end $function$;
+
 -- Folga compensatória ---------------------------------------------------------------------------------
 insert into ponto_motivos (codigo, grupo, nome, base_legal, abrange, quantidade, unidade, janela, exige_anexo, saude, ativo, ordem) values
   ('folga_compensatoria', 'ponto', 'Folga compensatória de domingo ou feriado trabalhado',
@@ -49,7 +152,8 @@ declare
   v_id    uuid;
   v_dom_fer boolean;
 begin
-  select t.id, t.empresa_id, t.telefone_e164, t.ativo, t.opt_in, coalesce(e.fuso, 'America/Bahia') as fuso
+  select t.id, t.empresa_id, t.telefone_e164, t.ativo, t.opt_in, coalesce(e.fuso, 'America/Bahia') as fuso,
+         coalesce(t.admissao, t.created_at::date) as inicio, t.desligado_em
     into v_tec from tecnicos t left join empresas e on e.id = t.empresa_id where t.id = p_tecnico;
   if not found then raise exception 'Funcionário não encontrado.'; end if;
   if v_tec.empresa_id is null then raise exception 'Funcionário sem empresa cadastrada não tem ponto.'; end if;
@@ -74,6 +178,24 @@ begin
     raise exception 'A folga precisa ficar na mesma semana do trabalho (até 6 dias de distância).';
   end if;
   if p_folga > v_hoje + 7 then raise exception 'Folga só até 7 dias à frente.'; end if;
+  -- a folga é descanso de verdade: não em sábado que já é de descanso, fora do vínculo nem em dia trabalhado
+  -- (revisão do seguranca: senão o 100% sairia sem o funcionário descansar)
+  if extract(isodow from p_folga) = 6 and coalesce(fn_config('ponto_sabado_sem_expediente_abona'), 'true') = 'true' then
+    raise exception 'Sábado já é dia sem expediente: a folga precisa cair de segunda a sexta.';
+  end if;
+  if p_folga < v_tec.inicio or p_folga > coalesce(v_tec.desligado_em, p_folga) then
+    raise exception 'A folga precisa cair dentro do vínculo do funcionário.';
+  end if;
+  if p_folga <= v_hoje and coalesce((fn_ponto_jornada_dia(p_tecnico, p_folga) ->> 'trabalhado_min')::int, 0) > 0 then
+    raise exception 'Há trabalho registrado no ponto em %: não foi folga.', to_char(p_folga, 'DD/MM');
+  end if;
+  -- folga lançada na hora, não rótulo posto depois numa falta: no máximo 7 dias para trás, e nunca em mês com
+  -- espelho já emitido (reemitir depois de lançar)
+  if p_folga < v_hoje - 7 then raise exception 'Folga já passada só pode ser lançada até 7 dias depois.'; end if;
+  if exists (select 1 from ponto_espelhos e where e.tecnico_id = p_tecnico and e.substituido_em is null
+              and e.competencia in (date_trunc('month', p_folga)::date, date_trunc('month', p_trabalhado)::date)) then
+    raise exception 'O espelho desse mês já foi emitido: a folga precisa ser lançada antes da emissão.';
+  end if;
   if exists (select 1 from ponto_abonos a where a.tecnico_id = p_tecnico and a.folga_de = p_trabalhado and a.estorno_de is null
               and not exists (select 1 from ponto_abonos x where x.estorno_de = a.id)) then
     raise exception 'O trabalho de % já tem folga compensatória.', to_char(p_trabalhado, 'DD/MM');
@@ -142,8 +264,12 @@ begin
            (select min(to_char(b.folga_de, 'DD/MM')) from ponto_abonos b
              where b.tecnico_id = p_tecnico and b.data = g.d::date and b.folga_de is not null
                and b.estorno_de is null and not exists (select 1 from ponto_abonos x where x.estorno_de = b.id)) as folga_de,
+           -- só compensa a folga que já aconteceu sem trabalho; folga futura na emissão mantém o 100% (a favor do
+           -- funcionário: o gestor reemite depois)
            (select min(to_char(b.data, 'DD/MM')) from ponto_abonos b
              where b.tecnico_id = p_tecnico and b.folga_de = g.d::date
+               and b.data <= (now() at time zone v_t.fuso)::date
+               and coalesce((fn_ponto_jornada_dia(p_tecnico, b.data) ->> 'trabalhado_min')::int, 0) = 0
                and b.estorno_de is null and not exists (select 1 from ponto_abonos x where x.estorno_de = b.id)) as compensado_em
       from generate_series(v_ini, v_ult, interval '1 day') g(d)
      where v_ini <= v_ult
@@ -196,7 +322,7 @@ begin
         'previsto_min', coalesce(sum(c.esperado), 0), 'trabalhado_min', coalesce(sum(c.trab), 0),
         'noturno_relogio_min', coalesce(sum(c.noturno), 0),
         'abonado_justificado_min', coalesce(sum(c.abon) filter (where c.ab_livre is not true and c.folga_de is null), 0),
-        'abonado_empresa_min', coalesce(sum(c.abon) filter (where c.ab_livre), 0),
+        'abonado_empresa_min', coalesce(sum(c.abon) filter (where c.ab_livre and c.folga_de is null), 0),
         'sabados_sem_expediente', count(*) filter (where c.sabado_abonado),
         'dias_abonados_justificados', count(*) filter (where c.abon > 0 and c.ab_livre is not true and c.folga_de is null),
         'folgas_compensatorias', count(*) filter (where c.folga_de is not null),

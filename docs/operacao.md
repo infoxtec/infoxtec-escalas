@@ -494,6 +494,36 @@ read -rs -p "Cole a chave do cofre: " K; echo; K=$(printf '%s' "$K" | tr -d '[:s
 Na restauração, antes de abrir documentos, recriar o segredo com o mesmo valor:
 `select vault.create_secret('<valor guardado>', 'COFRE_PONTO');` (se já existir outro, apagar antes).
 
+## Chave da assinatura do espelho de ponto (decisão 84)
+
+A assinatura do funcionário no espelho mensal é amarrada por HMAC com a chave `ESPELHO_ASSINATURA` do
+Vault, criada pela migration 91. Como a do cofre, ela **não vai no backup de forma utilizável**: numa
+restauração sem ela, toda assinatura aparece na conferência pública como "chave indisponível" (não como
+adulteração, porque cada espelho guarda a impressão da chave que o assinou). Uma vez, logo depois de aplicar a
+migration 91 na produção, o responsável guarda a chave no gerenciador de senhas, **num registro separado** da
+`BACKUP_SENHA` e da `COFRE_PONTO`:
+
+```sql
+-- PRODUÇÃO (zpckrxydqqmmcrphrkxz), SQL Editor. Esperado: 1 linha com 64 caracteres hexadecimais.
+select decrypted_secret as chave_assinatura_espelho from vault.decrypted_secrets where name = 'ESPELHO_ASSINATURA';
+```
+
+**Conferir a cópia guardada sem expor a chave:** os 8 primeiros caracteres das duas impressões precisam ser
+iguais (é a mesma impressão gravada em `ponto_espelhos.assinatura_chave`).
+
+```sql
+-- PRODUÇÃO (zpckrxydqqmmcrphrkxz), SQL Editor. Esperado: 8 caracteres hexadecimais.
+select fn_ponto_assinatura_chave() as impressao;
+```
+
+```bash
+# Linux: cole a chave do gerenciador de senhas (não aparece na tela nem fica no histórico)
+read -rs -p "Cole a chave da assinatura: " K; echo; K=$(printf '%s' "$K" | tr -d '[:space:]'); printf '%s' "$K" | sha256sum | cut -c1-8; unset K
+```
+
+Na restauração, **antes** de aplicar a migration 91 (senão ela cria uma chave nova), recriar o segredo com o
+mesmo valor: `select vault.create_secret('<valor guardado>', 'ESPELHO_ASSINATURA');`.
+
 ## Verificação em duas etapas (MFA) — decisão 67
 
 Cada usuário ativa pelo botão **Ativar duas etapas** no topo do painel (QR no aplicativo autenticador)

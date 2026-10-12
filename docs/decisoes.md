@@ -1057,13 +1057,22 @@ medir a emissão de um mês cheio com muitos funcionários (duas leituras de mar
   domingo nem feriado, até 7 dias à frente, uma por domingo ou feriado, e só se houver trabalho no ponto
   naquele dia. Não conta como abono por liberalidade; o espelho mostra a folga e o dia compensado. O motivo
   `folga_compensatoria` entra no catálogo inativo (o funcionário não pede folga pelo app; o gestor lança).
+  **Revisão do `seguranca` (aplicada):** a folga precisa ser descanso de verdade — recusada em sábado sem
+  expediente, fora do vínculo e em dia com trabalho no ponto; e o espelho só tira o 100% quando a folga já
+  aconteceu sem trabalho (folga futura na emissão mantém o 100%, a favor do funcionário; o gestor reemite
+  depois). **Folga retroativa (padrão adotado, o responsável pode afrouxar):** folga passada só até 7 dias
+  depois, e nunca em mês com espelho já emitido — para uma falta não virar "folga" semanas depois.
 - **Base legal da assinatura:** cumprimento de obrigação legal (LGPD art. 7º, II): o registro de horas
   mensal precisa ser assinado pelo empregado. Fecha a pendência da decisão 82.
 - **HMAC (migration 91):** o hash da assinatura passa a ser HMAC-SHA256 com chave `ESPELHO_ASSINATURA` no
   Vault, gerada no próprio banco (nunca no repositório). Quem só altera a tabela não consegue refazer o hash
   de uma assinatura. **Limite assumido:** quem lê o Vault (o administrador do projeto Supabase) ainda poderia;
-  a defesa contra ele é a cópia assinada que o funcionário baixa. Não havia espelho assinado em nenhum
+  a defesa contra ele é a cópia assinada que o funcionário baixa. Cada assinatura guarda a impressão da chave
+  (`assinatura_chave`, 8 hexadecimais do SHA-256): restauração sem a chave aparece como "chave indisponível",
+  nunca como "assinatura não confere". Procedimento de guarda em `docs/operacao.md`. Não havia espelho assinado em nenhum
   ambiente (conferido em 13/10), então nenhuma assinatura antiga deixou de conferir. **Guardar cópia da
   chave fora do Supabase**, como a do cofre: sem ela as assinaturas não conferem mais.
 - **AFD:** segue em versão de conferência na produção até a confirmação do responsável; o uso continua na
   homologação.
+- **Pendente (P3 do `seguranca`):** `app_ponto_abonar` não trava a linha do funcionário como a folga; um abono e
+  uma folga no mesmo dia, ao mesmo tempo, podem duplicar o abono. Corrigir na próxima migration que tocar o abono.

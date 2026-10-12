@@ -257,12 +257,16 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
 ### Migration 91 (13/10): HMAC na assinatura e folga compensatória (decisão 84)
 
 - `fn_ponto_assinatura_hash` passa a HMAC-SHA256 com a chave `ESPELHO_ASSINATURA` do Vault (criada pela
-  migration, no próprio banco); as chamadoras não mudam.
+  migration, no próprio banco). `ponto_espelhos.assinatura_chave` guarda a impressão da chave que assinou
+  (`fn_ponto_assinatura_chave`, 8 hexadecimais); `ponto_assinar_espelho` grava, o gatilho de imutabilidade
+  protege, e `ponto_verificar_espelho` devolve `assinatura_chave_indisponivel` em vez de "não confere" quando
+  a chave do banco é outra.
 - `ponto_abonos.folga_de`: o domingo ou feriado trabalhado que o dia de folga compensa.
   `app_ponto_folga_compensatoria(p_tecnico, p_folga, p_trabalhado)` (admin, gestor) lança a folga: dia
   inteiro abonado, até 6 dias do trabalho, uma por domingo ou feriado, só com trabalho no ponto naquele dia;
-  avisa o funcionário pelo WhatsApp. Motivo `folga_compensatoria` no catálogo, inativo.
-- `fn_ponto_espelho_conteudo`: domingo ou feriado compensado sai como trabalho comum (HE 50% acima de 8 h, sem
+  recusa sábado sem expediente, dia fora do vínculo, dia com trabalho, folga passada há mais de 7 dias e mês
+  com espelho emitido; avisa o funcionário pelo WhatsApp. Motivo `folga_compensatoria` no catálogo, inativo.
+- `fn_ponto_espelho_conteudo`: domingo ou feriado compensado (folga já acontecida, sem trabalho) sai como trabalho comum (HE 50% acima de 8 h, sem
   100%); por dia, `folga_de` e `compensado_em`; no informativo, `folgas_compensatorias` e
   `domingos_feriados_compensados`. Teste T38.
 

@@ -43,7 +43,7 @@ export default function VerificarEspelho() {
             <dt className="text-muted-foreground">Mês</dt><dd>{r.competencia}</dd>
             <dt className="text-muted-foreground">Emitido em</dt><dd>{r.emitido_em}</dd>
             <dt className="text-muted-foreground">Assinatura</dt>
-            <dd>{r.assinado_em ? `assinado pelo funcionário em ${r.assinado_em}${r.assinatura_integra === false ? ' (assinatura não confere)' : ''}` : 'ainda não assinado'}</dd>
+            <dd>{r.assinado_em ? `assinado pelo funcionário em ${r.assinado_em}${r.assinatura_integra === false ? ' (assinatura não confere)' : r.assinatura_chave_indisponivel ? ' (a chave de conferência da assinatura não está disponível neste sistema)' : ''}` : 'ainda não assinado'}</dd>
           </dl>
           <p className="break-all font-mono text-[11px] text-muted-foreground">SHA-256 {r.sha256}</p>
           <p className="text-xs text-muted-foreground">
