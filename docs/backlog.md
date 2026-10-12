@@ -590,7 +590,7 @@ geração registrada com número. **Critério de aceite:** no local de teste, um
 vencendo antes da data aparece pendente; o mesmo dossiê sai impresso com o número do registro.
 **Depois, se um cliente pedir:** PDF assinado e dossiê por cliente tomador (vários locais).
 
-## 085. F5 Arquivo Fonte de Dados (AFD) — entrega 1 em revisão (13/10/2026; migration 87, painel 3.27.0, decisão 81)
+## 085. F5 Arquivo Fonte de Dados (AFD) — entrega 1 concluída (13/10/2026; migration 87, painel 3.27.0, decisão 81)
 
 **Entrega 1 (versão de conferência):** em Registro de Ponto, o admin escolhe o período e baixa o AFD de cada
 empresa no leiaute do Anexo V da Portaria 671 (`docs/AFD.pdf`): cabeçalho (tipo 1) com CRC-16, marcações

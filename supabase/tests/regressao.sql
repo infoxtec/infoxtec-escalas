@@ -35,6 +35,7 @@
 -- T32 dossiê de conformidade por local: documento vencido na data do serviço, vencendo, não cadastrado
 -- T33 demonstração com dados fictícios: criar e apagar (supabase/demo) não deixam resto
 -- T34 AFD do REP-P (versão de conferência): tamanhos do leiaute, CRC-16, hash encadeado, trailer e permissão
+-- T35 espelho mensal congelado: emissão, registro sem lacuna, imutável, conferência pública sem dado pessoal
 
 \set ON_ERROR_STOP on
 begin;
@@ -1648,7 +1649,93 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T34' as resultado,
+-- T35 espelho de ponto mensal com registro e QR (migration 88, decisão 82) -----------------------------------
+do $$
+declare
+  v_emp uuid := (select v::uuid from qa where k = 'emp');
+  v_mes date := date_trunc('month', current_date - interval '1 month')::date;
+  v_tec uuid; r jsonb; v jsonb; v_cod text; v_reg bigint; v_ok boolean;
+begin
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA Espelho Mensal', '5579999993535', true, true, pg_temp.cpf('353535301'), v_emp, false, v_mes - 60) returning id into v_tec;
+  alter table ponto_marcacoes disable trigger user;
+  insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, hash_anterior, hash)
+  select v_emp, 935000 + k, v_tec, (select cpf from tecnicos where id = v_tec), ((v_mes + 2) + h) at time zone 'America/Bahia',
+         tp, 'ura', 'qa', md5(random()::text)
+    from (values (1, time '08:00', 'entrada'), (2, time '12:00', 'saida_almoco'), (3, time '13:00', 'volta_almoco'),
+                 (4, time '17:00', 'saida')) x(k, h, tp);
+  alter table ponto_marcacoes enable trigger user;
+
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  r := app_ponto_emitir_espelhos(v_mes, v_tec);
+  perform pg_temp.ok((r->>'emitidos')::int = 1, '[T35] emissão: ' || r::text);
+  select codigo, registro into v_cod, v_reg from ponto_espelhos where tecnico_id = v_tec;
+  perform pg_temp.ok((select (conteudo->'totais'->>'trabalhado_min')::int from ponto_espelhos where tecnico_id = v_tec) = 480,
+                     '[T35] total do mês');
+  perform pg_temp.ok((select conteudo->'trabalhador'->>'nome' from ponto_espelhos where tecnico_id = v_tec) = 'QA Espelho Mensal',
+                     '[T35] trabalhador no espelho');
+  -- reemitir sem mudança não cria versão; mudança no ponto cria a versão 2 e substitui a 1
+  r := app_ponto_emitir_espelhos(v_mes, v_tec);
+  perform pg_temp.ok((r->>'sem_mudanca')::int = 1, '[T35] reemissão igual: ' || r::text);
+  insert into ponto_ajustes (empresa_id, tecnico_id, acao, momento, tipo, motivo, autor)
+  values (v_emp, v_tec, 'incluir', ((v_mes + 3) + time '08:00') at time zone 'America/Bahia', 'entrada', 'Esqueceu de marcar', 'qa-admin@teste.local');
+  -- desconsiderada não tem momento próprio: precisa aparecer no espelho com a hora da marcação (Art. 84, V)
+  insert into ponto_ajustes (empresa_id, tecnico_id, marcacao_id, acao, motivo, autor)
+  values (v_emp, v_tec, (select id from ponto_marcacoes where tecnico_id = v_tec and nsr = 935002), 'desconsiderar',
+          'Marcou a saída do almoço por engano', 'qa-admin@teste.local');
+  r := app_ponto_emitir_espelhos(v_mes, v_tec);
+  perform pg_temp.ok((r->>'emitidos')::int = 1 and (select count(*) from ponto_espelhos where tecnico_id = v_tec) = 2
+                     and (select registro from ponto_espelhos where tecnico_id = v_tec and versao = 2) = v_reg + 1,
+                     '[T35] nova versão com registro seguinte: ' || r::text);
+  perform pg_temp.ok((ponto_verificar_espelho(v_cod)->>'substituido')::boolean, '[T35] versão antiga não aparece substituída');
+  perform pg_temp.ok((select conteudo->'ajustes' @> '[{"acao":"desconsiderar","hora":"12:00","tipo":"saida_almoco"}]'::jsonb
+                        from ponto_espelhos where tecnico_id = v_tec and versao = 2), '[T35] marcação desconsiderada fora do espelho');
+  -- versão substituída não é assinada
+  v_ok := false;
+  begin update ponto_espelhos set assinado_em = now(), assinatura_png = 'x', assinatura_sha256 = 'x' where tecnico_id = v_tec and versao = 1;
+  exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T35] versão substituída assinada');
+  -- conteúdo emitido não muda nem é apagado
+  v_ok := false;
+  begin update ponto_espelhos set conteudo = '{}' where tecnico_id = v_tec and versao = 2; exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T35] conteúdo do espelho alterado');
+  v_ok := false;
+  begin delete from ponto_espelhos where tecnico_id = v_tec; exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T35] espelho apagado');
+  -- conferência pública: só para anon, sem nome nem CPF; mês aberto não emite
+  select codigo into v_cod from ponto_espelhos where tecnico_id = v_tec and versao = 2;
+  perform set_config('request.jwt.claims', '', true);
+  v := ponto_verificar_espelho(lower(v_cod));
+  perform pg_temp.ok((v->>'encontrado')::boolean and (v->>'integro')::boolean and (v->>'registro')::bigint = v_reg + 1,
+                     '[T35] conferência: ' || (v - 'sha256')::text);
+  perform pg_temp.ok(v::text not like '%QA Espelho Mensal%' and v::text not like '%' || (select cpf from tecnicos where id = v_tec) || '%',
+                     '[T35] dado pessoal na conferência pública');
+  perform pg_temp.ok(not (ponto_verificar_espelho('AAAAAAAAAAAAAAAA')->>'encontrado')::boolean, '[T35] código inexistente');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  v_ok := false;
+  begin perform app_ponto_emitir_espelhos(current_date, v_tec); exception when others then v_ok := sqlerrm like '%mês já encerrado%'; end;
+  perform pg_temp.ok(v_ok, '[T35] mês em aberto emitido');
+  perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
+  v_ok := false;
+  begin perform app_ponto_emitir_espelhos(v_mes, v_tec); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T35] leitura emitiu espelho');
+  perform pg_temp.ok((select count(*) from app_ponto_espelhos(v_mes) e where e.tecnico_id = v_tec) = 1, '[T35] lista mostra só a versão atual');
+  -- assinado não é substituído nem reemitido; a assinatura é gravada uma vez só
+  update ponto_espelhos set assinado_em = now(), assinatura_png = 'x', assinatura_sha256 = 'x' where tecnico_id = v_tec and versao = 2;
+  v_ok := false;
+  begin update ponto_espelhos set substituido_em = now() where tecnico_id = v_tec and versao = 2; exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T35] espelho assinado substituído');
+  v_ok := false;
+  begin update ponto_espelhos set assinatura_png = 'y' where tecnico_id = v_tec and versao = 2; exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T35] assinatura regravada');
+  -- a conferência é aberta ao anon; a emissão não
+  perform pg_temp.ok(has_function_privilege('anon', 'ponto_verificar_espelho(text)', 'execute')
+                     and not has_function_privilege('anon', 'app_ponto_emitir_espelhos(date,uuid)', 'execute')
+                     and not has_function_privilege('anon', 'app_ponto_espelhos(date)', 'execute'), '[T35] permissões do anon');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T35' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
