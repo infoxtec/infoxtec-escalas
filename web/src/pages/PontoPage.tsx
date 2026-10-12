@@ -3,6 +3,7 @@ import { Check, KeyRound, Loader2, MapPin, PencilLine, RefreshCw, ShieldCheck, U
 import { Button, ErrorBox, Field, Input, Select, SuccessBox, Textarea } from '../components/ui'
 import { api, erroMsg } from '../lib/api'
 import Cofre from '../components/Cofre'
+import PontoAfd from '../components/PontoAfd'
 import { prepararArquivo } from '../lib/arquivo'
 import { ALERTA_JORNADA, PONTO_ROTULO, hojeBahia, minutosHm } from '../lib/types'
 import type { Empresa, PontoAbono, PontoAcompanhamento, PontoAjuste, PontoEspelho, PontoGeo, PontoHoje, PontoJustificativa, PontoMetricas } from '../lib/types'
@@ -218,6 +219,8 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
           {cadeia && (cadeia.ok ? <SuccessBox>{cadeia.texto}</SuccessBox> : <ErrorBox>{cadeia.texto}</ErrorBox>)}
         </section>
       )}
+
+      {papel === 'admin' && empresas.length > 0 && <PontoAfd empresas={empresas} hoje={hoje} />}
     </div>
   )
 }

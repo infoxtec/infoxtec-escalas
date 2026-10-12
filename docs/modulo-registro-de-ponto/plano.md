@@ -80,6 +80,9 @@ flowchart LR
 ### F5 · Arquivos legais — backlog **085**
 - **AFD** e **AEJ** no layout da Portaria 671/2021, com a assinatura definida no parecer L1.
 - **Aceite:** arquivos validados pela contadora contra o layout oficial.
+- **Estado (13/10):** AFD entrega 1 em revisão (migration 87, painel 3.27.0, decisão 81): tipos 1, 7 e 9 no leiaute
+  do Anexo V (`docs/AFD.pdf`), versão de conferência sem assinatura e sem INPI. O Anexo V foi revogado pela
+  Portaria 1.486/2022 (leiaute agora no portal gov.br): a Andreia confere contra a versão vigente.
 
 ### F6 · Contingência e proteção — backlog **086** e **087**
 - URA receptiva (número de entrada na Twilio): marca sem localização e sinaliza ao gestor.

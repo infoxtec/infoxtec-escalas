@@ -590,7 +590,18 @@ geração registrada com número. **Critério de aceite:** no local de teste, um
 vencendo antes da data aparece pendente; o mesmo dossiê sai impresso com o número do registro.
 **Depois, se um cliente pedir:** PDF assinado e dossiê por cliente tomador (vários locais).
 
-## 101. Demonstração com dados fictícios na homologação — em revisão (13/10/2026; decisão 80)
+## 085. F5 Arquivo Fonte de Dados (AFD) — entrega 1 em revisão (13/10/2026; migration 87, painel 3.27.0, decisão 81)
+
+**Entrega 1 (versão de conferência):** em Registro de Ponto, o admin escolhe o período e baixa o AFD de cada
+empresa no leiaute do Anexo V da Portaria 671 (`docs/AFD.pdf`): cabeçalho (tipo 1) com CRC-16, marcações
+do REP-P (tipo 7) com hash SHA-256 encadeado desde a primeira marcação, trailer (tipo 9), ISO 8859-1 e CR LF.
+Cada geração fica registrada com o sha256 do arquivo. **Critério de aceite:** a Andreia confere o arquivo
+contra o leiaute vigente do gov.br (o Anexo V foi revogado pela Portaria 1.486/2022 e o leiaute passou para o
+portal). **Entrega 2:** inclusão e alteração de empresa e de empregado (tipos 2 e 5) e eventos sensíveis (6)
+na mesma sequência de NSR; **depois:** assinatura CAdES em `.p7s` destacado (e-CNPJ, parecer L1, backlog
+076 e 078), número do INPI e AEJ (Anexo VI).
+
+## 101. Demonstração com dados fictícios na homologação — concluído (13/10/2026; decisão 80)
 
 Mostrar o produto sem expor técnicos reais: um comando cria uma empresa fictícia com 10 técnicos, 5
 locais e uma semana de escalas, sem telefone real; outro comando apaga tudo.

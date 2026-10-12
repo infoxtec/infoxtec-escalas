@@ -950,3 +950,26 @@ porque é reusado a cada apresentação; o T33 do CI cria e apaga para ele não 
 O `apagar` só remove tipo "(demo)" que nada fora da demonstração usa, e recusa se houver ponto da empresa.
 Nomes de locais e clientes inventados, sem lembrar empresa real. Pendente: conferir na Receita que o CNPJ
 de exemplo não pertence a empresa ativa (os dígitos precisam ser válidos para o cadastro aceitar).
+
+## 81. AFD do REP-P: primeiro em versão de conferência
+
+**Data:** 13/10/2026. **Pedido do responsável** (F5, backlog 085; migration 87, painel 3.27.0). Sem o
+Arquivo Fonte de Dados o Trilha Ponto não se vende como REP-P (Portaria 671, Art. 81). A base é o Anexo V do
+texto consolidado (`docs/AFD.pdf`, enviado pelo responsável), que a Portaria 1.486/2022 **revogou**, passando
+o leiaute para o portal gov.br (inacessível deste ambiente). Por isso o arquivo sai como **versão de
+conferência**: a Andreia confere contra o leiaute vigente antes de valer. **Escolhas a confirmar nessa
+conferência:** CRC-16 na variante KERMIT (o anexo não nomeia); hash SHA-256 em hexadecimal minúsculo sobre os
+campos 1 a 7 formatados mais o hash anterior; CNO/CAEPF ausente preenchido com espaço; coletor "02" (navegador)
+para o app web e "05" (outro) para WhatsApp e URA; gravação igual à marcação (on-line, "0"). **Fica fora
+agora:** a linha de assinatura do anexo antigo (o Art. 88 §2º pede CAdES em `.p7s` destacado, com e-CNPJ, após
+o parecer L1), o número do INPI (zerado até o registro, backlog 078), os tipos 2, 5 e 6 (entrega 2: precisam
+da mesma sequência de NSR das marcações, mudança na `fn_ponto_registrar`) e o AEJ. Só o admin gera, porque o
+arquivo tem o CPF de todos; cada geração fica registrada com o sha256. **Nunca confundido com o oficial**
+(revisão do `seguranca`): enquanto `config.afd_leiaute_conferido` não for ligada pelo responsável — depois da
+conferência da contadora e da assinatura CAdES —, o nome sai com `_CONFERENCIA`; ter o número do INPI não
+basta. **LGPD:** base legal é obrigação legal (art. 7º, II; Portaria 671, Art. 81 §2º); `ponto_afd_geracoes`
+não guarda CPF e segue a guarda de 5 anos do ponto; o painel avisa para guardar o arquivo baixado em local
+protegido e apagar depois do uso. **Desempenho:** o hash encadeia desde a primeira marcação, então o custo
+cresce com a história: 4,2 s com 100 mil marcações (homologação, 13/10), dentro do limite de 8 s das chamadas
+do painel. Antes de um cliente passar de uns 50 mil registros, guardar o hash do AFD por marcação ou um ponto
+de controle (item no plano).
