@@ -1009,9 +1009,8 @@ com o QR. O gestor vê e imprime o espelho com a assinatura; o papel leitura nã
 (aplicada):** as funções do app que abrem o espelho são `volatile` (a sessão grava o último uso; `stable` roda
 só leitura no PostgREST); desligado não recebe o link (não entra no app; recebe em papel); envio barrado não
 marca enviado, e o gestor pode reenviar um espelho; o PNG é conferido pelos bytes; o hash da assinatura usa IP
-e aparelho como texto. **Pendentes (decisão do responsável e do `juridico`):** base legal da origem (art. 7º,
-VI, em vez de II); HMAC com chave no Vault para a assinatura não poder ser refeita por quem administra o banco;
-testar a impressão de um mês cheio no Chrome e no Safari do iOS.
+e aparelho como texto. **Pendentes (decisão do responsável e do `juridico`):** ~~base legal da origem~~ e ~~HMAC com chave no
+Vault~~ resolvidos na decisão 84; testar a impressão de um mês cheio no Chrome e no Safari do iOS.
 
 ## 83. Resumo de pagamento no espelho mensal, em horas
 
@@ -1041,6 +1040,30 @@ folga compensatória de domingo ou feriado ainda não é registrada, então o do
 100%; convenção coletiva com percentual diferente não é lida (o aviso diz isso). Espelhos emitidos antes da
 migration 90 são cópias congeladas e continuam mostrando os totais antigos. **AFD:** a Andreia validou o
 arquivo; `afd_leiaute_conferido` continua `false` até a assinatura CAdES (decisão 81) — ligar é decisão do
-responsável. **Pendentes:** motivo "folga compensatória" para domingo e feriado (`juridico`); dia útil sem escala
-nem marcação conta como débito (jornada da decisão 78), a confirmar com o `juridico` para técnico escalado;
+responsável. **Pendentes:** ~~folga compensatória~~ e ~~débito em dia útil sem escala~~ resolvidos na decisão 84;
 medir a emissão de um mês cheio com muitos funcionários (duas leituras de marcações por dia).
+
+## 84. Respostas do responsável sobre o espelho: débito, folga, base legal, HMAC e AFD
+
+**Data:** 13/10/2026. **Decisões do responsável:**
+- **Débito:** dia útil sem ponto é débito do funcionário, com ou sem escala ("pode até ocorrer sem escala,
+  mas nunca sem ponto"). É a regra da decisão 83, agora confirmada; segue valendo só a partir da primeira
+  marcação do funcionário.
+- **Folga compensatória (migration 91, painel 3.31.0):** o gestor lança, em Ponto › Ajustes, a folga de um
+  domingo ou feriado trabalhado (`app_ponto_folga_compensatoria`). O dia de folga fica abonado inteiro
+  (`ponto_abonos.folga_de` aponta o dia trabalhado) e o domingo ou feriado deixa de sair a 100%: vira
+  trabalho comum, e só o que passa de 8 h é HE 50% (Lei 605/1949, art. 9º; Súmula 146). A folga fica a até 6
+  dias do trabalho (OJ 410 da SDI-1: repouso depois do 7º dia seguido é pago em dobro), em dia que não é
+  domingo nem feriado, até 7 dias à frente, uma por domingo ou feriado, e só se houver trabalho no ponto
+  naquele dia. Não conta como abono por liberalidade; o espelho mostra a folga e o dia compensado. O motivo
+  `folga_compensatoria` entra no catálogo inativo (o funcionário não pede folga pelo app; o gestor lança).
+- **Base legal da assinatura:** cumprimento de obrigação legal (LGPD art. 7º, II): o registro de horas
+  mensal precisa ser assinado pelo empregado. Fecha a pendência da decisão 82.
+- **HMAC (migration 91):** o hash da assinatura passa a ser HMAC-SHA256 com chave `ESPELHO_ASSINATURA` no
+  Vault, gerada no próprio banco (nunca no repositório). Quem só altera a tabela não consegue refazer o hash
+  de uma assinatura. **Limite assumido:** quem lê o Vault (o administrador do projeto Supabase) ainda poderia;
+  a defesa contra ele é a cópia assinada que o funcionário baixa. Não havia espelho assinado em nenhum
+  ambiente (conferido em 13/10), então nenhuma assinatura antiga deixou de conferir. **Guardar cópia da
+  chave fora do Supabase**, como a do cofre: sem ela as assinaturas não conferem mais.
+- **AFD:** segue em versão de conferência na produção até a confirmação do responsável; o uso continua na
+  homologação.

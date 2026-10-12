@@ -13,6 +13,7 @@ Monteiro** (contadora). Este documento organiza as perguntas; não substitui o p
 | **CLT art. 73** | Adicional noturno de 20%, hora noturna reduzida de 52'30" entre 22 h e 5 h |
 | **CLT art. 58, §1º** | Variação de até 5 min por marcação e 10 min no dia não é descontada nem paga como extra |
 | **Lei 605/1949, arts. 6º e 9º; Súmula 146 do TST** | Falta sem justificativa pode tirar o DSR da semana; domingo e feriado trabalhados sem folga compensatória são pagos em dobro |
+| **OJ 410 da SDI-1 do TST** | Repouso semanal concedido depois do 7º dia seguido de trabalho é pago em dobro: a folga compensatória fica na mesma semana (decisão 84) |
 | **Súmula 376 do TST** | HE acima de 2 h por dia continua devida e integra as demais verbas; o limite é infração administrativa, não perda do pagamento |
 | **Portaria MTP 671/2021** | Registro eletrônico de ponto: REP-C, REP-A e **REP-P**; NSR, comprovante, AFD e AEJ, Atestado Técnico |
 | **Convenção coletiva da categoria** | Tolerâncias, banco de horas, adicional de HE, intervalos — a jornada é do sindicato, não do município |

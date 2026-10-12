@@ -81,9 +81,10 @@ flowchart LR
 - **AFD** e **AEJ** no layout da Portaria 671/2021, com a assinatura definida no parecer L1.
 - **Aceite:** arquivos validados pela contadora contra o layout oficial.
 - **Espelho mensal assinado (decisão 82):** parte A na produção em 13/10 (migration 88: emissão congelada,
-  registro, QR público sem dado pessoal); parte B em revisão (migration 89: WhatsApp, assinatura desenhada no
+  registro, QR público sem dado pessoal); parte B na produção em 13/10 (migration 89: WhatsApp, assinatura desenhada no
   app e PDF), com o resumo de pagamento em horas no mesmo PR (migration 90, decisão 83: HE 50% e 100%,
-  noturno, débito e abonos, sem o motivo de saúde; *a pagar* e *a descontar* em HH:MM).
+  noturno, débito e abonos, sem o motivo de saúde; *a pagar* e *a descontar* em HH:MM; na produção em 13/10).
+  Folga compensatória e HMAC na assinatura em revisão (migration 91, decisão 84).
 - **AFD validado pela Andreia (13/10).** A versão oficial continua dependendo da assinatura CAdES.
 - **Estado (13/10):** AFD entrega 1 concluída (migration 87, painel 3.27.0, decisão 81): tipos 1, 7 e 9 no leiaute
   do Anexo V (`docs/AFD.pdf`), versão de conferência sem assinatura e sem INPI. O Anexo V foi revogado pela

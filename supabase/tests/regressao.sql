@@ -38,6 +38,7 @@
 -- T35 espelho mensal congelado: emissão, registro sem lacuna, imutável, conferência pública sem dado pessoal
 -- T36 assinatura do espelho pelo funcionário: só o próprio, só a versão vista, uma vez, hash amarrado; envio
 -- T37 resumo do espelho: HE 50% e 100%, noturno reduzido, débito com tolerância, atestado e abono da empresa
+-- T38 assinatura por HMAC com chave no Vault; folga compensatória tira o 100% do domingo trabalhado
 
 \set ON_ERROR_STOP on
 begin;
@@ -1893,7 +1894,62 @@ begin
                      '[T37] débito antes da primeira marcação: ' || (c->'resumo'->'a_descontar')::text);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T37' as resultado,
+-- T38 HMAC da assinatura e folga compensatória (migration 91, decisão 84) -------------------------------------
+do $$
+declare
+  v_emp uuid := (select v::uuid from qa where k = 'emp');
+  v_dom date := current_date - extract(isodow from current_date)::int;   -- último domingo antes de hoje
+  v_folga date; v_tec uuid; v_ok boolean; r jsonb; c jsonb; d jsonb;
+  v_ts timestamptz := now();
+begin
+  -- HMAC: depende da chave; não é o SHA-256 simples dos mesmos dados
+  perform pg_temp.ok(exists (select 1 from vault.secrets where name = 'ESPELHO_ASSINATURA'), '[T38] chave do HMAC no Vault');
+  perform pg_temp.ok(fn_ponto_assinatura_hash('abc', 'png', v_ts, '{"ip":"1.2.3.4"}')
+                     <> encode(sha256(convert_to('abc|png|' || to_char(v_ts at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')
+                                                 || '|1.2.3.4|', 'UTF8')), 'hex')
+                     and length(fn_ponto_assinatura_hash('abc', 'png', v_ts, '{}')) = 64, '[T38] hash da assinatura sem chave');
+
+  -- folga compensatória: domingo trabalhado das 8h às 12h; folga no primeiro dia útil seguinte
+  select min(x)::date into v_folga from generate_series(v_dom + 1, v_dom + 6, interval '1 day') x
+   where not exists (select 1 from feriados f where f.data = x::date and f.abrangencia <> 'facultativo');
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA Folga Compensatória', '5579999993838', true, false, pg_temp.cpf('383838301'), v_emp, false, v_dom - 60) returning id into v_tec;
+  alter table ponto_marcacoes disable trigger user;
+  insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, hash_anterior, hash)
+  select v_emp, 938000 + k, v_tec, (select cpf from tecnicos where id = v_tec), (v_dom + h) at time zone 'America/Bahia',
+         t, 'ura', 'qa', md5(random()::text)
+    from (values (1, time '08:00', 'entrada'), (2, time '12:00', 'saida')) x(k, h, t);
+  alter table ponto_marcacoes enable trigger user;
+
+  v_ok := false;
+  begin perform app_ponto_folga_compensatoria(v_tec, v_folga, v_dom + 1); exception when others then v_ok := sqlerrm ~ 'domingo ou feriado|Não há trabalho'; end;
+  perform pg_temp.ok(v_ok, '[T38] folga de dia útil trabalhado');
+  v_ok := false;
+  begin perform app_ponto_folga_compensatoria(v_tec, v_dom + 10, v_dom); exception when others then v_ok := sqlerrm ~ 'mesma semana|7 dias|domingo ou feriado'; end;
+  perform pg_temp.ok(v_ok, '[T38] folga fora da semana');
+  v_ok := false;
+  begin perform app_ponto_folga_compensatoria(v_tec, v_folga, v_dom - 7); exception when others then v_ok := sqlerrm like '%Não há trabalho%'; end;
+  perform pg_temp.ok(v_ok, '[T38] folga de domingo não trabalhado');
+
+  r := app_ponto_folga_compensatoria(v_tec, v_folga, v_dom);
+  perform pg_temp.ok(r->>'id' is not null, '[T38] folga lançada');
+  v_ok := false;
+  begin perform app_ponto_folga_compensatoria(v_tec, v_folga, v_dom); exception when others then v_ok := sqlerrm like '%já tem folga%'; end;
+  perform pg_temp.ok(v_ok, '[T38] duas folgas para o mesmo domingo');
+
+  -- o domingo compensado não sai a 100%; a folga não gera débito nem conta como liberalidade
+  c := fn_ponto_espelho_conteudo(v_tec, date_trunc('month', v_dom)::date);
+  select x into d from jsonb_array_elements(c->'dias') x where x->>'data' = to_char(v_dom, 'YYYY-MM-DD');
+  perform pg_temp.ok((d->>'he100_min')::int = 0 and (d->>'he50_min')::int = 0 and d->>'compensado_em' is not null,
+                     '[T38] domingo compensado: ' || coalesce(d::text, 'sem linha'));
+  c := fn_ponto_espelho_conteudo(v_tec, date_trunc('month', v_folga)::date);
+  select x into d from jsonb_array_elements(c->'dias') x where x->>'data' = to_char(v_folga, 'YYYY-MM-DD');
+  perform pg_temp.ok((d->>'debito_min')::int = 0 and d->>'folga_de' is not null
+                     and (c->'resumo'->'informativo'->>'abonado_empresa_min')::int = 0
+                     and (c->'resumo'->'informativo'->>'folgas_compensatorias')::int = 1, '[T38] dia de folga: ' || coalesce(d::text, 'sem linha'));
+end $$;
+
+select 'REGRESSÃO OK: T1 a T38' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

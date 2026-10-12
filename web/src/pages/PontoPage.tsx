@@ -304,7 +304,8 @@ function Ajustes({ linhas, marcacoes, funcionarios, tecnico, hoje, podeAjustar, 
   tecnico: string; hoje: string; podeAjustar: boolean; aoAjustar: () => Promise<void>
 }) {
   const [func, setFunc] = useState(tecnico)
-  const [acao, setAcao] = useState<'incluir' | 'desconsiderar' | 'abonar'>('incluir')
+  const [acao, setAcao] = useState<'incluir' | 'desconsiderar' | 'abonar' | 'folga'>('incluir')
+  const [trabalhado, setTrabalhado] = useState('')
   const [diaInteiro, setDiaInteiro] = useState(true)
   const [ini, setIni] = useState('')
   const [fim, setFim] = useState('')
@@ -328,12 +329,17 @@ function Ajustes({ linhas, marcacoes, funcionarios, tecnico, hoje, podeAjustar, 
       .map(a => ({ valor: `a:${a.id}`, texto: `${a.data} ${a.hora} · ${PONTO_ROTULO[a.tipo] ?? a.tipo} · incluída por ajuste` })),
   ]
   const motivoOk = motivo.trim().length >= 10
-  const pronto = !!func && motivoOk && (acao === 'incluir' ? !!data && !!hora && !!tipo
-    : acao === 'abonar' ? !!data && (diaInteiro || (!!ini && !!fim && ini < fim)) : !!marcacao)
+  const pronto = !!func && (acao === 'folga' ? !!data && !!trabalhado : motivoOk && (acao === 'incluir' ? !!data && !!hora && !!tipo
+    : acao === 'abonar' ? !!data && (diaInteiro || (!!ini && !!fim && ini < fim)) : !!marcacao))
 
   const salvar = async () => {
     setSalvando(true); setErro(null); setOk(null)
     try {
+      if (acao === 'folga') {
+        const f = await api.pontoFolgaCompensatoria(func, data, trabalhado)
+        setOk(`Folga de ${f.folga} registrada, compensando o trabalho de ${f.trabalhado}: o domingo ou feriado deixa de sair a 100%.`)
+        setTrabalhado(''); await aoAjustar(); return
+      }
       if (acao === 'abonar') {
         const a = await api.pontoAbonar(func, data, motivo.trim(), diaInteiro ? null : ini, diaInteiro ? null : fim)
         setOk(`Abono de ${a.data} (${a.detalhe}) registrado. O funcionário foi avisado, sem o motivo.`)
@@ -365,13 +371,17 @@ function Ajustes({ linhas, marcacoes, funcionarios, tecnico, hoje, podeAjustar, 
               </Select>
             </Field>
             <Field label="Ajuste">
-              <Select value={acao} onChange={e => setAcao(e.target.value as 'incluir' | 'desconsiderar' | 'abonar')}>
+              <Select value={acao} onChange={e => setAcao(e.target.value as 'incluir' | 'desconsiderar' | 'abonar' | 'folga')}>
                 <option value="incluir">Incluir marcação esquecida</option>
                 <option value="desconsiderar">Desconsiderar marcação errada</option>
                 <option value="abonar">Abonar falta ou atraso</option>
+                <option value="folga">Folga compensatória (domingo ou feriado trabalhado)</option>
               </Select>
             </Field>
-            {acao === 'abonar' ? (<>
+            {acao === 'folga' ? (<>
+              <Field label="Domingo ou feriado trabalhado"><Input type="date" value={trabalhado} max={hoje} onChange={e => setTrabalhado(e.target.value)} /></Field>
+              <Field label="Dia da folga (mesma semana)"><Input type="date" value={data} onChange={e => setData(e.target.value)} /></Field>
+            </>) : acao === 'abonar' ? (<>
               <Field label="Data"><Input type="date" value={data} max={hoje} onChange={e => setData(e.target.value)} /></Field>
               <label className="flex items-center gap-1.5 pb-2 text-sm"><input type="checkbox" checked={diaInteiro} onChange={e => setDiaInteiro(e.target.checked)} /> Dia inteiro</label>
               {!diaInteiro && <>
@@ -395,15 +405,20 @@ function Ajustes({ linhas, marcacoes, funcionarios, tecnico, hoje, podeAjustar, 
               </Field>
             )}
           </div>
-          <Field label="Motivo (obrigatório, fica guardado 5 anos; não vai para o funcionário)">
+          {acao === 'folga' ? (
+            <p className="text-xs text-muted-foreground">
+              A folga abona o dia inteiro e tira o pagamento em dobro do domingo ou feriado (Lei 605/1949, art. 9º). Ela precisa
+              ficar a até 6 dias do trabalho; depois disso o repouso é devido em dobro. O motivo é registrado sozinho.
+            </p>
+          ) : <Field label="Motivo (obrigatório, fica guardado 5 anos; não vai para o funcionário)">
             <Textarea rows={2} value={motivo} maxLength={500} onChange={e => setMotivo(e.target.value)}
               placeholder="Ex.: esqueceu de marcar a saída; confirmado com o supervisor da obra. Não escreva diagnóstico, CID nem doença: use “atestado apresentado”." />
-          </Field>
+          </Field>}
           <div className="flex flex-wrap items-center gap-3">
             <Button size="sm" disabled={!pronto || salvando} onClick={() => void salvar()}>
               {salvando && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Registrar ajuste
             </Button>
-            {!motivoOk && motivo.length > 0 && <span className="text-xs text-amber-700">Motivo com pelo menos 10 letras.</span>}
+            {acao !== 'folga' && !motivoOk && motivo.length > 0 && <span className="text-xs text-amber-700">Motivo com pelo menos 10 letras.</span>}
           </div>
           {erro && <ErrorBox>{erro}</ErrorBox>}
           {ok && <SuccessBox>{ok}</SuccessBox>}

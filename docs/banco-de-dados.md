@@ -254,6 +254,18 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 91 (13/10): HMAC na assinatura e folga compensatória (decisão 84)
+
+- `fn_ponto_assinatura_hash` passa a HMAC-SHA256 com a chave `ESPELHO_ASSINATURA` do Vault (criada pela
+  migration, no próprio banco); as chamadoras não mudam.
+- `ponto_abonos.folga_de`: o domingo ou feriado trabalhado que o dia de folga compensa.
+  `app_ponto_folga_compensatoria(p_tecnico, p_folga, p_trabalhado)` (admin, gestor) lança a folga: dia
+  inteiro abonado, até 6 dias do trabalho, uma por domingo ou feriado, só com trabalho no ponto naquele dia;
+  avisa o funcionário pelo WhatsApp. Motivo `folga_compensatoria` no catálogo, inativo.
+- `fn_ponto_espelho_conteudo`: domingo ou feriado compensado sai como trabalho comum (HE 50% acima de 8 h, sem
+  100%); por dia, `folga_de` e `compensado_em`; no informativo, `folgas_compensatorias` e
+  `domingos_feriados_compensados`. Teste T38.
+
 ### Migration 90 (13/10): resumo de pagamento no espelho, em horas (decisão 83)
 
 - `fn_ponto_noturno_dia(tecnico, data, fuso)`: minutos de relógio trabalhados entre 22 h e 5 h no dia, pelos

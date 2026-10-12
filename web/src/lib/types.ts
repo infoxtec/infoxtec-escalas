@@ -456,6 +456,7 @@ export interface EspelhoConteudo {
     // a partir da migration 90 (decisão 83); espelhos emitidos antes não têm
     previsto_min?: number; he50_min?: number; he100_min?: number; noturno_min?: number; debito_min?: number
     feriado?: string | null
+    folga_de?: string | null; compensado_em?: string | null   // folga compensatória (decisão 84)
   })[]
   ajustes: { acao: 'incluir' | 'desconsiderar'; data: string; hora: string; tipo: string; motivo: string }[]
   totais: { trabalhado_min: number; he_min: number; faltas: number; atrasos: number; dias_abonados: number }
@@ -468,7 +469,8 @@ export interface EspelhoResumo {
   a_descontar: { debito_min: number; dias_sem_registro: number; semanas_com_falta: number }
   informativo: {
     previsto_min: number; trabalhado_min: number; noturno_relogio_min: number; abonado_justificado_min: number
-    abonado_empresa_min: number; sabados_sem_expediente: number; dias_abonados_justificados: number; dias_trabalhados: number
+    abonado_empresa_min: number; sabados_sem_expediente: number; dias_abonados_justificados: number
+    folgas_compensatorias?: number; domingos_feriados_compensados?: number; dias_trabalhados: number
     dias_he_acima_2h: number; interjornada_curta: number; registros: number; feriados: string[]
   }
 }
