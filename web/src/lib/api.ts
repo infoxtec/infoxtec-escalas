@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto } from './types'
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre } from './types'
 
 function traduzir(msg: string): string {
   if (/JWT expired|invalid JWT|not authenticated/i.test(msg)) return 'Sessão expirada. Entre novamente.'
@@ -145,6 +145,10 @@ export const api = {
   pontoEnviarEspelhos: (competencia: string, espelho: string | null = null) =>
     rpc<{ enviados: number; sem_whatsapp: number; falhas: number; desligados: number }>('app_ponto_enviar_espelhos', { p_competencia: competencia, p_espelho: espelho }),
   pontoEspelhoVer: (id: string) => rpc<EspelhoCompleto>('app_ponto_espelho_ver', { p_id: id }),
+  // Cofre das folhas assinadas, só RH (decisão 86)
+  pontoCofreFolhas: (competencia: string | null, tecnico: string | null) =>
+    rpc<FolhaCofre[]>('app_ponto_cofre_folhas', { p_competencia: competencia, p_tecnico: tecnico }),
+  pontoEspelhoProva: (id: string) => rpc<Record<string, unknown>>('app_ponto_espelho_prova', { p_id: id }),
   pontoVerificar: (empresa: string) =>
     rpc<{ integra: boolean; conferidas: number; nsr?: number; motivo?: string }>('app_ponto_verificar', { p_empresa: empresa }),
 
@@ -189,6 +193,8 @@ export const api = {
 
   usuarios: () => rpc<UsuarioPainel[]>('app_usuarios'),
   definirVeSaude: (email: string, valor: boolean) => rpc<void>('app_definir_ve_saude', { p_email: email, p_valor: valor }),
+  definirRhFolhas: (email: string, valor: boolean) => rpc<void>('app_definir_rh_folhas', { p_email: email, p_valor: valor }),
+  rhFolhasHistorico: () => rpc<{ email: string; valor: boolean; autor: string; em: string }[]>('app_rh_folhas_historico'),
   salvarUsuario: (u: { email: string; nome: string; papel: Papel; ativo: boolean }) =>
     rpc<string>('app_salvar_usuario', { p_email: u.email, p_nome: u.nome, p_papel: u.papel, p_ativo: u.ativo }),
 }

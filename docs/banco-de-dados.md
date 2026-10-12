@@ -254,6 +254,16 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 92 (13/10): cofre das folhas assinadas (decisão 86)
+
+- `painel_usuarios.rh_folhas` e `fn_rh_folhas(email)`: permissão "cofre de folhas assinadas" (admin ou gestor,
+  ativo). `app_definir_rh_folhas` e `app_rh_folhas_historico` (admin), histórico em `painel_rh_folhas_log` (só
+  inclusão). `app_meu_acesso` devolve `rh_folhas`.
+- `app_ponto_espelho_ver` (recriada): folha assinada só com `rh_folhas`, e a abertura fica em
+  `ponto_espelho_acessos` (só inclusão, RLS sem políticas).
+- `app_ponto_cofre_folhas(p_competencia, p_tecnico)` e `app_ponto_espelho_prova(p_id)` (só `rh_folhas`): lista
+  das folhas assinadas e a prova para perícia (conteúdo exato, hashes, assinatura, HMAC conferido). Teste T39.
+
 ### Migration 91 (13/10): HMAC na assinatura e folga compensatória (decisão 84)
 
 - `fn_ponto_assinatura_hash` passa a HMAC-SHA256 com a chave `ESPELHO_ASSINATURA` do Vault (criada pela

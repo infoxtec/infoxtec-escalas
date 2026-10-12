@@ -18,15 +18,17 @@ export default function UsuariosPage() {
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [historico, setHistorico] = useState<{ email: string; valor: boolean; autor: string; em: string }[]>([])
+  const [histRh, setHistRh] = useState<{ email: string; valor: boolean; autor: string; em: string }[]>([])
   // null = ainda sem a informação (ou o banco sem a migration 82): a coluna mostra "?", nunca "—" falso
   const [mfa, setMfa] = useState<{ ativos: Map<string, string>; historico: { email: string; acao: 'ativou' | 'desativou'; em: string }[] } | null>(null)
-  const [edit, setEdit] = useState<{ email: string; nome: string; papel: Papel; ativo: boolean; novo: boolean; ve_saude: boolean; ve_saude_antes: boolean } | null>(null)
+  const [edit, setEdit] = useState<{ email: string; nome: string; papel: Papel; ativo: boolean; novo: boolean; ve_saude: boolean; ve_saude_antes: boolean; rh_folhas: boolean; rh_folhas_antes: boolean } | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [erroForm, setErroForm] = useState<string | null>(null)
 
   const carregar = useCallback(async () => {
     setCarregando(true); setErro(null)
     api.veSaudeHistorico().then(setHistorico).catch(() => setHistorico([]))
+    api.rhFolhasHistorico().then(setHistRh).catch(() => setHistRh([]))
     api.usuariosMfa().then(m => setMfa({ ativos: new Map(m.ativos.map(a => [a.email, a.desde])), historico: m.historico }))
       .catch(() => setMfa(null))
     try { setLista(await api.usuarios()) } catch (e) { setErro(erroMsg(e)) }
@@ -49,6 +51,8 @@ export default function UsuariosPage() {
       await api.salvarUsuario({ email: edit.email.trim(), nome: edit.nome.trim(), papel: edit.papel, ativo: edit.ativo })
       const ve = edit.ve_saude && edit.papel !== 'leitura'
       if (ve !== edit.ve_saude_antes) await api.definirVeSaude(edit.email.trim(), ve)
+      const rh = edit.rh_folhas && edit.papel !== 'leitura'
+      if (rh !== edit.rh_folhas_antes) await api.definirRhFolhas(edit.email.trim(), rh)
       toast(edit.novo ? 'Usuário liberado no painel.' : 'Usuário atualizado.')
       setEdit(null); await carregar()
     } catch (e) { setErroForm(erroMsg(e)) }
@@ -62,7 +66,7 @@ export default function UsuariosPage() {
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" onClick={restaurarTudo} title="Voltar todas as colunas à largura padrão"><Columns3 className="h-3.5 w-3.5" /> Larguras padrão</Button>
           <Button variant="outline" size="sm" onClick={() => void carregar()} disabled={carregando}><RefreshCw className={`h-3.5 w-3.5 ${carregando ? 'animate-spin' : ''}`} /> Atualizar</Button>
-          <Button size="sm" onClick={() => { setEdit({ email: '', nome: '', papel: 'gestor', ativo: true, novo: true, ve_saude: false, ve_saude_antes: false }); setErroForm(null) }}><Plus className="h-4 w-4" /> Adicionar usuário</Button>
+          <Button size="sm" onClick={() => { setEdit({ email: '', nome: '', papel: 'gestor', ativo: true, novo: true, ve_saude: false, ve_saude_antes: false, rh_folhas: false, rh_folhas_antes: false }); setErroForm(null) }}><Plus className="h-4 w-4" /> Adicionar usuário</Button>
         </div>
       </div>
 
@@ -91,7 +95,7 @@ export default function UsuariosPage() {
               <tr key={u.email} className={`border-b last:border-0 ${!u.ativo ? 'opacity-50' : ''}`}>
                 <td className="truncate px-3 py-2.5 font-medium" title={u.nome ?? ''}>{u.nome ?? '—'}</td>
                 <td className="truncate px-3 py-2.5 text-xs" title={u.email}>{u.email}</td>
-                <td className="px-3 py-2.5 text-xs">{PAPEL_LABEL[u.papel]}{u.ve_saude && <span className="ml-1 rounded bg-blue-100 px-1 text-[10px] text-blue-800" title="Vê atestados e documentos; decide pedidos com documento">atestados</span>}</td>
+                <td className="px-3 py-2.5 text-xs">{PAPEL_LABEL[u.papel]}{u.ve_saude && <span className="ml-1 rounded bg-blue-100 px-1 text-[10px] text-blue-800" title="Vê atestados e documentos; decide pedidos com documento">atestados</span>}{u.rh_folhas && <span className="ml-1 rounded bg-emerald-100 px-1 text-[10px] text-emerald-800" title="Abre o cofre das folhas de ponto assinadas">folhas</span>}</td>
                 <td className="px-3 py-2.5 text-center"><span className={`inline-block h-2 w-2 rounded-full ${u.ativo ? 'bg-green-500' : 'bg-gray-400'}`} /></td>
                 <td className="px-3 py-2.5 text-center text-xs">
                   {!mfa ? <span className="text-muted-foreground" title="Informação indisponível">?</span>
@@ -101,13 +105,24 @@ export default function UsuariosPage() {
                 </td>
                 <td className="truncate px-3 py-2.5 text-xs text-muted-foreground">{u.criado_por ?? '—'} · {formatDateTime(u.created_at)}</td>
                 <td className="px-3 py-2.5 text-right">
-                  <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => { setEdit({ email: u.email, nome: u.nome ?? '', papel: u.papel, ativo: u.ativo, novo: false, ve_saude: u.ve_saude, ve_saude_antes: u.ve_saude }); setErroForm(null) }}><Edit2 className="h-3.5 w-3.5" /></Button>
+                  <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => { setEdit({ email: u.email, nome: u.nome ?? '', papel: u.papel, ativo: u.ativo, novo: false, ve_saude: u.ve_saude, ve_saude_antes: u.ve_saude, rh_folhas: !!u.rh_folhas, rh_folhas_antes: !!u.rh_folhas }); setErroForm(null) }}><Edit2 className="h-3.5 w-3.5" /></Button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {histRh.length > 0 && (
+        <div className="space-y-1 rounded-md border p-3 text-xs">
+          <p className="font-semibold">Histórico de "Cofre de folhas assinadas"</p>
+          <ul className="space-y-0.5 text-muted-foreground">
+            {histRh.slice(0, 20).map((h, i) => (
+              <li key={i}>{h.em} · {h.autor} {h.valor ? 'deu a permissão a' : 'tirou a permissão de'} <span className="text-foreground">{h.email}</span></li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {historico.length > 0 && (
         <div className="space-y-1 rounded-md border p-3 text-xs">
@@ -149,6 +164,10 @@ export default function UsuariosPage() {
             {edit.papel !== 'leitura' && (
               <ToggleRow label="Vê atestados e documentos" description="Vê e decide pedidos com documento (atestado, certidão, convocação) e abre o cofre: só visualização, cada abertura fica registrada. Dê só a quem faz o RH."
                 checked={edit.ve_saude} onChange={v => setEdit({ ...edit, ve_saude: v })} disabled={salvando} />
+            )}
+            {edit.papel !== 'leitura' && (
+              <ToggleRow label="Cofre de folhas assinadas (RH)" description="Abre as folhas de ponto assinadas pelos funcionários, com a assinatura, e baixa a cópia e a prova para uma ação judicial. Cada abertura fica registrada. Dê só a quem faz o RH."
+                checked={edit.rh_folhas} onChange={v => setEdit({ ...edit, rh_folhas: v })} disabled={salvando} />
             )}
             {erroForm && <ErrorBox>{erroForm}</ErrorBox>}
           </div>

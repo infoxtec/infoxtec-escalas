@@ -5,6 +5,7 @@ import { api, erroMsg } from '../lib/api'
 import Cofre from '../components/Cofre'
 import PontoAfd from '../components/PontoAfd'
 import EspelhosMensais from '../components/EspelhosMensais'
+import CofreFolhas from '../components/CofreFolhas'
 import { prepararArquivo } from '../lib/arquivo'
 import { ALERTA_JORNADA, PONTO_ROTULO, hojeBahia, minutosHm } from '../lib/types'
 import type { Empresa, PontoAbono, PontoAcompanhamento, PontoAjuste, PontoEspelho, PontoGeo, PontoHoje, PontoJustificativa, PontoMetricas } from '../lib/types'
@@ -52,6 +53,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [cadeia, setCadeia] = useState<{ ok: boolean; texto: string } | null>(null)
   const [conferindo, setConferindo] = useState(false)
+  const [rhFolhas, setRhFolhas] = useState(false)
 
   const carregar = useCallback(async () => {
     setErro(null)
@@ -73,6 +75,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
     const t = setInterval(() => { if (!document.hidden) void carregar() }, 30_000)
     return () => clearInterval(t)
   }, [carregar, ate, hoje])
+  useEffect(() => { api.meuAcesso().then(a => setRhFolhas(!!a.rh_folhas)).catch(() => {}) }, [])
   useEffect(() => {
     if (papel === 'admin') api.empresas().then(e => setEmpresas(e.filter(x => x.empregadora && x.ativo))).catch(() => {})
   }, [papel])
@@ -236,7 +239,9 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
         </section>
       )}
 
-      <EspelhosMensais hoje={hoje} podeEmitir={papel !== 'leitura'} />
+      <EspelhosMensais hoje={hoje} podeEmitir={papel !== 'leitura'} rhFolhas={rhFolhas} />
+
+      {rhFolhas && <CofreFolhas hoje={hoje} />}
 
       {papel === 'admin' && empresas.length > 0 && <PontoAfd empresas={empresas} hoje={hoje} />}
     </div>

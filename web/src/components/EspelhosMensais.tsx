@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Eye, ExternalLink, FileSignature, Printer, RefreshCw, Send } from 'lucide-react'
+import { Eye, ExternalLink, FileSignature, Lock, Printer, RefreshCw, Send } from 'lucide-react'
 import { Button, ErrorBox, Field, Input, Modal, SuccessBox } from './ui'
 import EspelhoDocumento from './EspelhoDocumento'
 import { api, erroMsg } from '../lib/api'
@@ -15,7 +15,7 @@ function mesAnterior(hoje: string) {
 }
 const dataHora = (s: string | null) => s ? new Date(s).toLocaleString('pt-BR', { timeZone: 'America/Bahia', dateStyle: 'short', timeStyle: 'short' }) : null
 
-export default function EspelhosMensais({ hoje, podeEmitir }: { hoje: string; podeEmitir: boolean }) {
+export default function EspelhosMensais({ hoje, podeEmitir, rhFolhas }: { hoje: string; podeEmitir: boolean; rhFolhas: boolean }) {
   const [mes, setMes] = useState(mesAnterior(hoje))
   const [lista, setLista] = useState<PontoEspelhoEmitido[] | null>(null)
   const [emitindo, setEmitindo] = useState(false)
@@ -100,7 +100,10 @@ export default function EspelhosMensais({ hoje, podeEmitir }: { hoje: string; po
                   </td>
                   {podeEmitir && <td className="whitespace-nowrap px-3 py-2 text-right">
                     {e.enviado_em && !e.assinado_em && <Button variant="ghost" size="sm" disabled={enviando} onClick={() => void enviar(e.id)} title="Reenviar o link pelo WhatsApp"><Send className="h-3.5 w-3.5" /> Reenviar</Button>}
-                    <Button variant="ghost" size="sm" onClick={() => void ver(e.id)}><Eye className="h-3.5 w-3.5" /> Ver</Button>
+                    {/* assinada: só no cofre de RH (decisão 86) */}
+                    {e.assinado_em && !rhFolhas
+                      ? <span className="inline-flex items-center gap-1 px-2 text-xs text-muted-foreground" title="A folha assinada fica no cofre de folhas assinadas, aberto só pelo RH"><Lock className="h-3.5 w-3.5" /> No cofre do RH</span>
+                      : <Button variant="ghost" size="sm" onClick={() => void ver(e.id)}><Eye className="h-3.5 w-3.5" /> Ver</Button>}
                   </td>}
                 </tr>
               ))}
