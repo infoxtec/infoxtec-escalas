@@ -68,21 +68,25 @@ afirmação de privacidade ou conformidade sem base; **PO** veta prazo sem item 
 
 ## 2. Matriz de capacidade — o que existe hoje
 
+*Atualizada em 13/10/2026 contra a produção (migration 84, painel 3.24.0). Cada linha cita onde está a prova.*
+
 Estado: **entregue** (em produção) · **homologação** (pronto, faltando produção) · **não existe**.
 
 | Módulo | O que o cliente vê | Estado | Ressalva que precisa aparecer na conversa |
 |---|---|---|---|
 | **Escalas e agenda** | Criar para um ou vários técnicos, editar, reagendar, substituir técnico, cancelar, status com semáforo, importar planilha | Entregue | — |
-| **Confirmação por WhatsApp** | Mensagem com botões "Ciente, confirmado" / "Tenho um problema" e alternativa 1/2; reenvio a cada 30 min até 3×; escalonamento ao supervisor; janela de envio 06:00–21:00 | Entregue | **Canal não oficial** (seção 4, G1) |
-| **Motivo da recusa** | Depois do "2", o técnico escolhe o motivo por número (transporte, conflito de agenda, falta de material, outro — saúde saiu na migration 49, decisão 40) e o detalhe por texto | Homologação (migration 47; PR #12) | Falta aplicar em produção |
-| **Alerta de prazo** | Às 16h o supervisor recebe a escala do dia seguinte; às 18h, o que ficou sem resposta; lista de técnicos sem escala | Entregue | — |
+| **Confirmação por WhatsApp** | Mensagem com botões "Ciente, confirmado" / "Tenho um problema" e alternativa 1/2; reenvio a cada 30 min até 3×; escalonamento ao supervisor; janela de envio 06:00–21:00 | Entregue | **O cliente escolhe o canal** (decisão 74): Evolution com aceite escrito do risco de bloqueio, ou API oficial da Meta (conector sob demanda, §3) |
+| **Motivo da recusa** | Depois do "2", o técnico escolhe o motivo por número (transporte, conflito de agenda, falta de material, outro — saúde saiu na migration 49, decisão 40) e o detalhe por texto; a resposta nunca é confundida com marcação de ponto | Entregue (migrations 47 e 84) | — |
+| **Alerta de prazo** | Às 16h (aviso) e às 18h (prazo encerrado), o supervisor recebe os técnicos sem escala para amanhã e as escalas ainda em rascunho, sem cobrar em feriado nem quem está afastado | Entregue (migrations 75 e 77) | — |
 | **Jornada CLT** | Término previsto calculado (8h + 1h de intervalo, adicional noturno, Súmula 60), conclusão automática 5 min após o término | Entregue | **Não é parecer jurídico**; a regra deve ser validada pelo RH (decisão 7) |
 | **Habilidades e aptidão** | Catálogo, nível por técnico, requisitos por tipo de atividade; aviso de quem não atende | Entregue | O aviso **não bloqueia** a escala: quem monta decide |
 | **Documentos e vencimentos** | NR, CNH e ASO com validade; arquivo em armazenamento privado com link de 2 minutos; classificação automática no envio em lote; alerta semanal de vencimento; retenção de 5 anos após o desligamento | Entregue | O expurgo dos 5 anos **não roda sozinho**; sem trilha de quem abriu; no modo Drive o controle e a retenção saem do sistema |
 | **URA de voz** | Ligação automática para quem não respondeu duas mensagens, entre 08h e 20h, no máximo 2 por escala; 1 aprova, 2 nega; botão "Ligar agora" | Entregue | Assinatura da Twilio em observação; custo por ligação atendida |
-| **Operação e indicadores** | Dia agrupado por local, percentual de aceite e de conclusão, recusas por motivo, mediana do tempo de resposta | Entregue | "% concluído" depende de alguém marcar a escala como concluída |
-| **Usuários e papéis** | `admin`, `gestor` e `leitura`, com login por e-mail e senha e sessão que expira em 30 min de inatividade | Entregue | Sem segundo fator (MFA) |
-| **Aviso de motor parado** | Aviso ao supervisor se o motor de envio parar; quadro na aba Operação | Entregue | Monitor externo (healthchecks.io) ainda não criado |
+| **Operação e indicadores** | Dia agrupado por local, percentual de aceite e de conclusão, recusas por motivo, mediana do tempo de resposta | Entregue | "% concluído" depende de alguém marcar a escala como concluída. Painel gerencial de aderência (escala e ponto) planejado (backlog 099) |
+| **Usuários e papéis** | `admin`, `gestor` e `leitura`; senha de 12+ caracteres conferida contra vazamentos conhecidos; sessão que expira em 30 min de inatividade; **verificação em duas etapas** (aplicativo autenticador) por usuário, com histórico de quem ativou e desativou | Entregue (migrations 77, 78 e 82; decisões 67, 68 e 72) | Duas etapas opcional por usuário; a pedido do cliente, ligamos a obrigatoriedade para todos |
+| **Aviso de motor parado** | Aviso ao supervisor se o motor de envio parar; quadro na aba Operação; monitor externo (healthchecks.io) a cada minuto; avisos ao supervisor com teto por minuto e só da empresa do técnico | Entregue (migrations 44, 78, 79 e 81) | — |
+| **Segurança e privacidade** | Toda regra no banco; nenhuma tabela acessível direto pela API (acesso só por funções com papel conferido); chave de serviço sem acesso a nenhuma função; revisão de segurança em toda mudança de banco; 30 testes automáticos de regressão em todo PR; cópia diária cifrada do banco com teste mensal de restauração; motivo de saúde nunca vai ao WhatsApp | Entregue (decisões 51, 56, 70; migrations 62 e 63) | Contrato de tratamento de dados ainda falta (G3) |
+| **Ponto e jornada (M3)** | App web e WhatsApp com localização; marcação imutável com NSR e cadeia de integridade; espelho; avisos da CLT (intervalo, hora extra, interjornada); ajustes e justificativas com aprovação; atestado no cofre cifrado, com registro de quem abriu e documento com QR de autenticidade; afastamento bloqueia ponto e escala | **Uso interno** na Infoxtec | **Não vender** antes do G6 (INPI e parecer REP-P) |
 
 O produto **não usa** o Roadmap/backlog interno como funcionalidade de cliente — é ferramenta de
 gestão do fornecedor e não entra em pacote.
@@ -103,12 +107,12 @@ conversa é o que separa uma venda saudável de um problema em 90 dias.
 | **Checklist e laudo pelo técnico** (backlog 1) | Sem registro de execução com foto e assinatura |
 | **Relatório/dossiê de conformidade exportável** | Hoje os dados estão no painel; não há PDF assinado para auditoria do cliente tomador |
 | **Integrações** com chamados e almoxarifado (backlog 8 e 9) | Dependem de levantamento de API que ninguém fez |
-| **Ponto e jornada (M3)** | Não iniciado, e é **programa regulado** — ver §15.2 antes de qualquer promessa |
+| **Ponto e jornada (M3) à venda** | Em uso interno na Infoxtec, mas é **programa regulado**: não vender antes do G6 (§15.2) |
+| **Conector da API oficial do WhatsApp (Meta)** | O cliente pode escolher na contratação (decisão 74), mas o conector é construído sob demanda, quando o primeiro cliente escolher |
 | **Atividades e projetos: Kanban, Gantt e Curva S (M4)** | Não existe; Curva S é domínio de PMO, com outro comprador (§15.4) |
 | **Acesso por área** (RH, Operações, gestor imediato) com módulos e escopo por equipe | Hoje só existem `admin`, `gestor` e `leitura` (§15.3) |
-| **MFA** nas contas administrativas | Item do bloco 1 de `docs/seguranca-homologacao.md` |
 | **SLA e monitoramento por cliente** | Existe alerta operacional, não contrato de disponibilidade |
-| **Trilha de leitura de documento** | Não há como responder "quem abriu o ASO" |
+| **Trilha de leitura de documento (NR, CNH, ASO)** | Existe para atestados do ponto (cofre); para os documentos de habilitação ainda não há como responder "quem abriu o ASO" |
 | **IA que sugere escala / predição** (backlog 6 e 7) | Protótipo no melhor caso; não citar |
 
 ---
@@ -120,19 +124,18 @@ volta para quem vendeu.
 
 | Portão | O que é | Fonte | Dono |
 |---|---|---|---|
-| **G1 · Canal oficial do WhatsApp** | A Evolution API usa o WhatsApp de forma não oficial e viola os termos da Meta. Para uso interno é risco aceito (decisão 33); **vendendo a terceiros, o número que pode ser bloqueado é o do cliente** | `docs/seguranca-homologacao.md` (bloqueio principal) | Responsável |
-| **G2 · Painel fora do plano gratuito** | O plano Hobby da Vercel proíbe uso comercial. Cloudflare Pages é gratuito e permite (decisão 6, decisão 29, etapa 17) | `docs/decisoes.md` | Responsável |
+| **G1 · Canal oficial do WhatsApp** | **Decidido em 13/10 (decisão 74):** o cliente escolhe na contratação — Evolution com aceite escrito do risco de bloqueio (adequado até ~20 funcionários; número trocado rapidamente) ou API oficial da Meta (conector sob demanda) | decisão 74 | Responsável |
+| **G2 · Painel fora do plano gratuito** | **Decidido em 13/10 (decisão 75):** segue na Vercel gratuita durante a validação e o uso interno; **a primeira venda exige a migração** para o Cloudflare Pages (backlog 098, aguardando aprovação), porque o plano gratuito da Vercel proíbe uso comercial | decisão 75 | Responsável |
 | **G3 · Contrato e tratamento de dados** | Ao vender, a Infoxtec passa a **operar** dados pessoais de terceiros — inclusive dado de saúde (ASO). Faltam contrato com anexo de tratamento, inventário, prazos, canal do titular e plano de incidente | `docs/seguranca-homologacao.md` (bloco 2) | Responsável + Segurança |
-| **G4 · Multi-empresa** | Decide se cada cliente é um projeto separado ou um cliente dentro do mesmo sistema (seção 5) | este documento, §5, + CTO | CTO |
+| **G4 · Multi-empresa** | Decide se cada cliente é um projeto separado ou um cliente dentro do mesmo sistema (seção 5). **Estimativa do CTO até 30/11/2026** (decisão 76) | este documento, §5, + CTO | CTO |
 | **G5 · Preço** | Publicar tabela depois da terceira conversa; antes disso, proposta sob medida | seção 7 | Responsável |
 | **G6 · Ponto é programa regulado** | **Só vale para quem vender o módulo de ponto.** Enquadramento como REP-P, registro do programa no INPI, atestado técnico e termo de responsabilidade, comprovante ao trabalhador e Arquivo Eletrônico de Dados. Decide-se **antes de desenvolver**, com jurídico e contabilidade | §15.2 + [gov.br](https://www.gov.br/participamaisbrasil/portaria-horario-trabalho) | Responsável + jurídico |
 
 O **G6 não bloqueia** a venda de M1 e M2 — ele só existe se o ponto entrar no escopo.
 
-**G1 é o caminho crítico.** A migração para a API oficial está estimada em **R$ 8 a R$ 11 por mês no
-volume atual** (decisão 3) e resolve o risco de banimento. Enquanto ela não acontece, a única forma
-honesta de vender é com o risco **escrito no contrato** e assumido pelo cliente — o que é possível,
-mas encarece a conversa e estreita o mercado.
+**G1 deixou de ser o caminho crítico** (decisão 74): o cliente escolhe o canal e, na Evolution, assina o
+aceite do risco. A API oficial custa cerca de **R$ 8 a R$ 11 por mês no volume da Infoxtec** (decisão 3)
+e entra no preço de quem escolhê-la; o conector é construído quando o primeiro cliente pedir.
 
 ---
 
@@ -392,10 +395,10 @@ onboarding da empresa cliente), **030** (validar preço e modelo com 3 clientes 
 
 ## 14. Decisões que só o responsável toma
 
-1. **Migrar para a API oficial do WhatsApp?** Se sim, em que data. É o caminho crítico de tudo.
+1. ~~**Migrar para a API oficial do WhatsApp?**~~ **Decidido em 13/10 (decisão 74):** o cliente escolhe.
 2. **Preço:** valor do mínimo mensal, do técnico ativo e da implantação; política de desconto.
-3. **Multi-empresa (B) ou uma instalação por cliente (A)?** Custo fixo contra isolamento.
-4. **Aceitar vender em piloto com o canal atual**, com o risco escrito no termo?
+3. **Multi-empresa (B) ou uma instalação por cliente (A)?** Custo fixo contra isolamento. Estimativa do CTO até 30/11 (decisão 76).
+4. ~~**Aceitar vender em piloto com o canal atual**~~ **Decidido em 13/10 (decisão 74):** sim, com o aceite do risco escrito no termo.
 5. **Plano pago do Supabase** quando o gratuito não sustentar (rompe a decisão 29).
 6. **Marca:** aprovar o nome e a identidade (seção de marca em `docs/marca.md`).
 7. **Quem atende o cliente** depois da venda — suporte, prazo de resposta e o que é gratuito.
@@ -422,7 +425,7 @@ onboarding da empresa cliente), **030** (validar preço e modelo com 3 clientes 
 
 **O que o responsável definiu (27/09):** o produto deixa de ser só escala. O RH, a área de Operações e
 o gestor imediato passam a usar **a mesma ferramenta, em módulos distintos, sobre os mesmos dados**,
-com **toda a jornada do recurso registrada**: o ponto (dev ainda não iniciado), a escala e a
+com **toda a jornada do recurso registrada**: o ponto (em uso interno na Infoxtec desde 07/10, não vendável antes do G6), a escala e a
 programação, os documentos exigidos para liberar entrada em obra, e a gestão de atividades e projetos
 (Kanban, Gantt, Curva S).
 
@@ -433,8 +436,8 @@ Isso é mudança de **identidade**, não de roadmap. As consequências, na ordem
 | Módulo | O que é | Estado |
 |---|---|---|
 | **M1 · Escala e programação** | o produto de hoje: criar, confirmar por WhatsApp, cobrar, escalonar, indicadores | **entregue** |
-| **M2 · Documentos e liberação para obra** | NR, CNH e ASO com validade, alerta de vencimento, arquivo privado, vínculo com a aptidão do técnico | **entregue, com lacunas** (expurgo sem executor, sem trilha de leitura, retenção única de 5 anos) |
-| **M3 · Ponto e jornada** | registro de ponto e apuração da jornada | **planejado em 06/10** (backlog 075–089, decisão 48): REP-P, legalização em paralelo — ver `docs/modulo-registro-de-ponto/`. **Não vender antes do INPI e do parecer** |
+| **M2 · Documentos e liberação para obra** | NR, CNH e ASO com validade, alerta de vencimento, arquivo privado, vínculo com a aptidão do técnico | **entregue, com lacunas** (expurgo sem executor, sem trilha de leitura dos documentos de habilitação, retenção única de 5 anos); dossiê por local planejado (backlog 100) |
+| **M3 · Ponto e jornada** | registro de ponto e apuração da jornada | **em uso interno na Infoxtec desde 07/10** (backlog 075–094, migrations 53 a 84): app, WhatsApp, espelho, ajustes, atestados no cofre, avisos da CLT. Legalização em paralelo — ver `docs/modulo-registro-de-ponto/`. **Não vender antes do INPI e do parecer** |
 | **M4 · Atividades e projetos** | Kanban, Gantt, Curva S, gestão de atividades | **não existe** |
 
 A boa notícia estrutural: M1 e M2 **já compartilham o mesmo modelo de dados** (técnico, local, escala,

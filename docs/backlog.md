@@ -562,6 +562,32 @@ fator. Registrar no banco quem desativou e quando (sem o código), visível ao a
 **Entrega (migration 82, painel 3.24.0):** gatilho em `auth.mfa_factors` grava ativação e desativação em
 `painel_mfa_log`; a tela Usuários mostra quem tem a verificação ativa e o histórico.
 
+## 098. Painel no Cloudflare Pages — aguardando aprovação do responsável
+
+Etapa 17 do plano e portão G2. **Decisão 75:** a validação segue na Vercel gratuita; a migração acontece
+quando houver demanda. O responsável quer conhecer o Cloudflare Pages antes de aprovar. Critério de
+aceite quando aprovado: o painel abre com login no endereço novo, roda em paralelo com a Vercel por 7 dias,
+e o `ORIGEM_PAINEL` da `documento-ocr` inclui o domínio novo.
+
+## 099. Painel gerencial de aderência da escala e do ponto — planejado (P1, comercial)
+
+Prova de valor pedida pelo responsável em 13/10: o gestor mede, por período, a aderência da escala (% de
+respostas pelo WhatsApp, % que precisou da URA, ligações atendidas, tempo de resposta) e do ponto (%
+de marcações ajustadas, dias abonados, desvios da jornada da CLT: 8 h por dia, 44 h por semana e 220 h
+por mês, com o sábado de 4 h — e o sábado sem expediente abonado por decisão interna da Infoxtec).
+Sem nome de técnico nos indicadores agregados.
+
+## 100. Dossiê de conformidade por local — planejado (P1, comercial)
+
+O que o RH entrega ao cliente tomador: para um local e uma data, a situação de ASO, NR e CNH de cada
+técnico escalado, com o vencido em destaque. Só a situação, sem abrir arquivo (LGPD); cada geração fica
+registrada.
+
+## 101. Demonstração com dados fictícios na homologação — planejado (P2, comercial)
+
+Mostrar o produto sem expor técnicos reais: um comando cria uma empresa fictícia com 10 técnicos, 5
+locais e uma semana de escalas, sem telefone real; outro comando apaga tudo.
+
 ## Plano Diretor Comercial do Trilha
 
 **Pedido em 27/09/2026.** Guarda-chuva comercial do produto, registrado no grupo `saas` do Roadmap.

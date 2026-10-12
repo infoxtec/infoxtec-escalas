@@ -861,3 +861,42 @@ lógica fica dentro de um bloco que só avisa em caso de erro (nunca barra login
 e-mail, ação e hora. **Plano B:** se uma atualização do Supabase Auth falhar por causa dele, `drop trigger
 trg_mfa_registrar on auth.mfa_factors` (`docs/operacao.md`) — perde-se só o histórico daí em diante.
 
+
+## 73. Não se envia escala sem local definido
+
+**Data:** 13/10/2026. **Decisão do responsável, sem negociação:** escala sem local definido não é
+enviada (a regra já vale desde a migration 57). A pendência P3 "confirmação de escala antiga sem local
+diz 'local a confirmar'" fica encerrada sem mudança: não gera valor.
+
+## 74. WhatsApp na venda: o cliente escolhe o canal e assume o risco (G1)
+
+**Data:** 13/10/2026. **Decisão do responsável, que assume o risco e a responsabilidade:** a venda
+oferece dois canais e **o cliente decide na contratação**: (1) **Evolution**, com aceite por escrito do
+risco de bloqueio do número — adequado a operação pequena (até cerca de 20 funcionários: poucas
+mensagens por dia, e o número bloqueado é trocado por um novo rapidamente); (2) **API oficial da Meta**,
+com o custo por conversa repassado. A Infoxtec (10 funcionários) segue na Evolution. **Estado real:** o
+conector da API oficial **ainda não existe** no produto — é construído quando o primeiro cliente
+escolher essa opção; até lá, a proposta diz "sob demanda" (`docs/plano-comercial.md` §3). Complementa a
+decisão 33 (que valia só para o uso interno).
+
+## 75. Painel segue na Vercel gratuita até haver demanda (G2)
+
+**Data:** 13/10/2026. **Decisão do responsável:** a infraestrutura e a validação seguem na Vercel
+gratuita; a migração para o Cloudflare Pages (etapa 17) acontece quando houver demanda comercial — o
+painel é estático e não depende do provedor. **A primeira venda exige a migração** (o plano gratuito da
+Vercel proíbe uso comercial). Item no backlog, **aguardando aprovação** do responsável,
+que quer conhecer a ferramenta antes de validar.
+
+## 76. Multiempresa: estimativa até 30/11/2026 (G4)
+
+**Data:** 13/10/2026. **Decisão do responsável:** o CTO entrega a estimativa da multiempresa (opção B
+do `docs/plano-comercial.md` §5, backlog 029, com o 074 como pré-requisito) até **30/11/2026**: esforço em semanas, risco de
+segurança e plano de migração. Já preparado: avisos aos supervisores por empresa (decisão 69) e o
+Checklist do cadastro sem empresa (migration 80).
+
+## 77. Ajustes de processo do Scrum Master
+
+**Data:** 13/10/2026. Depois da rodada de pacotes de 11 a 13/10: (1) no máximo **2 pacotes abertos**;
+item fora da sprint passa pelo PO; (2) **um pacote por PR**, saindo da `main` atualizada, e nunca
+force-push em branch com PR aberto; (3) script na produção **só depois de o PR aparecer "Merged"** no
+GitHub; (4) teste que depende do relógio usa stub ou fixa a hora dentro da transação.
