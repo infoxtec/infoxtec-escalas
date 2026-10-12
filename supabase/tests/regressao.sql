@@ -1464,7 +1464,7 @@ begin
   values (v_tec, v_loc, v_seg + 2, time '08:00', 'QA gerencial 2', 'confirmada', 'qa') returning id into v_e2;
   insert into notificacoes (escala_id, status_envio, enviada_em) values (v_e1, 'lida', now()), (v_e2, 'lida', now());
   insert into respostas (escala_id, wa_message_id, tipo) values (v_e1, 'QA-G1', 'confirmacao');
-  insert into ligacoes (escala_id, tecnico_id, telefone, status, digito, atendida_em) values (v_e2, v_tec, '5579999993131', 'completed', '1', now());
+  insert into ligacoes (escala_id, tecnico_id, telefone, status, digito, atendida_em) values (v_e2, v_tec, '5579999993131', 'encerrada', '1', now());
   insert into respostas (escala_id, tipo, texto_livre) values (v_e2, 'confirmacao', 'Confirmado por telefone (digitou 1)');
 
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
