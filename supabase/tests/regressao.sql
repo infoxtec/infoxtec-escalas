@@ -1361,13 +1361,16 @@ end $$;
 -- T29 jornada de mais de 4 h sem intervalo gera aviso (migration 83, CLT art. 71, §1º) ---------------------
 do $$
 declare
-  v_tec uuid := (select v::uuid from qa where k = 'tec7');
+  v_tec uuid;
   v_emp uuid := (select v::uuid from qa where k = 'emp');
-  d date := current_date - 10; j jsonb;
+  d date := current_date - 20; j jsonb;
 begin
+  -- funcionário e datas só deste teste: sem marcação nem ajuste de outro teste no mesmo dia
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste)
+  values ('QA Intervalo', '557999990929', true, true, pg_temp.cpf('929929901'), v_emp, true) returning id into v_tec;
   alter table ponto_marcacoes disable trigger user;
   insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, latitude, longitude, hash_anterior, hash)
-  select v_emp, 910000 + i, v_tec, (select cpf from tecnicos where id = v_tec), m, tp, 'app', -12.9, -38.4, 'qa', md5(random()::text)
+  select v_emp, 929000 + i, v_tec, (select cpf from tecnicos where id = v_tec), m, tp, 'app', -12.9, -38.4, 'qa', md5(random()::text)
     from (values (1, (d + time '08:00') at time zone 'America/Bahia', 'entrada'),
                  (2, (d + time '13:00') at time zone 'America/Bahia', 'saida'),       -- 5 h sem intervalo
                  (3, (d + 1 + time '08:00') at time zone 'America/Bahia', 'entrada'),
