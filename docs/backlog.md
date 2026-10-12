@@ -569,7 +569,7 @@ quando houver demanda. O responsável quer conhecer o Cloudflare Pages antes de 
 aceite quando aprovado: o painel abre com login no endereço novo, roda em paralelo com a Vercel por 7 dias,
 e o `ORIGEM_PAINEL` da `documento-ocr` inclui o domínio novo.
 
-## 099. Painel gerencial de aderência da escala e do ponto — em revisão (13/10/2026; migration 85, painel 3.25.0)
+## 099. Painel gerencial de aderência da escala e do ponto — concluído (13/10/2026; migration 85, painel 3.25.0)
 
 Prova de valor pedida pelo responsável em 13/10: o gestor mede, por período, a aderência da escala (% de
 respostas pelo WhatsApp, % que precisou da URA, ligações atendidas, tempo de resposta) e do ponto (%
@@ -577,11 +577,18 @@ de marcações ajustadas, dias abonados, desvios da jornada da CLT: 8 h por dia,
 por mês, com o sábado de 4 h — e o sábado sem expediente abonado por decisão interna da Infoxtec).
 Sem nome de técnico nos indicadores agregados.
 
-## 100. Dossiê de conformidade por local — planejado (P1, comercial)
+## 100. Dossiê de conformidade por local — em revisão (13/10/2026; migration 86, painel 3.26.0, decisão 79)
 
 O que o RH entrega ao cliente tomador: para um local e uma data, a situação de ASO, NR e CNH de cada
 técnico escalado, com o vencido em destaque. Só a situação, sem abrir arquivo (LGPD); cada geração fica
 registrada.
+
+**Entregue:** botão **Dossiê** em Locais; escolhe a data, mostra cada funcionário escalado com os
+documentos que a atividade exige e a situação **na data do serviço** (válido, vence em breve, vencido,
+sem validade, não cadastrado), apto ou pendente, e imprime (ou salva em PDF pelo navegador). Cada
+geração registrada com número. **Critério de aceite:** no local de teste, um funcionário com NR-35
+vencendo antes da data aparece pendente; o mesmo dossiê sai impresso com o número do registro.
+**Depois, se um cliente pedir:** PDF assinado e dossiê por cliente tomador (vários locais).
 
 ## 101. Demonstração com dados fictícios na homologação — planejado (P2, comercial)
 

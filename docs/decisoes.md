@@ -917,3 +917,20 @@ sem expediente** (sem nenhuma marcação) é **abonado por decisão gerencial in
 lançado desconta do esperado. Cada funcionário conta só entre a admissão e o desligamento. Contam só
 semanas inteiras já fechadas; período de até 62 dias, carregado no botão Atualizar. **Só números do conjunto:** nenhum nome de funcionário sai da
 função, e o papel leitura vê o mesmo.
+
+## 79. Dossiê de conformidade por local: situação, nunca o arquivo
+
+**Data:** 13/10/2026. **Pedido do responsável** (pacote comercial, backlog 100; migration 86, painel
+3.26.0, botão **Dossiê** em Locais). O RH entrega ao cliente tomador, para um local e uma data, cada
+funcionário escalado e a situação de cada documento que a atividade exige (`tipo_atividade_documentos`):
+**válido, vence em breve** (até `certificacao_aviso_dias`, padrão 30, depois da data), **vencido, sem
+validade ou não cadastrado**. A situação é calculada **na data do serviço**, não na de hoje: um ASO que
+vence antes da obra já aparece vencido. Funcionário com documento vencido, sem validade ou não cadastrado
+sai como **pendente**; escala sem tipo de atividade também (exigência desconhecida: "atividade não informada", nunca apto). **Só a situação:** o arquivo nunca é aberto, anexado nem citado (ASO é dado de
+saúde, LGPD art. 11), e o dossiê não traz CPF nem telefone. Entram as escalas do local na data, fora as de
+teste, canceladas, recusadas e rascunhos. **Cada geração fica registrada** em `dossie_geracoes` (quem,
+local, data, quantos funcionários, quando; só inclusão, sem update, delete nem truncate) e só o número do registro sai
+impresso — o e-mail de quem gerou não vai ao cliente. Finalidade: prestação de contas ao tomador (LGPD art.
+7º, II e IX); guarda alinhada à dos documentos trabalhistas (5 anos). Papéis admin, gestor e leitura
+(gerar só lê e registra; o responsável confirma no teste da homologação se o leitura deve entregar o dossiê). A impressão é do navegador (salvar como PDF); PDF assinado fica para quando um
+cliente pedir.

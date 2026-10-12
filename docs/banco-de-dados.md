@@ -254,6 +254,15 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 86 (13/10): dossiê de conformidade por local (backlog 100, decisão 79)
+
+- Tabela `dossie_geracoes` (email, local, data, técnicos, quando): RLS ligado sem políticas, só inclusão
+  (`fn_ponto_imutavel` em update, delete e truncate).
+- `app_dossie_local(p_local, p_data)` (admin, gestor, leitura): técnicos escalados no local e na data (fora
+  teste, cancelada, recusada e rascunho), cada um com os documentos que a atividade exige e a situação na
+  data do serviço (`valido`, `vencendo` até `certificacao_aviso_dias`, `vencido`, `sem_data`,
+  `nao_cadastrado`) e `apto` (escala sem tipo de atividade sai `sem_atividade` e nunca apta). Só a situação, sem arquivo, CPF ou telefone. Registra a geração. Teste T32.
+
 ### Migration 85 (13/10): painel gerencial de aderência (backlog 099, decisão 78)
 
 - `app_painel_gerencial(p_de, p_ate)` (admin, gestor, leitura; até 62 dias): escala (enviadas, resolvidas

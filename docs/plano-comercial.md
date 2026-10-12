@@ -364,7 +364,7 @@ opinar sobre viabilidade. Ordenados por impacto na receita.
 | # | Item | Por que o comercial precisa | Já existe no quadro? | Prioridade |
 |---|---|---|---|---|
 | 1 | **Multi-empresa** (`empresa_id`, isolamento por cliente) | Sem isso, cada cliente é uma instalação e o preço por assento não fecha (§5) | **Sim: 029** (multi-tenant) | P0 |
-| 2 | **Dossiê de conformidade** por obra, posto ou cliente tomador | É o que o RH entrega ao cliente tomador e o que a construtora mostra na fiscalização. Vende sozinho | **Parcial: 018** (histórico de auditoria exportável) e **047** (exportação de dados do cliente); o recorte por obra não existe | P0 |
+| 2 | **Dossiê de conformidade** por obra, posto ou cliente tomador | É o que o RH entrega ao cliente tomador e o que a construtora mostra na fiscalização. Vende sozinho | **Em revisão: 100** (dossiê por local e data, migration 86: situação dos documentos na data do serviço, impressão, registro de cada geração); por cliente tomador com vários locais e PDF assinado, não | P0 |
 | 3 | **RBAC com escopo por equipe** e *entitlement* por módulo | É o pedido central: RH, Operações e gestor na mesma base, cada um no seu módulo (§15.3) | **Não** — o 029 isola empresas, não áreas | P0 |
 | 4 | **Publicação em `www.infoxtec.com.br/trilha`** — `base: '/trilha/'` no Vite, `/version.json` relativo, rewrite da Vercel e Redirect URLs do Auth nos dois projetos | Sem isso o painel não abre no endereço decidido, e a recarga automática de versão falha em silêncio | **Não** | P0 |
 | 5 | **Registro de acesso a documento** (quem abriu, quando, qual) | Pergunta obrigatória em questionário de segurança de qualquer cliente médio | **Dentro do 015** — não criar item novo | P1 |
@@ -436,7 +436,7 @@ Isso é mudança de **identidade**, não de roadmap. As consequências, na ordem
 | Módulo | O que é | Estado |
 |---|---|---|
 | **M1 · Escala e programação** | o produto de hoje: criar, confirmar por WhatsApp, cobrar, escalonar, indicadores | **entregue** |
-| **M2 · Documentos e liberação para obra** | NR, CNH e ASO com validade, alerta de vencimento, arquivo privado, vínculo com a aptidão do técnico | **entregue, com lacunas** (expurgo sem executor, sem trilha de leitura dos documentos de habilitação, retenção única de 5 anos); dossiê por local planejado (backlog 100) |
+| **M2 · Documentos e liberação para obra** | NR, CNH e ASO com validade, alerta de vencimento, arquivo privado, vínculo com a aptidão do técnico | **entregue, com lacunas** (expurgo sem executor, sem trilha de leitura dos documentos de habilitação, retenção única de 5 anos); dossiê por local em revisão (backlog 100, migration 86) |
 | **M3 · Ponto e jornada** | registro de ponto e apuração da jornada | **em uso interno na Infoxtec desde 07/10** (backlog 075–094, migrations 53 a 84): app, WhatsApp, espelho, ajustes, atestados no cofre, avisos da CLT. Legalização em paralelo — ver `docs/modulo-registro-de-ponto/`. **Não vender antes do INPI e do parecer** |
 | **M4 · Atividades e projetos** | Kanban, Gantt, Curva S, gestão de atividades | **não existe** |
 

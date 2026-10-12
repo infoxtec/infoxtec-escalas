@@ -32,6 +32,7 @@
 -- T29 jornada de mais de 4 h e até 6 h sem intervalo gera aviso (CLT art. 71, §1º)
 -- T30 palavra e número do ponto não são capturados enquanto o técnico explica uma recusa de escala
 -- T31 painel gerencial: semanas acima de 44 h, sábado sem expediente abonado, escala por WhatsApp e URA
+-- T32 dossiê de conformidade por local: documento vencido na data do serviço, vencendo, não cadastrado
 
 \set ON_ERROR_STOP on
 begin;
@@ -1494,7 +1495,74 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T31' as resultado,
+-- T32 dossiê de conformidade por local (migration 86, backlog 100) -----------------------------------------
+-- A atividade exige dois documentos. O 1º técnico tem um vencido na data do serviço (não apto); o 2º tem um
+-- válido e um que vence em até 30 dias (apto, com aviso); o 3º, sem atividade na escala, fica pendente.
+-- Escala cancelada e de outro local ficam de fora.
+do $$
+declare
+  v_loc uuid := (select v::uuid from qa where k = 'loc');
+  v_dia date := current_date + 10;
+  v_ta uuid; v_d1 uuid; v_d2 uuid; v_t1 uuid; v_t2 uuid; v_t3 uuid; v_t4 uuid; v_loc2 uuid; r jsonb; v_ok boolean;
+begin
+  insert into tipos_atividade (nome) values ('QA Dossiê altura') returning id into v_ta;
+  insert into tipos_documento (nome, ordem) values ('QA NR-35', 1) returning id into v_d1;
+  insert into tipos_documento (nome, ordem) values ('QA ASO', 2) returning id into v_d2;
+  insert into tipo_atividade_documentos (tipo_id, tipo_documento_id) values (v_ta, v_d1), (v_ta, v_d2);
+  insert into locais (nome, cliente, cidade) values ('QA Dossiê outro local', 'QA', 'Aracaju') returning id into v_loc2;
+
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in) values ('QA Dossiê Um', '5579999993201', true, true) returning id into v_t1;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in) values ('QA Dossiê Dois', '5579999993202', true, true) returning id into v_t2;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in) values ('QA Dossiê Três', '5579999993203', true, true) returning id into v_t3;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in) values ('QA Dossiê Quatro', '5579999993204', true, true) returning id into v_t4;
+  insert into tecnico_documentos (tecnico_id, tipo_documento_id, validade) values
+    (v_t1, v_d1, v_dia - 1), (v_t1, v_d2, v_dia + 400),
+    (v_t2, v_d1, v_dia + 400), (v_t2, v_d2, v_dia + 20);
+
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por, tipo_atividade_id) values
+    (v_t1, v_loc, v_dia, time '07:00', 'QA dossiê', 'agendada', 'qa', v_ta),
+    (v_t2, v_loc, v_dia, time '08:00', 'QA dossiê', 'confirmada', 'qa', v_ta),
+    (v_t3, v_loc, v_dia, time '09:00', 'QA dossiê', 'cancelada', 'qa', v_ta),
+    (v_t3, v_loc2, v_dia, time '09:00', 'QA dossiê', 'agendada', 'qa', v_ta),
+    (v_t4, v_loc, v_dia, time '10:00', 'QA dossiê', 'agendada', 'qa', null);
+
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  r := app_dossie_local(v_loc, v_dia);
+  perform pg_temp.ok(not (r->'tecnicos')::text like '%QA Dossiê Três%', '[T32] escala cancelada ou de outro local entrou: ' || r::text);
+  perform pg_temp.ok(exists (select 1 from jsonb_array_elements(r->'tecnicos') t
+                              where t->>'tecnico' = 'QA Dossiê Um' and not (t->>'apto')::boolean
+                                and t->'documentos' @> '[{"documento":"QA NR-35","situacao":"vencido"}]'
+                                and t->'documentos' @> '[{"documento":"QA ASO","situacao":"valido"}]'),
+                     '[T32] vencido na data do serviço não barrou: ' || r::text);
+  perform pg_temp.ok(exists (select 1 from jsonb_array_elements(r->'tecnicos') t
+                              where t->>'tecnico' = 'QA Dossiê Dois' and (t->>'apto')::boolean
+                                and t->'documentos' @> '[{"documento":"QA ASO","situacao":"vencendo"}]'),
+                     '[T32] documento vencendo: ' || r::text);
+  -- escala sem tipo de atividade: exigência desconhecida, nunca apto
+  perform pg_temp.ok(exists (select 1 from jsonb_array_elements(r->'tecnicos') t
+                              where t->>'tecnico' = 'QA Dossiê Quatro' and not (t->>'apto')::boolean and (t->>'sem_atividade')::boolean),
+                     '[T32] escala sem atividade saiu apta: ' || r::text);
+  perform pg_temp.ok(exists (select 1 from dossie_geracoes g where g.id = (r->>'registro')::bigint
+                              and g.email = 'qa-admin@teste.local' and g.local_id = v_loc and g.tecnicos = 3),
+                     '[T32] geração não registrada');
+  -- sem documento cadastrado o técnico não está apto
+  delete from tecnico_documentos where tecnico_id = v_t2 and tipo_documento_id = v_d1;
+  r := app_dossie_local(v_loc, v_dia);
+  perform pg_temp.ok(exists (select 1 from jsonb_array_elements(r->'tecnicos') t
+                              where t->>'tecnico' = 'QA Dossiê Dois' and not (t->>'apto')::boolean
+                                and t->'documentos' @> '[{"documento":"QA NR-35","situacao":"nao_cadastrado"}]'),
+                     '[T32] documento não cadastrado: ' || r::text);
+  -- o papel leitura gera o dossiê; sem sessão do painel é barrado
+  perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
+  perform pg_temp.ok(app_dossie_local(v_loc, v_dia) is not null, '[T32] leitura barrado');
+  perform set_config('request.jwt.claims', '', true);
+  v_ok := false;
+  begin perform app_dossie_local(v_loc, v_dia); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T32] dossiê sem sessão');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T32' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
