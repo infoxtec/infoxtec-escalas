@@ -29,6 +29,7 @@
 -- T26 Checklist aponta supervisor ou técnico sem empresa; alerta de documentos aceita domingo (7)
 -- T27 monitor_ping_url só aceita https://hc-ping.com/<uuid> ou vazio
 -- T28 quem ativou e desativou a verificação em duas etapas fica registrado; o admin vê
+-- T29 jornada de mais de 4 h e até 6 h sem intervalo gera aviso (CLT art. 71, §1º)
 
 \set ON_ERROR_STOP on
 begin;
@@ -1357,7 +1358,39 @@ begin
                      and r->'historico' @> '[{"email":"qa-mfa@teste.local","acao":"desativou"}]', '[T28] tela não reflete a desativação');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T28' as resultado,
+-- T29 jornada de mais de 4 h sem intervalo gera aviso (migration 83, CLT art. 71, §1º) ---------------------
+do $$
+declare
+  v_tec uuid := (select v::uuid from qa where k = 'tec7');
+  v_emp uuid := (select v::uuid from qa where k = 'emp');
+  d date := current_date - 10; j jsonb;
+begin
+  alter table ponto_marcacoes disable trigger user;
+  insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, latitude, longitude, hash_anterior, hash)
+  select v_emp, 910000 + i, v_tec, (select cpf from tecnicos where id = v_tec), m, tp, 'app', -12.9, -38.4, 'qa', md5(random()::text)
+    from (values (1, (d + time '08:00') at time zone 'America/Bahia', 'entrada'),
+                 (2, (d + time '13:00') at time zone 'America/Bahia', 'saida'),       -- 5 h sem intervalo
+                 (3, (d + 1 + time '08:00') at time zone 'America/Bahia', 'entrada'),
+                 (4, (d + 1 + time '12:00') at time zone 'America/Bahia', 'saida'),   -- 4 h: não exige
+                 (5, (d + 2 + time '08:00') at time zone 'America/Bahia', 'entrada'),
+                 (6, (d + 2 + time '10:00') at time zone 'America/Bahia', 'saida_almoco'),
+                 (7, (d + 2 + time '10:10') at time zone 'America/Bahia', 'volta_almoco'),
+                 (8, (d + 2 + time '13:10') at time zone 'America/Bahia', 'saida'),    -- 5 h com 10 min: curto
+                 (9, (d + 3 + time '08:00') at time zone 'America/Bahia', 'entrada'),
+                 (10, (d + 3 + time '12:01') at time zone 'America/Bahia', 'saida')    -- 4 h 01 sem intervalo
+         ) v(i, m, tp);
+  alter table ponto_marcacoes enable trigger user;
+  j := fn_ponto_jornada_dia(v_tec, d);
+  perform pg_temp.ok(j->'alertas' ? 'sem_intervalo', '[T29] 5 h sem intervalo sem aviso: ' || j::text);
+  j := fn_ponto_jornada_dia(v_tec, d + 1);
+  perform pg_temp.ok(not (j->'alertas' ? 'sem_intervalo'), '[T29] 4 h sem intervalo com aviso: ' || j::text);
+  j := fn_ponto_jornada_dia(v_tec, d + 2);
+  perform pg_temp.ok(j->'alertas' ? 'intervalo_curto', '[T29] 5 h com 10 min de intervalo sem aviso: ' || j::text);
+  j := fn_ponto_jornada_dia(v_tec, d + 3);
+  perform pg_temp.ok(j->'alertas' ? 'sem_intervalo', '[T29] 4 h 01 sem intervalo sem aviso: ' || j::text);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T29' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

@@ -254,6 +254,16 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 83 (13/10): intervalo de 15 minutos acima de 4 h (CLT art. 71, §1º)
+
+- `fn_ponto_jornada_dia`: `sem_intervalo` vale para jornada efetiva (com hora extra) acima de 4 h; antes,
+  só trabalho normal acima de 6 h. O cálculo é refeito a cada consulta: dias antigos de 4 a 6 h sem
+  intervalo passam a aparecer com o alerta no espelho. Empresa com pré-assinalação do intervalo (CLT art.
+  74, §2º) teria alerta falso: decidir com o responsável quando houver.
+- `fn_ponto_avisar`: os avisos de intervalo ausente e curto dizem o mínimo certo — 15 minutos (mais de 4 h)
+  ou 1 hora (mais de 6 h).
+  Teste T29.
+
 ### Migration 82 (13/10): registro das duas etapas (backlog 097, decisão 68)
 
 - `painel_mfa_log` (só inclusão): e-mail, `ativou` ou `desativou`, hora. Gravado por `fn_mfa_registrar`,

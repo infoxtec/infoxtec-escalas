@@ -548,14 +548,14 @@ Diagnóstico do DeepSeek, itens 1 e 2. Teto de 5 escalas avisadas por minuto na 
 Checklist apontando cadastro sem empresa (migration 80). **Antes do 2º cliente:** cadastrar a empresa de
 todo supervisor e técnico — o Checklist vira falha com duas empresas ativas.
 
-## 096. Endurecimento: pendências baixas da revisão do PR #3 — em revisão (13/10/2026)
+## 096. Endurecimento: pendências baixas da revisão do PR #3 — ENTREGUE (13/10/2026, produção)
 
 `monitor_ping_url` só `https://hc-ping.com/<uuid>` (migration 81); corpo do `webhook-evolution` lido em
 fluxo com teto de 5 MB, com ou sem `content-length` (o 411 pedido derrubaria a Evolution se ela enviar em
 partes); CORS da `documento-ocr` só dos domínios do painel; decisão 70 (cópia cifrada do banco no GitHub,
 tratamento LGPD).
 
-## 097. Registro de auditoria ao desativar as duas etapas — em revisão (13/10/2026)
+## 097. Registro de auditoria ao desativar as duas etapas — ENTREGUE (13/10/2026, produção)
 
 Achado P3 do `seguranca` na migration 78: hoje só o log de autenticação do Supabase registra a remoção do
 fator. Registrar no banco quem desativou e quando (sem o código), visível ao administrador.
