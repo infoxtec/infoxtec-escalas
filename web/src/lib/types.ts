@@ -432,3 +432,15 @@ export interface DossieLocal {
 
 /** AFD do REP-P, versão de conferência (migration 87, backlog 085): texto ISO 8859-1 com CR LF. */
 export interface PontoAfd { nome: string; conteudo: string; marcacoes: number; sha256: string; conferencia: boolean; aviso: string }
+
+/** Espelho mensal congelado (migration 88, decisão 82). */
+export interface PontoEspelhoEmitido {
+  id: string; tecnico_id: string; tecnico: string; empresa: string; versao: number; registro: number; codigo: string
+  emitido_em: string; enviado_em: string | null; assinado_em: string | null
+}
+/** Conferência pública do QR: sem dado pessoal. */
+export interface ConferenciaEspelho {
+  encontrado: boolean; registro?: number; versao?: number; empresa?: string; cnpj?: string; competencia?: string
+  emitido_em?: string; substituido?: boolean; integro?: boolean; assinado_em?: string | null
+  assinatura_integra?: boolean | null; sha256?: string
+}

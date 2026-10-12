@@ -973,3 +973,27 @@ protegido e apagar depois do uso. **Desempenho:** o hash encadeia desde a primei
 cresce com a história: 4,2 s com 100 mil marcações (homologação, 13/10), dentro do limite de 8 s das chamadas
 do painel. Antes de um cliente passar de uns 50 mil registros, guardar o hash do AFD por marcação ou um ponto
 de controle (item no plano).
+
+## 82. Espelho de ponto mensal com QR público e assinatura do funcionário
+
+**Data:** 13/10/2026. **Pedido e decisões do responsável:** o documento do ponto vai ao funcionário pelo
+WhatsApp, com hash auditável em QR, e ele assina. Documento: **o espelho mensal** (Portaria 671, Art. 84).
+Assinatura: **desenho com o dedo e ciência** no app do ponto, já logado pelo CPF e código (assinatura
+eletrônica simples, Lei 14.063, art. 4º, I; vale como ciência do funcionário). QR: **conferência pública sem
+dado pessoal**. **Parte A (migration 88, painel 3.28.0):** o gestor emite o espelho de um mês encerrado; o
+conteúdo fica congelado com SHA-256, número de registro por empresa sem lacuna e código de 80 bits.
+Reemissão gera nova versão e marca a anterior como substituída; espelho assinado não é reemitido. O QR leva
+a `/v?c=código`, que qualquer pessoa abre sem login (o fiscal, um juiz, o próprio funcionário) e que mostra
+só registro, empresa, mês, emissão, integridade e se foi assinado — nunca nome, CPF ou horário. Diferente do
+cofre (decisão 62, conferência só com login), porque aqui o documento não tem dado de saúde e a conferência
+não revela nada além do que a cópia em mãos já mostra. A função pública é da família `ponto_*`
+(executável por `anon`) e entra na lista de exceções à sessão do CI, como `ponto_entrar`. **Limite assumido:**
+o hash fica no mesmo banco (como na decisão 62): prova contra alteração fora do sistema, não contra quem o
+administra. **Revisão do `seguranca` (aplicada):** o hash é dos bytes exatos guardados em `conteudo_texto`
+(forma canônica gravada na emissão, que não depende da versão do Postgres); marcações desconsideradas entram
+com a hora da marcação desfeita (Art. 84, V); espelho assinado não é substituído (gatilho, trava na emissão e
+uma só versão vigente por mês); assinatura entra inteira ou não entra. **Guarda:** obrigação legal (LGPD art.
+7º, II), 5 anos como o resto do ponto; o descarte, quando houver executor, passa por migration própria.
+**Requisito da parte B:** o hash da assinatura amarra a versão assinada (SHA-256 do hash do espelho com o PNG,
+a hora e a origem), para a assinatura não poder ser transplantada. **Parte B:** envio do link pelo WhatsApp, tela do espelho no app do funcionário, desenho da
+assinatura, registro de quando e de qual aparelho, e o espelho assinado para baixar em PDF com o QR.

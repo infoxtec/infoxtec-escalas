@@ -254,6 +254,21 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 88 (13/10): espelho de ponto mensal com registro e QR (decisão 82, parte A)
+
+- Tabela `ponto_espelhos`: cópia congelada do espelho de um funcionário num mês (`conteudo` jsonb, Portaria
+  671 Art. 84), `sha256`, `registro` por empresa sem lacuna (`ponto_espelho_sequencia`), `codigo` de
+  verificação (80 bits, `fn_ponto_codigo_verificacao`), versão e substituição; colunas de envio e assinatura
+  para a parte B. Conteúdo imutável; envio, substituição e assinatura gravados uma vez só
+  (`fn_ponto_espelho_imutavel`); sem delete nem truncate. RLS sem políticas.
+- `fn_ponto_espelho_conteudo(tecnico, mes)`: empregador, trabalhador (nome, CPF, admissão, função), jornada
+  contratual, dias (`fn_ponto_jornada_dia`), marcações tratadas (ajustes com motivo, sem o e-mail de quem
+  tratou) e totais.
+- `app_ponto_emitir_espelhos(p_competencia, p_tecnico)` (admin, gestor): só mês encerrado; não reemite
+  assinado; reemissão igual não cria versão. `app_ponto_espelhos(p_competencia)` (admin, gestor, leitura).
+- `ponto_verificar_espelho(p_codigo)`: conferência pública do QR (anon, sem sessão — exceção no CI), devolve
+  só registro, empresa, CNPJ, mês, emissão, integridade e assinatura; nenhum nome, CPF ou horário. Teste T35.
+
 ### Migration 87 (13/10): AFD do REP-P, versão de conferência (backlog 085, decisão 81)
 
 - `app_ponto_afd(p_empresa, p_de, p_ate)` (só admin): texto do AFD no leiaute do Anexo V da Portaria 671 —
