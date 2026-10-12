@@ -26,6 +26,7 @@
 -- T23 feriado não exige escala; MFA obrigatório barra sessão sem o código (aal1) e libera com ele (aal2)
 -- T24 motor: no máximo 5 escalas avisadas aos supervisores por execução; o resto na seguinte
 -- T25 avisos aos supervisores só da empresa do técnico (função comum e motor)
+-- T26 Checklist aponta supervisor ou técnico sem empresa; alerta de documentos aceita domingo (7)
 
 \set ON_ERROR_STOP on
 begin;
@@ -1257,11 +1258,8 @@ begin
   insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste) values
     ('QA Tecnico Beta', '5579999990012', true, true, pg_temp.cpf('700000012'), v_emp2, false) returning id into v_b;
 
-  -- documentos vencidos dos dois. No domingo não dá: a config aceita 0 a 6 e o alerta compara com o dia
-  -- ISO (1 a 7), então o alerta de documentos nunca sai no domingo (inconsistência anterior, no backlog)
-  if extract(isodow from v_agora) = 7 then
-    raise notice 'T25b: domingo; alerta de documentos por empresa não conferido';
-  else
+  -- documentos vencidos dos dois (domingo = 7, aceito desde a migration 80)
+  begin
     insert into tipos_documento (nome) values ('QA NR-35') returning id into v_tipo;
     insert into tecnico_documentos (tecnico_id, tipo_documento_id, validade) values
       (v_a, v_tipo, v_agora::date - 1), (v_b, v_tipo, v_agora::date - 1);
@@ -1274,7 +1272,7 @@ begin
     perform pg_temp.ok(v_txt not like '%QA Tecnico Alfa%', '[T25b] documentos: supervisor B recebeu técnico de outra empresa');
     v_txt := (select v from qa where k = 'txt:5579999990001');
     perform pg_temp.ok(v_txt like '%QA Tecnico Alfa%' and v_txt not like '%QA Tecnico Beta%', '[T25b] documentos: supervisor A errado');
-  end if;
+  end;
 
   -- escala de amanhã: os dois sem escala
   if exists (select 1 from feriados where data = v_agora::date + 1) then
@@ -1294,7 +1292,30 @@ begin
   perform pg_temp.ok(v_txt like '%QA Tecnico Alfa%' and v_txt like '%QA Tecnico Beta%', '[T25b] escala: supervisor sem empresa não recebeu as duas');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T25' as resultado,
+-- T26 Checklist aponta cadastro sem empresa; alerta de documentos aceita domingo (migration 80) ------------
+do $$
+declare r jsonb; x jsonb; v_ok boolean;
+begin
+  -- o T25 deixou duas empresas ativas e um supervisor sem empresa (de teste, mas recebe avisos): é falha
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  r := app_checklist_saude();
+  select e into x from jsonb_array_elements(r->'itens') e where e->>'item' = 'Supervisores e técnicos sem empresa';
+  perform pg_temp.ok(x->>'estado' = 'falha' and x->>'grupo' = 'Erros em tabelas', '[T26] Checklist sem o cadastro sem empresa: ' || coalesce(x::text, 'null'));
+
+  update config set valor = '7' where chave = 'alerta_certificacoes_dow';
+  update config set valor = '0' where chave = 'alerta_certificacoes_dow';
+  v_ok := false;
+  begin update config set valor = '8' where chave = 'alerta_certificacoes_dow';
+  exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T26] alerta de documentos aceitou dia 8');
+  v_ok := false;
+  begin update config set valor = '07' where chave = 'alerta_certificacoes_dow';
+  exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T26] alerta de documentos aceitou 07 (nunca dispararia)');
+  update config set valor = '1' where chave = 'alerta_certificacoes_dow';
+end $$;
+
+select 'REGRESSÃO OK: T1 a T26' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
