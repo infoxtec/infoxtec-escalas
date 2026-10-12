@@ -254,6 +254,13 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 80 (13/10): pendências das migrations 78 e 79
+
+- Checklist Sistema, "Erros em tabelas" › "Supervisores e técnicos sem empresa": falha com mais de uma
+  empresa ativa (supervisor sem empresa recebe avisos de todas, decisão 69); com uma, só informa.
+- `fn_validar_config`: `alerta_certificacoes_dow` aceita 0 a 7 (0 desliga; 7 = domingo). Antes ia só até 6,
+  e o domingo era impossível. Teste T26.
+
 ### Migration 79 (12/10): avisos aos supervisores por empresa (decisão 69)
 
 - `fn_avisar_supervisores(p_texto, p_exceto, p_empresa)`: só supervisores da empresa (`p_empresa` ou a do
@@ -544,7 +551,7 @@ Jornada: `jornada_min` (480), `intervalo_min` (60), `intervalo_apos_min` (240),
 `noturno_inicio` (22:00), `noturno_fim` (05:00), `hora_noturna_min` (52.5).
 
 Habilidades: `certificacao_aviso_dias` (30), `alerta_certificacoes_hora` (08:00),
-`alerta_certificacoes_dow` (1 = segunda; 0 desliga o alerta).
+`alerta_certificacoes_dow` (1 = segunda a 7 = domingo; 0 desliga o alerta).
 
 Prazo: `alerta_escala_aviso` (16:00), `alerta_escala_prazo` (18:00),
 `alerta_dias_semana` (1,2,3,4,5), `sem_escala_incluir_supervisores` (false).
