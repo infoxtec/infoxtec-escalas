@@ -65,6 +65,48 @@ export function MfaVerificar({ onOk }: { onOk: () => void }) {
   )
 }
 
+// Desliga a verificação do próprio usuário (opcional por pessoa enquanto mfa_obrigatorio = 'false', decisão 68).
+// Pede um código atual antes de remover: sessão aberta e esquecida não basta para tirar a segunda etapa.
+export function MfaDesativar({ onOk, onCancelar }: { onOk: () => void; onCancelar: () => void }) {
+  const [codigo, setCodigo] = useState('')
+  const [erro, setErro] = useState<string | null>(null)
+  const [ocupado, setOcupado] = useState(false)
+  const desativar = async () => {
+    setOcupado(true); setErro(null)
+    try {
+      const { data, error: eLista } = await supabase.auth.mfa.listFactors()
+      if (eLista) throw eLista
+      const fator = data?.totp[0]
+      if (!fator) throw new Error('Nenhum aplicativo autenticador cadastrado.')
+      const { error: eCodigo } = await supabase.auth.mfa.challengeAndVerify({ factorId: fator.id, code: codigo })
+      if (eCodigo) throw new Error('Código inválido ou vencido. Confira o relógio do celular e tente o código novo.')
+      for (const f of data?.all ?? []) {
+        const { error } = await supabase.auth.mfa.unenroll({ factorId: f.id })
+        if (error) throw error
+      }
+      const { error: eSessao } = await supabase.auth.refreshSession()
+      if (eSessao) throw eSessao
+      onOk()
+    } catch (e) { setErro(erroMsg(e)); setCodigo('') } finally { setOcupado(false) }
+  }
+  return (
+    <div className="flex min-h-screen items-center justify-center p-6">
+      <div className="w-full max-w-sm space-y-4 rounded-lg border bg-card p-6">
+        <p className="flex items-center gap-2 font-semibold"><ShieldCheck className="h-5 w-5 text-green-700" /> Desativar duas etapas</p>
+        <p className="text-sm text-muted-foreground">O login volta a pedir só a senha. Para confirmar, digite o código atual do aplicativo autenticador.</p>
+        <Codigo valor={codigo} onChange={setCodigo} onEnter={() => void desativar()} />
+        {erro && <ErrorBox>{erro}</ErrorBox>}
+        <div className="flex gap-2">
+          <Button variant="destructive" className="flex-1" disabled={codigo.length !== 6 || ocupado} onClick={() => void desativar()}>
+            {ocupado && <Loader2 className="h-4 w-4 animate-spin" />} Desativar
+          </Button>
+          <Button variant="outline" onClick={onCancelar}>Manter ativa</Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function MfaCadastrar({ obrigatorio, onOk, onCancelar }: { obrigatorio: boolean; onOk: () => void; onCancelar?: () => void }) {
   const [fator, setFator] = useState<{ id: string; qr: string; segredo: string } | null>(null)
   const [codigo, setCodigo] = useState('')

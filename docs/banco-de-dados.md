@@ -254,6 +254,13 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 78 (12/10): teto nos avisos aos supervisores (decisão 68)
+
+- `config.supervisor_avisos_por_execucao` (5): a fase 3 de `fn_dispatcher_whatsapp` avisa no máximo
+  esse número de escalas por execução, das mais antigas para as mais novas; as demais ficam para a
+  execução seguinte (só a escala avisada ganha `supervisor_avisado_em`; escala que falha não ocupa o
+  teto). Conta escalas: o pico é 5 × supervisores ativos por minuto. Teste T24.
+
 ### Migration 77 (11/10): feriado e afastado fora da cobrança; MFA (decisões 65 e 67)
 
 - `fn_pendencias_escala`: feriado não exige escala; técnico afastado no dia não conta como sem escala;

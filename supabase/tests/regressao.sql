@@ -24,6 +24,7 @@
 -- T21 véspera de feriado: o alerta da escala de amanhã não sai
 -- T22 limpeza da estrutura: objetos sem chamador removidos; Checklist aponta tarefa obrigatória faltando
 -- T23 feriado não exige escala; MFA obrigatório barra sessão sem o código (aal1) e libera com ele (aal2)
+-- T24 motor: no máximo 5 escalas avisadas aos supervisores por execução; o resto na seguinte
 
 \set ON_ERROR_STOP on
 begin;
@@ -1150,7 +1151,43 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T23' as resultado,
+-- T24 teto dos avisos aos supervisores (migration 78) -----------------------------------------------------
+-- 8 escalas esgotaram as tentativas ao mesmo tempo: a 1ª execução do motor avisa só 5 (o teto), a 2ª o resto.
+-- O envio de verdade (fn_evo_post) vira um stub nesta transação, que é desfeita no fim.
+create or replace function fn_evo_post(p_path text, p_body jsonb) returns bigint language sql as $$ select 0::bigint $$;
+do $$
+declare
+  v_tec uuid := (select v::uuid from qa where k = 'tec2');
+  v_loc uuid := (select v::uuid from qa where k = 'loc');
+  v_ids uuid[] := '{}'; v_id uuid; v_n int;
+begin
+  if (now() at time zone 'America/Bahia')::time >= time '23:59' then
+    raise notice 'T24: 23:59 local, janela de envio não cobre o minuto; teste pulado';
+    return;
+  end if;
+  update config set valor = 'America/Bahia' where chave = 'fuso';
+  update config set valor = '00:00' where chave = 'janela_envio_inicio';
+  update config set valor = '23:59' where chave = 'janela_envio_fim';
+  update config set valor = '5' where chave = 'supervisor_avisos_por_execucao';
+  for i in 0..7 loop
+    insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+    values (v_tec, v_loc, date '2031-03-03' + i, time '09:00', 'QA teto supervisor', 'notificada', 'qa')
+    returning id into v_id;
+    insert into notificacoes (escala_id, tipo, tentativa, template_nome, status_envio, enviada_em)
+    values (v_id, 'lembrete', fn_config_int('max_tentativas'), 'texto_evolution', 'falha', now() - interval '2 hours');
+    v_ids := v_ids || v_id;
+  end loop;
+  -- na homologação pode haver escala antiga esperando aviso: fora da conta (a transação é desfeita)
+  update escalas set supervisor_avisado_em = now() where supervisor_avisado_em is null and not (id = any(v_ids));
+  perform fn_dispatcher_whatsapp();
+  select count(*) into v_n from escalas where id = any(v_ids) and supervisor_avisado_em is not null;
+  perform pg_temp.ok(v_n = 5, '[T24] 1ª execução avisou ' || v_n || ' escalas (teto 5)');
+  perform fn_dispatcher_whatsapp();
+  select count(*) into v_n from escalas where id = any(v_ids) and supervisor_avisado_em is not null;
+  perform pg_temp.ok(v_n = 8, '[T24] 2ª execução deixou escala sem aviso: ' || v_n || ' de 8');
+end $$;
+
+select 'REGRESSÃO OK: T1 a T24' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

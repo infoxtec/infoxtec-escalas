@@ -496,7 +496,9 @@ Na restauração, antes de abrir documentos, recriar o segredo com o mesmo valor
 
 ## Verificação em duas etapas (MFA) — decisão 67
 
-Cada usuário ativa pelo botão **Ativar duas etapas** no topo do painel (QR no aplicativo autenticador).
+Cada usuário ativa pelo botão **Ativar duas etapas** no topo do painel (QR no aplicativo autenticador)
+e pode desativar pelo mesmo lugar (**Duas etapas ativas**), enquanto a obrigatoriedade estiver desligada
+(decisão 68).
 Com todos cadastrados, o responsável liga a obrigatoriedade:
 
 ```sql

@@ -23,7 +23,7 @@ import RoadmapPage from './pages/RoadmapPage'
 import AdminPage from './pages/AdminPage'
 import EmpresasPage from './pages/EmpresasPage'
 import Verificacao from './components/Verificacao'
-import { MfaCadastrar, MfaVerificar, estadoMfa } from './components/Mfa'
+import { MfaCadastrar, MfaDesativar, MfaVerificar, estadoMfa } from './components/Mfa'
 import type { EstadoMfa } from './components/Mfa'
 
 type Aba = 'inicio' | 'empresas' | 'agenda' | 'operacao' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios' | 'roadmap' | 'admin'
@@ -97,6 +97,7 @@ function Painel({ email }: { email: string }) {
   // verificação em duas etapas (decisão 67): código pendente nesta sessão ou cadastro obrigatório
   const [mfa, setMfa] = useState<{ estado: EstadoMfa; temFator: boolean } | null>(null)
   const [cadastrandoMfa, setCadastrandoMfa] = useState(false)
+  const [desativandoMfa, setDesativandoMfa] = useState(false)
   const conferirMfa = useCallback(async (a: Acesso) => {
     const m = await estadoMfa(!!a.mfa_obrigatorio)
     setMfa(m)
@@ -125,9 +126,10 @@ function Painel({ email }: { email: string }) {
   }
 
   if (!mfa) return <Centro><Loader2 className="h-5 w-5 animate-spin" /></Centro>
-  const mfaPronto = () => { setCadastrandoMfa(false); void conferirMfa(acesso) }
+  const mfaPronto = () => { setCadastrandoMfa(false); setDesativandoMfa(false); void conferirMfa(acesso) }
   if (mfa.estado === 'verificar') return <MfaVerificar onOk={mfaPronto} />
   if (mfa.estado === 'cadastrar') return <MfaCadastrar obrigatorio onOk={mfaPronto} />
+  if (desativandoMfa) return <MfaDesativar onOk={mfaPronto} onCancelar={() => setDesativandoMfa(false)} />
   if (cadastrandoMfa) return <MfaCadastrar obrigatorio={false} onOk={mfaPronto} onCancelar={() => setCadastrandoMfa(false)} />
 
   const papel = acesso.papel
@@ -175,6 +177,12 @@ function Painel({ email }: { email: string }) {
           {!mfa.temFator && (
             <Button variant="ghost" size="sm" onClick={() => setCadastrandoMfa(true)} title="Ativar a verificação em duas etapas (código do celular)">
               <KeyRound className="h-4 w-4 text-amber-600" /> <span className="hidden sm:inline">Ativar duas etapas</span>
+            </Button>
+          )}
+          {mfa.temFator && !acesso.mfa_obrigatorio && (
+            <Button variant="ghost" size="sm" title="Duas etapas ativas. Clique para desativar"
+              onClick={() => setDesativandoMfa(true)}>
+              <ShieldCheck className="h-4 w-4 text-green-700" /> <span className="hidden sm:inline">Duas etapas ativas</span>
             </Button>
           )}
           <Button variant="ghost" size="icon" onClick={sair} aria-label="Sair" title="Sair"><LogOut className="h-4 w-4" /></Button>
