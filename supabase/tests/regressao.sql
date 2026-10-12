@@ -1087,6 +1087,8 @@ begin
 end $$;
 
 -- T21 alerta da escala de amanhã na véspera de feriado (migration 75, decisão 65) --------------------------
+-- o envio é stub nesta transação: entre 0h e 2h locais o aviso sai de verdade, e o CI não tem a Evolution
+create or replace function fn_wa_texto(p_telefone text, p_texto text) returns bigint language sql as $$ select 0::bigint $$;
 do $$
 declare v_amanha date := (now() at time zone fn_config('fuso'))::date + 1;
 begin
