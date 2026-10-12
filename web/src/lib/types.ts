@@ -401,3 +401,20 @@ export type PontoVerificacao = { encontrado: false } | {
   periodo: string; recebido_em: string; canal: string; status: string; decidido_por: string | null
   decidido_em: string | null; sha256: string; integro: boolean | null; descartado: boolean; descartado_em: string | null
 }
+
+/** Painel gerencial de aderência (migration 85, backlog 099): só números agregados, sem nome. */
+export interface PainelGerencial {
+  de: string; ate: string; apurado_ate: string
+  escala: {
+    enviadas: number; respondidas_whatsapp: number; respondidas_ura: number; sem_resposta: number
+    precisaram_ura: number; confirmadas: number; recusadas: number; mediana_resposta_min: number | null
+    ligacoes: number; ligacoes_atendidas: number
+  }
+  ponto: {
+    funcionarios: number; dias_apurados: number; dias_trabalhados: number; marcacoes: number; ajustes: number
+    dias_abonados: number; minutos_abonados: number; minutos_hora_extra: number; saldo_min: number
+    alertas: Record<string, number>; semanas: number; semanas_acima_44h: number; semanas_abaixo_esperado: number
+    jornada: { dia_util_min: number; sabado_min: number; sabado_sem_expediente_abona: boolean; semana_max_min: number
+               tolerancia_dia_min: number }
+  }
+}

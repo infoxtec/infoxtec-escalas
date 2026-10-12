@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { ArrowLeft, Award, Building2, CalendarDays, KeyRound, LayoutGrid, Settings, Loader2, LogOut, MapPin, Rocket, ShieldCheck, Users } from 'lucide-react'
+import { ArrowLeft, Award, BarChart3, Building2, CalendarDays, KeyRound, LayoutGrid, Settings, Loader2, LogOut, MapPin, Rocket, ShieldCheck, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button, ErrorBox } from './components/ui'
 import { configurado, supabase, tipoDoLink } from './lib/supabase'
@@ -18,6 +18,7 @@ import TecnicosPage from './pages/TecnicosPage'
 import LocaisPage from './pages/LocaisPage'
 import UsuariosPage from './pages/UsuariosPage'
 import OperacaoPage from './pages/OperacaoPage'
+import GerencialPage from './pages/GerencialPage'
 import HabilidadesPage from './pages/HabilidadesPage'
 import RoadmapPage from './pages/RoadmapPage'
 import AdminPage from './pages/AdminPage'
@@ -26,7 +27,7 @@ import Verificacao from './components/Verificacao'
 import { MfaCadastrar, MfaDesativar, MfaVerificar, estadoMfa } from './components/Mfa'
 import type { EstadoMfa } from './components/Mfa'
 
-type Aba = 'inicio' | 'empresas' | 'agenda' | 'operacao' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios' | 'roadmap' | 'admin'
+type Aba = 'inicio' | 'empresas' | 'agenda' | 'operacao' | 'gerencial' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios' | 'roadmap' | 'admin'
 
 // Check verde da marca, que vem logo depois do nome (docs/marca.md)
 function CheckVerde() {
@@ -137,6 +138,7 @@ function Painel({ email }: { email: string }) {
   const abas: { id: Aba; label: string; Icone: LucideIcon }[] = [
     { id: 'agenda', label: 'Agenda', Icone: CalendarDays },
     { id: 'operacao', label: 'Operação', Icone: LayoutGrid },
+    { id: 'gerencial', label: 'Indicadores', Icone: BarChart3 },
     { id: 'tecnicos', label: 'Técnicos', Icone: Users },
     { id: 'locais', label: 'Locais', Icone: MapPin },
     { id: 'habilidades', label: 'Habilidades', Icone: Award },
@@ -209,6 +211,7 @@ function Painel({ email }: { email: string }) {
         )}
         {aba === 'agenda' && <AgendaPage tecnicos={tecnicos} locais={locais} tipos={tipos} podeEditar={podeEditar} papel={papel} />}
         {aba === 'operacao' && <OperacaoPage />}
+        {aba === 'gerencial' && <GerencialPage />}
         {aba === 'habilidades' && <HabilidadesPage tecnicos={tecnicos} podeEditar={podeEditar} />}
         {aba === 'tecnicos' && <TecnicosPage tecnicos={tecnicos} recarregar={recarregarCadastros} podeEditar={podeEditar} podeExcluir={papel === 'admin'} />}
         {aba === 'empresas' && <EmpresasPage podeEditar={podeEditar} />}

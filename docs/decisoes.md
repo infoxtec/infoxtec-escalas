@@ -900,3 +900,20 @@ Checklist do cadastro sem empresa (migration 80).
 item fora da sprint passa pelo PO; (2) **um pacote por PR**, saindo da `main` atualizada, e nunca
 force-push em branch com PR aberto; (3) script na produção **só depois de o PR aparecer "Merged"** no
 GitHub; (4) teste que depende do relógio usa stub ou fixa a hora dentro da transação.
+
+## 78. Painel gerencial de aderência: critérios da jornada
+
+**Data:** 13/10/2026. **Decisão do responsável:** o gestor mede a aderência da escala e do ponto com
+dados (backlog 099; migration 85, painel 3.25.0, aba **Indicadores**). **Escala:** % resolvida pelo
+WhatsApp, % que precisou da URA, ligações atendidas, sem resposta e tempo de resposta. **Ponto:** %
+de marcações ajustadas, dias e horas abonados, hora extra, desvios por tipo (alertas da CLT) e as
+semanas e meses fora da jornada. **Jornada de referência** (CLT art. 58; Constituição art. 7º, XIII):
+8 h de segunda a sexta, **4 h no sábado** (44 h na semana); feriado e domingo, 0 (ponto facultativo não
+zera). **As 220 h mensais são o divisor do salário (CLT art. 64), não limite de horas trabalhadas** — a
+jornada normal de um mês fica perto de 191 h; por isso o mês aparece como **saldo de horas** (trabalhado
+menos esperado), não como "acima de 220 h" (revisão do `seguranca`). **Sábado
+sem expediente** (sem nenhuma marcação) é **abonado por decisão gerencial interna da Infoxtec**
+(`config.ponto_sabado_sem_expediente_abona`, ligada). Sábado com escala e sem marcação continua devido. Abono
+lançado desconta do esperado. Cada funcionário conta só entre a admissão e o desligamento. Contam só
+semanas inteiras já fechadas; período de até 62 dias, carregado no botão Atualizar. **Só números do conjunto:** nenhum nome de funcionário sai da
+função, e o papel leitura vê o mesmo.

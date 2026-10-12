@@ -182,6 +182,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Migration 74 e painel 3.21.0: **alta antecipada pelo gestor** — afastados no painel e alta registrada com a liberação médica no cofre (decisão 64; produção, 11/10)
 - [x] Migration 77 e painel 3.22.0: **feriado e afastado** fora da cobrança de escala e **verificação em duas etapas** (autenticador no celular; obrigatoriedade pronta, desligada até todos cadastrarem — decisões 65 e 67; produção, 11/10)
 - [x] Migration 78 e painel 3.23.0: **teto nos avisos aos supervisores** (sem rajada no WhatsApp depois de queda) e **duas etapas opcional por usuário**, com desativar pelo código (decisão 68; produção, 12/10)
+- [x] Migration 85 e painel 3.25.0: **Indicadores** — painel gerencial da escala (WhatsApp, URA, ligações) e do ponto (ajustes, abonos, desvios e saldo da jornada de 44 h) (13/10)
 - [x] Migration 84: **recusa de escala não vira ponto** — o motivo ("1") e a explicação do técnico não são mais capturados pelo ponto (13/10)
 - [x] Migration 83: **intervalo de 15 minutos** — jornada de mais de 4 h sem intervalo gera aviso (CLT art. 71, §1º) (13/10)
 - [x] Migration 82 e painel 3.24.0: **registro das duas etapas** — quem ativou e desativou, visível na tela Usuários (13/10)
