@@ -817,3 +817,15 @@ a fase 3 do motor avisa no máximo `config.supervisor_avisos_por_execucao` escal
 mais antigas primeiro; o resto vai no minuto seguinte (o teto conta escalas: o pico é 5 × supervisores
 ativos por minuto; escala que falha não ocupa o teto). Evita rajada no número do WhatsApp depois de uma
 queda da Evolution ou do motor (migration 78, painel 3.23.0, teste T24).
+
+## 69. Avisos aos supervisores só da empresa do técnico
+
+**Data:** 12/10/2026. **Origem:** diagnóstico do DeepSeek, item 1; pré-requisito do segundo cliente.
+**Decisão do responsável:** seguir agora, num pacote pequeno. **Regra única** (a mesma do ponto desde a
+migration 66): o supervisor recebe aviso de técnico da própria empresa; **supervisor sem empresa** recebe
+de todas e **técnico sem empresa** avisa todos, até o cadastro estar completo. **Onde (migration 79):**
+`fn_avisar_supervisores` (recusa, detalhe, URA — filtra pela empresa do técnico; ganha `p_empresa`), fase
+3 do motor, escala de amanhã e documentos a vencer (uma mensagem por empresa, só com os técnicos dela,
+quando houver mais de uma cadastrada). **Continuam para todos:** alertas de sistema (motor parado, teto do
+app do ponto). **Antes do 2º cliente:** cadastrar a empresa de todo supervisor e técnico — supervisor sem
+empresa veria nomes dos dois clientes.

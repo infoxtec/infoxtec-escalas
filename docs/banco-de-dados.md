@@ -254,6 +254,14 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 79 (12/10): avisos aos supervisores por empresa (decisão 69)
+
+- `fn_avisar_supervisores(p_texto, p_exceto, p_empresa)`: só supervisores da empresa (`p_empresa` ou a do
+  técnico `p_exceto`) e os sem empresa; sem nenhuma das duas, todos (alerta de sistema).
+- Fase 3 de `fn_dispatcher_whatsapp`: mesma regra, pela empresa do técnico da escala.
+- `fn_alerta_prazo_escala` e `fn_alerta_certificacoes`: com mais de uma empresa, uma mensagem por empresa.
+  Teste T25.
+
 ### Migration 78 (12/10): teto nos avisos aos supervisores (decisão 68)
 
 - `config.supervisor_avisos_por_execucao` (5): a fase 3 de `fn_dispatcher_whatsapp` avisa no máximo
