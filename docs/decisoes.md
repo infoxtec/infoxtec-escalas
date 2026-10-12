@@ -1076,3 +1076,31 @@ medir a emissão de um mês cheio com muitos funcionários (duas leituras de mar
   homologação.
 - **Pendente (P3 do `seguranca`):** `app_ponto_abonar` não trava a linha do funcionário como a folga; um abono e
   uma folga no mesmo dia, ao mesmo tempo, podem duplicar o abono. Corrigir na próxima migration que tocar o abono.
+
+## 85. O ponto é visto por mês e por funcionário
+
+**Data:** 13/10/2026. **Pedido do responsável (validação de setembro):** marcações, espelho de jornada e
+ajustes são filtrados sempre pelo **mês** (e pelo funcionário), nunca por um período de dias: o filtro por dia
+induz ao erro, e não existe fechamento que cruze meses. O mês corrente vai até hoje. As datas mostram o dia da
+semana. **Decisão (painel 3.32.0):** o filtro "De/Até" da página Ponto vira "Mês"; as funções do banco não
+mudam (recebem o primeiro e o último dia do mês). **Validação de setembro (roteiro):** marcações, espelho de
+jornada e ajustes OK; AFD em análise; emissão, QR e assinatura ainda por testar.
+
+## 86. Cofre das folhas de ponto assinadas, só para o RH
+
+**Data:** 13/10/2026. **Pedido do responsável:** a folha assinada precisa estar à mão numa ação judicial, num
+cofre que só os gestores de RH abrem. **Não há restrição da CLT nem da Portaria 671 para o empregador ver a folha
+assinada** — ela é dele e precisa ser apresentada em juízo (Súmula 338 do TST: a prova da jornada é do
+empregador). O painel já mostrava a folha no botão "Ver"; o que faltava era guarda e acesso de RH. **Decisão
+(migration 92, painel 3.33.0):** permissão "Cofre de folhas assinadas (RH)" por nome, dada pelo admin
+(`painel_usuarios.rh_folhas`, com histórico, como o "vê atestados" da decisão 56). A folha **assinada** — com a
+imagem da assinatura, o IP e o aparelho — só abre para quem tem a permissão; admin e gestor sem ela veem só a
+situação ("No cofre do RH"). A folha ainda não assinada continua com admin e gestor. O cofre lista as folhas
+assinadas por mês, com **Ver** (imprimir ou salvar o PDF, com o QR e a assinatura) e **Baixar prova**: um arquivo
+com os bytes exatos do documento, o SHA-256 guardado e o recalculado, a imagem, a hora UTC, a origem, o HMAC e a
+impressão da chave, e se o HMAC confere — para um perito refazer a conta. Cada abertura e cada prova ficam
+registradas (`ponto_espelho_acessos`, só inclusão). O documento em si não muda de lugar: continua imutável em
+`ponto_espelhos`, com o backup diário cifrado (decisão 51), pelos 5 anos do ponto. **Revisão do `seguranca` (aplicada):** aviso no cofre de que a prova e o PDF têm dados pessoais (guardar só na
+pasta do processo, enviar por canal seguro, apagar dos downloads); o aviso de privacidade cobre a extração para
+defesa em processo (LGPD art. 7º, VI); a prova não repete o CPF (já está no documento). **Pendentes:** consulta
+de quem abriu cada folha (hoje só a contagem); descarte depois dos 5 anos, junto com o resto do ponto.

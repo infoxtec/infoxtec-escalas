@@ -39,6 +39,7 @@
 -- T36 assinatura do espelho pelo funcionário: só o próprio, só a versão vista, uma vez, hash amarrado; envio
 -- T37 resumo do espelho: HE 50% e 100%, noturno reduzido, débito com tolerância, atestado e abono da empresa
 -- T38 assinatura por HMAC com chave no Vault; folga compensatória tira o 100% do domingo trabalhado
+-- T39 cofre de folhas assinadas: só RH abre a folha assinada e baixa a prova; cada abertura fica registrada
 
 \set ON_ERROR_STOP on
 begin;
@@ -1822,8 +1823,35 @@ begin
   -- as funções do app gravam o uso da sessão: não podem ser stable (PostgREST roda stable só leitura)
   perform pg_temp.ok(not exists (select 1 from pg_proc where proname like 'ponto\_%' and provolatile <> 'v'
                                    and pg_get_functiondef(oid) ilike '%fn_ponto_sessao(p_token)%'), '[T36] função de sessão marcada stable');
-  -- o gestor vê o espelho com a assinatura; o leitura não
-  perform pg_temp.ok(app_ponto_espelho_ver(v_id)->>'assinatura_png' = v_png, '[T36] gestor vê a assinatura');
+  -- a folha assinada só abre para quem tem o cofre de RH (migration 92, decisão 86); o leitura nunca
+  v_ok := false;
+  begin perform app_ponto_espelho_ver(v_id); exception when others then v_ok := sqlerrm like '%cofre%'; end;
+  perform pg_temp.ok(v_ok, '[T39] admin sem o cofre de RH abriu a folha assinada');
+  perform app_definir_rh_folhas('qa-admin@teste.local', true);
+  perform pg_temp.ok((select count(*) from painel_rh_folhas_log where email = 'qa-admin@teste.local' and valor) = 1, '[T39] histórico da permissão');
+  v_ok := false;
+  begin perform app_definir_rh_folhas('qa-leitura@teste.local', true); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T39] permissão do cofre dada a usuário leitura');
+  perform pg_temp.ok(app_ponto_espelho_ver(v_id)->>'assinatura_png' = v_png, '[T36] RH vê a assinatura');
+  perform pg_temp.ok((select count(*) from app_ponto_cofre_folhas(v_mes, v_tec)) = 1, '[T39] cofre lista a folha assinada');
+  r := app_ponto_espelho_prova(v_id);
+  perform pg_temp.ok(r->>'sha256_conteudo' = r->>'sha256_conteudo_recalculado' and (r->'assinatura'->>'hmac_confere')::boolean,
+                     '[T39] prova da folha: ' || (r - 'conteudo_texto' - 'assinatura')::text);
+  perform pg_temp.ok((select count(*) from ponto_espelho_acessos where espelho_id = v_id and email = 'qa-admin@teste.local') = 2,
+                     '[T39] aberturas registradas');
+  perform pg_temp.ok(not has_function_privilege('anon', 'app_ponto_espelho_prova(uuid)', 'execute'), '[T39] anon baixa a prova');
+  v_ok := false;
+  begin update ponto_espelho_acessos set email = 'x' where espelho_id = v_id; exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T39] registro de abertura alterado');
+  perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
+  v_ok := false;
+  begin perform app_ponto_espelho_prova(v_id); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T39] leitura baixou a prova');
+  v_ok := false;
+  begin perform app_definir_rh_folhas('qa-leitura@teste.local', true); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T39] leitura deu a permissão do cofre');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  perform app_definir_rh_folhas('qa-admin@teste.local', false);
   perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
   v_ok := false;
   begin perform app_ponto_espelho_ver(v_id); exception when others then v_ok := true; end;
@@ -1980,7 +2008,7 @@ begin
   perform pg_temp.ok((d->>'he100_min')::int = 240 and d->>'compensado_em' is null, '[T38] folga trabalhada manteve compensação: ' || d::text);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T38' as resultado,
+select 'REGRESSÃO OK: T1 a T39' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

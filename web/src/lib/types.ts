@@ -5,7 +5,7 @@ export type StatusEscala =
   | 'rascunho' | 'agendada' | 'notificada' | 'confirmada' | 'recusada'
   | 'reagendada' | 'em_execucao' | 'concluida' | 'cancelada'
 
-export interface Acesso { email: string | null; papel: Papel | null; nome: string | null; ve_saude?: boolean; mfa_obrigatorio?: boolean }
+export interface Acesso { email: string | null; papel: Papel | null; nome: string | null; ve_saude?: boolean; rh_folhas?: boolean; mfa_obrigatorio?: boolean }
 
 export interface EscalaPainel {
   id: string
@@ -114,7 +114,7 @@ export function coordenadasDoLink(link: string): { latitude: number; longitude: 
 
 export interface UsuarioPainel {
   email: string; nome: string | null; papel: Papel; ativo: boolean
-  criado_por: string | null; created_at: string; ve_saude: boolean
+  criado_por: string | null; created_at: string; ve_saude: boolean; rh_folhas?: boolean
 }
 
 export interface ResultadoLote { tecnico_id: string; tecnico: string | null; escala_id: string | null; resultado: string }
@@ -434,6 +434,11 @@ export interface DossieLocal {
 export interface PontoAfd { nome: string; conteudo: string; marcacoes: number; sha256: string; conferencia: boolean; aviso: string }
 
 /** Espelho mensal congelado (migration 88, decisão 82). */
+/** Folha assinada no cofre de RH (decisão 86). */
+export interface FolhaCofre {
+  id: string; tecnico_id: string; tecnico: string; empresa: string; competencia: string; registro: number; versao: number
+  codigo: string; assinado_em: string; acessos: number
+}
 export interface PontoEspelhoEmitido {
   id: string; tecnico_id: string; tecnico: string; empresa: string; versao: number; registro: number; codigo: string
   emitido_em: string; enviado_em: string | null; assinado_em: string | null

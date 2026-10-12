@@ -5,6 +5,7 @@ import { api, erroMsg } from '../lib/api'
 import Cofre from '../components/Cofre'
 import PontoAfd from '../components/PontoAfd'
 import EspelhosMensais from '../components/EspelhosMensais'
+import CofreFolhas from '../components/CofreFolhas'
 import { prepararArquivo } from '../lib/arquivo'
 import { ALERTA_JORNADA, PONTO_ROTULO, hojeBahia, minutosHm } from '../lib/types'
 import type { Empresa, PontoAbono, PontoAcompanhamento, PontoAjuste, PontoEspelho, PontoGeo, PontoHoje, PontoJustificativa, PontoMetricas } from '../lib/types'
@@ -15,6 +16,19 @@ const SITUACAO: Record<PontoHoje['situacao'], { label: string; cor: string }> = 
   sem_marcacao: { label: 'Sem marcação', cor: 'bg-muted text-muted-foreground' },
 }
 const CANAL: Record<string, string> = { app: 'App', whatsapp: 'WhatsApp', ura: 'Telefone' }
+const SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
+// "AAAA-MM-DD" ou "DD/MM/AAAA" → "DD/MM/AAAA ter"
+function dataComDia(d: string) {
+  const iso = d.includes('/') ? d.split('/').reverse().join('-') : d
+  return `${iso.split('-').reverse().join('/')} ${SEMANA[new Date(iso + 'T12:00:00').getDay()]}`
+}
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
+// último dia do mês "AAAA-MM", sem passar de hoje
+function fimDoMes(mes: string, hoje: string) {
+  const [a, m] = mes.split('-').map(Number)
+  const fim = `${mes}-${String(new Date(a, m, 0).getDate()).padStart(2, '0')}`
+  return fim > hoje ? hoje : fim
+}
 
 // Registro de Ponto (submenu da Agenda): acompanhamento online (hoje, atualiza sozinho) e histórico das marcações (backlog 090).
 // As marcações são imutáveis: correção é ajuste com justificativa, registro à parte (migration 65). Docs: docs/modulo-registro-de-ponto/.
@@ -29,14 +43,17 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
   const [metricas, setMetricas] = useState<PontoMetricas | null>(null)
   const [abonos, setAbonos] = useState<PontoAbono[] | null>(null)
   const [vista, setVista] = useState<'marcacoes' | 'espelho' | 'ajustes'>('marcacoes')
-  const [de, setDe] = useState(hoje)
-  const [ate, setAte] = useState(hoje)
+  // O ponto é visto sempre por mês (pedido do responsável, 13/10): não há fechamento que cruze meses
+  const [mes, setMes] = useState(hoje.slice(0, 7))
+  const de = `${mes}-01`
+  const ate = fimDoMes(mes, hoje)
   const [tecnico, setTecnico] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [atualizado, setAtualizado] = useState<string | null>(null)
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [cadeia, setCadeia] = useState<{ ok: boolean; texto: string } | null>(null)
   const [conferindo, setConferindo] = useState(false)
+  const [rhFolhas, setRhFolhas] = useState(false)
 
   const carregar = useCallback(async () => {
     setErro(null)
@@ -58,6 +75,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
     const t = setInterval(() => { if (!document.hidden) void carregar() }, 30_000)
     return () => clearInterval(t)
   }, [carregar, ate, hoje])
+  useEffect(() => { api.meuAcesso().then(a => setRhFolhas(!!a.rh_folhas)).catch(() => {}) }, [])
   useEffect(() => {
     if (papel === 'admin') api.empresas().then(e => setEmpresas(e.filter(x => x.empregadora && x.ativo))).catch(() => {})
   }, [papel])
@@ -139,15 +157,15 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
           ))}
         </div>
         <div className="flex flex-wrap items-end gap-3">
-          <Field label="De"><Input type="date" value={de} max={ate} onChange={e => setDe(e.target.value)} /></Field>
-          <Field label="Até"><Input type="date" value={ate} min={de} max={hoje} onChange={e => setAte(e.target.value)} /></Field>
+          <Field label="Mês"><Input type="month" value={mes} max={hoje.slice(0, 7)} onChange={e => e.target.value && setMes(e.target.value)} /></Field>
           <Field label="Funcionário">
             <Select value={tecnico} onChange={e => setTecnico(e.target.value)}>
               <option value="">Todos</option>
               {situacao?.map(s => <option key={s.tecnico_id} value={s.tecnico_id}>{s.tecnico}</option>)}
             </Select>
           </Field>
-          <p className="pb-2 text-xs text-muted-foreground">Período de até 62 dias. Bairro e cidade: © colaboradores do <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline">OpenStreetMap</a>.</p>
+          <p className="pb-2 text-xs text-muted-foreground">
+            {MESES[Number(mes.slice(5, 7)) - 1]} de {mes.slice(0, 4)}{mes === hoje.slice(0, 7) ? `, até hoje` : ''}. Bairro e cidade: © colaboradores do <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline">OpenStreetMap</a>.</p>
         </div>
         {vista === 'ajustes' ? (
           <div className="space-y-5">
@@ -169,7 +187,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
                   <tr><td colSpan={7} className="py-10 text-center text-muted-foreground">Nenhuma marcação no período</td></tr>
                 ) : lista.map(m => (
                   <tr key={m.id} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="whitespace-nowrap px-3 py-2 text-xs">{m.data} <span className="font-medium">{m.hora}</span></td>
+                    <td className="whitespace-nowrap px-3 py-2 text-xs">{dataComDia(m.data)} <span className="font-medium">{m.hora}</span></td>
                     <td className="px-3 py-2 text-xs">{m.tecnico}</td>
                     <td className="px-3 py-2 text-xs font-medium">
                       {PONTO_ROTULO[m.tipo] ?? m.tipo}
@@ -221,7 +239,9 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
         </section>
       )}
 
-      <EspelhosMensais hoje={hoje} podeEmitir={papel !== 'leitura'} />
+      <EspelhosMensais hoje={hoje} podeEmitir={papel !== 'leitura'} rhFolhas={rhFolhas} />
+
+      {rhFolhas && <CofreFolhas hoje={hoje} />}
 
       {papel === 'admin' && empresas.length > 0 && <PontoAfd empresas={empresas} hoje={hoje} />}
     </div>
@@ -266,7 +286,7 @@ function Espelho({ linhas }: { linhas: PontoEspelho[] | null }) {
               <tr><td colSpan={10} className="py-10 text-center text-muted-foreground">Nenhuma jornada no período</td></tr>
             ) : linhas.map(l => (
               <tr key={`${l.tecnico_id}-${l.data}`} className="border-b last:border-0 hover:bg-muted/30">
-                <td className="whitespace-nowrap px-3 py-2 text-xs">{l.data.split('-').reverse().join('/')}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-xs">{dataComDia(l.data)}</td>
                 <td className="px-3 py-2 text-xs">
                   {l.tecnico}
                   {l.ajustes > 0 && <span title={`${l.ajustes} ajuste(s) do gestor neste dia`} className="ml-1 rounded bg-blue-100 px-1 text-blue-800">ajustado</span>}
@@ -442,7 +462,7 @@ function Ajustes({ linhas, marcacoes, funcionarios, tecnico, hoje, podeAjustar, 
                 <tr><td colSpan={podeAjustar ? 6 : 4} className="py-10 text-center text-muted-foreground">Nenhum ajuste no período</td></tr>
               ) : linhas.map(a => (
                 <tr key={a.id} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="whitespace-nowrap px-3 py-2 text-xs">{a.data} <span className="font-medium">{a.hora}</span></td>
+                  <td className="whitespace-nowrap px-3 py-2 text-xs">{dataComDia(a.data)} <span className="font-medium">{a.hora}</span></td>
                   <td className="px-3 py-2 text-xs">{a.tecnico}</td>
                   <td className="px-3 py-2 text-xs">
                     <span className={`rounded px-1 ${a.acao === 'incluir' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
@@ -579,7 +599,7 @@ function Pedidos({ linhas, metricas, podeDecidir, aoDecidir }: { linhas: PontoJu
             ) : linhas.map(p => (
               <tr key={p.id} className="border-b align-top last:border-0 hover:bg-muted/30">
                 <td className="px-3 py-2 font-mono text-xs">{p.numero}</td>
-                <td className="whitespace-nowrap px-3 py-2 text-xs">{p.data.split('-').reverse().join('/')}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-xs">{dataComDia(p.data)}</td>
                 <td className="px-3 py-2 text-xs">{p.tecnico}<p className="text-muted-foreground">{p.canal === 'app' ? 'App' : 'WhatsApp'} · {p.criado_em}</p>
                   {p.ponto_30d !== null && p.ponto_30d > 1 && <p className={p.ponto_30d >= 3 ? 'text-amber-700' : 'text-muted-foreground'} title="Pedidos de Ponto (esqueci, app falhou, atraso) nos 30 dias até este. Só o fato; atestado e falta prevista em lei não contam">{p.ponto_30d}º pedido de Ponto em 30 dias</p>}</td>
                 <td className="max-w-xs px-3 py-2 text-xs"><p className="font-medium">{p.motivo_nome}</p><p>{p.detalhe}</p>
@@ -659,7 +679,7 @@ function Abonos({ linhas, podeEstornar, aoEstornar }: { linhas: PontoAbono[] | n
           <tbody>
             {linhas.map(a => (
               <tr key={a.id} className={`border-b last:border-0 ${a.estornado ? 'text-muted-foreground line-through' : ''}`}>
-                <td className="whitespace-nowrap px-3 py-2 text-xs">{a.data.split('-').reverse().join('/')}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-xs">{dataComDia(a.data)}</td>
                 <td className="px-3 py-2 text-xs">{a.tecnico}</td>
                 <td className="px-3 py-2 text-xs">{a.detalhe}{a.pedido != null && <span className="text-muted-foreground"> · pedido {a.pedido}</span>}</td>
                 {podeEstornar && <><td className="max-w-xs px-3 py-2 text-xs">{a.motivo}</td><td className="px-3 py-2 text-xs">{a.autor}</td></>}
