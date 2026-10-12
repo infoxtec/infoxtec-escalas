@@ -31,6 +31,7 @@
 -- T28 quem ativou e desativou a verificação em duas etapas fica registrado; o admin vê
 -- T29 jornada de mais de 4 h e até 6 h sem intervalo gera aviso (CLT art. 71, §1º)
 -- T30 palavra e número do ponto não são capturados enquanto o técnico explica uma recusa de escala
+-- T31 painel gerencial: semanas acima de 44 h, sábado sem expediente abonado, escala por WhatsApp e URA
 
 \set ON_ERROR_STOP on
 begin;
@@ -1431,7 +1432,69 @@ begin
   perform pg_temp.ok(r->>'acao' = 'ponto_pediu_localizacao', '[T30] atalho do ponto barrado depois do motivo: ' || coalesce(r::text, 'null'));
 end $$;
 
-select 'REGRESSÃO OK: T1 a T30' as resultado,
+-- T31 painel gerencial de aderência (migration 85, backlog 099) --------------------------------------------
+-- Duas semanas inteiras de um funcionário: a 1ª com 8 h de segunda a sexta e sábado sem expediente
+-- (abonado: dentro do esperado), a 2ª com 9 h de segunda a sábado (54 h: acima de 44 h). Uma escala
+-- resolvida pelo WhatsApp e outra pela URA. Os outros funcionários do ponto saem da conta (desfeito no fim).
+do $$
+declare
+  v_emp uuid := (select v::uuid from qa where k = 'emp');
+  v_loc uuid := (select v::uuid from qa where k = 'loc');
+  v_seg date := date_trunc('week', current_date - 21)::date;
+  v_tec uuid; v_e1 uuid; v_e2 uuid; r jsonb; v_ok boolean;
+begin
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA Gerencial', '5579999993131', true, true, pg_temp.cpf('313131301'), v_emp, false, v_seg - 30) returning id into v_tec;
+  update tecnicos set ativo = false where id <> v_tec and cpf is not null and empresa_id is not null and ativo;
+  delete from feriados where data between v_seg and v_seg + 13;
+
+  alter table ponto_marcacoes disable trigger user;
+  insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, latitude, longitude, hash_anterior, hash)
+  select v_emp, 931000 + row_number() over (), v_tec, (select cpf from tecnicos where id = v_tec),
+         (dia + h) at time zone 'America/Bahia', tp, 'app', -12.9, -38.4, 'qa', md5(random()::text)
+    from (select v_seg + n as dia, n from generate_series(0, 12) n
+           where n not in (5, 6) or n = 12) d                       -- semana 1: seg a sex; semana 2: seg a sáb
+    cross join lateral (values (time '08:00', 'entrada'), (time '12:00', 'saida_almoco'), (time '13:00', 'volta_almoco'),
+                               (case when d.n >= 7 then time '18:00' else time '17:00' end, 'saida')) m(h, tp);
+  alter table ponto_marcacoes enable trigger user;
+
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, v_seg + 1, time '08:00', 'QA gerencial 1', 'confirmada', 'qa') returning id into v_e1;
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, v_seg + 2, time '08:00', 'QA gerencial 2', 'confirmada', 'qa') returning id into v_e2;
+  insert into notificacoes (escala_id, status_envio, enviada_em) values (v_e1, 'lida', now()), (v_e2, 'lida', now());
+  insert into respostas (escala_id, wa_message_id, tipo) values (v_e1, 'QA-G1', 'confirmacao');
+  insert into ligacoes (escala_id, tecnico_id, telefone, status, digito, atendida_em) values (v_e2, v_tec, '5579999993131', 'completed', '1', now());
+  insert into respostas (escala_id, tipo, texto_livre) values (v_e2, 'confirmacao', 'Confirmado por telefone (digitou 1)');
+
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  r := app_painel_gerencial(v_seg, v_seg + 13);
+  perform pg_temp.ok((r->'ponto'->>'semanas')::int = 2, '[T31] semanas inteiras: ' || (r->'ponto')::text);
+  perform pg_temp.ok((r->'ponto'->>'semanas_acima_44h')::int = 1, '[T31] semana de 54 h não acusada: ' || (r->'ponto')::text);
+  perform pg_temp.ok((r->'ponto'->>'semanas_abaixo_esperado')::int = 0, '[T31] sábado sem expediente não foi abonado: ' || (r->'ponto')::text);
+  perform pg_temp.ok((r->'ponto'->>'marcacoes')::int = 44, '[T31] marcações: ' || (r->'ponto')::text);
+  perform pg_temp.ok((r->'escala'->>'respondidas_whatsapp')::int >= 1 and (r->'escala'->>'precisaram_ura')::int >= 1
+                     and (r->'escala'->>'ligacoes_atendidas')::int >= 1, '[T31] escala: ' || (r->'escala')::text);
+  perform pg_temp.ok((r->'ponto'->>'minutos_hora_extra')::int = 600, '[T31] hora extra (5 × 1 h + sábado 5 h): ' || (r->'ponto')::text);
+  perform pg_temp.ok((r->'ponto'->>'saldo_min')::int = 600, '[T31] saldo: ' || (r->'ponto')::text);
+  perform pg_temp.ok(r::text not like '%QA Gerencial%', '[T31] nome de funcionário no painel');
+  -- sem o abono do sábado, a 1ª semana fica 4 h abaixo do esperado
+  update config set valor = 'false' where chave = 'ponto_sabado_sem_expediente_abona';
+  r := app_painel_gerencial(v_seg, v_seg + 13);
+  perform pg_temp.ok((r->'ponto'->>'semanas_abaixo_esperado')::int = 1, '[T31] sábado não abonado não contou: ' || (r->'ponto')::text);
+  update config set valor = 'true' where chave = 'ponto_sabado_sem_expediente_abona';
+  -- o papel leitura vê o mesmo painel; período acima de 62 dias é recusado
+  insert into painel_usuarios (email, nome, papel, ativo) values ('qa-leitura@teste.local', 'QA leitura', 'leitura', true) on conflict do nothing;
+  perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
+  perform pg_temp.ok(app_painel_gerencial(v_seg, v_seg + 13) is not null, '[T31] leitura barrado');
+  v_ok := false;
+  begin perform app_painel_gerencial(v_seg, v_seg + 63);
+  exception when others then v_ok := sqlerrm like '%62 dias%'; end;
+  perform pg_temp.ok(v_ok, '[T31] período de 64 dias aceito');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T31' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

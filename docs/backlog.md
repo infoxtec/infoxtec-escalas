@@ -569,7 +569,7 @@ quando houver demanda. O responsável quer conhecer o Cloudflare Pages antes de 
 aceite quando aprovado: o painel abre com login no endereço novo, roda em paralelo com a Vercel por 7 dias,
 e o `ORIGEM_PAINEL` da `documento-ocr` inclui o domínio novo.
 
-## 099. Painel gerencial de aderência da escala e do ponto — planejado (P1, comercial)
+## 099. Painel gerencial de aderência da escala e do ponto — em revisão (13/10/2026; migration 85, painel 3.25.0)
 
 Prova de valor pedida pelo responsável em 13/10: o gestor mede, por período, a aderência da escala (% de
 respostas pelo WhatsApp, % que precisou da URA, ligações atendidas, tempo de resposta) e do ponto (%

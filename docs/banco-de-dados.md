@@ -254,6 +254,15 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 85 (13/10): painel gerencial de aderência (backlog 099, decisão 78)
+
+- `app_painel_gerencial(p_de, p_ate)` (admin, gestor, leitura; até 62 dias): escala (enviadas, resolvidas
+  pelo WhatsApp — resposta com `wa_message_id` —, pela URA, sem resposta, ligações e atendidas, mediana) e
+  ponto (funcionários com CPF e empresa, fora os de teste, entre a admissão e o desligamento; dia a dia até
+  ontem por `fn_ponto_jornada_dia`: marcações, ajustes, abonos, hora extra acima da jornada de cada dia,
+  saldo de horas, alertas por tipo, semanas acima de 44 h e abaixo do esperado). Só agregados, sem nome.
+- Config nova: `ponto_jornada_sabado_min` (240) e `ponto_sabado_sem_expediente_abona` (`true`). Teste T31.
+
 ### Migration 84 (13/10): ponto não captura a explicação de uma recusa
 
 - `fn_wh_mensagem`: ao registrar a recusa (problema), fecha a conversa do ponto aberta do técnico.
