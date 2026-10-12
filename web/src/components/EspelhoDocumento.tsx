@@ -65,6 +65,7 @@ function Resumo({ r }: { r: EspelhoResumo }) {
         <Linha rotulo="Abonadas com justificativa" valor={hh(i.abonado_justificado_min)} />
         <Linha rotulo="Abonadas pela empresa" valor={hh(i.abonado_empresa_min)} />
         <Linha rotulo="Dias abonados com justificativa" valor={String(i.dias_abonados_justificados)} />
+        {!!i.folgas_compensatorias && <Linha rotulo="Folgas compensatórias" valor={String(i.folgas_compensatorias)} />}
         <Linha rotulo="Dias trabalhados" valor={String(i.dias_trabalhados)} />
         {i.sabados_sem_expediente > 0 && <Linha rotulo="Sábados sem expediente (abonados)" valor={String(i.sabados_sem_expediente)} />}
         {i.dias_he_acima_2h > 0 && <Linha rotulo="Dias com mais de 2 h extras" valor={String(i.dias_he_acima_2h)} />}
@@ -117,6 +118,8 @@ export default function EspelhoDocumento({ e }: { e: EspelhoCompleto }) {
                           <td className="pr-2">{hhOu(d.noturno_min)}</td><td className="pr-2">{hhOu(d.debito_min)}</td></>
                       : <td className="pr-2">{d.he_min ? minutosHm(d.he_min) : '—'}</td>}
                 <td>{[d.feriado ? `Feriado: ${d.feriado}` : null,
+                      d.folga_de ? `Folga compensatória do trabalho de ${d.folga_de}` : null,
+                      d.compensado_em ? `Compensado com folga em ${d.compensado_em}` : null,
                       novo && d.debito_min && !d.trabalhado_min && !d.entrada && !d.saida ? 'Sem registro' : null,
                       ...(d.alertas ?? []).map(a => ALERTA_JORNADA[a] ?? a), d.abono ? `Abono: ${d.abono}` : null,
                       d.ajustes ? 'Ajustado' : null].filter(Boolean).join(' · ') || ''}</td>

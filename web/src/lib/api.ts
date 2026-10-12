@@ -116,6 +116,8 @@ export const api = {
     rpc<{ numero: number; status: string }>('app_ponto_decidir', { p_id: id, p_aprovar: aprovar, p_resposta: resposta }),
   pontoAbonar: (tecnico: string, data: string, motivo: string, inicio: string | null, fim: string | null) =>
     rpc<{ id: string; data: string; detalhe: string }>('app_ponto_abonar', { p_tecnico: tecnico, p_data: data, p_motivo: motivo, p_inicio: inicio, p_fim: fim }),
+  pontoFolgaCompensatoria: (tecnico: string, folga: string, trabalhado: string) =>
+    rpc<{ id: string; folga: string; trabalhado: string }>('app_ponto_folga_compensatoria', { p_tecnico: tecnico, p_folga: folga, p_trabalhado: trabalhado }),
   pontoAbonos: (de: string, ate: string, tecnico: string | null) =>
     rpc<PontoAbono[]>('app_ponto_abonos', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
   pontoAnexos: (justificativa: string) =>
