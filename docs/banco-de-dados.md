@@ -254,6 +254,15 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 84 (13/10): ponto não captura a explicação de uma recusa
+
+- `fn_wh_mensagem`: ao registrar a recusa (problema), fecha a conversa do ponto aberta do técnico.
+- `fn_ponto_wh`: com recusa aberta esperando o motivo (até 2 h) e sem conversa do ponto aberta depois dela,
+  número ou palavra solta segue para as escalas ("1" é o motivo; "almoço" é a resposta). Dado o motivo, o
+  detalhe é opcional e os atalhos do ponto ("entrada", "saída") voltam a valer. "ponto" escrito de
+  propósito e o botão do ponto valem sempre. Pendente de antes: `fn_wh_mensagem` acha o técnico sem filtrar
+  ativo nem número ambíguo (cadastro duplicado no mesmo número). Teste T30.
+
 ### Migration 83 (13/10): intervalo de 15 minutos acima de 4 h (CLT art. 71, §1º)
 
 - `fn_ponto_jornada_dia`: `sem_intervalo` vale para jornada efetiva (com hora extra) acima de 4 h; antes,
