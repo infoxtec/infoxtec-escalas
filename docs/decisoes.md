@@ -1076,3 +1076,12 @@ medir a emissão de um mês cheio com muitos funcionários (duas leituras de mar
   homologação.
 - **Pendente (P3 do `seguranca`):** `app_ponto_abonar` não trava a linha do funcionário como a folga; um abono e
   uma folga no mesmo dia, ao mesmo tempo, podem duplicar o abono. Corrigir na próxima migration que tocar o abono.
+
+## 85. O ponto é visto por mês e por funcionário
+
+**Data:** 13/10/2026. **Pedido do responsável (validação de setembro):** marcações, espelho de jornada e
+ajustes são filtrados sempre pelo **mês** (e pelo funcionário), nunca por um período de dias: o filtro por dia
+induz ao erro, e não existe fechamento que cruze meses. O mês corrente vai até hoje. As datas mostram o dia da
+semana. **Decisão (painel 3.32.0):** o filtro "De/Até" da página Ponto vira "Mês"; as funções do banco não
+mudam (recebem o primeiro e o último dia do mês). **Validação de setembro (roteiro):** marcações, espelho de
+jornada e ajustes OK; AFD em análise; emissão, QR e assinatura ainda por testar.

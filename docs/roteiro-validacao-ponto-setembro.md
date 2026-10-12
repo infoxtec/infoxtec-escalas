@@ -31,7 +31,7 @@ Marque **OK** ou **NOK** em cada item. Quando der NOK, anote o que apareceu.
 
 ## 1. Registro de ponto (marcações)
 
-Em **Ponto › Marcações**, período **01/09/2026 a 30/09/2026**:
+Em **Ponto › Marcações**, mês **setembro de 2026**:
 
 | # | Conferir | Esperado | OK/NOK |
 |---|---|---|---|
@@ -43,7 +43,7 @@ Em **Ponto › Marcações**, período **01/09/2026 a 30/09/2026**:
 
 ## 2. Espelho de jornada (tela do gestor)
 
-Em **Ponto › Espelho de jornada**, mesmo período. Escolha um funcionário de cada vez.
+Em **Ponto › Espelho de jornada**, mesmo mês. Escolha um funcionário de cada vez.
 
 **Marcos:**
 
