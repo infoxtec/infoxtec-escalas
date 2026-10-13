@@ -404,13 +404,13 @@ begin
                      '[T11] antes do ajuste: ' || j::text);
 
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
-  -- motivo curto ou longo, ação inválida, futuro, fora dos 62 dias, marcação de outro funcionário: recusados
+  -- motivo curto ou longo, ação inválida, inclusão pelo gestor (decisão 89), marcação de outro funcionário: recusados
   v_ok := false;
-  begin perform app_ponto_ajustar(v_tec, 'incluir', 'curto', p_data => d, p_hora => '17:00', p_tipo => 'saida');
+  begin perform app_ponto_ajustar(v_tec, 'desconsiderar', 'curto', p_marcacao => v_dup);
   exception when others then v_ok := sqlerrm like '%pelo menos 10%'; end;
   perform pg_temp.ok(v_ok, '[T11] aceitou motivo curto');
   v_ok := false;
-  begin perform app_ponto_ajustar(v_tec, 'incluir', repeat('x', 501), p_data => d, p_hora => '17:00', p_tipo => 'saida');
+  begin perform app_ponto_ajustar(v_tec, 'desconsiderar', repeat('x', 501), p_marcacao => v_dup);
   exception when others then v_ok := sqlerrm like '%500%'; end;
   perform pg_temp.ok(v_ok, '[T11] aceitou motivo de 501 letras');
   v_ok := false;
@@ -418,27 +418,28 @@ begin
   exception when others then v_ok := sqlerrm like '%inválida%'; end;
   perform pg_temp.ok(v_ok, '[T11] aceitou ação inválida');
   v_ok := false;
-  begin perform app_ponto_ajustar(v_tec, 'incluir', 'motivo suficiente aqui', p_data => current_date + 1, p_hora => '08:00', p_tipo => 'saida');
-  exception when others then v_ok := sqlerrm like '%futuro%'; end;
-  perform pg_temp.ok(v_ok, '[T11] aceitou marcação no futuro');
+  begin perform app_ponto_ajustar(v_tec, 'incluir', 'Esqueceu de bater a saída', p_data => d, p_hora => '17:00', p_tipo => 'saida');
+  exception when others then v_ok := sqlerrm like '%não inclui marcação%'; end;
+  perform pg_temp.ok(v_ok, '[T11] gestor incluiu marcação (decisão 89)');
+  alter table ponto_marcacoes disable trigger user;
+  insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, latitude, longitude, hash_anterior, hash)
+  values (v_emp, 910009, v_tec, (select cpf from tecnicos where id = v_tec), now() - interval '70 days', 'entrada', 'app', -12.9, -38.4, 'qa', md5(random()::text));
+  alter table ponto_marcacoes enable trigger user;
   v_ok := false;
-  begin perform app_ponto_ajustar(v_tec, 'incluir', 'motivo suficiente aqui', p_data => current_date - 70, p_hora => '08:00', p_tipo => 'entrada');
+  begin perform app_ponto_ajustar(v_tec, 'desconsiderar', 'motivo suficiente aqui', p_marcacao => (select id from ponto_marcacoes where nsr = 910009 and tecnico_id = v_tec));
   exception when others then v_ok := sqlerrm like '%62 dias%'; end;
-  perform pg_temp.ok(v_ok, '[T11] aceitou ajuste de 70 dias atrás');
+  perform pg_temp.ok(v_ok, '[T11] desconsiderou marcação de 70 dias atrás');
   v_ok := false;
   begin perform app_ponto_ajustar(v_outro, 'desconsiderar', 'motivo suficiente aqui', p_marcacao => v_dup);
   exception when others then v_ok := sqlerrm like '%não encontrada%'; end;
   perform pg_temp.ok(v_ok, '[T11] desconsiderou marcação de outro funcionário');
 
-  -- incluir a saída esquecida (hora local da empresa) e desconsiderar a entrada repetida
-  x := app_ponto_ajustar(v_tec, 'incluir', 'Esqueceu de bater a saída', p_data => d, p_hora => '17:00', p_tipo => 'saida');
-  perform pg_temp.ok(x->>'hora' = '17:00' and (x->>'avisado')::boolean, '[T11] inclusão: ' || x::text);
-  v_ok := false;
-  begin perform app_ponto_ajustar(v_tec, 'incluir', 'Clicou duas vezes no botão', p_data => d, p_hora => '17:00', p_tipo => 'saida');
-  exception when others then v_ok := sqlerrm like '%já foi incluída%'; end;
-  perform pg_temp.ok(v_ok, '[T11] incluiu a mesma marcação duas vezes');
+  -- a saída esquecida entra como na aprovação do pedido do funcionário (hora local da empresa); a entrada
+  -- repetida é desconsiderada pelo gestor
+  insert into ponto_ajustes (empresa_id, tecnico_id, acao, momento, tipo, motivo, autor)
+  values (v_emp, v_tec, 'incluir', (d + time '17:00') at time zone 'America/Bahia', 'saida', 'Pedido do funcionário aprovado', 'qa-admin@teste.local');
   x := app_ponto_ajustar(v_tec, 'desconsiderar', 'Entrada batida em duplicidade', p_marcacao => v_dup);
-  perform pg_temp.ok(not (x->>'avisado')::boolean, '[T11] segundo aviso em menos de 5 min');
+  perform pg_temp.ok((x->>'avisado')::boolean and x->>'hora' = '08:00', '[T11] desconsiderar avisa o funcionário: ' || x::text);
   v_ok := false;
   begin perform app_ponto_ajustar(v_tec, 'desconsiderar', 'De novo a mesma marcação', p_marcacao => v_dup);
   exception when others then v_ok := sqlerrm like '%já foi desconsiderada%'; end;
@@ -452,12 +453,15 @@ begin
   perform pg_temp.ok(r.ajustes = 2 and r.trabalhado_min = 480, '[T11] espelho: ' || coalesce(r.ajustes, -1));
 
   -- inclusão errada se desfaz desconsiderando a inclusão; a certa entra em seguida
-  x := app_ponto_ajustar(v_tec, 'incluir', 'Trabalhou sem celular', p_data => d - 1, p_hora => '09:00', p_tipo => 'entrada');
-  v_inc := (x->>'id')::uuid;
+  insert into ponto_ajustes (empresa_id, tecnico_id, acao, momento, tipo, motivo, autor)
+  values (v_emp, v_tec, 'incluir', (d - 1 + time '09:00') at time zone 'America/Bahia', 'entrada', 'Pedido: trabalhou sem celular', 'qa-admin@teste.local')
+  returning id into v_inc;
   select count(*) into v_n from app_ponto_espelho(d - 1, d - 1, v_tec) e where e.entrada = '09:00';
   perform pg_temp.ok(v_n = 1, '[T11] dia só com ajuste fora do espelho');
-  perform app_ponto_ajustar(v_tec, 'desconsiderar', 'Hora digitada errada', p_ajuste => v_inc);
-  perform app_ponto_ajustar(v_tec, 'incluir', 'Trabalhou sem celular, hora certa', p_data => d - 1, p_hora => '08:00', p_tipo => 'entrada');
+  x := app_ponto_ajustar(v_tec, 'desconsiderar', 'Hora digitada errada', p_ajuste => v_inc);
+  perform pg_temp.ok(not (x->>'avisado')::boolean, '[T11] segundo aviso em menos de 5 min');
+  insert into ponto_ajustes (empresa_id, tecnico_id, acao, momento, tipo, motivo, autor)
+  values (v_emp, v_tec, 'incluir', (d - 1 + time '08:00') at time zone 'America/Bahia', 'entrada', 'Pedido: hora certa', 'qa-admin@teste.local');
   select * into r from app_ponto_espelho(d - 1, d - 1, v_tec);
   perform pg_temp.ok(r.entrada = '08:00' and r.ajustes = 3, '[T11] inclusão desfeita: ' || coalesce(r.entrada, '-'));
   v_ok := false;
@@ -2050,7 +2054,11 @@ begin
   perform pg_temp.ok(v_ok, '[T40] aceite de riscos diferentes dos mostrados');
   r := app_carga_validar(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 5x2', 'tipo', 'semanal',
          'minutos', jsonb_build_array(528,528,528,528,528,0,0), 'intervalo_min', 60), 'ACT QA');
-  perform pg_temp.ok(r->>'termo' like 'Eu, %ACT QA%passivo trabalhista.', '[T40] termo montado pelo banco: ' || coalesce(r->>'termo', 'nulo'));
+  perform pg_temp.ok(r->>'termo' like 'Termo interno de aceite de risco%QA Regressão Ltda, CNPJ 11444777000161, empregadora, por meio de%representante da empregadora%ACT QA%não é mostrado a ele nem assinado por ele%',
+                     '[T40] termo da empregadora montado pelo banco: ' || coalesce(r->>'termo', 'nulo'));
+  perform pg_temp.ok(not exists (select 1 from pg_proc where proname like 'ponto\_%'
+                                    and (pg_get_functiondef(oid) ilike '%carga_aceites%' or pg_get_functiondef(oid) ilike '%fn_carga_termo%')),
+                     '[T40] termo exposto ao funcionário (API do ponto)');
   v_c1 := app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 5x2', 'tipo', 'semanal',
             'minutos', jsonb_build_array(528,528,528,528,528,0,0), 'intervalo_min', 60), '{"aceito":true,"instrumento":"ACT QA","riscos":["dia_acima_8h"]}');
   perform pg_temp.ok((select sha256 = encode(sha256(convert_to(texto, 'UTF8')), 'hex') and texto like '%ACT QA%' and email = 'qa-admin@teste.local'

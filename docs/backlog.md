@@ -661,6 +661,9 @@ vencimento da vigência, tolerância e horário de entrada por dia, menor de ida
 idade), domingo a cada 3 semanas no comércio (o sistema não sabe o setor); o espelho e as HE pela escala (etapa 2).
 Da revisão do `seguranca` (P3): juntar ou apagar time sem membros (um erro de digitação no cadastro cria time
 novo); descarte do aceite e da escala 5 anos depois da última vigência, junto com o do ponto.
+Da revisão da migration 95 (P3): trava na tabela `ponto_ajustes` que recuse inclusão sem pedido do funcionário
+(hoje só a função garante); cópia do hash do aceite fora do banco; ato interno que dê ao gestor poder de assinar
+pela empresa (com o Gabriel, item 076).
 
 ## 105. Limites de HE diário e mensal e Alerta Crítico — planejado (pedido em 13/10/2026; depende do 104)
 

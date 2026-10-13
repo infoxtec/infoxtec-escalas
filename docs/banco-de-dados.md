@@ -254,6 +254,12 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 95 (13/10): o gestor não inclui marcação (decisão 89)
+
+- `app_ponto_ajustar` recriada sem o ramo `incluir`: recusa com a orientação de usar o pedido do funcionário ou o
+  abono. Só `desconsiderar` (marcação original ou inclusão vinda de pedido aprovado). A assinatura da função não
+  muda (`p_data`, `p_hora` e `p_tipo` ficam sem uso), para não criar outra versão dela.
+
 ### Migration 94 (13/10): Escala / Carga Horária e Times, etapa 1 (decisão 88)
 
 - Tabelas: `times` (empresa, nome único na empresa, ativo); `tecnicos.time_id`, resolvido pelo gatilho
@@ -270,7 +276,8 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `{aceito: true}`), `app_carga_ativar`, `app_cargas`, `app_atribuir_carga`, `app_cancelar_atribuicao`,
   `app_carga_atribuicoes`, `app_cargas_funcionarios`, `app_times`, `app_salvar_time`, `app_time_definir_membros`.
   Escrita: admin e gestor; leitura também para o papel leitura.
-- `fn_carga_termo`: o texto do termo de aceite; `app_carga_validar(p, p_instrumento)` devolve-o em `termo` e
+- `fn_carga_termo`: o texto do termo de aceite da empregadora (fala a empresa, por meio de quem assina; documento
+  interno, nunca mostrado ao funcionário); `app_carga_validar(p, p_instrumento)` devolve-o em `termo` e
   `app_salvar_carga` grava esse mesmo texto mais a hora. O aceite traz os códigos dos riscos que o painel mostrou
   (`p_aceite.riscos`); se não coincidem com os atuais, recusa. Papel leitura: `criado_por`, `aceite_nome`,
   `aceite_texto` e `aceite_sha256` vêm nulos.

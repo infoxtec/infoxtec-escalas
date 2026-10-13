@@ -1152,3 +1152,24 @@ art. 7º, II) e a jornada contratual e o time do funcionário (execução do con
 gestor; o leitura vê a escala, sem autor nem termo. Retenção: o aceite e a escala ficam enquanto houver
 atribuição e por 5 anos depois do fim da última vigência (prazo prescricional, CF art. 7º, XXIX); o descarte
 entra com o do ponto.
+**Correção do responsável (13/10), termo da empregadora:** quem aceita o risco é a **empresa**, pelo gestor ou
+administrador que assina no painel (o RH), **nunca o funcionário**. O termo é documento interno do empregador: não
+aparece no app do ponto nem em mensagem ao funcionário (nenhuma função `ponto_*` lê `carga_aceites`; teste no T40).
+Texto reescrito pelo `juridico` como prova trabalhista: fala a empregadora (razão social e CNPJ), "por meio de"
+quem assina (nome, e-mail e papel por extenso), registra o alerta e a decisão "sob sua responsabilidade" e evita
+confissão desnecessária ("não indicou instrumento" em vez de "não há instrumento"; sai "não elimina passivo"). A
+hora vai em horário de Brasília. Riscos apontados: o termo prova a ciência e pode ser exigido em juízo (CPC art.
+396); não valida a escala sem norma coletiva; a assinatura eletrônica simples e o hash no próprio banco são
+frágeis se contestados (cópia do hash fora do banco, a avaliar); falta confirmar o ato interno que dá ao gestor
+poder de representar a empresa nisso (com o Gabriel, item 076).
+
+## 89. O gestor não inclui marcação de ponto
+
+**Data:** 13/10/2026. **Pedido do responsável:** "incluir marcação esquecida" sai de Gestão de Ponto > Ajustes e
+pedidos > Novo ajuste — "essa função não pode existir". A marcação esquecida entra só pelo **pedido de ajuste do
+funcionário** (app do ponto), que o gestor aprova ou recusa; se o funcionário não pedir, o supervisor **abona** a
+falta ou o atraso com justificativa. **Decisão (migration 95, painel 3.35.0):** `app_ponto_ajustar` recusa
+`incluir` com essa orientação; continuam desconsiderar marcação errada (inclusive uma inclusão vinda de pedido
+aprovado), abono e folga compensatória. As inclusões já lançadas não mudam (ajuste é imutável) e seguem no espelho.
+O indicador "Inclusões manuais do gestor" passa a mostrar só o histórico.
+

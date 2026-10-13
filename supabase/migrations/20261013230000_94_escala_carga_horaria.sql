@@ -279,27 +279,34 @@ begin
   return jsonb_build_object('semanal_min', v_sem, 'bloqueios', b, 'riscos', r, 'avisos', a);
 end $function$;
 
--- Texto do termo de aceite (parecer do juridico). O painel mostra este texto; ao salvar, entra a hora.
+-- Texto do termo de aceite (parecer do juridico, revisto em 13/10). Quem decide e assume o risco é a EMPREGADORA,
+-- pelo admin ou gestor que assina no painel; o termo é interno: não é mostrado ao funcionário nem assinado por ele.
+-- O painel mostra este texto; ao salvar, entra a hora.
 create or replace function fn_carga_termo(p jsonb, p_val jsonb, p_email text, p_instrumento text)
 returns text language plpgsql stable set search_path = public, extensions as $function$
 declare
   v_usu  painel_usuarios;
-  v_emp  text := (select coalesce(nome_fantasia, razao_social) from empresas where id = (p->>'empresa_id')::uuid);
+  v_emp  empresas;
   v_tipo text := coalesce(p->>'tipo', 'semanal');
 begin
   if jsonb_array_length(p_val->'riscos') = 0 then return null; end if;
   select * into v_usu from painel_usuarios where email = p_email;
-  return 'Eu, ' || coalesce(nullif(v_usu.nome, ''), p_email) || ', ' || coalesce(v_usu.papel, '') || ' da ' || coalesce(v_emp, '(empresa)')
-    || ', declaro que revisei a escala ''' || coalesce(nullif(trim(p->>'nome'), ''), '(sem nome)') || ''' ('
+  select * into v_emp from empresas where id = (p->>'empresa_id')::uuid;
+  return 'Termo interno de aceite de risco: Escala / Carga Horária. '
+    || coalesce(v_emp.razao_social, '(empregadora)') || ', CNPJ ' || coalesce(v_emp.cnpj, '-') || ', empregadora, por meio de '
+    || coalesce(nullif(v_usu.nome, ''), p_email) || ' (' || p_email || '), '
+    || case v_usu.papel when 'admin' then 'administrador' when 'gestor' then 'gestor' else coalesce(v_usu.papel, '') end
+    || ' do painel Infoxtec Escalas, que assina como representante da empregadora, registra a decisão da empregadora de aplicar a escala '''
+    || coalesce(nullif(trim(p->>'nome'), ''), '(sem nome)') || ''' ('
     || case when v_tipo = '12x36' then '12x36, plantão de ' || fn_ponto_hm(coalesce((p->>'plantao_min')::int, 0))
             else fn_ponto_hm((p_val->>'semanal_min')::int) || ' por semana' end
-    || ', intervalo de ' || coalesce((p->>'intervalo_min')::int, 0) || ' min'
-    || ') e fui informado pelo sistema dos seguintes pontos que dependem de acordo ou norma coletiva: '
-    || (select string_agg(x->>'texto', ' ') from jsonb_array_elements(p_val->'riscos') x)
-    || ' Declaro que ' || case when nullif(trim(p_instrumento), '') is not null
-                               then 'há o seguinte instrumento que os ampara: ' || trim(p_instrumento) || '.'
-                               else 'não há instrumento que os ampare e, ciente disso, decido aplicar a escala assumindo o risco em nome do empregador.' end
-    || ' Sei que este aceite registra minha decisão e a informação recebida, mas não supre acordo ou norma coletiva, não afasta direitos do empregado nem elimina passivo trabalhista.';
+    || ', intervalo de ' || coalesce((p->>'intervalo_min')::int, 0) || ' min). '
+    || 'Antes dessa decisão, o sistema alertou que os pontos a seguir dependem de acordo ou norma coletiva: '
+    || (select string_agg(x->>'texto', ' ') from jsonb_array_elements(p_val->'riscos') x) || ' '
+    || case when nullif(trim(p_instrumento), '') is not null
+            then 'A empregadora indica como amparo desses pontos o seguinte instrumento: ' || trim(p_instrumento) || '.'
+            else 'A empregadora não indicou instrumento coletivo que ampare esses pontos e, ciente do alerta, decide aplicar a escala sob sua responsabilidade.' end
+    || ' Este termo é um documento interno de gestão da empregadora. Não é dirigido ao empregado, não é mostrado a ele nem assinado por ele, e não altera o contrato de trabalho. Registra só a decisão e o alerta recebido. Não substitui acordo ou norma coletiva, não afasta direitos do empregado e não é renúncia nem transação de direito.';
 end $function$;
 
 -- Escala vigente do funcionário num dia: funcionário > time > empresa (null: jornada padrão)
@@ -411,7 +418,7 @@ begin
   if jsonb_array_length(v_val->'riscos') > 0 then
     select * into v_usu from painel_usuarios where email = v_email;
     v_texto := fn_carga_termo(p, v_val, v_email, v_instr)
-      || ' Registrado em ' || to_char(v_em at time zone 'America/Bahia', 'DD/MM/YYYY HH24:MI') || '.';
+      || ' Registrado em ' || to_char(v_em at time zone 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI') || ' (horário de Brasília, UTC-3).';
     insert into carga_aceites (carga_id, empresa_id, riscos, instrumento, texto, sha256, nome, email, papel, aceito_em)
     values (v_id, v_emp, v_val->'riscos', v_instr, v_texto, encode(sha256(convert_to(v_texto, 'UTF8')), 'hex'),
             coalesce(nullif(v_usu.nome, ''), v_email), v_email, v_usu.papel, v_em);

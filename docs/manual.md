@@ -227,7 +227,7 @@ não é opção válida faz o menu voltar. Também pode escrever direto *entrada
 (📎 → Localização → *Enviar localização atual*) e recebe o comprovante. Lugar escolhido no mapa não
 vale. Quem marcou entrada e não saiu para o almoço recebe um lembrete amigável a partir do meio-dia.
 
-**Gestão de Ponto (painel):** menu próprio no topo, com abas (Hoje, Marcações, Espelho de jornada, Ajustes e pedidos, Folhas mensais, Cofre do RH e AFD). Em **Hoje**, a situação do dia — quem já
+**Gestão de Ponto (painel):** menu próprio no topo, com abas (Hoje, Marcações, Espelho de jornada, Ajustes e pedidos, Folhas mensais, Cofre do RH e AFD). Em **Ajustes e pedidos**, o gestor desconsidera marcação errada, abona falta ou atraso e lança folga compensatória; **não inclui marcação**: a esquecida entra pelo pedido do funcionário, e, sem pedido, o gestor abona com a justificativa (decisão 89). Em **Hoje**, a situação do dia — quem já
 bateu, quem tem escala e não bateu entrada, marcações fora da área —, atualizada sozinha a cada 30
 segundos. Embaixo, o histórico por período (até 62 dias) e funcionário, com canal, local, aviso de
 fora da área, link do mapa e o selo **gestor** quando o funcionário entrou com código gerado pelo
@@ -248,7 +248,8 @@ A carga horária contratual de cada empregadora (decisão 88). Abas:
   turno de revezamento) e ajuste as horas de cada dia (00:00 é folga), o intervalo e, se quiser, a entrada. O
   sistema confere pela CLT enquanto você digita: em vermelho o que **não é permitido** (não salva), em amarelo o
   que **exige aceite** (depende de acordo ou convenção) e em azul os avisos. Com algo em amarelo, o botão vira
-  **Assinar o aceite e salvar**: informe o acordo ou a convenção, se houver, e marque o termo. O aceite fica
+  **Assinar o aceite e salvar**: informe o acordo ou a convenção, se houver, e marque o termo. Quem aceita o risco
+  é a **empresa**, por você (admin ou gestor); o termo é interno e o funcionário nunca o vê. O aceite fica
   guardado com o texto exato, seu nome, e-mail e papel, a hora e o código SHA-256 (clique no nome, na coluna Aceite
   de risco; o papel leitura vê só que há aceite). Escala salva não
   muda: crie outra e atribua no lugar.

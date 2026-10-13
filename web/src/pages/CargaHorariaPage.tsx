@@ -161,7 +161,7 @@ function Escalas({ cargas, empregadoras, empresa, podeEditar, recarregar }: {
       )}
       {nova && <NovaEscala empregadoras={empregadoras} empresa={empresa} onFechar={() => setNova(false)}
         onSalva={async () => { setNova(false); await recarregar() }} />}
-      <Modal open={!!aceite} onClose={() => setAceite(null)} width="max-w-2xl" title="Aceite de risco"
+      <Modal open={!!aceite} onClose={() => setAceite(null)} width="max-w-2xl" title="Aceite de risco da empregadora"
         footer={<Button variant="outline" onClick={() => setAceite(null)}>Fechar</Button>}>
         {aceite && <div className="space-y-2 text-sm">
           <p className="whitespace-pre-wrap">{aceite.aceite_texto}</p>
@@ -289,7 +289,7 @@ function NovaEscala({ empregadoras, empresa, onFechar, onSalva }: {
         </>}
         {temRisco && !bloqueado && (
           <div className="space-y-2 rounded-md border border-amber-300 p-3">
-            <p className="text-sm font-semibold">Aceite de risco</p>
+            <p className="text-sm font-semibold">Aceite de risco da empregadora</p>
             <Field label="Acordo ou convenção que ampara (opcional)" hint="Número e vigência. Em branco: não há instrumento.">
               <Input value={instrumento} maxLength={200} onChange={e => setInstrumento(e.target.value)} />
             </Field>
@@ -297,8 +297,12 @@ function NovaEscala({ empregadoras, empresa, onFechar, onSalva }: {
               <input type="checkbox" className="mt-0.5" checked={aceito} onChange={e => setAceito(e.target.checked)} />
               <span>
                 <span className="block whitespace-pre-wrap">{v?.termo}</span>
+                <span className="mt-1 block font-medium">
+                  Quem assina: você, como representante de {empregadoras.find(e => e.id === r.empresa_id)?.razao_social ?? 'a empregadora'}.
+                  O funcionário não vê nem assina este termo.
+                </span>
                 <span className="mt-1 block text-muted-foreground">
-                  Li e aceito. O aceite fica registrado com o texto acima, meu nome, e-mail e papel, a data e a hora, e não pode ser alterado.
+                  Fica registrado com o texto acima, meu nome, e-mail e papel, a data e a hora, e não pode ser alterado.
                 </span>
               </span>
             </label>

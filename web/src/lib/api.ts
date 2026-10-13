@@ -130,11 +130,10 @@ export const api = {
   pontoEstornarAbono: (abono: string, motivo: string) => rpc<{ id: string }>('app_ponto_estornar_abono', { p_abono: abono, p_motivo: motivo }),
   pontoAjustes: (de: string, ate: string, tecnico: string | null) =>
     rpc<PontoAjuste[]>('app_ponto_ajustes', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
-  // incluir: data e hora locais (o fuso é o da empresa, no banco); desconsiderar: marcação ou inclusão
-  pontoAjustar: (a: { tecnico: string; acao: 'incluir' | 'desconsiderar'; motivo: string; marcacao?: string; ajuste?: string; data?: string; hora?: string; tipo?: string }) =>
+  // desconsiderar: marcação ou inclusão vinda de pedido aprovado (o gestor não inclui marcação, decisão 89)
+  pontoAjustar: (a: { tecnico: string; acao: 'desconsiderar'; motivo: string; marcacao?: string; ajuste?: string }) =>
     rpc<{ id: string; data: string; hora: string; avisado: boolean }>('app_ponto_ajustar', {
-      p_tecnico: a.tecnico, p_acao: a.acao, p_motivo: a.motivo, p_marcacao: a.marcacao ?? null,
-      p_ajuste: a.ajuste ?? null, p_data: a.data ?? null, p_hora: a.hora ?? null, p_tipo: a.tipo ?? null }),
+      p_tecnico: a.tecnico, p_acao: a.acao, p_motivo: a.motivo, p_marcacao: a.marcacao ?? null, p_ajuste: a.ajuste ?? null }),
   pontoGeo: (de: string, ate: string, tecnico: string | null) =>
     rpc<PontoGeo[]>('app_ponto_geo', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
   pontoAfd: (empresa: string, de: string, ate: string) => rpc<PontoAfd>('app_ponto_afd', { p_empresa: empresa, p_de: de, p_ate: ate }),
