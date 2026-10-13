@@ -81,3 +81,10 @@ A leitura de documentos aceita esse endereço só na função da homologação (
 `supabase/functions/documento-ocr/index.ts`). **Se o projeto da Vercel for apagado, tirar o endereço dessa lista**:
 o nome `*.vercel.app` fica livre para outra pessoa registrar. A homologação não tem WhatsApp: o login do funcionário por código e os
 envios não funcionam nela. Dados só fictícios; o endereço é aberto na internet, mas só entra quem foi convidado.
+
+### Previews de PR do projeto da produção apontando para a homologação
+
+Os previews de PR do projeto **`web`** (o da produção) devem usar o banco da homologação, nunca o real (decisão 92).
+`scripts/vercel-preview-homologacao.mjs` faz o ajuste pela API da Vercel: deixa as variáveis da produção só em
+**Production** e cria as de **Preview** com os valores da homologação. Sem `--aplicar`, só mostra o que faria; nunca
+lê o valor das variáveis da produção. Precisa de um token da Vercel (Account Settings → Tokens), apagado depois do uso.
