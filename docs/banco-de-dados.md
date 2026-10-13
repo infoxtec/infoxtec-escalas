@@ -270,8 +270,15 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `{aceito: true}`), `app_carga_ativar`, `app_cargas`, `app_atribuir_carga`, `app_cancelar_atribuicao`,
   `app_carga_atribuicoes`, `app_cargas_funcionarios`, `app_times`, `app_salvar_time`, `app_time_definir_membros`.
   Escrita: admin e gestor; leitura também para o papel leitura.
-- Carga inicial: escala "44h 6x1 (8h + 4h sábado)" para cada empregadora ativa, atribuída à empresa a partir da data
-  da aplicação. `fn_payload_escala` recriada com o rodapé "Trilha".
+- `fn_carga_termo`: o texto do termo de aceite; `app_carga_validar(p, p_instrumento)` devolve-o em `termo` e
+  `app_salvar_carga` grava esse mesmo texto mais a hora. O aceite traz os códigos dos riscos que o painel mostrou
+  (`p_aceite.riscos`); se não coincidem com os atuais, recusa. Papel leitura: `criado_por`, `aceite_nome`,
+  `aceite_texto` e `aceite_sha256` vêm nulos.
+- Gatilho `fn_carga_imutavel` nas três tabelas: escala só muda `ativo`; aceite não muda; atribuição só muda o fim
+  (de hoje em diante) e o cancelamento; nada é apagado.
+- Carga inicial: escala "Jornada padrão" (`jornada_min` de segunda a sexta e `ponto_jornada_sabado_min` no sábado;
+  44h 6x1 por padrão) para cada empregadora ativa, atribuída à empresa a partir da data da aplicação.
+  `fn_payload_escala` recriada com o rodapé "Trilha".
 
 ### Migration 93 (13/10): "Escala" vira "Programação" nos textos (decisão 87)
 

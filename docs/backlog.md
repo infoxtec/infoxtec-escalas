@@ -653,12 +653,14 @@ exige aceite: dia acima de 8h, 12x36, intervalo de 30 a 59 min, intervalo acima 
 turno de revezamento acima de 6h; avisa: trabalho noturno). O aceite guarda o texto exato, o instrumento
 coletivo (se houver), nome, papel, hora e SHA-256, e não muda. A escala salva também não muda (só ativa ou
 inativa). A atribuição começa hoje ou depois, vale um ano e encerra a anterior do mesmo alvo na véspera. O campo
-Equipe do funcionário vira Time (criado na empresa dele). Cada empregadora ativa ganhou a escala "44h 6x1 (8h +
-4h sábado)", a regra de hoje, atribuída à empresa a partir da data da aplicação. **Critérios de aceite:** escala
+Equipe do funcionário vira Time (criado na empresa dele). Cada empregadora ativa ganhou a escala "Jornada padrão"
+(a regra de hoje, 44h 6x1), atribuída à empresa a partir da data da aplicação. **Critérios de aceite:** escala
 ilegal não salva nem com aceite; escala com risco só com aceite; escala de uma empregadora não se aplica a
 funcionário de outra; funcionário > time > empresa; sem escala, jornada padrão. **Ficam para depois:** aviso de
 vencimento da vigência, tolerância e horário de entrada por dia, menor de idade e aprendiz (o cadastro não guarda
 idade), domingo a cada 3 semanas no comércio (o sistema não sabe o setor); o espelho e as HE pela escala (etapa 2).
+Da revisão do `seguranca` (P3): juntar ou apagar time sem membros (um erro de digitação no cadastro cria time
+novo); descarte do aceite e da escala 5 anos depois da última vigência, junto com o do ponto.
 
 ## 105. Limites de HE diário e mensal e Alerta Crítico — planejado (pedido em 13/10/2026; depende do 104)
 

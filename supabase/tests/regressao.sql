@@ -2043,8 +2043,16 @@ begin
                    'minutos', jsonb_build_array(528,528,528,528,528,0,0), 'intervalo_min', 60));
   exception when others then v_ok := true; end;
   perform pg_temp.ok(v_ok, '[T40] escala com risco salva sem aceite');
+  v_ok := false;
+  begin perform app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 5x2', 'tipo', 'semanal',
+                   'minutos', jsonb_build_array(528,528,528,528,528,0,0), 'intervalo_min', 45), '{"aceito":true,"riscos":["dia_acima_8h"]}');
+  exception when others then v_ok := sqlerrm like '%riscos da escala mudaram%'; end;
+  perform pg_temp.ok(v_ok, '[T40] aceite de riscos diferentes dos mostrados');
+  r := app_carga_validar(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 5x2', 'tipo', 'semanal',
+         'minutos', jsonb_build_array(528,528,528,528,528,0,0), 'intervalo_min', 60), 'ACT QA');
+  perform pg_temp.ok(r->>'termo' like 'Eu, %ACT QA%passivo trabalhista.', '[T40] termo montado pelo banco: ' || coalesce(r->>'termo', 'nulo'));
   v_c1 := app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 5x2', 'tipo', 'semanal',
-            'minutos', jsonb_build_array(528,528,528,528,528,0,0), 'intervalo_min', 60), '{"aceito":true,"instrumento":"ACT QA"}');
+            'minutos', jsonb_build_array(528,528,528,528,528,0,0), 'intervalo_min', 60), '{"aceito":true,"instrumento":"ACT QA","riscos":["dia_acima_8h"]}');
   perform pg_temp.ok((select sha256 = encode(sha256(convert_to(texto, 'UTF8')), 'hex') and texto like '%ACT QA%' and email = 'qa-admin@teste.local'
                         from carga_aceites where carga_id = v_c1), '[T40] aceite com texto e hash');
   v_ok := false;
@@ -2053,7 +2061,7 @@ begin
   v_ok := false;
   begin update cargas_horarias set intervalo_min = 30 where id = v_c1; exception when others then v_ok := true; end;
   perform pg_temp.ok(v_ok, '[T40] escala salva alterada');
-  v_c2 := app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 12x36', 'tipo', '12x36', 'plantao_min', 720, 'intervalo_min', 60), '{"aceito":true}');
+  v_c2 := app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 12x36', 'tipo', '12x36', 'plantao_min', 720, 'intervalo_min', 60), '{"aceito":true,"riscos":["12x36"]}');
   v_c3 := app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 40h', 'tipo', 'semanal',
             'minutos', jsonb_build_array(480,480,480,480,480,0,0), 'intervalo_min', 60));
   perform pg_temp.ok(not exists (select 1 from carga_aceites where carga_id = v_c3), '[T40] escala sem risco não pede aceite');
@@ -2072,6 +2080,10 @@ begin
   perform pg_temp.ok(v_tm is not null and (select nome from times where id = v_tm) = 'QA Time', '[T40] equipe virou time');
   perform app_time_definir_membros(v_tm, array[v_t2, v_t3]);
   perform pg_temp.ok((select count(*) from tecnicos where time_id = v_tm) = 2, '[T40] membros do time');
+  insert into times (empresa_id, nome, ativo) values (v_emp, 'QA Inativo', false);
+  v_ok := false;
+  begin update tecnicos set equipe = 'qa inativo' where id = v_t1; exception when others then v_ok := sqlerrm like '%inativo%'; end;
+  perform pg_temp.ok(v_ok, '[T40] funcionário posto em time inativo');
   -- prioridade: funcionário > time > empresa
   perform app_atribuir_carga(v_c3, 'empresa', v_emp, v_seg);
   perform app_atribuir_carga(v_c2, 'time', v_tm, v_seg);
@@ -2080,6 +2092,9 @@ begin
   perform pg_temp.ok(fn_carga_minutos_dia(v_t2, v_seg) = 720 and fn_carga_minutos_dia(v_t2, v_seg + 1) = 0
                      and fn_carga_minutos_dia(v_t2, v_seg + 2) = 720, '[T40] time: 12x36');
   perform pg_temp.ok(fn_carga_minutos_dia(v_t3, v_seg) = 528, '[T40] funcionário: 5x2');
+  v_ok := false;
+  begin update carga_atribuicoes set inicio = inicio - 30 where tecnico_id = v_t3; exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T40] início da atribuição alterado');
   perform pg_temp.ok((select alvo from carga_atribuicoes where id = fn_carga_atribuicao(v_t3, v_seg)) = 'tecnico'
                      and (select alvo from carga_atribuicoes where id = fn_carga_atribuicao(v_t2, v_seg)) = 'time', '[T40] origem da escala');
   -- nova atribuição encerra a anterior na véspera; a vigência padrão é de um ano
@@ -2092,7 +2107,9 @@ begin
   perform pg_temp.ok(v_ok, '[T40] escala atribuída inativada');
   perform pg_temp.ok(not has_function_privilege('anon', 'app_salvar_carga(jsonb,jsonb)', 'execute'), '[T40] anon salva escala');
   perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
-  perform pg_temp.ok((select count(*) from app_cargas(v_emp)) = 3, '[T40] leitura vê as escalas');
+  perform pg_temp.ok((select count(*) from app_cargas(v_emp)) = 3
+                     and not exists (select 1 from app_cargas(v_emp) where aceite_texto is not null or aceite_nome is not null or criado_por is not null)
+                     and exists (select 1 from app_cargas(v_emp) where aceite_em is not null), '[T40] leitura vê as escalas, sem autor nem termo');
   v_ok := false;
   begin perform app_atribuir_carga(v_c3, 'tecnico', v_t1, v_seg); exception when others then v_ok := true; end;
   perform pg_temp.ok(v_ok, '[T40] leitura atribuiu escala');

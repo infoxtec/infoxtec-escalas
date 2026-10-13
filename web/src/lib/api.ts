@@ -151,8 +151,9 @@ export const api = {
   pontoEspelhoProva: (id: string) => rpc<Record<string, unknown>>('app_ponto_espelho_prova', { p_id: id }),
   // Escala / Carga Horária e Times (decisão 88)
   cargasModelos: () => rpc<ModeloCarga[]>('app_cargas_modelos'),
-  cargaValidar: (p: Record<string, unknown>) => rpc<ValidacaoCarga>('app_carga_validar', { p }),
-  salvarCarga: (p: Record<string, unknown>, aceite: { aceito: boolean; instrumento: string | null } | null) =>
+  cargaValidar: (p: Record<string, unknown>, instrumento: string | null) =>
+    rpc<ValidacaoCarga>('app_carga_validar', { p, p_instrumento: instrumento }),
+  salvarCarga: (p: Record<string, unknown>, aceite: { aceito: boolean; instrumento: string | null; riscos: string[] } | null) =>
     rpc<string>('app_salvar_carga', { p, p_aceite: aceite }),
   cargaAtivar: (id: string, ativo: boolean) => rpc<void>('app_carga_ativar', { p_id: id, p_ativo: ativo }),
   cargas: (empresa: string | null) => rpc<CargaHoraria[]>('app_cargas', { p_empresa: empresa }),

@@ -144,8 +144,10 @@ function Escalas({ cargas, empregadoras, empresa, podeEditar, recarregar }: {
                   <td className="whitespace-nowrap px-3 py-2 text-xs">{minutosHm(c.semanal_min)}{c.tipo === '12x36' && ' (média)'}</td>
                   <td className="px-3 py-2 text-xs">{c.intervalo_min} min</td>
                   <td className="px-3 py-2 text-xs">
-                    {c.aceite_em ? <button type="button" className="flex items-center gap-1 text-amber-800 underline" onClick={() => setAceite(c)}>
-                      <FileSignature className="h-3.5 w-3.5" /> {c.aceite_nome}</button> : <span className="text-muted-foreground">sem risco</span>}
+                    {!c.aceite_em ? <span className="text-muted-foreground">sem risco</span>
+                      : c.aceite_texto ? <button type="button" className="flex items-center gap-1 text-amber-800 underline" onClick={() => setAceite(c)}>
+                          <FileSignature className="h-3.5 w-3.5" /> {c.aceite_nome}</button>
+                      : <span className="text-amber-800">com aceite</span>}
                   </td>
                   <td className="px-3 py-2 text-xs">{c.atribuicoes}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-right">
@@ -202,10 +204,11 @@ function NovaEscala({ empregadoras, empresa, onFechar, onSalva }: {
     ...(r.tipo === '12x36' ? { plantao_min: r.plantao_min } : { minutos: r.minutos }),
   }), [r])
   useEffect(() => {
-    const t = setTimeout(() => { api.cargaValidar(payload).then(setV).catch(e => setErro(erroMsg(e))) }, 300)
+    const t = setTimeout(() => { api.cargaValidar(payload, instrumento.trim() || null).then(setV).catch(e => setErro(erroMsg(e))) }, 300)
     return () => clearTimeout(t)
-  }, [payload])
-  useEffect(() => { setAceito(false) }, [v?.riscos.length])
+  }, [payload, instrumento])
+  // o aceite vale para o termo que está na tela: mudou o termo, marca de novo
+  useEffect(() => { setAceito(false) }, [v?.termo])
 
   const usarModelo = (nome: string) => {
     const m = modelos.find(x => x.nome === nome)
@@ -221,7 +224,7 @@ function NovaEscala({ empregadoras, empresa, onFechar, onSalva }: {
     if (!r.nome.trim()) return setErro('Dê um nome à escala.')
     setSalvando(true)
     try {
-      await api.salvarCarga(payload, temRisco ? { aceito, instrumento: instrumento.trim() || null } : null)
+      await api.salvarCarga(payload, temRisco ? { aceito, instrumento: instrumento.trim() || null, riscos: (v?.riscos ?? []).map(x => x.codigo) } : null)
       await onSalva()
     } catch (e) { setErro(erroMsg(e)) } finally { setSalvando(false) }
   }
@@ -293,11 +296,10 @@ function NovaEscala({ empregadoras, empresa, onFechar, onSalva }: {
             <label className="flex items-start gap-2 text-xs">
               <input type="checkbox" className="mt-0.5" checked={aceito} onChange={e => setAceito(e.target.checked)} />
               <span>
-                Declaro que revisei esta escala e fui informado dos pontos acima, que dependem de acordo ou norma coletiva.
-                {instrumento.trim() ? ` Há o seguinte instrumento que os ampara: ${instrumento.trim()}.`
-                  : ' Não há instrumento que os ampare e, ciente disso, decido aplicar a escala assumindo o risco em nome do empregador.'}
-                {' '}Sei que este aceite registra minha decisão e a informação recebida, mas não supre acordo ou norma coletiva,
-                não afasta direitos do empregado nem elimina passivo trabalhista. O aceite fica registrado com meu nome, a data e a hora.
+                <span className="block whitespace-pre-wrap">{v?.termo}</span>
+                <span className="mt-1 block text-muted-foreground">
+                  Li e aceito. O aceite fica registrado com o texto acima, meu nome, e-mail e papel, a data e a hora, e não pode ser alterado.
+                </span>
               </span>
             </label>
           </div>

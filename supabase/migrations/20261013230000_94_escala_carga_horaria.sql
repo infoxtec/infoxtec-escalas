@@ -12,7 +12,7 @@
 create table if not exists times (
   id          uuid primary key default gen_random_uuid(),
   empresa_id  uuid not null references empresas(id),
-  nome        text not null check (length(trim(nome)) between 1 and 60),
+  nome        text not null check (length(trim(nome)) >= 1),  -- sem teto: vem do campo equipe, que não tem
   ativo       boolean not null default true,
   created_at  timestamptz not null default now()
 );
@@ -28,17 +28,19 @@ comment on column tecnicos.time_id is 'Time do funcionário, resolvido pelo nome
 create or replace function fn_tecnico_time()
 returns trigger language plpgsql set search_path = public, extensions as $function$
 declare
-  v_nome text := nullif(trim(new.equipe), '');
-  v_id   uuid;
+  v_nome  text := nullif(trim(new.equipe), '');
+  v_id    uuid;
+  v_ativo boolean;
 begin
   if v_nome is null or new.empresa_id is null then
     new.time_id := null;
     return new;
   end if;
   new.equipe := v_nome;
-  select id into v_id from times where empresa_id = new.empresa_id and lower(trim(nome)) = lower(v_nome);
-  if v_id is null then
-    insert into times (empresa_id, nome) values (new.empresa_id, v_nome) returning id into v_id;
+  insert into times (empresa_id, nome) values (new.empresa_id, v_nome) on conflict do nothing;
+  select id, ativo into v_id, v_ativo from times where empresa_id = new.empresa_id and lower(trim(nome)) = lower(v_nome);
+  if not v_ativo and new.time_id is distinct from v_id then
+    raise exception 'O time "%" está inativo. Reative-o em Escala / Carga Horária > Times ou escolha outro.', v_nome;
   end if;
   new.time_id := v_id;
   return new;
@@ -79,18 +81,31 @@ comment on table cargas_horarias is 'Escala (carga horária contratual) da empre
 alter table cargas_horarias enable row level security;
 create unique index if not exists cargas_horarias_nome_uq on cargas_horarias (empresa_id, lower(trim(nome)));
 
+-- Escala: só `ativo` muda. Aceite: nada muda. Atribuição: só o fim (para hoje ou depois) e o cancelamento.
 create or replace function fn_carga_imutavel()
 returns trigger language plpgsql set search_path = public, extensions as $function$
 begin
-  if tg_op = 'DELETE' or (to_jsonb(new) - 'ativo') <> (to_jsonb(old) - 'ativo') then
+  if tg_op in ('DELETE', 'TRUNCATE') then
+    raise exception 'Registro de escala não é apagado (histórico do que valia em cada data).';
+  end if;
+  if tg_table_name = 'cargas_horarias' and (to_jsonb(new) - 'ativo') <> (to_jsonb(old) - 'ativo') then
     raise exception 'Escala salva não muda: crie outra e atribua no lugar desta.';
+  elsif tg_table_name = 'carga_aceites' then
+    raise exception 'O aceite de risco não muda depois de assinado.';
+  elsif tg_table_name = 'carga_atribuicoes'
+        and ((to_jsonb(new) - 'fim' - 'cancelada_em' - 'cancelada_por') <> (to_jsonb(old) - 'fim' - 'cancelada_em' - 'cancelada_por')
+             -- pelo jsonb: a mesma função serve às três tabelas (o plpgsql_check confere com uma delas)
+             or ((to_jsonb(new)->>'fim') <> (to_jsonb(old)->>'fim') and (to_jsonb(new)->>'fim')::date < current_date - 1)
+             or (to_jsonb(old)->>'cancelada_em' is not null
+                 and to_jsonb(new)->>'cancelada_em' is distinct from to_jsonb(old)->>'cancelada_em')) then
+    raise exception 'Atribuição só muda o fim (de hoje em diante) ou é cancelada antes de começar.';
   end if;
   return new;
 end $function$;
 create or replace trigger trg_cargas_horarias_imutavel before update or delete on cargas_horarias
   for each row execute function fn_carga_imutavel();
 create or replace trigger trg_cargas_horarias_sem_truncate before truncate on cargas_horarias
-  for each statement execute function fn_ponto_imutavel();
+  for each statement execute function fn_carga_imutavel();
 
 -- Aceite de risco: quem assinou, o texto exato e o hash. Só inclusão.
 create table if not exists carga_aceites (
@@ -109,9 +124,9 @@ create table if not exists carga_aceites (
 comment on table carga_aceites is 'Aceite de risco da escala, assinado no sistema por admin ou gestor (decisão 88). Não supre acordo ou norma coletiva. Só inclusão.';
 alter table carga_aceites enable row level security;
 create or replace trigger trg_carga_aceites_imutavel before update or delete on carga_aceites
-  for each row execute function fn_ponto_imutavel();
+  for each row execute function fn_carga_imutavel();
 create or replace trigger trg_carga_aceites_sem_truncate before truncate on carga_aceites
-  for each statement execute function fn_ponto_imutavel();
+  for each statement execute function fn_carga_imutavel();
 
 -- Atribuição: escala → empresa, time ou funcionário, com vigência
 create table if not exists carga_atribuicoes (
@@ -137,6 +152,10 @@ alter table carga_atribuicoes enable row level security;
 create index if not exists carga_atribuicoes_empresa_idx on carga_atribuicoes (empresa_id, inicio);
 create index if not exists carga_atribuicoes_time_idx on carga_atribuicoes (time_id) where time_id is not null;
 create index if not exists carga_atribuicoes_tecnico_idx on carga_atribuicoes (tecnico_id) where tecnico_id is not null;
+create or replace trigger trg_carga_atribuicoes_guarda before update or delete on carga_atribuicoes
+  for each row execute function fn_carga_imutavel();
+create or replace trigger trg_carga_atribuicoes_sem_truncate before truncate on carga_atribuicoes
+  for each statement execute function fn_carga_imutavel();
 
 -- Validação (CF art. 7º; CLT arts. 58, 59, 59-A, 66, 67, 71, 73; Lei 605/49; Súmula 423 do TST) ----------------
 -- p: {tipo, minutos[7] (seg..dom), plantao_min, intervalo_min, entrada 'HH:MI'}
@@ -260,6 +279,29 @@ begin
   return jsonb_build_object('semanal_min', v_sem, 'bloqueios', b, 'riscos', r, 'avisos', a);
 end $function$;
 
+-- Texto do termo de aceite (parecer do juridico). O painel mostra este texto; ao salvar, entra a hora.
+create or replace function fn_carga_termo(p jsonb, p_val jsonb, p_email text, p_instrumento text)
+returns text language plpgsql stable set search_path = public, extensions as $function$
+declare
+  v_usu  painel_usuarios;
+  v_emp  text := (select coalesce(nome_fantasia, razao_social) from empresas where id = (p->>'empresa_id')::uuid);
+  v_tipo text := coalesce(p->>'tipo', 'semanal');
+begin
+  if jsonb_array_length(p_val->'riscos') = 0 then return null; end if;
+  select * into v_usu from painel_usuarios where email = p_email;
+  return 'Eu, ' || coalesce(nullif(v_usu.nome, ''), p_email) || ', ' || coalesce(v_usu.papel, '') || ' da ' || coalesce(v_emp, '(empresa)')
+    || ', declaro que revisei a escala ''' || coalesce(nullif(trim(p->>'nome'), ''), '(sem nome)') || ''' ('
+    || case when v_tipo = '12x36' then '12x36, plantão de ' || fn_ponto_hm(coalesce((p->>'plantao_min')::int, 0))
+            else fn_ponto_hm((p_val->>'semanal_min')::int) || ' por semana' end
+    || ', intervalo de ' || coalesce((p->>'intervalo_min')::int, 0) || ' min'
+    || ') e fui informado pelo sistema dos seguintes pontos que dependem de acordo ou norma coletiva: '
+    || (select string_agg(x->>'texto', ' ') from jsonb_array_elements(p_val->'riscos') x)
+    || ' Declaro que ' || case when nullif(trim(p_instrumento), '') is not null
+                               then 'há o seguinte instrumento que os ampara: ' || trim(p_instrumento) || '.'
+                               else 'não há instrumento que os ampare e, ciente disso, decido aplicar a escala assumindo o risco em nome do empregador.' end
+    || ' Sei que este aceite registra minha decisão e a informação recebida, mas não supre acordo ou norma coletiva, não afasta direitos do empregado nem elimina passivo trabalhista.';
+end $function$;
+
 -- Escala vigente do funcionário num dia: funcionário > time > empresa (null: jornada padrão)
 create or replace function fn_carga_atribuicao(p_tecnico uuid, p_data date)
 returns uuid language sql stable set search_path = public, extensions as $function$
@@ -312,14 +354,18 @@ begin
     jsonb_build_object('nome', 'Turno de revezamento 6h', 'tipo', 'revezamento', 'minutos', jsonb_build_array(360,360,360,360,360,360,0), 'intervalo_min', 15));
 end $function$;
 
-create or replace function app_carga_validar(p jsonb)
+-- Validação e, se houver risco, o texto exato do termo que será assinado
+create or replace function app_carga_validar(p jsonb, p_instrumento text default null)
 returns jsonb language plpgsql stable security definer set search_path = public, extensions as $function$
+declare
+  v_email text := app_exigir(array['admin','gestor']);
+  v_val   jsonb := fn_carga_validar(p);
 begin
-  perform app_exigir(array['admin','gestor']);
-  return fn_carga_validar(p);
+  return v_val || jsonb_build_object('termo', fn_carga_termo(p, v_val, v_email, p_instrumento));
 end $function$;
 
--- Salva a escala. Bloqueio não salva; risco só com o aceite (p_aceite: {aceito: true, instrumento: '...'}).
+-- Salva a escala. Bloqueio não salva; risco só com o aceite (p_aceite: {aceito: true, instrumento: '...', riscos: [códigos
+-- que o painel mostrou]}). Se os riscos mudaram desde a tela, recusa: o aceite vale só para o que foi visto.
 create or replace function app_salvar_carga(p jsonb, p_aceite jsonb default null)
 returns uuid language plpgsql volatile security definer set search_path = public, extensions as $function$
 declare
@@ -332,7 +378,6 @@ declare
   v_emp_nome text;
   v_usu   painel_usuarios;
   v_instr text := nullif(trim(p_aceite->>'instrumento'), '');
-  v_resumo text;
   v_texto text;
   v_em    timestamptz := now();
 begin
@@ -348,6 +393,12 @@ begin
   if jsonb_array_length(v_val->'riscos') > 0 and coalesce((p_aceite->>'aceito')::boolean, false) is not true then
     raise exception 'Esta escala depende de acordo ou norma coletiva: só é salva com o aceite de risco.';
   end if;
+  if jsonb_array_length(v_val->'riscos') > 0
+     and (select coalesce(array_agg(x->>'codigo' order by x->>'codigo'), '{}') from jsonb_array_elements(v_val->'riscos') x)
+         is distinct from (select coalesce(array_agg(c order by c), '{}') from jsonb_array_elements_text(coalesce(p_aceite->'riscos', '[]')) c) then
+    raise exception 'Os riscos da escala mudaram desde a tela. Revise e aceite de novo.';
+  end if;
+  if length(v_instr) > 200 then raise exception 'Acordo ou convenção: até 200 caracteres.'; end if;
 
   insert into cargas_horarias (empresa_id, nome, tipo, minutos, plantao_min, intervalo_min, entrada, semanal_min, riscos, criado_por)
   values (v_emp, v_nome, v_tipo,
@@ -359,15 +410,7 @@ begin
 
   if jsonb_array_length(v_val->'riscos') > 0 then
     select * into v_usu from painel_usuarios where email = v_email;
-    v_resumo := case when v_tipo = '12x36' then '12x36, plantão de ' || fn_ponto_hm((p->>'plantao_min')::int)
-                     else fn_ponto_hm((v_val->>'semanal_min')::int) || ' por semana' end
-                || ', intervalo de ' || coalesce((p->>'intervalo_min')::int, 0) || ' min';
-    v_texto := 'Eu, ' || coalesce(nullif(v_usu.nome, ''), v_email) || ', ' || v_usu.papel || ' da ' || v_emp_nome
-      || ', declaro que revisei a escala ''' || v_nome || ''' (' || v_resumo || ') e fui informado pelo sistema dos seguintes pontos que dependem de acordo ou norma coletiva: '
-      || (select string_agg(x->>'texto', ' ') from jsonb_array_elements(v_val->'riscos') x)
-      || ' Declaro que ' || case when v_instr is not null then 'há o seguinte instrumento que os ampara: ' || v_instr || '.'
-                                 else 'não há instrumento que os ampare e, ciente disso, decido aplicar a escala assumindo o risco em nome do empregador.' end
-      || ' Sei que este aceite registra minha decisão e a informação recebida, mas não supre acordo ou norma coletiva, não afasta direitos do empregado nem elimina passivo trabalhista.'
+    v_texto := fn_carga_termo(p, v_val, v_email, v_instr)
       || ' Registrado em ' || to_char(v_em at time zone 'America/Bahia', 'DD/MM/YYYY HH24:MI') || '.';
     insert into carga_aceites (carga_id, empresa_id, riscos, instrumento, texto, sha256, nome, email, papel, aceito_em)
     values (v_id, v_emp, v_val->'riscos', v_instr, v_texto, encode(sha256(convert_to(v_texto, 'UTF8')), 'hex'),
@@ -393,13 +436,17 @@ returns table (id uuid, empresa_id uuid, empresa text, nome text, tipo text, min
                created_at timestamptz, atribuicoes bigint, aceite_nome text, aceite_em timestamptz,
                aceite_texto text, aceite_sha256 text)
 language plpgsql stable security definer set search_path = public, extensions as $function$
+declare
+  -- leitura não vê quem fez nem o termo (padrão das migrations 65 e 66; o termo é prova do empregador)
+  v_leitura boolean := fn_papel(app_exigir(array['admin','gestor','leitura'])) = 'leitura';
 begin
-  perform app_exigir(array['admin','gestor','leitura']);
   return query
     select c.id, c.empresa_id, coalesce(m.nome_fantasia, m.razao_social), c.nome, c.tipo, c.minutos, c.plantao_min,
-           c.intervalo_min, to_char(c.entrada, 'HH24:MI'), c.semanal_min, c.riscos, c.ativo, c.criado_por, c.created_at,
+           c.intervalo_min, to_char(c.entrada, 'HH24:MI'), c.semanal_min, c.riscos, c.ativo,
+           case when v_leitura then null else c.criado_por end, c.created_at,
            (select count(*) from carga_atribuicoes a where a.carga_id = c.id and a.cancelada_em is null and a.fim >= current_date),
-           k.nome, k.aceito_em, k.texto, k.sha256
+           case when v_leitura then null else k.nome end, k.aceito_em,
+           case when v_leitura then null else k.texto end, case when v_leitura then null else k.sha256 end
       from cargas_horarias c join empresas m on m.id = c.empresa_id
       left join carga_aceites k on k.carga_id = c.id
      where p_empresa is null or c.empresa_id = p_empresa
@@ -430,7 +477,7 @@ begin
     select empresa_id into v_emp from times where id = p_alvo_id and ativo;
     v_time := p_alvo_id;
   elsif p_alvo = 'tecnico' then
-    select empresa_id into v_emp from tecnicos where id = p_alvo_id;
+    select empresa_id into v_emp from tecnicos where id = p_alvo_id and ativo and desligado_em is null;
     v_tec := p_alvo_id;
   else
     raise exception 'Atribua a uma empresa, a um time ou a um funcionário.';
@@ -474,8 +521,9 @@ create or replace function app_carga_atribuicoes(p_empresa uuid default null)
 returns table (id uuid, carga_id uuid, carga text, empresa_id uuid, empresa text, alvo text, alvo_id uuid,
                alvo_nome text, inicio date, fim date, situacao text, criado_por text)
 language plpgsql stable security definer set search_path = public, extensions as $function$
+declare
+  v_leitura boolean := fn_papel(app_exigir(array['admin','gestor','leitura'])) = 'leitura';
 begin
-  perform app_exigir(array['admin','gestor','leitura']);
   return query
     select a.id, a.carga_id, c.nome, a.empresa_id, coalesce(m.nome_fantasia, m.razao_social), a.alvo,
            coalesce(a.tecnico_id, a.time_id, a.empresa_id),
@@ -483,7 +531,7 @@ begin
            a.inicio, a.fim,
            case when a.cancelada_em is not null then 'cancelada' when a.fim < current_date then 'encerrada'
                 when a.inicio > current_date then 'futura' else 'vigente' end,
-           a.criado_por
+           case when v_leitura then null else a.criado_por end
       from carga_atribuicoes a join cargas_horarias c on c.id = a.carga_id join empresas m on m.id = a.empresa_id
       left join tecnicos t on t.id = a.tecnico_id left join times x on x.id = a.time_id
      where p_empresa is null or a.empresa_id = p_empresa
@@ -537,6 +585,7 @@ declare
 begin
   perform app_exigir(array['admin','gestor']);
   if v_nome is null then raise exception 'Dê um nome ao time.'; end if;
+  if length(v_nome) > 60 then raise exception 'Nome do time: até 60 caracteres.'; end if;
   if v_id is null then
     if not exists (select 1 from empresas where id = p_empresa and ativo) then raise exception 'Escolha a empresa do time.'; end if;
     v_emp := p_empresa;
@@ -576,10 +625,14 @@ begin
   update tecnicos set equipe = v_x.nome where id = any(coalesce(p_tecnicos, '{}')) and time_id is distinct from p_time;
 end $function$;
 
--- Escala padrão de cada empregadora ativa, atribuída à empresa a partir de hoje (jornada que já vale hoje)
+-- Escala padrão de cada empregadora ativa, atribuída à empresa a partir de hoje: a jornada configurada que já vale
+-- hoje (jornada_min e ponto_jornada_sabado_min; 44h 6x1 por padrão), para nada mudar até alguém atribuir outra
 insert into cargas_horarias (empresa_id, nome, tipo, minutos, intervalo_min, semanal_min, riscos, criado_por)
-select e.id, '44h 6x1 (8h + 4h sábado)', 'semanal', array[480,480,480,480,480,240,0], 60, 2640, '[]', 'migração 94'
+select e.id, 'Jornada padrão (' || fn_ponto_hm(j.dia) || ' + ' || fn_ponto_hm(j.sab) || ' sábado)', 'semanal',
+       array[j.dia, j.dia, j.dia, j.dia, j.dia, j.sab, 0], 60, 5 * j.dia + j.sab, '[]', 'migração 94'
   from empresas e
+ cross join (select coalesce(nullif(fn_config('jornada_min'), '')::int, 480) as dia,
+                    coalesce(nullif(fn_config('ponto_jornada_sabado_min'), '')::int, 240) as sab) j
  where e.empregadora and e.ativo
    and not exists (select 1 from cargas_horarias c where c.empresa_id = e.id);
 insert into carga_atribuicoes (carga_id, empresa_id, alvo, inicio, fim, criado_por)

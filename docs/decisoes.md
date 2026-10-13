@@ -1141,3 +1141,14 @@ funcionando como hoje. Cada empregadora ativa recebe a escala da regra atual (44
 nada mudar até alguém atribuir outra. `fn_carga_minutos_dia` dá os minutos contratuais do dia, base do limite de
 HE (backlog 105). **Fora desta etapa:** espelho, débito e HE pela escala (etapa 2); aviso de vencimento; menor e
 aprendiz e domingo a cada 3 semanas no comércio (o cadastro não tem idade nem setor).
+**Revisão do `seguranca` (aplicada):** o papel leitura não vê quem criou nem o termo do aceite (padrão das
+migrations 65 e 66; o termo em que a empresa assume o risco é prova do empregador); o termo é montado pelo banco,
+o painel mostra exatamente esse texto e devolve os riscos que mostrou — se mudaram, o aceite é recusado; nome de
+time sem teto no banco (vem do campo equipe), 60 caracteres no cadastro do time; funcionário não entra em time
+inativo; atribuição só muda o fim (de hoje em diante) ou é cancelada; instrumento até 200 caracteres; a escala
+inicial segue `jornada_min` e `ponto_jornada_sabado_min`. **LGPD:** entram o nome, o e-mail e o papel de quem
+assina o aceite (base: exercício regular de direito, art. 7º, VI, e cumprimento de obrigação legal da jornada,
+art. 7º, II) e a jornada contratual e o time do funcionário (execução do contrato, art. 7º, V). Veem admin e
+gestor; o leitura vê a escala, sem autor nem termo. Retenção: o aceite e a escala ficam enquanto houver
+atribuição e por 5 anos depois do fim da última vigência (prazo prescricional, CF art. 7º, XXIX); o descarte
+entra com o do ponto.

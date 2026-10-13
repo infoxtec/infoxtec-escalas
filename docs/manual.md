@@ -249,14 +249,16 @@ A carga horária contratual de cada empregadora (decisão 88). Abas:
   sistema confere pela CLT enquanto você digita: em vermelho o que **não é permitido** (não salva), em amarelo o
   que **exige aceite** (depende de acordo ou convenção) e em azul os avisos. Com algo em amarelo, o botão vira
   **Assinar o aceite e salvar**: informe o acordo ou a convenção, se houver, e marque o termo. O aceite fica
-  guardado com seu nome, a hora e o código SHA-256 (clique no nome, na coluna Aceite de risco). Escala salva não
+  guardado com o texto exato, seu nome, e-mail e papel, a hora e o código SHA-256 (clique no nome, na coluna Aceite
+  de risco; o papel leitura vê só que há aceite). Escala salva não
   muda: crie outra e atribua no lugar.
 - **Atribuições** — **Atribuir escala** à empresa, a um time ou a um funcionário, a partir de hoje ou depois. Sem
   fim, vale um ano. Uma atribuição nova encerra a anterior do mesmo alvo na véspera. A que ainda não começou pode
   ser cancelada.
 - **Por funcionário** — qual escala vale para cada um numa data e de onde ela vem: do funcionário, do time, da
   empresa ou a jornada padrão.
-- **Times** — o time é o campo **Time** (antiga Equipe) do funcionário. Crie, renomeie e escolha os membros.
+- **Times** — o time é o campo **Time** (antiga Equipe) do funcionário. Crie, renomeie e escolha os membros. Time
+  inativo não recebe funcionário.
 
 Nesta etapa o espelho de ponto, o débito e as horas extras ainda usam a jornada padrão (8h de segunda a sexta e
 4h no sábado).
