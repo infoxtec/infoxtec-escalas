@@ -254,6 +254,16 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 98 (14/10): Indicadores pela escala (decisão 93)
+
+`app_painel_gerencial` (aba Indicadores) passa a contar a hora extra, o saldo e as semanas pela jornada do dia na
+escala vigente de cada funcionário (`fn_carga_dia`), como o espelho e o Alerta Crítico. Feriado não é devido (na
+12x36, o plantão no feriado é dia normal); folga e DSR trabalhados contam inteiros como hora extra; na 12x36, só o que
+passa do plantão. "Semanas acima de 44 h" não conta semanas de 12x36 (a de 48 h alterna com a de 36 h). Sem escala, a
+regra de antes. O retorno ganha `jornada.pela_escala` e `jornada.escalas` (quantas escalas no período). Os minutos
+são de relógio; o espelho converte a hora noturna reduzida (diferença de poucos minutos em plantão que passa das 22h).
+Regressão: T43.
+
 ### Migration 97 (14/10): espelho de ponto pela escala (decisão 91)
 
 - `cargas_horarias.dsr_dia` (1 = segunda … 7 = domingo): qual folga é o descanso semanal remunerado; preenchida nas

@@ -88,15 +88,16 @@ export default function GerencialPage() {
         <section className="space-y-2">
           <h3 className="text-sm font-semibold">Ponto</h3>
           <p className="text-xs text-muted-foreground">
-            Apurado até {formatDate(dados!.apurado_ate)} · {p.funcionarios} funcionários · jornada de referência: {minutosHm(p.jornada.dia_util_min)} de segunda a sexta,
-            {' '}{minutosHm(p.jornada.sabado_min)} no sábado{p.jornada.sabado_sem_expediente_abona ? ' (sábado sem expediente abonado)' : ''}, 44 h na semana.
+            Apurado até {formatDate(dados!.apurado_ate)} · {p.funcionarios} funcionários · jornada de referência: {p.jornada.pela_escala
+              ? <>a escala de cada funcionário{p.jornada.escalas ? ` (${p.jornada.escalas} no período)` : ''}; sem escala, </> : null}{minutosHm(p.jornada.dia_util_min)} de segunda a sexta,
+            {' '}{minutosHm(p.jornada.sabado_min)} no sábado{p.jornada.sabado_sem_expediente_abona ? ' (sábado sem expediente abonado)' : ''}, 44 h na semana{p.jornada.pela_escala ? ' (fora a 12x36)' : ''}.
           </p>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <Cartao titulo="Marcações" valor={String(p.marcacoes)} detalhe={`${p.dias_trabalhados} dias trabalhados`} />
             <Cartao titulo="Marcações ajustadas" valor={pctAjustes == null ? '—' : `${pctAjustes}%`}
               detalhe={`${p.ajustes} ajustes`} destaque={pctAjustes != null && pctAjustes > 10 ? 'atencao' : undefined} />
             <Cartao titulo="Dias abonados" valor={String(p.dias_abonados)} detalhe={`${minutosHm(p.minutos_abonados)} abonadas`} />
-            <Cartao titulo="Hora extra" valor={minutosHm(p.minutos_hora_extra)} detalhe="Acima da jornada de cada dia" />
+            <Cartao titulo="Hora extra" valor={minutosHm(p.minutos_hora_extra)} detalhe="Acima da jornada do dia na escala; folga e feriado inteiros" />
             <Cartao titulo="Semanas acima de 44 h" valor={`${p.semanas_acima_44h} de ${p.semanas}`}
               destaque={p.semanas_acima_44h > 0 ? 'atencao' : undefined} detalhe="Semanas inteiras no período" />
             <Cartao titulo="Semanas abaixo do esperado" valor={`${p.semanas_abaixo_esperado} de ${p.semanas}`}

@@ -665,7 +665,7 @@ novo); descarte do aceite e da escala 5 anos depois da última vigência, junto 
 escala; a escala diz qual folga é o DSR (100%); outra folga trabalhada é 50%; feriado 100% (na 12x36, compensado).
 Sem escala, a regra de antes; setembro conferido igual. **Fica para depois:** limpeza da homologação e carga geral
 nova (próximo pacote); intervalo indenizado na 12x36; adicional de domingo da convenção; alerta de 7 dias seguidos;
-Indicadores do conjunto pela escala.
+Indicadores do conjunto pela escala *(feito: migration 98, decisão 93, 14/10)*.
 Da revisão da migration 95 (P3): trava na tabela `ponto_ajustes` que recuse inclusão sem pedido do funcionário
 (hoje só a função garante); cópia do hash do aceite fora do banco; ato interno que dê ao gestor poder de assinar
 pela empresa (com o Gabriel, item 076).

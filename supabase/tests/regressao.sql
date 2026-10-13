@@ -43,6 +43,7 @@
 -- T40 escala / carga horária e times: bloqueio, aceite de risco, prioridade funcionário > time > empresa, equipe vira time
 -- T41 limite de 2 h extras pela escala: aceite da empresa na Programação, substituição recusada, Alerta Crítico
 -- T42 espelho pela escala: folga a 50%, DSR a 100%, débito pela jornada do dia, 12x36 com feriado compensado
+-- T43 Indicadores pela escala: hora extra pela jornada do dia (folga e DSR inteiros, 12x36 acima do plantão)
 
 \set ON_ERROR_STOP on
 begin;
@@ -2306,7 +2307,30 @@ begin
   perform pg_temp.ok(v_ok, '[T42] 12x36 sem entrada (plantão que pode virar a noite)');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T42' as resultado,
+-- T43 Indicadores pela escala (migration 98, decisão 93) ----------------------------------------------------
+do $$
+declare
+  v_mes date := (date_trunc('month', current_date) - interval '2 months')::date;  -- o mesmo mês do T42
+  v_ids uuid[] := array(select id from tecnicos where nome in ('QA Espelho 5x2', 'QA Espelho 12x36'));
+  a jsonb; b jsonb;
+begin
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  perform pg_temp.ok(cardinality(v_ids) = 2, '[T43] funcionários do T42');
+  -- a diferença entre o painel com e sem os dois funcionários do T42 é a hora extra deles
+  update tecnicos set perfil_teste = true where id = any(v_ids);
+  a := app_painel_gerencial(v_mes, v_mes + 20)->'ponto';
+  update tecnicos set perfil_teste = false where id = any(v_ids);
+  b := app_painel_gerencial(v_mes, v_mes + 20)->'ponto';
+  -- 5x2: sábado de folga 4 h + domingo (DSR) 3 h = 420; 12x36: plantão de 11 h sem extra, plantão de 13 h = 60
+  perform pg_temp.ok((b->>'minutos_hora_extra')::int - (a->>'minutos_hora_extra')::int = 480,
+                     '[T43] hora extra pela escala: ' || ((b->>'minutos_hora_extra')::int - (a->>'minutos_hora_extra')::int));
+  perform pg_temp.ok((b->>'semanas_acima_44h')::int = (a->>'semanas_acima_44h')::int,
+                     '[T43] semanas acima de 44 h: ' || (b->>'semanas_acima_44h') || ' contra ' || (a->>'semanas_acima_44h'));
+  perform pg_temp.ok((b->'jornada'->>'pela_escala')::boolean and (b->'jornada'->>'escalas')::int >= 2,
+                     '[T43] jornada pela escala: ' || (b->'jornada')::text);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T43' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
