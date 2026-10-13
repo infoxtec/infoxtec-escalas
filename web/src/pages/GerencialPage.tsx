@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { Button, ErrorBox, Input } from '../components/ui'
 import { api, erroMsg } from '../lib/api'
+import AlertaCritico from '../components/AlertaCritico'
 import { addDays, ALERTA_JORNADA, formatDate, hojeBahia, minutosHm } from '../lib/types'
 import type { PainelGerencial } from '../lib/types'
 
@@ -49,7 +50,7 @@ export default function GerencialPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold">Indicadores de aderência</h2>
-          <p className="text-xs text-muted-foreground">Programação e ponto no período (até 62 dias). Só números do conjunto, sem nome de funcionário.</p>
+          <p className="text-xs text-muted-foreground">Programação e ponto no período (até 62 dias). Números do conjunto; só o Alerta Crítico mostra o funcionário.</p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <label className="text-xs">De <Input type="date" value={de} max={ate} onChange={ev => setDe(ev.target.value)} className="w-40" /></label>
@@ -61,6 +62,8 @@ export default function GerencialPage() {
       </div>
 
       {erro && <ErrorBox>{erro}</ErrorBox>}
+
+      <AlertaCritico />
 
       {e && (
         <section className="space-y-2">

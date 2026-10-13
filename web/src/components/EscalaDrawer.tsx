@@ -3,10 +3,11 @@ import type { ReactNode } from 'react'
 import { Calendar, Clock, ExternalLink, FileText, MapPin, Moon, Phone, SendHorizonal, Trash2, User } from 'lucide-react'
 import { Button, Confirm, ErrorBox, Field, Input, Modal, Select, Sheet, SuccessBox, Textarea, useToast } from './ui'
 import { api, erroMsg } from '../lib/api'
+import AceiteExcesso, { useLimiteProgramacao } from './AceiteExcesso'
 import {
   descricaoJornada, ENVIO_LABEL, formatDate, formatDateTime, formatTime, LIGACAO_LABEL, PRIORIDADE_LABEL, SEMAFORO_CLASSES, STATUS_LABEL,
 } from '../lib/types'
-import type { EscalaEdicao, EscalaPainel, Ligacao, LinhaTempo, Local, StatusEscala, Tecnico } from '../lib/types'
+import type { AceiteProgramacao, EscalaEdicao, EscalaPainel, Ligacao, LinhaTempo, Local, StatusEscala, Tecnico } from '../lib/types'
 
 const PRIORIDADE_BADGE: Record<string, string> = {
   baixa: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
@@ -40,6 +41,11 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
   // backlog 065: editar e substituir tecnico
   const [edicao, setEdicao] = useState<EscalaEdicao | null>(null)
   const [substituto, setSubstituto] = useState<string | null>(null)
+  const [aceite, setAceite] = useState<AceiteProgramacao | null>(null)
+  // mudar data ou hora para um dia que passa do limite de 2 h extras pede o aceite da empresa (decisão 90)
+  const mudouDia = !!edicao && !!escala && (edicao.data_servico !== escala.data_servico || edicao.hora_inicio.slice(0, 5) !== escala.hora_inicio.slice(0, 5))
+  const excessos = useLimiteProgramacao(edicao ? [edicao.tecnico_id] : [], edicao?.data_servico ?? '', edicao?.hora_inicio.slice(0, 5) ?? '',
+    edicao?.id ?? null, mudouDia)
 
   const carregarTimeline = useCallback(async (id: string) => {
     setTimeline(null)
@@ -62,13 +68,14 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
   const salvarEdicao = async () => {
     if (!edicao) return
     if (!edicao.local_id) return setErro('Escolha o local. Programação sem local não é enviada.')
+    if (excessos.length > 0 && !aceite) return setErro('O novo dia passa do limite de 2 horas extras: escolha o motivo, escreva a justificativa e assine o aceite da empresa.')
     setBusy(true); setErro(null)
     try {
       const r = await api.editarEscala({ id: edicao.id, data_servico: edicao.data_servico, hora_inicio: edicao.hora_inicio,
-        local_id: edicao.local_id ?? '', descricao_tarefa: edicao.descricao_tarefa })
+        local_id: edicao.local_id ?? '', descricao_tarefa: edicao.descricao_tarefa, aceite: excessos.length > 0 ? aceite : null })
       toast(!r.alterada ? 'Nada mudou.' : r.nova_confirmacao ? 'Programação alterada. O técnico recebeu de novo e precisa confirmar.' : 'Programação alterada.')
       setEdicao(null); onRefresh(); void carregarTimeline(escala.id)
-    } catch (e) { setErro(erroMsg(e)); setEdicao(null) } finally { setBusy(false) }
+    } catch (e) { setErro(erroMsg(e)) } finally { setBusy(false) }
   }
   const salvarSubstituto = async () => {
     if (!substituto) return
@@ -284,6 +291,8 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
             </Select>
           </Field>
           <Field label="Tarefa"><Textarea rows={3} value={edicao.descricao_tarefa} onChange={e => setEdicao({ ...edicao, descricao_tarefa: e.target.value })} /></Field>
+          <AceiteExcesso excessos={excessos} data={edicao.data_servico} hora={edicao.hora_inicio.slice(0, 5)} ignorar={edicao.id} onAceite={setAceite} />
+          {erro && <ErrorBox>{erro}</ErrorBox>}
           {['notificada', 'confirmada'].includes(edicao.status) && <p className="text-xs text-muted-foreground">
             Mudar data, hora ou local reenvia a escala e o técnico precisa confirmar de novo. Mudar só a tarefa apenas avisa o técnico.</p>}
         </div>}

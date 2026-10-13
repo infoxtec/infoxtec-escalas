@@ -665,13 +665,28 @@ Da revisão da migration 95 (P3): trava na tabela `ponto_ajustes` que recuse inc
 (hoje só a função garante); cópia do hash do aceite fora do banco; ato interno que dê ao gestor poder de assinar
 pela empresa (com o Gabriel, item 076).
 
-## 105. Limites de HE diário e mensal e Alerta Crítico — planejado (pedido em 13/10/2026; depende do 104)
+## 105. Limites de HE diário e mensal e Alerta Crítico — em revisão (14/10/2026; migration 96, painel 3.36.0, decisão 90)
 
 **Pedido do responsável (Pedido 3), escopo confirmado em 13/10:** limites pela CLT (2 h por dia, art. 59; o
 mensal derivado da escala). Em **Indicadores**, cartões de quem passou o limite no dia e no mês e o **"Alerta
 Crítico – Funcionário com carga horária excedida"**. Ao **enviar uma Programação** que faz o dia passar da
 jornada + 2 h, quem envia dá **aceite de risco com justificativa**; sem isso, não envia. No **ponto**, ao passar
 o limite, alerta no painel e no WhatsApp do gestor.
+
+**Entrega (migration 96, painel 3.36.0, decisão 90):** o limite conta sobre a **jornada do dia na escala** do
+funcionário (sem escala, a jornada padrão; domingo e folga da escala contam inteiros). **Programação:** o dia
+previsto vai da primeira entrada à última saída das Programações do técnico, menos o intervalo; passando da jornada
++ 2 h, criar ou mudar a data ou a hora só com o **aceite da empresa** (admin ou gestor), com motivo (força maior,
+serviço inadiável, prejuízo evidente — art. 61 — ou outro) e justificativa de 40 caracteres (80 em "outro"); o termo
+do `juridico` é interno, o funcionário não vê; texto, hash e assinante ficam guardados e não mudam. Substituir
+técnico que passaria do limite é recusado (orienta a Nova Programação). A importação recusa a linha acima do
+limite com a mesma mensagem. **Ponto:** o aviso ao funcionário e o **Alerta Crítico** ao supervisor no WhatsApp
+("o ponto de Fulano hoje passou de Xh, jornada do dia + 2h extras") contam pela escala. **Indicadores:** cartões de
+quem passou hoje e no mês, a lista "Alerta Crítico – Funcionário com carga horária excedida" (dias acima, maior HE,
+HE do mês e o limite mensal = 2 h × dias com jornada) e os aceites assinados (admin e gestor; o leitura vê o alerta
+sem os aceites). **Fica para depois:** espelho, débito e pagamento de HE pela escala (etapa 2 do 104); aceite na
+importação em lote; relatório de termos por funcionário e mês (sugestão do `juridico`: excesso repetido deixa de
+ser exceção).
 
 ## Plano Diretor Comercial do Trilha
 
