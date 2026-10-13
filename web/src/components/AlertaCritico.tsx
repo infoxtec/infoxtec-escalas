@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertOctagon, FileSignature, RefreshCw } from 'lucide-react'
+import { AlertOctagon, CheckCircle2, FileSignature, RefreshCw } from 'lucide-react'
 import { Button, ErrorBox, Input, Modal } from './ui'
 import { api, erroMsg } from '../lib/api'
 import { formatDate, hojeBahia, minutosHm } from '../lib/types'
@@ -31,11 +31,14 @@ export default function AlertaCritico() {
   }
 
   const f = dados?.funcionarios ?? []
+  // vermelho só quando alguém passou do limite; zerado, o bloco fica neutro (não parece alarme)
+  const critico = !!dados && (dados.hoje > 0 || dados.mes_total > 0)
   return (
     <section className="space-y-2">
       <div className="flex flex-wrap items-end justify-between gap-2">
-        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-red-700 dark:text-red-400">
-          <AlertOctagon className="h-4 w-4" /> Alerta Crítico – Funcionário com carga horária excedida
+        <h3 className={`flex items-center gap-1.5 text-sm font-semibold ${critico ? 'text-red-700 dark:text-red-400' : ''}`}>
+          {critico ? <AlertOctagon className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />}
+          Alerta Crítico – Funcionário com carga horária excedida
         </h3>
         <div className="flex items-end gap-2">
           <label className="text-xs">Mês <Input type="month" value={mes} max={hojeBahia().slice(0, 7)} onChange={e => setMes(e.target.value)} className="w-40" /></label>
@@ -93,7 +96,8 @@ export default function AlertaCritico() {
           </table>
         </div>
       )}
-      {dados && f.length === 0 && <p className="rounded-md border bg-card px-3 py-4 text-center text-sm text-muted-foreground">Ninguém acima do limite no mês.</p>}
+      {dados && f.length === 0 && <p className="flex items-center justify-center gap-1.5 rounded-md border bg-card px-3 py-4 text-center text-sm text-muted-foreground">
+        <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" /> Ninguém acima do limite de {minutosHm(dados.limite_dia_min ?? 120)} extras no mês.</p>}
 
       <Modal open={aceites !== null} onClose={() => setAceites(null)} width="max-w-3xl" title="Aceites de risco da empresa (Programações acima do limite)"
         footer={<Button variant="outline" onClick={() => setAceites(null)}>Fechar</Button>}>

@@ -92,6 +92,12 @@ export default function GerencialPage() {
               ? <>a escala de cada funcionário{p.jornada.escalas ? ` (${p.jornada.escalas} no período)` : ''}; sem escala, </> : null}{minutosHm(p.jornada.dia_util_min)} de segunda a sexta,
             {' '}{minutosHm(p.jornada.sabado_min)} no sábado{p.jornada.sabado_sem_expediente_abona ? ' (sábado sem expediente abonado)' : ''}, 44 h na semana{p.jornada.pela_escala ? ' (fora a 12x36)' : ''}.
           </p>
+          {p.funcionarios === 0 ? (
+            <p className="rounded-md border bg-card px-3 py-4 text-center text-sm text-muted-foreground">
+              Nenhum funcionário no ponto neste período. Os números aparecem quando houver funcionário com CPF e empregadora no
+              cadastro (menu Técnicos) registrando o ponto.
+            </p>
+          ) : (<>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <Cartao titulo="Marcações" valor={String(p.marcacoes)} detalhe={`${p.dias_trabalhados} dias trabalhados`} />
             <Cartao titulo="Marcações ajustadas" valor={pctAjustes == null ? '—' : `${pctAjustes}%`}
@@ -115,6 +121,7 @@ export default function GerencialPage() {
                   ))}
                 </ul>}
           </div>
+          </>)}
         </section>
       )}
     </div>
