@@ -84,7 +84,8 @@ envios não funcionam nela. Dados só fictícios; o endereço é aberto na inter
 
 ### Previews de PR do projeto da produção apontando para a homologação
 
-Os previews de PR do projeto **`web`** (o da produção) devem usar o banco da homologação, nunca o real (decisão 92).
-`scripts/vercel-preview-homologacao.mjs` faz o ajuste pela API da Vercel: deixa as variáveis da produção só em
-**Production** e cria as de **Preview** com os valores da homologação. Sem `--aplicar`, só mostra o que faria; nunca
-lê o valor das variáveis da produção. Precisa de um token da Vercel (Account Settings → Tokens), apagado depois do uso.
+Os previews de PR do projeto **`web`** (o da produção) usam o banco da homologação, nunca o real (decisão 92). No
+projeto `web`, `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` da produção ficam só em **Production**; em **Preview**
+ficam as três da homologação (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` e `VITE_AMBIENTE=homologacao`). Ajustado
+em 14/10 por script de uma vez só (PR #123), já removido. Variável nova do painel: cadastrar nos dois projetos e, no
+`web`, separada por ambiente.

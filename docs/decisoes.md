@@ -1249,5 +1249,22 @@ endereço novo nas Redirect URLs. **Limites:** a homologação continua sem segr
 com a ressalva de uso comercial (decisão 75): demonstração a cliente entra na decisão de migrar para o Cloudflare
 Pages. **Pendente:** conferir se as variáveis de **Preview** do projeto da produção apontam para a homologação (fase 1
 de `docs/fluxo-de-desenvolvimento.md`); se apontarem para a produção, os previews de PR usam o banco real
-(achado médio do `seguranca`, prazo: antes do próximo PR com preview). **Revisão do `seguranca`:** sem achado alto;
+(achado médio do `seguranca`, prazo: antes do próximo PR com preview). **Resolvido em 14/10:** o responsável rodou
+`scripts/vercel-preview-homologacao.mjs`; no projeto `web`, as variáveis da produção ficaram só em Production e as de
+Preview apontam para a homologação; o token usado foi revogado e o script saiu do repositório. **Revisão do `seguranca`:** sem achado alto;
 produção sem mudança de origem; cadastro público da homologação desligado a confirmar.
+
+## 93. Indicadores pela escala de cada funcionário (fim da etapa 2 do backlog 104)
+
+**Data:** 14/10/2026. A aba **Indicadores** (decisão 78) contava hora extra e saldo pela jornada fixa (8 h nos dias
+úteis, 4 h no sábado), enquanto o espelho (decisão 91) e o Alerta Crítico (decisão 90) já contam pela escala. Com a
+carga geral da homologação, o mesmo mês dava 5.380 min de hora extra nos Indicadores e 1.521 min somando os espelhos:
+o plantão de 11 h da 12x36 virava 3 h extras por dia. **Decisão (migration 98, painel 3.38.0):** os Indicadores usam a
+jornada do dia na escala, com as mesmas regras do espelho (feriado não devido, salvo o plantão da 12x36; folga e DSR
+inteiros; 12x36 só acima do plantão; sem escala, a regra de antes); "semanas acima de 44 h" deixa de contar a 12x36.
+Ficam em minutos de relógio, sem a hora noturna reduzida — o valor a pagar é o do espelho. Conferido na homologação:
+a soma por funcionário dá o total do painel e bate com o espelho, salvo 1 min de hora noturna reduzida.
+**Revisão do `seguranca`:** sem achado médio ou maior; o papel leitura não vê dado novo (só agregados). Pendências P3:
+`jornada.escalas` conta pelo nome (duas empregadoras com escala de mesmo nome contam 1; contar pelo id quando
+`fn_carga_dia` o devolver); `fn_carga_dia` sem escala resolve a atribuição duas vezes (levar a regra padrão para
+dentro dela na próxima migration da área).

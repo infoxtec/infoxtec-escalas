@@ -414,7 +414,7 @@ export interface PainelGerencial {
     funcionarios: number; dias_apurados: number; dias_trabalhados: number; marcacoes: number; ajustes: number
     dias_abonados: number; minutos_abonados: number; minutos_hora_extra: number; saldo_min: number
     alertas: Record<string, number>; semanas: number; semanas_acima_44h: number; semanas_abaixo_esperado: number
-    jornada: { dia_util_min: number; sabado_min: number; sabado_sem_expediente_abona: boolean; semana_max_min: number
+    jornada: { dia_util_min: number; sabado_min: number; sabado_sem_expediente_abona: boolean; pela_escala?: boolean; escalas?: number; semana_max_min: number
                tolerancia_dia_min: number }
   }
 }
