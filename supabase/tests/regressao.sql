@@ -2017,12 +2017,17 @@ end $$;
 do $$
 declare
   v_emp  uuid := (select v::uuid from qa where k = 'emp');
-  v_t1   uuid := (select v::uuid from qa where k = 'tec1');
-  v_t2   uuid := (select v::uuid from qa where k = 'tec2');
-  v_t3   uuid := (select v::uuid from qa where k = 'tec3');
+  v_inativo uuid := (select v::uuid from qa where k = 'tec3');  -- desativado no T31
   v_seg  date := current_date + (8 - extract(isodow from current_date)::int);  -- próxima segunda
-  v_outra uuid; v_c1 uuid; v_c2 uuid; v_c3 uuid; v_tm uuid; v_ok boolean; r jsonb;
+  v_t1 uuid; v_t2 uuid; v_t3 uuid; v_outra uuid; v_c1 uuid; v_c2 uuid; v_c3 uuid; v_tm uuid; v_ok boolean; r jsonb;
 begin
+  -- funcionários ativos só deste teste (os da carga inicial foram desativados por testes anteriores)
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste)
+  values ('QA Escala Um', '5579999994041', true, true, pg_temp.cpf('404040401'), v_emp, true) returning id into v_t1;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste)
+  values ('QA Escala Dois', '5579999994042', true, true, pg_temp.cpf('404040402'), v_emp, true) returning id into v_t2;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste)
+  values ('QA Escala Três', '5579999994043', true, true, pg_temp.cpf('404040403'), v_emp, true) returning id into v_t3;
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
   -- sem escala: jornada padrão (8 h de segunda a sexta, sábado meio período, domingo 0)
   perform pg_temp.ok(fn_carga_minutos_dia(v_t1, v_seg) = coalesce(nullif(fn_config('jornada_min'), '')::int, 480)
@@ -2100,6 +2105,9 @@ begin
   perform pg_temp.ok(fn_carga_minutos_dia(v_t2, v_seg) = 720 and fn_carga_minutos_dia(v_t2, v_seg + 1) = 0
                      and fn_carga_minutos_dia(v_t2, v_seg + 2) = 720, '[T40] time: 12x36');
   perform pg_temp.ok(fn_carga_minutos_dia(v_t3, v_seg) = 528, '[T40] funcionário: 5x2');
+  v_ok := false;
+  begin perform app_atribuir_carga(v_c1, 'tecnico', v_inativo, v_seg); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok or (select not ativo from tecnicos where id = v_inativo) is not true, '[T40] escala atribuída a funcionário inativo');
   v_ok := false;
   begin update carga_atribuicoes set inicio = inicio - 30 where tecnico_id = v_t3; exception when others then v_ok := true; end;
   perform pg_temp.ok(v_ok, '[T40] início da atribuição alterado');
