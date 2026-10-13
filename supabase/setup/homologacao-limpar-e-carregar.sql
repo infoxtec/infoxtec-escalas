@@ -1,5 +1,5 @@
 -- Limpeza da homologação e carga geral nova (pedido do responsável, 13/10; backlog 104). SÓ NA HOMOLOGAÇÃO.
--- AINDA NÃO RODAR: em teste pelo Claude (transação desfeita) depois que a homologação tiver as migrations 96 e 97.
+-- Testado pelo Claude na homologação em 13/10, em transação desfeita (cadeia de hash íntegra nas duas empregadoras).
 -- Script de uma vez só: sai do repositório depois de aplicado e validado (CLAUDE.md).
 --
 -- Roda DEPOIS das migrations 96 e 97 (limite de HE e espelho pela escala). Uso: no SQL Editor da homologação
@@ -20,7 +20,7 @@
 --    - Condomínio Atlântico (fictício, cliente) com 3 locais em Salvador;
 --    - 10 funcionários, 1 supervisor por empregadora; Programação em cada dia de trabalho;
 --    - marcações com casos do dia a dia: jornada normal, atraso, hora extra acima do limite (Alerta Crítico),
---      falta, sábado e domingo trabalhados, plantão 12x36; um atestado aprovado e um pedido pendente;
+--      falta, sábado e domingo trabalhados, plantão 12x36; a primeira falta com atestado aprovado e um pedido pendente;
 --    - Programações dos próximos 7 dias como rascunho (não saem pelo WhatsApp).
 
 -- CPF de exemplo: 9 dígitos + os dois verificadores (função temporária, some ao fim da sessão)
@@ -210,6 +210,10 @@ begin
     end loop;
   end loop;
 
+  -- Elisa esquece a saída no último dia trabalhado (vira o pedido pendente, mais abaixo)
+  delete from carga_m where tipo = 'saida' and (tec, dia) = (select tec, max(dia) from carga_m
+    where tec = (select id from carga_tec where ordem = 5) and tipo = 'entrada' group by tec);
+
   -- grava como o fn_ponto_registrar: NSR + 1 e hash encadeado por empresa, na ordem do tempo
   insert into ponto_nsr (empresa_id) values (v_inf), (v_alfa);
   for m in select * from carga_m order by (dia + hora), tec loop
@@ -227,22 +231,23 @@ begin
   end loop;
   execute 'alter table ponto_marcacoes enable trigger trg_ponto_marcacoes_porta_unica';
 
-  -- uma falta com atestado aprovado (Ana) e um pedido pendente de inclusão de marcação (Elisa)
-  select e.data_servico into d from escalas e join carga_tec x on x.id = e.tecnico_id
-   where x.ordem = 1 and not exists (select 1 from carga_m m2 where m2.tec = e.tecnico_id and m2.dia = e.data_servico)
-   order by e.data_servico limit 1;
+  -- a primeira falta da Infoxtec vira atestado aprovado; e um pedido pendente de inclusão de marcação (Elisa)
+  select e.data_servico, x.id into d, v_j from escalas e join carga_tec x on x.id = e.tecnico_id
+   where x.empresa = v_inf and not x.sup and not exists (select 1 from carga_m m2 where m2.tec = e.tecnico_id and m2.dia = e.data_servico)
+   order by e.data_servico, x.ordem limit 1;
   if d is not null then
+    v_esc := v_j;
     insert into ponto_justificativas (empresa_id, tecnico_id, motivo, data, data_fim, canal, observacao, created_at)
-    values (v_inf, (select id from carga_tec where ordem = 1), 'atestado', d, d, 'app', 'Atestado de 1 dia.', (d + time '09:00') at time zone 'America/Bahia')
+    values (v_inf, v_esc, 'atestado', d, d, 'app', 'Atestado de 1 dia.', (d + time '09:00') at time zone 'America/Bahia')
     returning id into v_j;
     insert into ponto_abonos (empresa_id, tecnico_id, data, justificativa_id, motivo, autor)
-    values (v_inf, (select id from carga_tec where ordem = 1), d, v_j, 'Atestado médico apresentado.', v_aut) returning id into v_ab;
+    values (v_inf, v_esc, d, v_j, 'Atestado apresentado.', v_aut) returning id into v_ab;
     update ponto_justificativas set status = 'aprovada', decidido_por = v_aut, decidido_em = (d + time '10:00') at time zone 'America/Bahia', abono_id = v_ab
      where id = v_j;
   end if;
   insert into ponto_justificativas (empresa_id, tecnico_id, motivo, data, tipo_marcacao, hora, canal, observacao)
-  select v_inf, id, 'esqueci_marcar', v_ontem - 1, 'saida', '17:30', 'app', 'Esqueci de marcar a saída.'
-    from carga_tec where ordem = 5;
+  select v_inf, x.id, 'esqueci_marcar', max(cm.dia), 'saida', '16:30', 'app', 'Esqueci de marcar a saída.'
+    from carga_tec x join carga_m cm on cm.tec = x.id where x.ordem = 5 group by x.id;
 
   -- próximos 7 dias: Programações em rascunho (não saem pelo WhatsApp)
   for t in select * from carga_tec order by ordem loop
