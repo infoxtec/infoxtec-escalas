@@ -42,6 +42,7 @@
 -- T39 cofre de folhas assinadas: só RH abre a folha assinada e baixa a prova; cada abertura fica registrada
 -- T40 escala / carga horária e times: bloqueio, aceite de risco, prioridade funcionário > time > empresa, equipe vira time
 -- T41 limite de 2 h extras pela escala: aceite da empresa na Programação, substituição recusada, Alerta Crítico
+-- T42 espelho pela escala: folga a 50%, DSR a 100%, débito pela jornada do dia, 12x36 com feriado compensado
 
 \set ON_ERROR_STOP on
 begin;
@@ -2075,7 +2076,7 @@ begin
   v_ok := false;
   begin update cargas_horarias set intervalo_min = 30 where id = v_c1; exception when others then v_ok := true; end;
   perform pg_temp.ok(v_ok, '[T40] escala salva alterada');
-  v_c2 := app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 12x36', 'tipo', '12x36', 'plantao_min', 720, 'intervalo_min', 60), '{"aceito":true,"riscos":["12x36"]}');
+  v_c2 := app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 12x36', 'tipo', '12x36', 'plantao_min', 720, 'intervalo_min', 60, 'entrada', '07:00'), '{"aceito":true,"riscos":["12x36"]}');
   v_c3 := app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 40h', 'tipo', 'semanal',
             'minutos', jsonb_build_array(480,480,480,480,480,0,0), 'intervalo_min', 60));
   perform pg_temp.ok(not exists (select 1 from carga_aceites where carga_id = v_c3), '[T40] escala sem risco não pede aceite');
@@ -2100,12 +2101,12 @@ begin
   perform pg_temp.ok(v_ok, '[T40] funcionário posto em time inativo');
   -- prioridade: funcionário > time > empresa
   perform app_atribuir_carga(v_c3, 'empresa', v_emp, v_seg);
-  perform app_atribuir_carga(v_c2, 'time', v_tm, v_seg);
-  perform app_atribuir_carga(v_c1, 'tecnico', v_t3, v_seg);
+  perform app_atribuir_carga(v_c1, 'time', v_tm, v_seg);
+  perform app_atribuir_carga(v_c2, 'tecnico', v_t3, v_seg);  -- a 12x36 é de cada funcionário (migration 97)
   perform pg_temp.ok(fn_carga_minutos_dia(v_t1, v_seg) = 480 and fn_carga_minutos_dia(v_t1, v_seg + 5) = 0, '[T40] empresa: 40 h');
-  perform pg_temp.ok(fn_carga_minutos_dia(v_t2, v_seg) = 720 and fn_carga_minutos_dia(v_t2, v_seg + 1) = 0
-                     and fn_carga_minutos_dia(v_t2, v_seg + 2) = 720, '[T40] time: 12x36');
-  perform pg_temp.ok(fn_carga_minutos_dia(v_t3, v_seg) = 528, '[T40] funcionário: 5x2');
+  perform pg_temp.ok(fn_carga_minutos_dia(v_t2, v_seg) = 528, '[T40] time: 5x2');
+  perform pg_temp.ok(fn_carga_minutos_dia(v_t3, v_seg) = 720 and fn_carga_minutos_dia(v_t3, v_seg + 1) = 0
+                     and fn_carga_minutos_dia(v_t3, v_seg + 2) = 720, '[T40] funcionário: 12x36');
   v_ok := false;
   begin perform app_atribuir_carga(v_c1, 'tecnico', v_inativo, v_seg); exception when others then v_ok := true; end;
   perform pg_temp.ok(v_ok or (select not ativo from tecnicos where id = v_inativo) is not true, '[T40] escala atribuída a funcionário inativo');
@@ -2235,7 +2236,77 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T41' as resultado,
+-- T42 espelho de ponto pela escala (migration 97, decisão 91) ------------------------------------------------
+do $$
+declare
+  v_emp uuid := (select v::uuid from qa where k = 'emp');
+  v_mes date := (date_trunc('month', current_date) - interval '2 months')::date;  -- mês fechado, antes das escalas do T40
+  v_sab date; v_seg date; v_t uuid; v_t2 uuid; c5 uuid; c12 uuid; c jsonb; d jsonb; v_ok boolean; v_id uuid; n int := 942000;
+begin
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  -- DSR: precisa cair numa folga; sem informar, vai para o domingo
+  v_ok := false;
+  begin perform app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA DSR errado', 'tipo', 'semanal',
+                   'minutos', jsonb_build_array(480,480,480,480,480,0,0), 'intervalo_min', 60, 'dsr_dia', 3));
+  exception when others then v_ok := sqlerrm like '%descanso semanal%'; end;
+  perform pg_temp.ok(v_ok, '[T42] DSR em dia de trabalho');
+  v_id := app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 5x2 DSR', 'tipo', 'semanal',
+            'minutos', jsonb_build_array(480,480,480,480,480,0,0), 'intervalo_min', 60));
+  perform pg_temp.ok((select dsr_dia from cargas_horarias where id = v_id) = 7, '[T42] DSR padrão no domingo');
+  perform pg_temp.ok((select dsr_dia from app_cargas(v_emp) where id = v_id) = 7, '[T42] DSR na lista');
+  -- escalas atribuídas no passado (só o teste faz isso; a função exige início de hoje em diante)
+  insert into cargas_horarias (empresa_id, nome, tipo, minutos, intervalo_min, semanal_min, riscos, criado_por, dsr_dia)
+  values (v_emp, 'QA T42 5x2', 'semanal', array[480,480,480,480,480,0,0], 60, 2400, '[]', 'qa', 7) returning id into c5;
+  insert into cargas_horarias (empresa_id, nome, tipo, plantao_min, intervalo_min, semanal_min, riscos, criado_por)
+  values (v_emp, 'QA T42 12x36', '12x36', 720, 60, 2520, '[]', 'qa') returning id into c12;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA Espelho 5x2', '5579999994241', true, false, pg_temp.cpf('424242401'), v_emp, false, v_mes - 30) returning id into v_t;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA Espelho 12x36', '5579999994242', true, false, pg_temp.cpf('424242402'), v_emp, false, v_mes - 30) returning id into v_t2;
+  insert into carga_atribuicoes (carga_id, empresa_id, alvo, tecnico_id, inicio, fim, criado_por)
+  values (c5, v_emp, 'tecnico', v_t, v_mes, v_mes + 60, 'qa'), (c12, v_emp, 'tecnico', v_t2, v_mes, v_mes + 60, 'qa');
+  v_seg := v_mes + (8 - extract(isodow from v_mes)::int) % 7;   -- primeira segunda do mês
+  v_sab := v_seg + 5;
+  -- 5x2: segunda 8 h (normal), terça 6 h (2 h de débito), sábado 4 h (folga: 50%), domingo 3 h (DSR: 100%)
+  alter table ponto_marcacoes disable trigger user;
+  insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, hash_anterior, hash)
+  select v_emp, n + row_number() over (), v_t, (select cpf from tecnicos where id = v_t),
+         (x.dia + x.h) at time zone 'America/Bahia', x.tipo, 'ura', 'qa', md5(random()::text)
+    from (values (v_seg, time '08:00', 'entrada'), (v_seg, '12:00', 'saida_almoco'), (v_seg, '13:00', 'volta_almoco'), (v_seg, '17:00', 'saida'),
+                 (v_seg + 1, '08:00', 'entrada'), (v_seg + 1, '12:00', 'saida_almoco'), (v_seg + 1, '13:00', 'volta_almoco'), (v_seg + 1, '15:00', 'saida'),
+                 (v_sab, '08:00', 'entrada'), (v_sab, '12:00', 'saida'),
+                 (v_sab + 1, '08:00', 'entrada'), (v_sab + 1, '11:00', 'saida')) x(dia, h, tipo);
+  -- 12x36: plantão no primeiro dia do mês (07:00 às 19:00, 1 h de intervalo = 11 h) e um plantão de 13 h no 3º dia
+  insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, hash_anterior, hash)
+  select v_emp, n + 100 + row_number() over (), v_t2, (select cpf from tecnicos where id = v_t2),
+         (x.dia + x.h) at time zone 'America/Bahia', x.tipo, 'ura', 'qa', md5(random()::text)
+    from (values (v_mes, time '07:00', 'entrada'), (v_mes, '12:00', 'saida_almoco'), (v_mes, '13:00', 'volta_almoco'), (v_mes, '19:00', 'saida'),
+                 (v_mes + 2, '06:00', 'entrada'), (v_mes + 2, '12:00', 'saida_almoco'), (v_mes + 2, '13:00', 'volta_almoco'), (v_mes + 2, '20:00', 'saida')) x(dia, h, tipo);
+  alter table ponto_marcacoes enable trigger user;
+  c := fn_ponto_espelho_conteudo(v_t, v_mes);
+  select x into d from jsonb_array_elements(c->'dias') x where x->>'data' = to_char(v_seg + 1, 'YYYY-MM-DD');
+  perform pg_temp.ok((d->>'debito_min')::int = 120 and (d->>'jornada_dia_min')::int = 480, '[T42] débito pela jornada do dia: ' || coalesce(d::text, '-'));
+  select x into d from jsonb_array_elements(c->'dias') x where x->>'data' = to_char(v_sab, 'YYYY-MM-DD');
+  perform pg_temp.ok(d->>'repouso' = 'folga' and (d->>'he50_min')::int = 240 and (d->>'he100_min')::int = 0, '[T42] folga da escala a 50%: ' || coalesce(d::text, '-'));
+  select x into d from jsonb_array_elements(c->'dias') x where x->>'data' = to_char(v_sab + 1, 'YYYY-MM-DD');
+  perform pg_temp.ok(d->>'repouso' = 'dsr' and (d->>'he100_min')::int = 180, '[T42] DSR a 100%: ' || coalesce(d::text, '-'));
+  perform pg_temp.ok(c->'jornada'->'escalas'->0->>'escala' = 'QA T42 5x2', '[T42] escala no cabeçalho: ' || (c->'jornada')::text);
+  c := fn_ponto_espelho_conteudo(v_t2, v_mes);
+  select x into d from jsonb_array_elements(c->'dias') x where x->>'data' = to_char(v_mes + 2, 'YYYY-MM-DD');
+  perform pg_temp.ok((d->>'jornada_dia_min')::int = 720 and (d->>'he100_min')::int = 0 and d->>'repouso' is null,
+                     '[T42] 12x36 sem 100% no plantão: ' || coalesce(d::text, '-'));
+  select x into d from jsonb_array_elements(c->'dias') x where x->>'data' = to_char(v_mes + 1, 'YYYY-MM-DD');
+  perform pg_temp.ok(d is null or (d->>'debito_min')::int = 0, '[T42] folga da 12x36 sem débito: ' || coalesce(d::text, '-'));
+  -- 12x36 só a um funcionário e com plantão que termina no mesmo dia (revisão do seguranca)
+  v_ok := false;
+  begin perform app_atribuir_carga(c12, 'empresa', v_emp, current_date + 1); exception when others then v_ok := sqlerrm like '%cada funcionário%'; end;
+  perform pg_temp.ok(v_ok, '[T42] 12x36 atribuída à empresa');
+  v_ok := false;
+  begin perform app_atribuir_carga(c12, 'tecnico', v_t2, current_date + 70); exception when others then v_ok := sqlerrm like '%vira a noite%'; end;
+  perform pg_temp.ok(v_ok, '[T42] 12x36 sem entrada (plantão que pode virar a noite)');
+end $$;
+
+select 'REGRESSÃO OK: T1 a T42' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

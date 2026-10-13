@@ -22,12 +22,13 @@ const paraHm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${
 const deHm = (s: string) => { const [h, m] = s.split(':').map(Number); return (h || 0) * 60 + (m || 0) }
 const dataBr = (s: string) => s.split('-').reverse().join('/')
 const amanha = () => { const d = new Date(`${hojeBahia()}T12:00:00`); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10) }
+const DIA_LONGO = ['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo']
 const resumoDias = (c: { tipo: TipoCarga; minutos: number[] | null; plantao_min: number | null }) =>
   c.tipo === '12x36' ? `Plantão de ${minutosHm(c.plantao_min)}, dia sim, dia não`
     : (c.minutos ?? []).map((m, i) => `${DIAS[i]} ${m ? minutosHm(m) : 'folga'}`).join(' · ')
 
-interface Rascunho { empresa_id: string; nome: string; tipo: TipoCarga; minutos: number[]; plantao_min: number; intervalo_min: number; entrada: string }
-const RASCUNHO: Rascunho = { empresa_id: '', nome: '', tipo: 'semanal', minutos: [480, 480, 480, 480, 480, 240, 0], plantao_min: 720, intervalo_min: 60, entrada: '' }
+interface Rascunho { empresa_id: string; nome: string; tipo: TipoCarga; minutos: number[]; plantao_min: number; intervalo_min: number; entrada: string; dsr_dia: number }
+const RASCUNHO: Rascunho = { empresa_id: '', nome: '', tipo: 'semanal', minutos: [480, 480, 480, 480, 480, 240, 0], plantao_min: 720, intervalo_min: 60, entrada: '', dsr_dia: 7 }
 
 type Vista = 'escalas' | 'atribuicoes' | 'funcionarios' | 'times'
 
@@ -140,7 +141,7 @@ function Escalas({ cargas, empregadoras, empresa, podeEditar, recarregar }: {
                 <tr key={c.id} className={`border-b last:border-0 ${!c.ativo ? 'opacity-50' : ''}`}>
                   <td className="px-3 py-2"><p className="font-medium">{c.nome}</p>
                     <p className="text-xs text-muted-foreground">{c.empresa} · {TIPO_ROTULO[c.tipo]}{!c.ativo && ' · inativa'}</p></td>
-                  <td className="px-3 py-2 text-xs">{resumoDias(c)}{c.entrada && <span className="text-muted-foreground"> · entrada {c.entrada}</span>}</td>
+                  <td className="px-3 py-2 text-xs">{resumoDias(c)}{c.dsr_dia && <span className="text-muted-foreground"> · DSR {DIA_LONGO[c.dsr_dia - 1]}</span>}{c.entrada && <span className="text-muted-foreground"> · entrada {c.entrada}</span>}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-xs">{minutosHm(c.semanal_min)}{c.tipo === '12x36' && ' (média)'}</td>
                   <td className="px-3 py-2 text-xs">{c.intervalo_min} min</td>
                   <td className="px-3 py-2 text-xs">
@@ -201,7 +202,7 @@ function NovaEscala({ empregadoras, empresa, onFechar, onSalva }: {
   useEffect(() => { api.cargasModelos().then(setModelos).catch(e => setErro(erroMsg(e))) }, [])
   const payload = useMemo(() => ({
     empresa_id: r.empresa_id, nome: r.nome, tipo: r.tipo, intervalo_min: r.intervalo_min, entrada: r.entrada || null,
-    ...(r.tipo === '12x36' ? { plantao_min: r.plantao_min } : { minutos: r.minutos }),
+    ...(r.tipo === '12x36' ? { plantao_min: r.plantao_min } : { minutos: r.minutos, dsr_dia: r.minutos[r.dsr_dia - 1] === 0 ? r.dsr_dia : null }),
   }), [r])
   useEffect(() => {
     const t = setTimeout(() => { api.cargaValidar(payload, instrumento.trim() || null).then(setV).catch(e => setErro(erroMsg(e))) }, 300)
@@ -214,7 +215,7 @@ function NovaEscala({ empregadoras, empresa, onFechar, onSalva }: {
     const m = modelos.find(x => x.nome === nome)
     if (!m) return
     setR(p => ({ ...p, nome: p.nome || m.nome, tipo: m.tipo, intervalo_min: m.intervalo_min,
-                 minutos: m.minutos ?? p.minutos, plantao_min: m.plantao_min ?? p.plantao_min }))
+                 minutos: m.minutos ?? p.minutos, plantao_min: m.plantao_min ?? p.plantao_min, dsr_dia: m.dsr_dia ?? p.dsr_dia }))
   }
   const temRisco = (v?.riscos.length ?? 0) > 0
   const bloqueado = !v || v.bloqueios.length > 0
@@ -279,6 +280,14 @@ function NovaEscala({ empregadoras, empresa, onFechar, onSalva }: {
           <Field label="Intervalo (minutos)">
             <Input type="number" min={0} max={300} value={r.intervalo_min} onChange={e => setR(p => ({ ...p, intervalo_min: Number(e.target.value) }))} />
           </Field>
+          {r.tipo !== '12x36' && (
+            <Field label="Descanso semanal (DSR)" hint="Trabalho nesse dia paga 100%; nas outras folgas, 50%.">
+              <Select value={r.minutos[r.dsr_dia - 1] === 0 ? r.dsr_dia : ''} onChange={e => setR(p => ({ ...p, dsr_dia: Number(e.target.value) }))}>
+                <option value="" disabled>Escolha uma folga</option>
+                {r.minutos.map((m, i) => m === 0 ? <option key={i} value={i + 1}>{DIA_LONGO[i]}</option> : null)}
+              </Select>
+            </Field>
+          )}
           <Field label="Entrada (opcional)" hint="Para avisar trabalho noturno (22h às 5h).">
             <Input type="time" value={r.entrada} onChange={e => setR(p => ({ ...p, entrada: e.target.value }))} />
           </Field>

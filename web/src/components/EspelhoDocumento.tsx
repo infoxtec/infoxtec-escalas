@@ -45,7 +45,7 @@ function Resumo({ r }: { r: EspelhoResumo }) {
       <div className="space-y-0.5 rounded border border-gray-400 p-2">
         <p className="font-semibold">A pagar ao funcionário</p>
         <Linha rotulo="Hora extra 50%" valor={hh(p.he50_min)} />
-        <Linha rotulo="Hora extra 100% (domingo e feriado)" valor={hh(p.he100_min)} />
+        <Linha rotulo="Hora extra 100% (descanso semanal e feriado)" valor={hh(p.he100_min)} />
         <Linha rotulo="Adicional noturno (horas reduzidas)" valor={hh(p.noturno_reduzidas_min)} />
         <Linha rotulo="Intervalo não concedido (+50%)" valor={hh(p.intervalo_nao_concedido_min)} />
         <Linha rotulo="Total de horas extras" valor={hh(p.he50_min + p.he100_min)} forte />
@@ -89,7 +89,9 @@ export default function EspelhoDocumento({ e }: { e: EspelhoCompleto }) {
           <p>{c.empregador.razao_social} · CNPJ {cnpjFmt(c.empregador.cnpj)}</p>
           <p>{c.trabalhador.nome} · CPF {cpfFmt(c.trabalhador.cpf)}</p>
           <p>Função: {c.trabalhador.funcao ?? '—'} · Admissão: {dataBr(c.trabalhador.admissao)}</p>
-          <p>Jornada: {minutosHm(c.jornada.dia_util_min)} de segunda a sexta, {minutosHm(c.jornada.sabado_min)} no sábado, intervalo de {minutosHm(c.jornada.intervalo_min)}</p>
+          {c.jornada.escalas && c.jornada.escalas.length > 0
+            ? <p>Escala: {c.jornada.escalas.map(x => `${x.escala} (${x.de} a ${x.ate})`).join('; ')} · intervalo de {minutosHm(c.jornada.intervalo_min)}</p>
+            : <p>Jornada: {minutosHm(c.jornada.dia_util_min)} de segunda a sexta, {minutosHm(c.jornada.sabado_min)} no sábado, intervalo de {minutosHm(c.jornada.intervalo_min)}</p>}
           <p className="text-[11px] text-gray-600">Período {dataBr(c.de)} a {dataBr(c.ate)} · Registro nº {e.registro}{e.versao > 1 ? ` (versão ${e.versao})` : ''} · emitido em {dataHora(e.emitido_em)}</p>
         </div>
         <div className="shrink-0 text-center">

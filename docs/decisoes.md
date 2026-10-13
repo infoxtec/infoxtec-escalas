@@ -1206,3 +1206,32 @@ VI (exercício regular de direitos). Veem admin e gestor. Retenção: 5 anos, ma
 descarte junto com o do ponto. **Pendências:** concorrência com outras escritas na mesma Programação; fuso por
 empresa no "hoje" do Alerta Crítico (antes do segundo cliente, backlog 074); aceite na importação em lote.
 
+## 91. Espelho de ponto pela escala do funcionário (etapa 2 do backlog 104)
+
+**Data:** 14/10/2026. O espelho mensal (débito, hora extra a 50% e a 100%) passa a usar a jornada de cada dia na
+escala vigente do funcionário, como já faz o limite de HE (decisão 90). **Parecer do `juridico` (decisão 58; textos
+legais não conferidos no Planalto nesta sessão):** dia de trabalho da escala: débito = jornada do dia − (trabalhado
++ abonos) e HE 50% = trabalhado − jornada, com a tolerância de 10 min (CLT art. 58, § 1º); o descanso semanal
+remunerado (DSR) trabalhado paga 100% (Lei 605/49, art. 9º; Súmula 146 do TST), salvo folga compensatória (decisão
+84); outra folga da escala trabalhada (ex.: sábado na 5x2) é HE 50%; domingo que a escala marca como trabalho é dia
+normal; feriado não trabalhado não é débito e trabalhado paga 100%; na 12x36, DSR e feriados já são compensados
+(CLT art. 59-A, parágrafo único) e só o que passa do plantão é HE 50%. **Decisão (migration 97, painel 3.37.0):** a
+escala ganha `dsr_dia` (qual folga é o DSR; o domingo quando é folga — escolhido na tela); `fn_carga_dia` dá a
+jornada do dia e se é DSR; `fn_ponto_espelho_conteudo` usa isso e mostra, por dia, a jornada, a escala e o tipo de
+repouso (DSR, folga, feriado), e no cabeçalho as escalas do mês. Sem escala atribuída vale a regra de antes (8 h de
+segunda a sexta, 4 h no sábado, domingo de repouso), e a "Jornada padrão" atribuída na migration 94 é a mesma regra:
+**setembro conferido igual para os 13 funcionários da homologação**, então ninguém perde valor hoje (risco do art.
+468 da CLT apontado pelo `juridico`). Espelho já emitido não muda (conteúdo congelado). **Riscos e pendências
+registrados:** escala diferente de 8 h ou 12x36 precisa de acordo escrito ou convenção por trás (a escala guarda o
+instrumento no aceite, decisão 88); antes de atribuir a alguém uma escala que tire 100% ou 50% que ele recebia,
+listar quem perde valor (art. 468); **revisão do `seguranca` (aplicada):** a 12x36 só é atribuída a um funcionário
+(a alternância é de cada um) e com entrada que faz o plantão terminar no mesmo dia (o plantão que vira a noite ainda
+é contado por dia de calendário); feriado não trabalhado não é débito, nem na 12x36; a trava da escala sai e volta
+num único comando na migration. Outubro também conferido igual na homologação, com a "Jornada padrão" atribuída aos
+13 funcionários. Pendências do `seguranca` (P3): aviso ao atribuir escala que reduz HE de quem a recebe (art. 468);
+check no banco do DSR em folga; sábado da escala 6x1 sem marcação também é abonado enquanto
+`ponto_sabado_sem_expediente_abona` estiver ligado (decisão do responsável); reemitir espelho não assinado de mês
+fechado gera versão nova (o conteúdo ganhou campos); DSR fixo no revezamento; intervalo indenizado na 12x36, adicional de domingo da convenção e alerta de 7
+dias seguidos sem folga ficam para depois; os Indicadores (decisão 78) ainda calculam a HE do conjunto pela regra
+de antes.
+

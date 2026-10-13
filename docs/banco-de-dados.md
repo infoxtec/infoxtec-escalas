@@ -254,6 +254,15 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 97 (14/10): espelho de ponto pela escala (decisão 91)
+
+- `cargas_horarias.dsr_dia` (1 = segunda … 7 = domingo): qual folga é o descanso semanal remunerado; preenchida nas
+  escalas já salvas (domingo quando é folga). `app_salvar_carga` aceita `p.dsr_dia` (padrão: domingo, se folga) e
+  recusa DSR em dia de trabalho; `app_cargas` devolve `dsr_dia` (a versão antiga sai, o retorno mudou).
+- `fn_carga_dia(tecnico, data)`: `{minutos, repouso (é o DSR), tipo, escala}`; sem escala, a regra de antes.
+- `fn_ponto_espelho_conteudo`: débito e HE 50% sobre a jornada do dia; DSR e feriado a 100% (12x36 não); outra
+  folga a 50%; por dia, `jornada_dia_min`, `escala` e `repouso` (`dsr`, `folga`, `feriado`); `jornada.escalas`.
+
 ### Migration 96 (14/10): limite de 2 h extras pela escala e Alerta Crítico (decisão 90)
 
 - Tabela `programacao_aceites` (Programação, técnico, data, previsto, jornada do dia, excedente, motivo do art. 61,

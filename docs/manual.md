@@ -263,7 +263,9 @@ A carga horária contratual de cada empregadora (decisão 88). Abas:
   é a **empresa**, por você (admin ou gestor); o termo é interno e o funcionário nunca o vê. O aceite fica
   guardado com o texto exato, seu nome, e-mail e papel, a hora e o código SHA-256 (clique no nome, na coluna Aceite
   de risco; o papel leitura vê só que há aceite). Escala salva não
-  muda: crie outra e atribua no lugar.
+  muda: crie outra e atribua no lugar. Em escalas com folga, escolha o **descanso semanal (DSR)**: trabalho
+  nesse dia paga 100%; nas outras folgas, 50%. O espelho de ponto do mês conta débito e hora extra por essa escala. A 12x36 é atribuída a cada funcionário (não
+  a time nem empresa) e precisa da hora de entrada, com o plantão terminando no mesmo dia.
 - **Atribuições** — **Atribuir escala** à empresa, a um time ou a um funcionário, a partir de hoje ou depois. Sem
   fim, vale um ano. Uma atribuição nova encerra a anterior do mesmo alvo na véspera. A que ainda não começou pode
   ser cancelada.

@@ -455,7 +455,7 @@ export interface EspelhoConteudo {
   empregador: { razao_social: string; cnpj: string }
   trabalhador: { nome: string; cpf: string; admissao: string | null; funcao: string | null }
   competencia: string; de: string; ate: string
-  jornada: { dia_util_min: number; sabado_min: number; intervalo_min: number }
+  jornada: { dia_util_min: number; sabado_min: number; intervalo_min: number; escalas?: { escala: string; de: string; ate: string }[] }
   dias: ({ data: string } & Partial<Omit<PontoEspelho, 'alertas'>> & {
     alertas?: string[]; abonado_min?: number
     // a partir da migration 90 (decisão 83); espelhos emitidos antes não têm
@@ -493,12 +493,13 @@ export interface ValidacaoCarga {
   termo?: string | null
 }
 export type TipoCarga = 'semanal' | 'revezamento' | '12x36'
-export interface ModeloCarga { nome: string; tipo: TipoCarga; minutos?: number[]; plantao_min?: number; intervalo_min: number }
+export interface ModeloCarga { nome: string; tipo: TipoCarga; minutos?: number[]; plantao_min?: number; intervalo_min: number; dsr_dia?: number }
 export interface CargaHoraria {
   id: string; empresa_id: string; empresa: string; nome: string; tipo: TipoCarga; minutos: number[] | null
   plantao_min: number | null; intervalo_min: number; entrada: string | null; semanal_min: number; riscos: ItemValidacao[]
   ativo: boolean; criado_por: string | null; created_at: string; atribuicoes: number
   aceite_nome: string | null; aceite_em: string | null; aceite_texto: string | null; aceite_sha256: string | null
+  dsr_dia: number | null
 }
 export type AlvoCarga = 'empresa' | 'time' | 'tecnico'
 export interface CargaAtribuicao {
