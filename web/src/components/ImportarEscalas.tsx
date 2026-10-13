@@ -148,7 +148,7 @@ export default function ImportarEscalas({ open, onClose, onSuccess, tecnicos, lo
         })
         const x = res[0]
         if (x?.resultado === 'criada') { atual[i] = { ...r, status: 'ok', erro: undefined }; ok++ }
-        else atual[i] = { ...r, status: 'erro', erro: x?.resultado.startsWith('conflito') ? 'Já existe escala nesse dia e horário' : (x?.resultado ?? 'Erro') }
+        else atual[i] = { ...r, status: 'erro', erro: x?.resultado.startsWith('conflito') ? 'Já existe programação nesse dia e horário' : (x?.resultado ?? 'Erro') }
       } catch (e) { atual[i] = { ...r, status: 'erro', erro: erroMsg(e) } }
       setLinhas([...atual])
     }
@@ -162,18 +162,18 @@ export default function ImportarEscalas({ open, onClose, onSuccess, tecnicos, lo
 
   return (
     <Sheet open={open} embutido={embutido} onClose={fechar} width="sm:max-w-2xl"
-      title={<span className="flex items-center gap-2"><FileSpreadsheet className="h-5 w-5 text-primary" /> Importar escalas</span>}
+      title={<span className="flex items-center gap-2"><FileSpreadsheet className="h-5 w-5 text-primary" /> Importar programações</span>}
       footer={<>
         <Button variant="outline" onClick={fechar} disabled={importando}>{embutido ? 'Limpar' : 'Fechar'}</Button>
         <Button onClick={() => void importar()} disabled={importando || pend === 0}>
-          {importando ? <><Loader2 className="h-4 w-4 animate-spin" /> Importando...</> : `Importar ${pend} escala${pend !== 1 ? 's' : ''}`}
+          {importando ? <><Loader2 className="h-4 w-4 animate-spin" /> Importando...</> : `Importar ${pend} ${pend !== 1 ? 'programações' : 'programação'}`}
         </Button>
       </>}>
       <div className="space-y-5">
         <div className="space-y-2 rounded-md border bg-muted/40 p-4 text-sm">
           <p className="font-medium">Como importar</p>
           <ol className="list-inside list-decimal space-y-1 text-xs text-muted-foreground">
-            <li>Baixe o modelo e preencha uma linha por escala.</li>
+            <li>Baixe o modelo e preencha uma linha por programação.</li>
             <li>Nomes de técnicos e locais devem ser os cadastrados (acentos e maiúsculas não importam).</li>
             <li>A coluna <strong>enviar</strong> aceita sim ou não. Local pode ficar em branco.</li>
             <li>O término é calculado sozinho pela jornada CLT a partir da hora de início.</li>

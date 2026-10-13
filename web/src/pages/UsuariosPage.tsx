@@ -8,7 +8,7 @@ import type { Papel, UsuarioPainel } from '../lib/types'
 
 const DESCRICAO: Record<Papel, string> = {
   admin: 'Tudo, inclusive excluir técnicos e gerenciar usuários.',
-  gestor: 'Cria escalas, muda status, edita técnicos e locais.',
+  gestor: 'Cria programações, muda status, edita técnicos e locais.',
   leitura: 'Só visualiza.',
 }
 

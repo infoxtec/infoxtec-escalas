@@ -369,8 +369,8 @@ function Ajuste({ token, onSair, onMudou }: { token: string; onSair: () => void;
         const r = await ponto.justificarAtestado(token, { motivo: ehAtestado ? 'atestado' : 'alta_medica', data, validoAte: ehAtestado ? dataFim : null,
           observacao: obs.trim() || null, anexo: arquivo.base64, anexoTipo: arquivo.tipo })
         setEnviado(ehAtestado
-          ? `Pedido ${r.numero} enviado. Até ${dataFim.split('-').reverse().join('/')} você fica afastado: não marca ponto nem recebe escala. Melhoras! Para voltar antes, tenha a liberação médica em mãos e fale com o seu gestor.`
-          : `Pedido ${r.numero} enviado. Você está liberado para marcar o ponto e receber escala.`)
+          ? `Pedido ${r.numero} enviado. Até ${dataFim.split('-').reverse().join('/')} você fica afastado: não marca ponto nem recebe programação. Melhoras! Para voltar antes, tenha a liberação médica em mãos e fale com o seu gestor.`
+          : `Pedido ${r.numero} enviado. Você está liberado para marcar o ponto e receber programação.`)
         setGrupo(null); setMotivo(''); setObs(''); setDataFim(''); setArquivo(null)
         await carregar(); onMudou(); return
       }
@@ -435,7 +435,7 @@ function Ajuste({ token, onSair, onMudou }: { token: string; onSair: () => void;
                 <Field label={ehAtestado ? 'Válido até (último dia)' : 'Até o dia (se mais de um)'}><Input type="date" value={dataFim} min={data} onChange={e => setDataFim(e.target.value)} /></Field>
               </div>
             )}
-            {ehAtestado && <p className="text-xs text-amber-800">Durante a validade do atestado você não marca ponto nem recebe escala. Para voltar antes, tenha a liberação médica em mãos e fale com o seu gestor.</p>}
+            {ehAtestado && <p className="text-xs text-amber-800">Durante a validade do atestado você não marca ponto nem recebe programação. Para voltar antes, tenha a liberação médica em mãos e fale com o seu gestor.</p>}
             <p className="text-sm font-semibold">Documento</p>
             <p className="text-xs text-muted-foreground">Foto ou PDF do {falta.doc}. {grupo === 'saude' && 'Se o documento tiver o CID (código da doença), você pode cobri-lo antes da foto. '}
               Fica guardado com segurança e só quem aprova vê.</p>

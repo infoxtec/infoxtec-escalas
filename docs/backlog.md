@@ -613,6 +613,46 @@ vencendo e um não cadastrado, para o Dossiê. **Critério de aceite:** depois d
 Indicadores e o Dossiê da "Torre Comercial Vento Leste" (hoje) mostram a demonstração; depois do
 `apagar`, nada dela sobra. **Fica de fora:** ponto (marcação é imutável e impediria apagar).
 
+## 102. "Escala" vira "Programação" — em andamento (13/10/2026; decisão 87)
+
+**Pedido do responsável (Pedido 1):** a ordem de serviço enviada ao técnico passa a se chamar Programação no
+painel e já nas mensagens do WhatsApp e da URA; sai o botão azul "+ Nova escala", fica a aba "Nova
+Programação". **Entrega:** migration 93 (só textos, 21 funções) e painel 3.34.0. **Critério de aceite:** nenhum
+texto visível chama a ordem de serviço de "escala"; regras, dados e permissões não mudam. **Fica de fora:** a
+marca "Trilha Escala" e os nomes internos (tabela `escalas`).
+
+## 103. Menu Gestão de Ponto — em andamento (13/10/2026; decisão 87)
+
+**Pedido do responsável (Pedido 4):** o Registro de Ponto sai da Agenda e vira menu próprio. **Entrega:** abas
+Hoje, Marcações, Espelho de jornada, Ajustes e pedidos, Folhas mensais, Cofre (RH) e AFD (painel 3.34.0).
+**Critério de aceite:** todas as funções do ponto pelo novo menu, com as mesmas permissões.
+
+## 104. Escala / Carga Horária e Times — planejado (pedido em 13/10/2026)
+
+**Pedido do responsável (Pedido 2), escopo confirmado em 13/10:**
+- Escalas de carga horária pertencem às **empresas empregadoras**; escala não atribuída à empresa não pode ser
+  aplicada a funcionário dela. Atribuição a **time** ou a **funcionário**; prevalece funcionário > time >
+  empresa.
+- **Times** opcionais (médias e grandes empresas; vários por empresa; um funcionário em um time; substituem o
+  campo livre "equipe").
+- **Vigência** com data de início; padrão anual (a atribuição vence em 1 ano, com aviso antes).
+- **Conteúdo:** horas por dia da semana, horário de entrada (atraso), intervalo, folga semanal e tolerância.
+- **Modelos prontos:** 44h 5x2 (8h48), 44h 6x1 (8h + 4h sábado, a regra de hoje), 44h 6x1 (7h20), 40h 5x2,
+  36h 6x1, 12x36 (art. 59-A, acordo escrito) e turno ininterrupto de revezamento de 6h (art. 7º, XIV).
+- **Escala nova** validada pela CLT e pela Portaria MTP 671: bloqueia o ilegal em qualquer caso (mais de 44h na
+  semana, sem folga semanal); o que depende de acordo ou convenção (12x36, intervalo reduzido, dia acima de 8h)
+  exige **aceite de risco** assinado no sistema (admin ou gestor; texto do risco, nome, hora e hash guardados).
+- **Etapa 2:** espelho, débito e HE pela escala de cada funcionário (hoje a regra é única, decisão 78), com
+  limpeza da homologação (script só para ela, com os gatilhos de imutabilidade desligados) e carga geral nova.
+
+## 105. Limites de HE diário e mensal e Alerta Crítico — planejado (pedido em 13/10/2026; depende do 104)
+
+**Pedido do responsável (Pedido 3), escopo confirmado em 13/10:** limites pela CLT (2 h por dia, art. 59; o
+mensal derivado da escala). Em **Indicadores**, cartões de quem passou o limite no dia e no mês e o **"Alerta
+Crítico – Funcionário com carga horária excedida"**. Ao **enviar uma Programação** que faz o dia passar da
+jornada + 2 h, quem envia dá **aceite de risco com justificativa**; sem isso, não envia. No **ponto**, ao passar
+o limite, alerta no painel e no WhatsApp do gestor.
+
 ## Plano Diretor Comercial do Trilha
 
 **Pedido em 27/09/2026.** Guarda-chuva comercial do produto, registrado no grupo `saas` do Roadmap.

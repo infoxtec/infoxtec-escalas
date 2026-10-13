@@ -40,7 +40,7 @@ export default function SemEscalaPanel({ podeEditar, onCriar, atualizarEm }: {
 
   let selo: { texto: string; classe: string; icone: JSX.Element } | null = null
   if (p && dia === 'amanha' && p.exige_escala) {
-    if (!pendente) selo = { texto: 'Escala de amanhã completa', classe: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300', icone: <CheckCircle2 className="h-3.5 w-3.5" /> }
+    if (!pendente) selo = { texto: 'Programação de amanhã completa', classe: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300', icone: <CheckCircle2 className="h-3.5 w-3.5" /> }
     else if (prazoPassou) selo = { texto: `Prazo das ${prazo} encerrado`, classe: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300', icone: <AlertTriangle className="h-3.5 w-3.5" /> }
     else selo = { texto: `Enviar até ${prazo}`, classe: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', icone: <Clock className="h-3.5 w-3.5" /> }
   }
@@ -57,7 +57,7 @@ export default function SemEscalaPanel({ podeEditar, onCriar, atualizarEm }: {
       <div className="flex flex-wrap items-center gap-3 px-4 py-3">
         <div className="flex items-center gap-2">
           <UserX className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">Técnicos sem escala</span>
+          <span className="text-sm font-semibold">Técnicos sem programação</span>
           {p && <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${qtd > 0 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-muted text-muted-foreground'}`}>{qtd} de {p.total_tecnicos}</span>}
         </div>
         <div className="flex items-center gap-1 rounded-md border p-0.5">
@@ -77,14 +77,14 @@ export default function SemEscalaPanel({ podeEditar, onCriar, atualizarEm }: {
       {aberto && (
         <div className="space-y-3 border-t px-4 py-3">
           {erro && <p className="text-sm text-destructive">{erro}</p>}
-          {p && !p.exige_escala && <p className="text-xs text-muted-foreground">{p.feriado ? `Feriado (${p.feriado}): não exige escala. Escala em feriado é excepcional.` : 'Este dia não exige escala pela configuração atual (dias úteis).'}</p>}
+          {p && !p.exige_escala && <p className="text-xs text-muted-foreground">{p.feriado ? `Feriado (${p.feriado}): não exige programação. Programação em feriado é excepcional.` : 'Este dia não exige programação pela configuração atual (dias úteis).'}</p>}
           {p && (p.afastados ?? 0) > 0 && <p className="text-xs text-muted-foreground">{p.afastados} técnico(s) afastado(s) neste dia não entram na conta.</p>}
-          {p && qtd === 0 && <p className="text-sm text-green-700 dark:text-green-400">Todos os técnicos ativos têm escala neste dia.</p>}
+          {p && qtd === 0 && <p className="text-sm text-green-700 dark:text-green-400">Todos os técnicos ativos têm programação neste dia.</p>}
           {p && qtd > 0 && (
             <div className="flex flex-wrap gap-2">
               {p.sem_escala.map(t => (
                 <button key={t.id} type="button" disabled={!podeEditar} onClick={() => onCriar([t.id], data)}
-                  title={podeEditar ? 'Criar escala para este técnico' : t.funcao}
+                  title={podeEditar ? 'Criar programação para este técnico' : t.funcao}
                   className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs hover:bg-muted disabled:cursor-default disabled:hover:bg-transparent">
                   {podeEditar && <Plus className="h-3 w-3 text-primary" />}
                   <span className="font-medium">{t.nome}</span>

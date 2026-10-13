@@ -66,8 +66,8 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
     if (ids.length === 0) return setErro('Selecione pelo menos um técnico.')
     if (!data || !hora) return setErro('Informe data e hora de início.')
     if (dataNoPassado) return setErro('A data não pode ser anterior a hoje.')
-    if (horaNoPassado) return setErro(`A escala precisa começar pelo menos 5 minutos à frente. O mais cedo hoje é ${horaMinima}.`)
-    if (!local) return setErro('Escolha o local. Escala sem local não é enviada.')
+    if (horaNoPassado) return setErro(`A programação precisa começar pelo menos 5 minutos à frente. O mais cedo hoje é ${horaMinima}.`)
+    if (!local) return setErro('Escolha o local. Programação sem local não é enviada.')
     if (!tarefa.trim()) return setErro('Descreva a tarefa.')
     setSalvando(true)
     try {
@@ -77,7 +77,7 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
       })
       onSuccess()
       if (r.every(x => x.resultado === 'criada')) {
-        toast(r.length === 1 ? 'Escala criada.' : `${r.length} escalas criadas.`)
+        toast(r.length === 1 ? 'Programação criada.' : `${r.length} programações criadas.`)
         onClose()
       } else setResultado(r)
     } catch (e) { setErro(erroMsg(e)) }
@@ -86,13 +86,13 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
 
   const n = ids.length
   return (
-    <Modal open={open} embutido={embutido} onClose={() => { if (!salvando) onClose() }} title="Nova escala" width="max-w-xl"
+    <Modal open={open} embutido={embutido} onClose={() => { if (!salvando) onClose() }} title="Nova programação" width="max-w-xl"
       footer={resultado
         ? <Button onClick={onClose}>Fechar</Button>
         : <>
           <Button variant="outline" onClick={onClose} disabled={salvando}>{embutido ? 'Limpar e voltar' : 'Cancelar'}</Button>
           <Button onClick={() => void salvar()} disabled={salvando}>
-            {salvando ? 'Salvando...' : `${testeEfetivo ? 'Criar teste' : 'Criar'}${n > 1 ? ` (${n})` : n === 1 ? ' escala' : ' escala'}`}
+            {salvando ? 'Salvando...' : `${testeEfetivo ? 'Criar teste' : 'Criar'}${n > 1 ? ` (${n})` : n === 1 ? ' programação' : ' programação'}`}
           </Button>
         </>}>
       {resultado ? (
@@ -120,7 +120,7 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
           {semAutorizacao.length > 0 && (
             <div className="flex items-start gap-2 rounded-md bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>Sem autorização para mensagens: <strong>{semAutorizacao.map(t => t.nome).join(', ')}</strong>. As escalas serão salvas, mas nenhuma mensagem será enviada para eles.</span>
+              <span>Sem autorização para mensagens: <strong>{semAutorizacao.map(t => t.nome).join(', ')}</strong>. As programações serão salvas, mas nenhuma mensagem será enviada para eles.</span>
             </div>
           )}
           <Field label="Tipo de atividade" hint="Define as habilidades exigidas do técnico.">
@@ -137,7 +137,7 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
                 <ul className="mt-0.5 space-y-0.5">
                   {semHabilidade.map(a => <li key={a.tecnico_id}>{a.nome}: {a.faltando.join(', ')}</li>)}
                 </ul>
-                <p className="mt-1">A escala pode ser criada assim mesmo — o aviso fica registrado para o supervisor decidir.</p>
+                <p className="mt-1">A programação pode ser criada assim mesmo — o aviso fica registrado para o supervisor decidir.</p>
               </div>
             </div>
           )}
@@ -180,14 +180,14 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
               <span className="block text-xs text-muted-foreground">
                 {soTeste
                   ? 'Marcada automaticamente: todos os técnicos selecionados são de perfil de teste.'
-                  : 'Funciona igual a uma escala normal, mas fica fora de todos os indicadores e pode ser removida a qualquer momento.'}
+                  : 'Funciona igual a uma programação normal, mas fica fora de todos os indicadores e pode ser removida a qualquer momento.'}
               </span>
             </span>
           </label>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" className="mt-0.5" checked={enviar} onChange={e => setEnviar(e.target.checked)} disabled={salvando} />
             <span>Enviar WhatsApp agora
-              <span className="block text-xs text-muted-foreground">Desmarcado, a escala fica como rascunho e nada é enviado.</span>
+              <span className="block text-xs text-muted-foreground">Desmarcado, a programação fica como rascunho e nada é enviado.</span>
             </span>
           </label>
           {erro && <ErrorBox>{erro}</ErrorBox>}

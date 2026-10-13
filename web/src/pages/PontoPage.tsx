@@ -11,7 +11,7 @@ import { ALERTA_JORNADA, PONTO_ROTULO, hojeBahia, minutosHm } from '../lib/types
 import type { Empresa, PontoAbono, PontoAcompanhamento, PontoAjuste, PontoEspelho, PontoGeo, PontoHoje, PontoJustificativa, PontoMetricas } from '../lib/types'
 
 const SITUACAO: Record<PontoHoje['situacao'], { label: string; cor: string }> = {
-  sem_entrada: { label: 'Escala sem entrada', cor: 'bg-red-100 text-red-800' },
+  sem_entrada: { label: 'Programação sem entrada', cor: 'bg-red-100 text-red-800' },
   com_marcacao: { label: 'Com marcação', cor: 'bg-green-100 text-green-800' },
   sem_marcacao: { label: 'Sem marcação', cor: 'bg-muted text-muted-foreground' },
 }
@@ -42,7 +42,8 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
   const [pedidos, setPedidos] = useState<PontoJustificativa[] | null>(null)
   const [metricas, setMetricas] = useState<PontoMetricas | null>(null)
   const [abonos, setAbonos] = useState<PontoAbono[] | null>(null)
-  const [vista, setVista] = useState<'marcacoes' | 'espelho' | 'ajustes'>('marcacoes')
+  // Gestão de Ponto (pedido do responsável, 13/10): cada assunto numa aba
+  const [vista, setVista] = useState<'hoje' | 'marcacoes' | 'espelho' | 'ajustes' | 'folhas' | 'cofre' | 'afd'>('hoje')
   // O ponto é visto sempre por mês (pedido do responsável, 13/10): não há fechamento que cruze meses
   const [mes, setMes] = useState(hoje.slice(0, 7))
   const de = `${mes}-01`
@@ -76,6 +77,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
     return () => clearInterval(t)
   }, [carregar, ate, hoje])
   useEffect(() => { api.meuAcesso().then(a => setRhFolhas(!!a.rh_folhas)).catch(() => {}) }, [])
+  useEffect(() => { if (vista === 'cofre' && !rhFolhas) setVista('hoje') }, [vista, rhFolhas])
   useEffect(() => {
     if (papel === 'admin') api.empresas().then(e => setEmpresas(e.filter(x => x.empregadora && x.ativo))).catch(() => {})
   }, [papel])
@@ -99,7 +101,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-base font-semibold">Registro de Ponto</h2>
+          <h2 className="text-base font-semibold">Gestão de Ponto</h2>
           <p className="text-xs text-muted-foreground">
             Marcações pelo app e pelo WhatsApp, na hora do servidor.{atualizado && ` Atualizado às ${atualizado}.`}
           </p>
@@ -109,19 +111,31 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
 
       {erro && <ErrorBox>{erro}</ErrorBox>}
 
+      <div className="flex flex-wrap items-center gap-1 rounded-md border p-0.5 lg:w-fit">
+        {([['hoje', 'Hoje'], ['marcacoes', 'Marcações'], ['espelho', 'Espelho de jornada'], ['ajustes', 'Ajustes e pedidos'],
+           ['folhas', 'Folhas mensais'], ...(rhFolhas ? [['cofre', 'Cofre (RH)']] : []), ...(papel === 'admin' ? [['afd', 'AFD']] : [])] as [typeof vista, string][])
+          .map(([id, rotulo]) => (
+          <button key={id} type="button" onClick={() => setVista(id)}
+            className={`rounded px-3 py-1.5 text-sm font-medium ${vista === id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
+            {rotulo}
+            {id === 'ajustes' && pendentes > 0 && <span className="ml-1.5 rounded-full bg-amber-500 px-1.5 text-[11px] text-white">{pendentes}</span>}
+          </button>
+        ))}
+      </div>
+
       {/* Hoje */}
-      <section className="space-y-3">
+      {vista === 'hoje' && <section className="space-y-3">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Cartao titulo="Funcionários com ponto" valor={situacao?.length} />
           <Cartao titulo="Com marcação hoje" valor={situacao && conta('com_marcacao')} cor="text-green-700" />
-          <Cartao titulo="Escala sem entrada" valor={situacao && conta('sem_entrada')} cor="text-red-700" />
+          <Cartao titulo="Programação sem entrada" valor={situacao && conta('sem_entrada')} cor="text-red-700" />
           <Cartao titulo="Fora da área hoje" valor={situacao && fora} cor="text-amber-700" />
         </div>
         {!situacao ? <Carregando /> : (
           <div className="overflow-x-auto rounded-md border">
             <table className="w-full text-sm">
               <thead><tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
-                <th className="px-3 py-2">Funcionário</th><th className="px-3 py-2">Escala de hoje</th>
+                <th className="px-3 py-2">Funcionário</th><th className="px-3 py-2">Programação de hoje</th>
                 <th className="px-3 py-2">Última marcação</th><th className="px-3 py-2 text-center">Marcações</th>
                 <th className="px-3 py-2">Situação</th>
               </tr></thead>
@@ -131,7 +145,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
                 ) : situacao.map(s => (
                   <tr key={s.tecnico_id} className="border-b last:border-0 hover:bg-muted/30">
                     <td className="px-3 py-2"><p className="font-medium">{s.tecnico}</p><p className="text-xs text-muted-foreground">{s.empresa}</p></td>
-                    <td className="px-3 py-2 text-xs">{s.escala_hora ? `${s.escala_hora} · ${s.escala_local ?? ''}` : <span className="text-muted-foreground">sem escala</span>}</td>
+                    <td className="px-3 py-2 text-xs">{s.escala_hora ? `${s.escala_hora} · ${s.escala_local ?? ''}` : <span className="text-muted-foreground">sem programação</span>}</td>
                     <td className="px-3 py-2 text-xs">{s.ultima_tipo ? `${PONTO_ROTULO[s.ultima_tipo]} às ${s.ultima_hora}` : '—'}</td>
                     <td className="px-3 py-2 text-center text-xs">
                       {s.marcacoes}{s.fora_area > 0 && <span className="ml-1 rounded bg-amber-100 px-1 text-amber-800">{s.fora_area} fora</span>}
@@ -143,19 +157,10 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
             </table>
           </div>
         )}
-      </section>
+      </section>}
 
-      {/* Histórico */}
-      <section className="space-y-3">
-        <div className="flex items-center gap-1 rounded-md border p-0.5 w-fit">
-          {([['marcacoes', 'Marcações'], ['espelho', 'Espelho de jornada'], ['ajustes', 'Ajustes']] as const).map(([id, rotulo]) => (
-            <button key={id} type="button" onClick={() => setVista(id)}
-              className={`rounded px-3 py-1.5 text-sm font-medium ${vista === id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
-              {rotulo}
-              {id === 'ajustes' && pendentes > 0 && <span className="ml-1.5 rounded-full bg-amber-500 px-1.5 text-[11px] text-white">{pendentes}</span>}
-            </button>
-          ))}
-        </div>
+      {/* Histórico do mês: marcações, espelho de jornada e ajustes */}
+      {(vista === 'marcacoes' || vista === 'espelho' || vista === 'ajustes') && <section className="space-y-3">
         <div className="flex flex-wrap items-end gap-3">
           <Field label="Mês"><Input type="month" value={mes} max={hoje.slice(0, 7)} onChange={e => e.target.value && setMes(e.target.value)} /></Field>
           <Field label="Funcionário">
@@ -222,9 +227,9 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
             </table>
           </div>
         )}
-      </section>
+      </section>}
 
-      {papel === 'admin' && empresas.length > 0 && (
+      {vista === 'afd' && papel === 'admin' && empresas.length > 0 && (
         <section className="space-y-2">
           <h3 className="text-sm font-semibold">Conferir a cadeia de marcações</h3>
           <p className="text-xs text-muted-foreground">Confere NSR sem lacunas e o encadeamento do hash desde a primeira marcação.</p>
@@ -239,11 +244,11 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
         </section>
       )}
 
-      <EspelhosMensais hoje={hoje} podeEmitir={papel !== 'leitura'} rhFolhas={rhFolhas} />
+      {vista === 'folhas' && <EspelhosMensais hoje={hoje} podeEmitir={papel !== 'leitura'} rhFolhas={rhFolhas} />}
 
-      {rhFolhas && <CofreFolhas hoje={hoje} />}
+      {vista === 'cofre' && rhFolhas && <CofreFolhas hoje={hoje} />}
 
-      {papel === 'admin' && empresas.length > 0 && <PontoAfd empresas={empresas} hoje={hoje} />}
+      {vista === 'afd' && papel === 'admin' && empresas.length > 0 && <PontoAfd empresas={empresas} hoje={hoje} />}
     </div>
   )
 }
@@ -276,7 +281,7 @@ function Espelho({ linhas }: { linhas: PontoEspelho[] | null }) {
       <div className="overflow-x-auto rounded-md border">
         <table className="w-full text-sm">
           <thead><tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
-            <th className="px-3 py-2">Data</th><th className="px-3 py-2">Funcionário</th><th className="px-3 py-2">Escala</th>
+            <th className="px-3 py-2">Data</th><th className="px-3 py-2">Funcionário</th><th className="px-3 py-2">Programação</th>
             <th className="px-3 py-2">Entrada</th><th className="px-3 py-2">Almoço</th><th className="px-3 py-2">Saída</th>
             <th className="px-3 py-2">Trabalhado</th><th className="px-3 py-2">Intervalo</th><th className="px-3 py-2">Hora extra</th>
             <th className="px-3 py-2">Avisos</th>
@@ -516,14 +521,14 @@ function Afastados({ hoje, aoRegistrar }: { hoje: string; aoRegistrar: () => Pro
     try {
       const f = await prepararArquivo(arquivo)
       const r = await api.pontoRegistrarAlta(tecnico, data, f.base64, f.tipo, obs.trim() || null)
-      setOk(`Alta registrada (pedido ${r.numero}). ${r.afastado_ate ? `Ainda afastado até ${r.afastado_ate}: confira a data da alta.` : 'O funcionário já pode marcar o ponto e receber escala.'}`)
+      setOk(`Alta registrada (pedido ${r.numero}). ${r.afastado_ate ? `Ainda afastado até ${r.afastado_ate}: confira a data da alta.` : 'O funcionário já pode marcar o ponto e receber programação.'}`)
       setAberto(null); setArquivo(null); setObs('')
       await carregar(); await aoRegistrar()
     } catch (e) { setErro(erroMsg(e)) } finally { setSalvando(false) }
   }
   return (
     <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50/40 p-3">
-      <h3 className="text-sm font-semibold">Afastados agora <span className="font-normal text-muted-foreground">· sem ponto e sem escala até a data</span></h3>
+      <h3 className="text-sm font-semibold">Afastados agora <span className="font-normal text-muted-foreground">· sem ponto e sem programação até a data</span></h3>
       {lista.map(a => (
         <div key={a.tecnico_id} className="space-y-2 text-sm">
           <div className="flex flex-wrap items-center gap-2">
@@ -549,7 +554,7 @@ function Afastados({ hoje, aoRegistrar }: { hoje: string; aoRegistrar: () => Pro
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setAberto(null)}>Cancelar</Button>
               </div>
-              <p className="text-xs text-muted-foreground">O documento vai para o cofre criptografado. A partir da data da alta, o funcionário volta a marcar o ponto e a receber escala; o atestado é abonado até a véspera.</p>
+              <p className="text-xs text-muted-foreground">O documento vai para o cofre criptografado. A partir da data da alta, o funcionário volta a marcar o ponto e a receber programação; o atestado é abonado até a véspera.</p>
             </div>
           )}
         </div>

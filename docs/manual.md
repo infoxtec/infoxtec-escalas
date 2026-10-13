@@ -227,7 +227,7 @@ não é opção válida faz o menu voltar. Também pode escrever direto *entrada
 (📎 → Localização → *Enviar localização atual*) e recebe o comprovante. Lugar escolhido no mapa não
 vale. Quem marcou entrada e não saiu para o almoço recebe um lembrete amigável a partir do meio-dia.
 
-**Registro de Ponto (painel):** na **Agenda**, submenu **Registro de Ponto**. Em cima, a situação de hoje — quem já
+**Gestão de Ponto (painel):** menu próprio no topo, com abas (Hoje, Marcações, Espelho de jornada, Ajustes e pedidos, Folhas mensais, Cofre do RH e AFD). Em **Hoje**, a situação do dia — quem já
 bateu, quem tem escala e não bateu entrada, marcações fora da área —, atualizada sozinha a cada 30
 segundos. Embaixo, o histórico por período (até 62 dias) e funcionário, com canal, local, aviso de
 fora da área, link do mapa e o selo **gestor** quando o funcionário entrou com código gerado pelo

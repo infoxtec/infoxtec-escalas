@@ -49,7 +49,7 @@ export default function GerencialPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold">Indicadores de aderência</h2>
-          <p className="text-xs text-muted-foreground">Escala e ponto no período (até 62 dias). Só números do conjunto, sem nome de funcionário.</p>
+          <p className="text-xs text-muted-foreground">Programação e ponto no período (até 62 dias). Só números do conjunto, sem nome de funcionário.</p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <label className="text-xs">De <Input type="date" value={de} max={ate} onChange={ev => setDe(ev.target.value)} className="w-40" /></label>
@@ -64,13 +64,13 @@ export default function GerencialPage() {
 
       {e && (
         <section className="space-y-2">
-          <h3 className="text-sm font-semibold">Escala</h3>
+          <h3 className="text-sm font-semibold">Programação</h3>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Cartao titulo="Escalas enviadas" valor={String(e.enviadas)} detalhe={`${e.confirmadas} confirmadas · ${e.recusadas} recusadas`} />
+            <Cartao titulo="Programações enviadas" valor={String(e.enviadas)} detalhe={`${e.confirmadas} confirmadas · ${e.recusadas} recusadas`} />
             <Cartao titulo="Resolvidas pelo WhatsApp" valor={pctWhats == null ? '—' : `${pctWhats}%`}
               detalhe={`${e.respondidas_whatsapp} de ${e.enviadas}, sem ligação de ninguém`} destaque={pctWhats != null && pctWhats >= 80 ? 'bom' : undefined} />
             <Cartao titulo="Precisaram da URA" valor={pctUra == null ? '—' : `${pctUra}%`}
-              detalhe={`${e.precisaram_ura} escalas · ${e.respondidas_ura} respondidas por telefone`} />
+              detalhe={`${e.precisaram_ura} programações · ${e.respondidas_ura} respondidas por telefone`} />
             <Cartao titulo="Ligações atendidas" valor={pctAtendidas == null ? '—' : `${pctAtendidas}%`}
               detalhe={`${e.ligacoes_atendidas} de ${e.ligacoes} ligações`} />
             <Cartao titulo="Sem resposta" valor={String(e.sem_resposta)} destaque={e.sem_resposta > 0 ? 'atencao' : undefined}
