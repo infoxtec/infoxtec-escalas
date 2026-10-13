@@ -1224,7 +1224,14 @@ segunda a sexta, 4 h no sábado, domingo de repouso), e a "Jornada padrão" atri
 468 da CLT apontado pelo `juridico`). Espelho já emitido não muda (conteúdo congelado). **Riscos e pendências
 registrados:** escala diferente de 8 h ou 12x36 precisa de acordo escrito ou convenção por trás (a escala guarda o
 instrumento no aceite, decisão 88); antes de atribuir a alguém uma escala que tire 100% ou 50% que ele recebia,
-listar quem perde valor (art. 468); intervalo indenizado na 12x36, adicional de domingo da convenção e alerta de 7
+listar quem perde valor (art. 468); **revisão do `seguranca` (aplicada):** a 12x36 só é atribuída a um funcionário
+(a alternância é de cada um) e com entrada que faz o plantão terminar no mesmo dia (o plantão que vira a noite ainda
+é contado por dia de calendário); feriado não trabalhado não é débito, nem na 12x36; a trava da escala sai e volta
+num único comando na migration. Outubro também conferido igual na homologação, com a "Jornada padrão" atribuída aos
+13 funcionários. Pendências do `seguranca` (P3): aviso ao atribuir escala que reduz HE de quem a recebe (art. 468);
+check no banco do DSR em folga; sábado da escala 6x1 sem marcação também é abonado enquanto
+`ponto_sabado_sem_expediente_abona` estiver ligado (decisão do responsável); reemitir espelho não assinado de mês
+fechado gera versão nova (o conteúdo ganhou campos); DSR fixo no revezamento; intervalo indenizado na 12x36, adicional de domingo da convenção e alerta de 7
 dias seguidos sem folga ficam para depois; os Indicadores (decisão 78) ainda calculam a HE do conjunto pela regra
 de antes.
 

@@ -9,20 +9,24 @@
 --  - feriado: não trabalhado é repouso (sem débito); trabalhado, 100% salvo folga compensatória;
 --  - 12x36: DSR e feriados já compensados (CLT art. 59-A, parágrafo único): só o que passa do plantão é HE 50%.
 -- Sem escala atribuída (antes de 13/10 ou funcionário sem empresa), vale a regra de antes: 8 h de segunda a
--- sexta, 4 h no sábado e domingo de repouso. A "Jornada padrão" atribuída na migration 94 é essa mesma regra, então
--- nenhum funcionário de hoje muda de valor (risco do art. 468 da CLT conferido). Espelho já emitido não muda
--- (o conteúdo é congelado na emissão).
+-- sexta, 4 h no sábado e domingo de repouso. A "Jornada padrão" que a migration 94 atribuiu a cada empregadora
+-- ([8 h × 5, 4 h, 0], DSR no domingo) dá os mesmos números (conferido em setembro e outubro na homologação). Antes
+-- de aplicar na produção, conferir se há outra escala atribuída (risco do art. 468 da CLT). Espelho já emitido não
+-- muda (o conteúdo é congelado na emissão). Feriado não trabalhado não é débito, nem na 12x36.
 
 -- DSR da escala ---------------------------------------------------------------------------------------------
 alter table cargas_horarias add column if not exists dsr_dia int check (dsr_dia between 1 and 7);
 comment on column cargas_horarias.dsr_dia is 'Dia do descanso semanal remunerado (1 = segunda … 7 = domingo); um dos dias de folga. Nulo na 12x36 (decisão 91).';
 -- escalas já salvas: o domingo quando é folga; senão, a primeira folga da semana (a escala salva não muda; a
 -- trava sai só para preencher o campo novo)
-alter table cargas_horarias disable trigger trg_cargas_horarias_imutavel;
-update cargas_horarias c
-   set dsr_dia = case when c.minutos[7] = 0 then 7 else (select min(i) from generate_series(1, 7) i where c.minutos[i] = 0) end
- where c.tipo <> '12x36' and c.dsr_dia is null;
-alter table cargas_horarias enable trigger trg_cargas_horarias_imutavel;
+do $$
+begin
+  alter table cargas_horarias disable trigger trg_cargas_horarias_imutavel;
+  update cargas_horarias c
+     set dsr_dia = case when c.minutos[7] = 0 then 7 else (select min(i) from generate_series(1, 7) i where c.minutos[i] = 0) end
+   where c.tipo <> '12x36' and c.dsr_dia is null;
+  alter table cargas_horarias enable trigger trg_cargas_horarias_imutavel;
+end $$;
 
 -- Jornada do dia e se é o DSR, pela escala vigente (sem escala: a regra de antes)
 create or replace function fn_carga_dia(p_tecnico uuid, p_data date)
@@ -231,7 +235,7 @@ begin
   ), dia as (
     select c.*,
            c.trab + (c.noturno_red - c.noturno) as trab_ef,
-           case when c.dia < coalesce(v_marca, v_ult + 1) or c.repouso_pago then 0
+           case when c.dia < coalesce(v_marca, v_ult + 1) or c.repouso_pago or c.feriado is not null then 0
                 when c.sabado and c.contr > 0 and c.j is null and v_abona then 0 else c.bruto end as esperado,
            (c.sabado and not c.repouso_pago and c.contr > 0 and c.j is null and v_abona and c.dia >= coalesce(v_marca, v_ult + 1)) as sabado_abonado
       from calc c
@@ -329,6 +333,68 @@ begin
       'Dias e horas abonados não são descontados.' || case when v_abona then ' Sábados sem expediente são abonados por decisão da empresa.' else '' end,
       'Feriados considerados: os do calendário cadastrado pela empresa.',
       'Sua assinatura confirma que você recebeu e conferiu este espelho. Se algum horário estiver errado, peça a correção pelo app antes de assinar.'));
+end $function$;
+
+-- Atribuir escala (recriada da migration 94, conferida por MD5): trava da 12x36 (revisão do seguranca)
+create or replace function app_atribuir_carga(p_carga uuid, p_alvo text, p_alvo_id uuid, p_inicio date, p_fim date default null)
+returns uuid language plpgsql volatile security definer set search_path = public, extensions as $function$
+declare
+  v_email text := app_exigir(array['admin','gestor']);
+  v_c     cargas_horarias;
+  v_emp   uuid;
+  v_time  uuid;
+  v_tec   uuid;
+  v_fim   date := coalesce(p_fim, (p_inicio + interval '1 year' - interval '1 day')::date);
+  v_id    uuid;
+begin
+  select * into v_c from cargas_horarias where id = p_carga;
+  if not found then raise exception 'Escala não encontrada.'; end if;
+  if not v_c.ativo then raise exception 'Escala inativa não pode ser atribuída.'; end if;
+  if p_inicio is null or p_inicio < current_date then raise exception 'A vigência começa hoje ou depois.'; end if;
+  if v_fim < p_inicio then raise exception 'O fim da vigência é depois do início.'; end if;
+  -- 12x36 (revisão do seguranca, decisão 91): o espelho conta o plantão por dia de calendário e alterna a partir do
+  -- início da vigência; até isso ser tratado, só a um funcionário e com plantão que não vira a noite
+  if v_c.tipo = '12x36' then
+    if p_alvo <> 'tecnico' then
+      raise exception 'A 12x36 é atribuída a cada funcionário (a alternância de plantão é de cada um), não a um time ou à empresa.';
+    end if;
+    if v_c.entrada is null
+       or extract(epoch from v_c.entrada) / 60 + v_c.plantao_min + v_c.intervalo_min > 1440 then
+      raise exception 'Plantão que vira a noite ainda não é calculado no espelho. Informe a entrada da 12x36 com plantão que termina no mesmo dia.';
+    end if;
+  end if;
+
+  if p_alvo = 'empresa' then
+    v_emp := p_alvo_id;
+  elsif p_alvo = 'time' then
+    select empresa_id into v_emp from times where id = p_alvo_id and ativo;
+    v_time := p_alvo_id;
+  elsif p_alvo = 'tecnico' then
+    select empresa_id into v_emp from tecnicos where id = p_alvo_id and ativo and desligado_em is null;
+    v_tec := p_alvo_id;
+  else
+    raise exception 'Atribua a uma empresa, a um time ou a um funcionário.';
+  end if;
+  if v_emp is distinct from v_c.empresa_id then
+    raise exception 'A escala é da empregadora %: só se aplica à própria empresa, aos times e aos funcionários dela.',
+      (select coalesce(nome_fantasia, razao_social) from empresas where id = v_c.empresa_id);
+  end if;
+
+  if exists (select 1 from carga_atribuicoes a
+              where a.cancelada_em is null and a.alvo = p_alvo and a.empresa_id = v_emp
+                and a.time_id is not distinct from v_time and a.tecnico_id is not distinct from v_tec
+                and a.inicio >= p_inicio) then
+    raise exception 'Já há uma atribuição para este alvo começando nesta data ou depois. Cancele-a antes.';
+  end if;
+  update carga_atribuicoes a set fim = p_inicio - 1
+   where a.cancelada_em is null and a.alvo = p_alvo and a.empresa_id = v_emp
+     and a.time_id is not distinct from v_time and a.tecnico_id is not distinct from v_tec
+     and a.inicio < p_inicio and a.fim >= p_inicio;
+
+  insert into carga_atribuicoes (carga_id, empresa_id, alvo, time_id, tecnico_id, inicio, fim, criado_por)
+  values (p_carga, v_emp, p_alvo, v_time, v_tec, p_inicio, v_fim, v_email)
+  returning id into v_id;
+  return v_id;
 end $function$;
 
 do $$

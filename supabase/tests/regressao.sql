@@ -2297,6 +2297,13 @@ begin
                      '[T42] 12x36 sem 100% no plantão: ' || coalesce(d::text, '-'));
   select x into d from jsonb_array_elements(c->'dias') x where x->>'data' = to_char(v_mes + 1, 'YYYY-MM-DD');
   perform pg_temp.ok(d is null or (d->>'debito_min')::int = 0, '[T42] folga da 12x36 sem débito: ' || coalesce(d::text, '-'));
+  -- 12x36 só a um funcionário e com plantão que termina no mesmo dia (revisão do seguranca)
+  v_ok := false;
+  begin perform app_atribuir_carga(c12, 'empresa', v_emp, current_date + 1); exception when others then v_ok := sqlerrm like '%cada funcionário%'; end;
+  perform pg_temp.ok(v_ok, '[T42] 12x36 atribuída à empresa');
+  v_ok := false;
+  begin perform app_atribuir_carga(c12, 'tecnico', v_t2, current_date + 70); exception when others then v_ok := sqlerrm like '%vira a noite%'; end;
+  perform pg_temp.ok(v_ok, '[T42] 12x36 sem entrada (plantão que pode virar a noite)');
 end $$;
 
 select 'REGRESSÃO OK: T1 a T42' as resultado,
