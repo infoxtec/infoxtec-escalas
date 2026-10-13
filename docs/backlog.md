@@ -627,7 +627,7 @@ marca "Trilha Escala" e os nomes internos (tabela `escalas`).
 Hoje, Marcações, Espelho de jornada, Ajustes e pedidos, Folhas mensais, Cofre (RH) e AFD (painel 3.34.0).
 **Critério de aceite:** todas as funções do ponto pelo novo menu, com as mesmas permissões.
 
-## 104. Escala / Carga Horária e Times — em andamento: etapa 1 em revisão (13/10/2026; migration 94, painel 3.35.0, decisão 88)
+## 104. Escala / Carga Horária e Times — etapa 1 na produção; etapa 2 em revisão (14/10/2026; migrations 94 e 97, painéis 3.35.0 e 3.37.0, decisões 88 e 91)
 
 **Pedido do responsável (Pedido 2), escopo confirmado em 13/10:**
 - Escalas de carga horária pertencem às **empresas empregadoras**; escala não atribuída à empresa não pode ser
@@ -661,6 +661,11 @@ vencimento da vigência, tolerância e horário de entrada por dia, menor de ida
 idade), domingo a cada 3 semanas no comércio (o sistema não sabe o setor); o espelho e as HE pela escala (etapa 2).
 Da revisão do `seguranca` (P3): juntar ou apagar time sem membros (um erro de digitação no cadastro cria time
 novo); descarte do aceite e da escala 5 anos depois da última vigência, junto com o do ponto.
+**Etapa 2 (migration 97, painel 3.37.0, decisão 91):** o espelho mensal conta débito e HE pela jornada do dia na
+escala; a escala diz qual folga é o DSR (100%); outra folga trabalhada é 50%; feriado 100% (na 12x36, compensado).
+Sem escala, a regra de antes; setembro conferido igual. **Fica para depois:** limpeza da homologação e carga geral
+nova (próximo pacote); intervalo indenizado na 12x36; adicional de domingo da convenção; alerta de 7 dias seguidos;
+Indicadores do conjunto pela escala.
 Da revisão da migration 95 (P3): trava na tabela `ponto_ajustes` que recuse inclusão sem pedido do funcionário
 (hoje só a função garante); cópia do hash do aceite fora do banco; ato interno que dê ao gestor poder de assinar
 pela empresa (com o Gabriel, item 076).
