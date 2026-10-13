@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { ArrowLeft, Award, BarChart3, Building2, CalendarDays, KeyRound, LayoutGrid, Settings, Loader2, LogOut, MapPin, Rocket, ShieldCheck, Timer, Users } from 'lucide-react'
+import { ArrowLeft, Award, BarChart3, Building2, CalendarClock, CalendarDays, KeyRound, LayoutGrid, Settings, Loader2, LogOut, MapPin, Rocket, ShieldCheck, Timer, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button, ErrorBox } from './components/ui'
 import { configurado, supabase, tipoDoLink } from './lib/supabase'
@@ -15,6 +15,7 @@ import type { Acesso, Local, Tecnico, TipoAtividade } from './lib/types'
 import { DefinirSenha, Login } from './pages/Login'
 import AgendaPage from './pages/AgendaPage'
 import PontoPage from './pages/PontoPage'
+import CargaHorariaPage from './pages/CargaHorariaPage'
 import TecnicosPage from './pages/TecnicosPage'
 import LocaisPage from './pages/LocaisPage'
 import UsuariosPage from './pages/UsuariosPage'
@@ -28,7 +29,7 @@ import Verificacao from './components/Verificacao'
 import { MfaCadastrar, MfaDesativar, MfaVerificar, estadoMfa } from './components/Mfa'
 import type { EstadoMfa } from './components/Mfa'
 
-type Aba = 'inicio' | 'empresas' | 'agenda' | 'ponto' | 'operacao' | 'gerencial' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios' | 'roadmap' | 'admin'
+type Aba = 'inicio' | 'empresas' | 'agenda' | 'ponto' | 'cargas' | 'operacao' | 'gerencial' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios' | 'roadmap' | 'admin'
 
 // Check verde da marca, que vem logo depois do nome (docs/marca.md)
 function CheckVerde() {
@@ -139,6 +140,7 @@ function Painel({ email }: { email: string }) {
   const abas: { id: Aba; label: string; Icone: LucideIcon }[] = [
     { id: 'agenda', label: 'Agenda', Icone: CalendarDays },
     { id: 'ponto', label: 'Gestão de Ponto', Icone: Timer },
+    { id: 'cargas', label: 'Escala / Carga Horária', Icone: CalendarClock },
     { id: 'operacao', label: 'Operação', Icone: LayoutGrid },
     { id: 'gerencial', label: 'Indicadores', Icone: BarChart3 },
     { id: 'tecnicos', label: 'Técnicos', Icone: Users },
@@ -213,6 +215,7 @@ function Painel({ email }: { email: string }) {
         )}
         {aba === 'agenda' && <AgendaPage tecnicos={tecnicos} locais={locais} tipos={tipos} podeEditar={podeEditar} />}
         {aba === 'ponto' && <PontoPage papel={papel} />}
+        {aba === 'cargas' && <CargaHorariaPage tecnicos={tecnicos} recarregarTecnicos={recarregarCadastros} podeEditar={podeEditar} />}
         {aba === 'operacao' && <OperacaoPage />}
         {aba === 'gerencial' && <GerencialPage />}
         {aba === 'habilidades' && <HabilidadesPage tecnicos={tecnicos} podeEditar={podeEditar} />}

@@ -254,6 +254,25 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 94 (13/10): Escala / Carga Horária e Times, etapa 1 (decisão 88)
+
+- Tabelas: `times` (empresa, nome único na empresa, ativo); `tecnicos.time_id`, resolvido pelo gatilho
+  `trg_tecnico_time` a partir de `equipe` e `empresa_id` (acha ou cria o time); `cargas_horarias` (empresa
+  empregadora, tipo `semanal`/`revezamento`/`12x36`, minutos de segunda a domingo ou plantão, intervalo, entrada
+  opcional, média semanal, riscos aceitos; não muda, só `ativo`, gatilho `fn_carga_imutavel`); `carga_aceites`
+  (texto exato do termo, instrumento coletivo, nome, e-mail, papel, hora e SHA-256; só inclusão);
+  `carga_atribuicoes` (alvo empresa, time ou funcionário, início e fim, cancelamento só antes de começar).
+- `fn_carga_validar(p)`: `{semanal_min, bloqueios, riscos, avisos}` pela CLT (parecer do `juridico`).
+  `fn_carga_atribuicao(tecnico, data)`: a atribuição que vale (funcionário > time > empresa).
+  `fn_carga_minutos_dia(tecnico, data)`: minutos contratuais do dia; sem escala, `jornada_min` de segunda a sexta,
+  `ponto_jornada_sabado_min` no sábado e 0 no domingo; 12x36 com plantão no primeiro dia da vigência e dia sim, dia não.
+- API: `app_cargas_modelos`, `app_carga_validar`, `app_salvar_carga(p, p_aceite)` (bloqueio não salva; risco só com
+  `{aceito: true}`), `app_carga_ativar`, `app_cargas`, `app_atribuir_carga`, `app_cancelar_atribuicao`,
+  `app_carga_atribuicoes`, `app_cargas_funcionarios`, `app_times`, `app_salvar_time`, `app_time_definir_membros`.
+  Escrita: admin e gestor; leitura também para o papel leitura.
+- Carga inicial: escala "44h 6x1 (8h + 4h sábado)" para cada empregadora ativa, atribuída à empresa a partir da data
+  da aplicação. `fn_payload_escala` recriada com o rodapé "Trilha".
+
 ### Migration 93 (13/10): "Escala" vira "Programação" nos textos (decisão 87)
 
 - Só textos entre aspas, em 21 funções (mensagens do WhatsApp e da URA, avisos ao supervisor, mensagens de

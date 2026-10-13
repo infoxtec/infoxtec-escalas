@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre } from './types'
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre, ValidacaoCarga, ModeloCarga, CargaHoraria, CargaAtribuicao, CargaFuncionario, TimeEquipe, AlvoCarga } from './types'
 
 function traduzir(msg: string): string {
   if (/JWT expired|invalid JWT|not authenticated/i.test(msg)) return 'Sessão expirada. Entre novamente.'
@@ -149,6 +149,24 @@ export const api = {
   pontoCofreFolhas: (competencia: string | null, tecnico: string | null) =>
     rpc<FolhaCofre[]>('app_ponto_cofre_folhas', { p_competencia: competencia, p_tecnico: tecnico }),
   pontoEspelhoProva: (id: string) => rpc<Record<string, unknown>>('app_ponto_espelho_prova', { p_id: id }),
+  // Escala / Carga Horária e Times (decisão 88)
+  cargasModelos: () => rpc<ModeloCarga[]>('app_cargas_modelos'),
+  cargaValidar: (p: Record<string, unknown>) => rpc<ValidacaoCarga>('app_carga_validar', { p }),
+  salvarCarga: (p: Record<string, unknown>, aceite: { aceito: boolean; instrumento: string | null } | null) =>
+    rpc<string>('app_salvar_carga', { p, p_aceite: aceite }),
+  cargaAtivar: (id: string, ativo: boolean) => rpc<void>('app_carga_ativar', { p_id: id, p_ativo: ativo }),
+  cargas: (empresa: string | null) => rpc<CargaHoraria[]>('app_cargas', { p_empresa: empresa }),
+  atribuirCarga: (carga: string, alvo: AlvoCarga, alvoId: string, inicio: string, fim: string | null) =>
+    rpc<string>('app_atribuir_carga', { p_carga: carga, p_alvo: alvo, p_alvo_id: alvoId, p_inicio: inicio, p_fim: fim }),
+  cancelarAtribuicao: (id: string) => rpc<void>('app_cancelar_atribuicao', { p_id: id }),
+  cargaAtribuicoes: (empresa: string | null) => rpc<CargaAtribuicao[]>('app_carga_atribuicoes', { p_empresa: empresa }),
+  cargasFuncionarios: (empresa: string | null, data: string) =>
+    rpc<CargaFuncionario[]>('app_cargas_funcionarios', { p_empresa: empresa, p_data: data }),
+  times: (empresa: string | null) => rpc<TimeEquipe[]>('app_times', { p_empresa: empresa }),
+  salvarTime: (id: string | null, empresa: string | null, nome: string, ativo: boolean) =>
+    rpc<string>('app_salvar_time', { p_id: id, p_empresa: empresa, p_nome: nome, p_ativo: ativo }),
+  timeDefinirMembros: (time: string, tecnicos: string[]) => rpc<void>('app_time_definir_membros', { p_time: time, p_tecnicos: tecnicos }),
+
   pontoVerificar: (empresa: string) =>
     rpc<{ integra: boolean; conferidas: number; nsr?: number; motivo?: string }>('app_ponto_verificar', { p_empresa: empresa }),
 

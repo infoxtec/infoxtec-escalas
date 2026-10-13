@@ -40,6 +40,7 @@
 -- T37 resumo do espelho: HE 50% e 100%, noturno reduzido, débito com tolerância, atestado e abono da empresa
 -- T38 assinatura por HMAC com chave no Vault; folga compensatória tira o 100% do domingo trabalhado
 -- T39 cofre de folhas assinadas: só RH abre a folha assinada e baixa a prova; cada abertura fica registrada
+-- T40 escala / carga horária e times: bloqueio, aceite de risco, prioridade funcionário > time > empresa, equipe vira time
 
 \set ON_ERROR_STOP on
 begin;
@@ -2008,7 +2009,97 @@ begin
   perform pg_temp.ok((d->>'he100_min')::int = 240 and d->>'compensado_em' is null, '[T38] folga trabalhada manteve compensação: ' || d::text);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T39' as resultado,
+-- T40 escala / carga horária e times (migration 94, decisão 88) ------------------------------------------------
+do $$
+declare
+  v_emp  uuid := (select v::uuid from qa where k = 'emp');
+  v_t1   uuid := (select v::uuid from qa where k = 'tec1');
+  v_t2   uuid := (select v::uuid from qa where k = 'tec2');
+  v_t3   uuid := (select v::uuid from qa where k = 'tec3');
+  v_seg  date := current_date + (8 - extract(isodow from current_date)::int);  -- próxima segunda
+  v_outra uuid; v_c1 uuid; v_c2 uuid; v_c3 uuid; v_tm uuid; v_ok boolean; r jsonb;
+begin
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  -- sem escala: jornada padrão (8 h de segunda a sexta, sábado meio período, domingo 0)
+  perform pg_temp.ok(fn_carga_minutos_dia(v_t1, v_seg) = coalesce(nullif(fn_config('jornada_min'), '')::int, 480)
+                     and fn_carga_minutos_dia(v_t1, v_seg + 6) = 0, '[T40] jornada padrão sem escala');
+  -- bloqueios da CLT
+  r := fn_carga_validar('{"tipo":"semanal","minutos":[480,480,480,480,480,480,480],"intervalo_min":60}');
+  perform pg_temp.ok(r->'bloqueios' @> '[{"codigo":"sem_dsr"}]' and r->'bloqueios' @> '[{"codigo":"semana_acima_44h"}]', '[T40] 7 dias sem folga: ' || r::text);
+  r := fn_carga_validar('{"tipo":"revezamento","minutos":[540,360,360,360,360,0,0],"intervalo_min":60}');
+  perform pg_temp.ok(r->'bloqueios' @> '[{"codigo":"turno_acima_8h"}]', '[T40] turno acima de 8 h');
+  r := fn_carga_validar('{"tipo":"semanal","minutos":[300,300,300,300,300,0,0],"intervalo_min":0}');
+  perform pg_temp.ok(r->'bloqueios' @> '[{"codigo":"intervalo_menor_15"}]', '[T40] 5 h sem intervalo');
+  r := fn_carga_validar('{"tipo":"semanal","minutos":[480,480,480,480,480,240,0],"intervalo_min":60}');
+  perform pg_temp.ok(jsonb_array_length(r->'bloqueios') = 0 and jsonb_array_length(r->'riscos') = 0, '[T40] 44 h 6x1 sem risco: ' || r::text);
+  v_ok := false;
+  begin perform app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA ilegal', 'tipo', 'semanal',
+                   'minutos', jsonb_build_array(660,660,660,660,0,0,0), 'intervalo_min', 60), '{"aceito":true}');
+  exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T40] escala ilegal salva mesmo com aceite');
+  -- risco: só com aceite, que fica imutável e com hash
+  v_ok := false;
+  begin perform app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 5x2', 'tipo', 'semanal',
+                   'minutos', jsonb_build_array(528,528,528,528,528,0,0), 'intervalo_min', 60));
+  exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T40] escala com risco salva sem aceite');
+  v_c1 := app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 5x2', 'tipo', 'semanal',
+            'minutos', jsonb_build_array(528,528,528,528,528,0,0), 'intervalo_min', 60), '{"aceito":true,"instrumento":"ACT QA"}');
+  perform pg_temp.ok((select sha256 = encode(sha256(convert_to(texto, 'UTF8')), 'hex') and texto like '%ACT QA%' and email = 'qa-admin@teste.local'
+                        from carga_aceites where carga_id = v_c1), '[T40] aceite com texto e hash');
+  v_ok := false;
+  begin update carga_aceites set texto = 'x' where carga_id = v_c1; exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T40] aceite alterado');
+  v_ok := false;
+  begin update cargas_horarias set intervalo_min = 30 where id = v_c1; exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T40] escala salva alterada');
+  v_c2 := app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 12x36', 'tipo', '12x36', 'plantao_min', 720, 'intervalo_min', 60), '{"aceito":true}');
+  v_c3 := app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 40h', 'tipo', 'semanal',
+            'minutos', jsonb_build_array(480,480,480,480,480,0,0), 'intervalo_min', 60));
+  perform pg_temp.ok(not exists (select 1 from carga_aceites where carga_id = v_c3), '[T40] escala sem risco não pede aceite');
+  -- a escala só se aplica à própria empregadora
+  v_outra := (select id from empresas where cnpj = '11222333000181');  -- criada no T25
+  perform pg_temp.ok(v_outra is not null, '[T40] outra empregadora');
+  v_ok := false;
+  begin perform app_atribuir_carga(v_c1, 'empresa', v_outra, current_date); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T40] escala aplicada a outra empregadora');
+  v_ok := false;
+  begin perform app_atribuir_carga(v_c1, 'empresa', v_emp, current_date - 1); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T40] atribuição com início no passado');
+  -- equipe vira time; o time pertence à empresa
+  update tecnicos set equipe = ' QA Time ' where id = v_t2;
+  select time_id into v_tm from tecnicos where id = v_t2;
+  perform pg_temp.ok(v_tm is not null and (select nome from times where id = v_tm) = 'QA Time', '[T40] equipe virou time');
+  perform app_time_definir_membros(v_tm, array[v_t2, v_t3]);
+  perform pg_temp.ok((select count(*) from tecnicos where time_id = v_tm) = 2, '[T40] membros do time');
+  -- prioridade: funcionário > time > empresa
+  perform app_atribuir_carga(v_c3, 'empresa', v_emp, v_seg);
+  perform app_atribuir_carga(v_c2, 'time', v_tm, v_seg);
+  perform app_atribuir_carga(v_c1, 'tecnico', v_t3, v_seg);
+  perform pg_temp.ok(fn_carga_minutos_dia(v_t1, v_seg) = 480 and fn_carga_minutos_dia(v_t1, v_seg + 5) = 0, '[T40] empresa: 40 h');
+  perform pg_temp.ok(fn_carga_minutos_dia(v_t2, v_seg) = 720 and fn_carga_minutos_dia(v_t2, v_seg + 1) = 0
+                     and fn_carga_minutos_dia(v_t2, v_seg + 2) = 720, '[T40] time: 12x36');
+  perform pg_temp.ok(fn_carga_minutos_dia(v_t3, v_seg) = 528, '[T40] funcionário: 5x2');
+  perform pg_temp.ok((select alvo from carga_atribuicoes where id = fn_carga_atribuicao(v_t3, v_seg)) = 'tecnico'
+                     and (select alvo from carga_atribuicoes where id = fn_carga_atribuicao(v_t2, v_seg)) = 'time', '[T40] origem da escala');
+  -- nova atribuição encerra a anterior na véspera; a vigência padrão é de um ano
+  perform app_atribuir_carga(v_c1, 'empresa', v_emp, v_seg + 7);
+  perform pg_temp.ok((select fim from carga_atribuicoes where empresa_id = v_emp and alvo = 'empresa' and carga_id = v_c3) = v_seg + 6
+                     and (select fim from carga_atribuicoes where empresa_id = v_emp and alvo = 'empresa' and carga_id = v_c1)
+                         = (v_seg + 7 + interval '1 year' - interval '1 day')::date, '[T40] vigência');
+  v_ok := false;
+  begin perform app_carga_ativar(v_c1, false); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T40] escala atribuída inativada');
+  perform pg_temp.ok(not has_function_privilege('anon', 'app_salvar_carga(jsonb,jsonb)', 'execute'), '[T40] anon salva escala');
+  perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
+  perform pg_temp.ok((select count(*) from app_cargas(v_emp)) = 3, '[T40] leitura vê as escalas');
+  v_ok := false;
+  begin perform app_atribuir_carga(v_c3, 'tecnico', v_t1, v_seg); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T40] leitura atribuiu escala');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T40' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

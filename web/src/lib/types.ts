@@ -484,3 +484,25 @@ export interface EspelhoCompleto {
   id: string; registro: number; versao: number; codigo: string; sha256: string; emitido_em: string
   substituido: boolean; conteudo: EspelhoConteudo | null; assinado_em: string | null; assinatura_png: string | null
 }
+
+/** Escala / Carga Horária (decisão 88): item de validação da CLT. */
+export interface ItemValidacao { codigo: string; texto: string }
+export interface ValidacaoCarga { semanal_min: number; bloqueios: ItemValidacao[]; riscos: ItemValidacao[]; avisos: ItemValidacao[] }
+export type TipoCarga = 'semanal' | 'revezamento' | '12x36'
+export interface ModeloCarga { nome: string; tipo: TipoCarga; minutos?: number[]; plantao_min?: number; intervalo_min: number }
+export interface CargaHoraria {
+  id: string; empresa_id: string; empresa: string; nome: string; tipo: TipoCarga; minutos: number[] | null
+  plantao_min: number | null; intervalo_min: number; entrada: string | null; semanal_min: number; riscos: ItemValidacao[]
+  ativo: boolean; criado_por: string; created_at: string; atribuicoes: number
+  aceite_nome: string | null; aceite_em: string | null; aceite_texto: string | null; aceite_sha256: string | null
+}
+export type AlvoCarga = 'empresa' | 'time' | 'tecnico'
+export interface CargaAtribuicao {
+  id: string; carga_id: string; carga: string; empresa_id: string; empresa: string; alvo: AlvoCarga; alvo_id: string
+  alvo_nome: string; inicio: string; fim: string; situacao: 'vigente' | 'futura' | 'encerrada' | 'cancelada'; criado_por: string
+}
+export interface CargaFuncionario {
+  tecnico_id: string; tecnico: string; empresa: string | null; time_nome: string | null; carga: string
+  origem: 'funcionário' | 'time' | 'empresa' | 'padrão'; semanal_min: number
+}
+export interface TimeEquipe { id: string; empresa_id: string; empresa: string; nome: string; ativo: boolean; membros: number }

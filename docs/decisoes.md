@@ -1120,3 +1120,24 @@ os registros internos ("escala ja respondida") ficam como estão. **Respostas do
 (escala da empresa, times opcionais, vigência anual, modelos, validação CLT com aceite de risco, limites de HE
 pela CLT, alerta crítico no painel e no WhatsApp, limpeza da homologação com carga nova) estão nos itens 104 e
 105 do backlog; a implantação é decidida depois desta entrega.
+
+## 88. Escala / Carga Horária: da empregadora, validada pela CLT, com aceite de risco; equipe vira time
+
+**Data:** 13/10/2026. **Pedido do responsável (Pedido 2; backlog 104), respostas de 13/10:** a escala (carga
+horária contratual) pertence à empregadora e não se aplica a funcionário de outra; times opcionais, vários por
+empresa; prioridade funcionário > time > empresa; vigência com início, anual por padrão; modelos prontos;
+validação pela CLT, bloqueando o ilegal e pedindo aceite de risco, assinado no sistema por admin ou gestor, para o
+que depende de acordo ou norma coletiva; o campo "equipe" vira time; rodapé dos botões do WhatsApp "Trilha".
+**Parecer do `juridico` (decisão 58):** a validação vem da Constituição e da CLT (a Portaria 671 trata do registro,
+não dos limites); intervalo de 30 a 59 min só com convenção ou acordo coletivo, nunca individual; turno de
+revezamento acima de 8h é bloqueio; o aceite registra a decisão, mas não supre a norma coletiva nem afasta
+passivo — e o texto do termo diz isso. **Decisão (migration 94, painel 3.35.0):** tabelas novas `times`,
+`cargas_horarias`, `carga_aceites` e `carga_atribuicoes` (RLS sem políticas, acesso só pelas funções). Escala salva
+e aceite não mudam (gatilhos); para mudar, cria-se outra escala e atribui-se no lugar, o que preserva o histórico
+do que valia em cada data. A validação (`fn_carga_validar`) fica no banco e o painel só mostra a resposta. A
+atribuição começa hoje ou depois (não reescreve o passado) e encerra a anterior do mesmo alvo na véspera. O time
+é resolvido pelo nome da equipe na empresa do funcionário (gatilho), para a importação e o cadastro continuarem
+funcionando como hoje. Cada empregadora ativa recebe a escala da regra atual (44h 6x1, 8h + 4h no sábado), para
+nada mudar até alguém atribuir outra. `fn_carga_minutos_dia` dá os minutos contratuais do dia, base do limite de
+HE (backlog 105). **Fora desta etapa:** espelho, débito e HE pela escala (etapa 2); aviso de vencimento; menor e
+aprendiz e domingo a cada 3 semanas no comércio (o cadastro não tem idade nem setor).
