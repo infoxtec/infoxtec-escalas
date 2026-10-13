@@ -13,7 +13,10 @@ declare
   v_esc int; v_tec int; v_loc int;
 begin
   if to_regclass('cron.job') is not null then execute 'select count(*) from cron.job' into n; end if;
-  if n > 0 or coalesce(fn_config('ambiente'), 'producao') <> 'homologacao' then
+  -- com agendador, só a homologação configurada (decisão 94: webhook_url do projeto de homologação)
+  if coalesce(fn_config('ambiente'), 'producao') <> 'homologacao'
+     or (n > 0 and (coalesce(fn_config('webhook_url'), '') not like '%oruwnlxyvznpigbpjjbx%'
+                     or coalesce(fn_config('evolution_instancia'), '') <> 'trilha-homologacao')) then
     raise exception 'Este banco não é a homologação (config ambiente ou tarefas no pg_cron). A demonstração só roda na homologação.';
   end if;
   select id into v_emp from empresas where cnpj = '99999999000191';

@@ -44,17 +44,20 @@
 -- T41 limite de 2 h extras pela escala: aceite da empresa na Programação, substituição recusada, Alerta Crítico
 -- T42 espelho pela escala: folga a 50%, DSR a 100%, débito pela jornada do dia, 12x36 com feriado compensado
 -- T43 Indicadores pela escala: hora extra pela jornada do dia (folga e DSR inteiros, 12x36 acima do plantão)
+-- T44 trava de envio da homologação: só a lista libera; instância conferida; mensagem sem destinatário recusada
 
 \set ON_ERROR_STOP on
 begin;
 
--- Trava: a produção é o único banco com tarefas no pg_cron (supabase/setup/cron.sql). O T7 trava
--- ponto_marcacoes até o rollback, o que bloquearia as batidas reais.
+-- Trava: não roda com tarefas ativas no pg_cron. A produção sempre tem; a homologação tem desde a decisão 94 e
+-- precisa pausar o agendador antes (o T7 trava ponto_marcacoes até o rollback e seguraria as batidas dos testes).
 do $$
 declare n int := 0;
 begin
-  if to_regclass('cron.job') is not null then execute 'select count(*) from cron.job' into n; end if;
-  if n > 0 then raise exception 'regressao.sql: banco com pg_cron agendado (produção?). Abortado.'; end if;
+  if to_regclass('cron.job') is not null then execute 'select count(*) from cron.job where active' into n; end if;
+  if n > 0 then
+    raise exception 'regressao.sql: banco com tarefas ativas no pg_cron (produção?). Na homologação, pause antes: select cron.alter_job(jobid, active := false) from cron.job; e religue depois com active := true.';
+  end if;
 end $$;
 
 create temp table qa (k text primary key, v text) on commit drop;
@@ -155,6 +158,49 @@ begin
    where has_table_privilege(r.rolname, 'public.qa_nova', 'select,insert,update,delete')
       or has_sequence_privilege(r.rolname, pg_get_serial_sequence('public.qa_nova', 'id'), 'usage,select,update');
   perform pg_temp.ok(v is null, '[T1] tabela nova nasce aberta para: ' || coalesce(v, ''));
+end $$;
+
+-- T44 trava de envio da homologação (migration 99, decisão 94) ----------------------------------------------
+do $$
+declare v_ok boolean; v_msg text;
+  v_amb text := fn_config('ambiente'); v_inst text := fn_config('evolution_instancia');
+  v_lista text := fn_config('telefones_homologacao');
+  v_tec uuid := (select v::uuid from qa where k = 'tec1');
+  v_tel text := (select telefone_e164 from tecnicos where id = (select v::uuid from qa where k = 'tec1'));
+  v_teste boolean := (select perfil_teste from tecnicos where id = (select v::uuid from qa where k = 'tec1'));
+begin
+  -- roda antes do stub de fn_evo_post (T13) e devolve a configuração como estava
+  update config set valor = 'homologacao' where chave = 'ambiente';
+  insert into config (chave, valor) values ('telefones_homologacao', '5571900000044'), ('evolution_instancia', 'trilha-homologacao')
+  on conflict (chave) do update set valor = excluded.valor;
+  update tecnicos set perfil_teste = true, telefone_e164 = '5571988880044' where id = (select v::uuid from qa where k = 'tec1');
+  perform pg_temp.ok(fn_pode_enviar('5571900000044'), '[T44] número liberado');
+  perform pg_temp.ok(not fn_pode_enviar('5571988880044'), '[T44] técnico de teste com número real liberado');
+  v_ok := false;
+  begin perform fn_evo_post('/message/sendText/infoxtec', '{"number":"5571900000044","text":"x"}');
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%instância configurada%'; end;
+  perform pg_temp.ok(v_ok, '[T44] envio por outra instância: ' || coalesce(v_msg, 'sem erro')); v_msg := null;
+  v_ok := false;
+  begin perform fn_evo_post('/message/sendText/trilha-homologacao', '{"text":"x"}');
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%sem destinatário%'; end;
+  perform pg_temp.ok(v_ok, '[T44] mensagem sem destinatário: ' || coalesce(v_msg, 'sem erro')); v_msg := null;
+  update config set valor = 'infoxtec' where chave = 'evolution_instancia';
+  v_ok := false;
+  begin perform fn_evo_post('/message/sendText/infoxtec', '{"number":"5571900000044","text":"x"}');
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%só usa a instância trilha-homologacao%'; end;
+  perform pg_temp.ok(v_ok, '[T44] homologação pela instância da produção: ' || coalesce(v_msg, 'sem erro')); v_msg := null;
+  update config set valor = 'producao' where chave = 'ambiente';
+  update config set valor = 'trilha-homologacao' where chave = 'evolution_instancia';
+  v_ok := false;
+  begin perform fn_evo_post('/message/sendText/trilha-homologacao', '{"number":"5571900000044","text":"x"}');
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%não serve à produção%'; end;
+  perform pg_temp.ok(v_ok, '[T44] produção pela instância da homologação: ' || coalesce(v_msg, 'sem erro')); v_msg := null;
+  perform pg_temp.ok(fn_pode_enviar('5571988880044'), '[T44] produção libera qualquer número');
+  -- devolve o estado para os testes seguintes
+  delete from config where chave in ('ambiente', 'evolution_instancia', 'telefones_homologacao');
+  insert into config (chave, valor) select k, v from (values ('ambiente', v_amb), ('evolution_instancia', v_inst),
+    ('telefones_homologacao', v_lista)) x(k, v) where v is not null;
+  update tecnicos set telefone_e164 = v_tel, perfil_teste = v_teste where id = v_tec;
 end $$;
 
 -- T2 escala exige local ----------------------------------------------------------------------------------
@@ -2330,7 +2376,7 @@ begin
                      '[T43] jornada pela escala: ' || (b->'jornada')::text);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T43' as resultado,
+select 'REGRESSÃO OK: T1 a T44' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

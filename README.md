@@ -191,6 +191,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Migration 90 e painel 3.30.0: **Resumo de pagamento no espelho** — HE 50% e 100%, adicional noturno, débito e abonos por dia, e o quadro *a pagar / a descontar* em HH:MM (13/10)
 - [x] Migration 91 e painel 3.31.0: **Folga compensatória e assinatura com HMAC** — o gestor lança a folga de um domingo ou feriado trabalhado, que deixa de sair a 100%; a assinatura do espelho passa a ser conferida com chave no Vault (13/10)
 - [x] **Homologação com painel publicado próprio** em https://infoxtec-escalas-homologacao.vercel.app (decisão 92, 14/10)
+- [ ] **WhatsApp na homologação** com instância própria (`trilha-homologacao`), agendador próprio e envio só para os números de teste (decisão 94, 14/10)
 - [x] Painel 3.39.0: **Indicadores sem cara de alarme quando está tudo zerado** — o Alerta Crítico só fica vermelho com alguém acima do limite; o Ponto sem funcionários mostra um aviso no lugar dos cartões zerados (pedido do responsável, 14/10)
 - [x] Migration 98 e painel 3.38.0: **Indicadores pela escala** — hora extra, saldo e semanas pela jornada do dia na escala de cada funcionário, como o espelho (decisão 93, backlog 104, 14/10)
 - [x] Migration 97 e painel 3.37.0: **espelho de ponto pela escala** — débito e hora extra pela jornada do dia; DSR a 100%, outra folga a 50%, feriado compensado na 12x36 (decisão 91, backlog 104 etapa 2, 14/10)

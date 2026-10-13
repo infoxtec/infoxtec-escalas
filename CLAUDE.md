@@ -17,8 +17,11 @@ arquitetura e decisões em `docs/arquitetura.md` e `docs/decisoes.md`; fluxo de 
   exibido com três dígitos (001, 002...). A análise do item vai para `docs/backlog.md`.
 - **Todo o resto** (estrutura, funções, painel, Edge Functions) segue o ciclo: Claude aplica na
   homologação, os dois testam, e só com o comando do responsável vai para a produção.
-- **Homologação:** projeto Supabase `infoxtec-escalas-dev`. É onde se testa. Nunca cadastrar nele
-  segredos da Evolution ou da Twilio, nem rodar `supabase/setup/cron.sql`.
+- **Homologação:** projeto Supabase `infoxtec-escalas-dev`. É onde se testa. Tem WhatsApp próprio (decisão 94):
+  instância `trilha-homologacao` na Evolution e agendador de `supabase/setup/cron-homologacao.sql`; só fala com
+  os números de `telefones_homologacao` (trava da decisão 44, migration 99). Nunca cadastrar nele o token da
+  instância da produção (`infoxtec`) nem os segredos da Twilio, nem rodar o `supabase/setup/cron.sql` da produção.
+  A chave global da Evolution não vai para nenhum Vault: fica só no servidor da Oracle.
 - Antes de qualquer `npx supabase db push`, conferir `supabase/.temp/project-ref`. O caminho normal
   é `scripts/aplicar-homologacao.sh` e `scripts/aplicar-producao.sh`.
 - A lista de trabalho pendente, em ordem, está em `docs/plano-de-trabalho.md`. Ao concluir uma

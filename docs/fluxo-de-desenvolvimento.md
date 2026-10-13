@@ -56,12 +56,14 @@ flowchart TD
 |---|---|---|---|
 | Banco | Supabase dev | Supabase dev | Supabase `zpckrxydqqmmcrphrkxz` |
 | Painel | `npm run dev` na máquina Linux | https://infoxtec-escalas-homologacao.vercel.app (decisão 92) | https://infoxtec-escalas.vercel.app |
-| WhatsApp e ligações reais | Não | Não | Sim |
+| WhatsApp e ligações reais | Não | WhatsApp só com os números de teste, instância própria; sem ligação (decisão 94) | Sim |
 | Quem aplica migration | Você ou o Claude Code, com `db push` | Idem | Só depois do merge, por disparo manual |
 | Dados | Fictícios (`supabase/seed.sql`) | Fictícios | Reais (LGPD) |
 
-**O banco dev nunca recebe os segredos da Evolution e da Twilio, nem o `setup/cron.sql`.** É isso
-que garante que nenhum teste dispara mensagem ou ligação real.
+**O banco dev nunca recebe o token da instância de produção da Evolution, os segredos da Twilio nem o
+`setup/cron.sql` da produção.** Desde a decisão 94 ele tem instância própria (`trilha-homologacao`) e o
+`setup/cron-homologacao.sql`; a trava de ambiente (decisão 44, migration 99) só deixa sair mensagem para os números de
+`telefones_homologacao`. A chave global da Evolution não vai para nenhum Vault.
 
 ## Onde o Claude Code entra
 
