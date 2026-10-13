@@ -117,7 +117,7 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
                 <SortableTh {...thProps('nome')} {...col('nome')}>Nome</SortableTh>
                 <SortableTh {...thProps('telefone')} {...col('telefone')}>Telefone</SortableTh>
                 <SortableTh {...thProps('funcao')} {...col('funcao')}>Função</SortableTh>
-                <SortableTh {...thProps('equipe')} {...col('equipe')}>Equipe</SortableTh>
+                <SortableTh {...thProps('equipe')} {...col('equipe')}>Time</SortableTh>
                 <SortableTh {...thProps('supervisor')} {...col('supervisor')} align="center">Supervisor</SortableTh>
                 <SortableTh {...thProps('whatsapp')} {...col('whatsapp')} align="center">WhatsApp</SortableTh>
                 <SortableTh {...thProps('ativo')} {...col('ativo')} align="center">Ativo</SortableTh>
@@ -171,7 +171,7 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
                 onChange={e => setEdit(p => ({ ...p, telefone_e164: e.target.value.replace(/\D/g, '') }))} />
             </Field>
             <Field label="Função *"><Input value={edit.funcao ?? ''} onChange={e => setEdit(p => ({ ...p, funcao: e.target.value }))} disabled={salvando} placeholder="Ex: Instalador, Cabista" /></Field>
-            <Field label="Equipe"><Input value={edit.equipe ?? ''} onChange={e => setEdit(p => ({ ...p, equipe: e.target.value }))} disabled={salvando} /></Field>
+            <Field label="Time" hint="O time é criado na empresa do funcionário se ainda não existir."><Input value={edit.equipe ?? ''} onChange={e => setEdit(p => ({ ...p, equipe: e.target.value }))} disabled={salvando} /></Field>
             <hr />
             <div className="space-y-3">
               <p className="text-sm font-medium">Dados para o ponto</p>

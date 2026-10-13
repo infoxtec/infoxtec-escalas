@@ -1120,3 +1120,56 @@ os registros internos ("escala ja respondida") ficam como estão. **Respostas do
 (escala da empresa, times opcionais, vigência anual, modelos, validação CLT com aceite de risco, limites de HE
 pela CLT, alerta crítico no painel e no WhatsApp, limpeza da homologação com carga nova) estão nos itens 104 e
 105 do backlog; a implantação é decidida depois desta entrega.
+
+## 88. Escala / Carga Horária: da empregadora, validada pela CLT, com aceite de risco; equipe vira time
+
+**Data:** 13/10/2026. **Pedido do responsável (Pedido 2; backlog 104), respostas de 13/10:** a escala (carga
+horária contratual) pertence à empregadora e não se aplica a funcionário de outra; times opcionais, vários por
+empresa; prioridade funcionário > time > empresa; vigência com início, anual por padrão; modelos prontos;
+validação pela CLT, bloqueando o ilegal e pedindo aceite de risco, assinado no sistema por admin ou gestor, para o
+que depende de acordo ou norma coletiva; o campo "equipe" vira time; rodapé dos botões do WhatsApp "Trilha".
+**Parecer do `juridico` (decisão 58):** a validação vem da Constituição e da CLT (a Portaria 671 trata do registro,
+não dos limites); intervalo de 30 a 59 min só com convenção ou acordo coletivo, nunca individual; turno de
+revezamento acima de 8h é bloqueio; o aceite registra a decisão, mas não supre a norma coletiva nem afasta
+passivo — e o texto do termo diz isso. **Decisão (migration 94, painel 3.35.0):** tabelas novas `times`,
+`cargas_horarias`, `carga_aceites` e `carga_atribuicoes` (RLS sem políticas, acesso só pelas funções). Escala salva
+e aceite não mudam (gatilhos); para mudar, cria-se outra escala e atribui-se no lugar, o que preserva o histórico
+do que valia em cada data. A validação (`fn_carga_validar`) fica no banco e o painel só mostra a resposta. A
+atribuição começa hoje ou depois (não reescreve o passado) e encerra a anterior do mesmo alvo na véspera. O time
+é resolvido pelo nome da equipe na empresa do funcionário (gatilho), para a importação e o cadastro continuarem
+funcionando como hoje. Cada empregadora ativa recebe a escala da regra atual (44h 6x1, 8h + 4h no sábado), para
+nada mudar até alguém atribuir outra. `fn_carga_minutos_dia` dá os minutos contratuais do dia, base do limite de
+HE (backlog 105). **Fora desta etapa:** espelho, débito e HE pela escala (etapa 2); aviso de vencimento; menor e
+aprendiz e domingo a cada 3 semanas no comércio (o cadastro não tem idade nem setor).
+**Revisão do `seguranca` (aplicada):** o papel leitura não vê quem criou nem o termo do aceite (padrão das
+migrations 65 e 66; o termo em que a empresa assume o risco é prova do empregador); o termo é montado pelo banco,
+o painel mostra exatamente esse texto e devolve os riscos que mostrou — se mudaram, o aceite é recusado; nome de
+time sem teto no banco (vem do campo equipe), 60 caracteres no cadastro do time; funcionário não entra em time
+inativo; atribuição só muda o fim (de hoje em diante) ou é cancelada; instrumento até 200 caracteres; a escala
+inicial segue `jornada_min` e `ponto_jornada_sabado_min`. **LGPD:** entram o nome, o e-mail e o papel de quem
+assina o aceite (base: exercício regular de direito, art. 7º, VI, e cumprimento de obrigação legal da jornada,
+art. 7º, II) e a jornada contratual e o time do funcionário (execução do contrato, art. 7º, V). Veem admin e
+gestor; o leitura vê a escala, sem autor nem termo. Retenção: o aceite e a escala ficam enquanto houver
+atribuição e por 5 anos depois do fim da última vigência (prazo prescricional, CF art. 7º, XXIX); o descarte
+entra com o do ponto.
+**Correção do responsável (13/10), termo da empregadora:** quem aceita o risco é a **empresa**, pelo gestor ou
+administrador que assina no painel (o RH), **nunca o funcionário**. O termo é documento interno do empregador: não
+aparece no app do ponto nem em mensagem ao funcionário (nenhuma função `ponto_*` lê `carga_aceites`; teste no T40).
+Texto reescrito pelo `juridico` como prova trabalhista: fala a empregadora (razão social e CNPJ), "por meio de"
+quem assina (nome, e-mail e papel por extenso), registra o alerta e a decisão "sob sua responsabilidade" e evita
+confissão desnecessária ("não indicou instrumento" em vez de "não há instrumento"; sai "não elimina passivo"). A
+hora vai em horário de Brasília. Riscos apontados: o termo prova a ciência e pode ser exigido em juízo (CPC art.
+396); não valida a escala sem norma coletiva; a assinatura eletrônica simples e o hash no próprio banco são
+frágeis se contestados (cópia do hash fora do banco, a avaliar); falta confirmar o ato interno que dá ao gestor
+poder de representar a empresa nisso (com o Gabriel, item 076).
+
+## 89. O gestor não inclui marcação de ponto
+
+**Data:** 13/10/2026. **Pedido do responsável:** "incluir marcação esquecida" sai de Gestão de Ponto > Ajustes e
+pedidos > Novo ajuste — "essa função não pode existir". A marcação esquecida entra só pelo **pedido de ajuste do
+funcionário** (app do ponto), que o gestor aprova ou recusa; se o funcionário não pedir, o supervisor **abona** a
+falta ou o atraso com justificativa. **Decisão (migration 95, painel 3.35.0):** `app_ponto_ajustar` recusa
+`incluir` com essa orientação; continuam desconsiderar marcação errada (inclusive uma inclusão vinda de pedido
+aprovado), abono e folga compensatória. As inclusões já lançadas não mudam (ajuste é imutável) e seguem no espelho.
+O indicador "Inclusões manuais do gestor" passa a mostrar só o histórico.
+

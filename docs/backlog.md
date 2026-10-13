@@ -613,7 +613,7 @@ vencendo e um não cadastrado, para o Dossiê. **Critério de aceite:** depois d
 Indicadores e o Dossiê da "Torre Comercial Vento Leste" (hoje) mostram a demonstração; depois do
 `apagar`, nada dela sobra. **Fica de fora:** ponto (marcação é imutável e impediria apagar).
 
-## 102. "Escala" vira "Programação" — em andamento (13/10/2026; decisão 87)
+## 102. "Escala" vira "Programação" — concluído (13/10/2026; migration 93, painel 3.34.0, decisão 87)
 
 **Pedido do responsável (Pedido 1):** a ordem de serviço enviada ao técnico passa a se chamar Programação no
 painel e já nas mensagens do WhatsApp e da URA; sai o botão azul "+ Nova escala", fica a aba "Nova
@@ -621,13 +621,13 @@ Programação". **Entrega:** migration 93 (só textos, 21 funções) e painel 3.
 texto visível chama a ordem de serviço de "escala"; regras, dados e permissões não mudam. **Fica de fora:** a
 marca "Trilha Escala" e os nomes internos (tabela `escalas`).
 
-## 103. Menu Gestão de Ponto — em andamento (13/10/2026; decisão 87)
+## 103. Menu Gestão de Ponto — concluído (13/10/2026; painel 3.34.0, decisão 87)
 
 **Pedido do responsável (Pedido 4):** o Registro de Ponto sai da Agenda e vira menu próprio. **Entrega:** abas
 Hoje, Marcações, Espelho de jornada, Ajustes e pedidos, Folhas mensais, Cofre (RH) e AFD (painel 3.34.0).
 **Critério de aceite:** todas as funções do ponto pelo novo menu, com as mesmas permissões.
 
-## 104. Escala / Carga Horária e Times — planejado (pedido em 13/10/2026)
+## 104. Escala / Carga Horária e Times — em andamento: etapa 1 em revisão (13/10/2026; migration 94, painel 3.35.0, decisão 88)
 
 **Pedido do responsável (Pedido 2), escopo confirmado em 13/10:**
 - Escalas de carga horária pertencem às **empresas empregadoras**; escala não atribuída à empresa não pode ser
@@ -644,6 +644,26 @@ Hoje, Marcações, Espelho de jornada, Ajustes e pedidos, Folhas mensais, Cofre 
   exige **aceite de risco** assinado no sistema (admin ou gestor; texto do risco, nome, hora e hash guardados).
 - **Etapa 2:** espelho, débito e HE pela escala de cada funcionário (hoje a regra é única, decisão 78), com
   limpeza da homologação (script só para ela, com os gatilhos de imutabilidade desligados) e carga geral nova.
+
+**Etapa 1 entregue (migration 94, painel 3.35.0, decisão 88):** menu **Escala / Carga Horária** com as abas
+Escalas, Atribuições, Por funcionário e Times; os sete modelos; validação no banco pelo parecer do `juridico`
+(bloqueia: semana acima de 44h, sem folga de 24h, dia acima de 10h, plantão acima de 12h, intervalo abaixo de
+30 min em mais de 6h ou de 15 min em mais de 4h, menos de 11h entre jornadas, turno de revezamento acima de 8h;
+exige aceite: dia acima de 8h, 12x36, intervalo de 30 a 59 min, intervalo acima de 2h, folga fora do domingo,
+turno de revezamento acima de 6h; avisa: trabalho noturno). O aceite guarda o texto exato, o instrumento
+coletivo (se houver), nome, papel, hora e SHA-256, e não muda. A escala salva também não muda (só ativa ou
+inativa). A atribuição começa hoje ou depois, vale um ano e encerra a anterior do mesmo alvo na véspera. O campo
+Equipe do funcionário vira Time (criado na empresa dele). Cada empregadora ativa ganhou a escala "Jornada padrão"
+(a regra de hoje, 44h 6x1), atribuída à empresa a partir da data da aplicação. **Critérios de aceite:** escala
+ilegal não salva nem com aceite; escala com risco só com aceite; escala de uma empregadora não se aplica a
+funcionário de outra; funcionário > time > empresa; sem escala, jornada padrão. **Ficam para depois:** aviso de
+vencimento da vigência, tolerância e horário de entrada por dia, menor de idade e aprendiz (o cadastro não guarda
+idade), domingo a cada 3 semanas no comércio (o sistema não sabe o setor); o espelho e as HE pela escala (etapa 2).
+Da revisão do `seguranca` (P3): juntar ou apagar time sem membros (um erro de digitação no cadastro cria time
+novo); descarte do aceite e da escala 5 anos depois da última vigência, junto com o do ponto.
+Da revisão da migration 95 (P3): trava na tabela `ponto_ajustes` que recuse inclusão sem pedido do funcionário
+(hoje só a função garante); cópia do hash do aceite fora do banco; ato interno que dê ao gestor poder de assinar
+pela empresa (com o Gabriel, item 076).
 
 ## 105. Limites de HE diário e mensal e Alerta Crítico — planejado (pedido em 13/10/2026; depende do 104)
 

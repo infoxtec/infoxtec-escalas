@@ -182,7 +182,7 @@ Cadastro da equipe.
 | Nome | — |
 | Telefone com DDI | Só dígitos: país + DDD + número. Ex.: 5571981776307 |
 | Função | Ex.: instalador, cabista |
-| Equipe | Opcional, para organização |
+| Time | Opcional (antiga Equipe). O time é criado na empresa do funcionário se não existir; serve para atribuir a escala a todos de uma vez |
 | **Supervisor** | Recebe os alertas: recusa, falta de resposta, prazo das 18h e documentos vencidos |
 | **Autorização WhatsApp** | **Sem isso o sistema não envia nada para ele.** Registre o aceite antes de ligar |
 | **Data de desligamento** | Inicia a contagem de guarda dos documentos (5 anos) |
@@ -227,7 +227,7 @@ não é opção válida faz o menu voltar. Também pode escrever direto *entrada
 (📎 → Localização → *Enviar localização atual*) e recebe o comprovante. Lugar escolhido no mapa não
 vale. Quem marcou entrada e não saiu para o almoço recebe um lembrete amigável a partir do meio-dia.
 
-**Gestão de Ponto (painel):** menu próprio no topo, com abas (Hoje, Marcações, Espelho de jornada, Ajustes e pedidos, Folhas mensais, Cofre do RH e AFD). Em **Hoje**, a situação do dia — quem já
+**Gestão de Ponto (painel):** menu próprio no topo, com abas (Hoje, Marcações, Espelho de jornada, Ajustes e pedidos, Folhas mensais, Cofre do RH e AFD). Em **Ajustes e pedidos**, o gestor desconsidera marcação errada, abona falta ou atraso e lança folga compensatória; **não inclui marcação**: a esquecida entra pelo pedido do funcionário, e, sem pedido, o gestor abona com a justificativa (decisão 89). Em **Hoje**, a situação do dia — quem já
 bateu, quem tem escala e não bateu entrada, marcações fora da área —, atualizada sozinha a cada 30
 segundos. Embaixo, o histórico por período (até 62 dias) e funcionário, com canal, local, aviso de
 fora da área, link do mapa e o selo **gestor** quando o funcionário entrou com código gerado pelo
@@ -239,6 +239,30 @@ gestor. O administrador confere a cadeia das marcações de cada empresa (NSR e 
 
 Empregadoras (os funcionários batem ponto no CNPJ delas) e clientes (donos dos locais). O CNPJ é
 conferido pelo dígito verificador. Base do Módulo Registro de Ponto.
+
+## 7d. Escala / Carga Horária
+
+A carga horária contratual de cada empregadora (decisão 88). Abas:
+
+- **Escalas** — **Nova escala**: escolha a empregadora, parta de um modelo (44h 6x1, 44h 5x2, 40h, 36h, 12x36,
+  turno de revezamento) e ajuste as horas de cada dia (00:00 é folga), o intervalo e, se quiser, a entrada. O
+  sistema confere pela CLT enquanto você digita: em vermelho o que **não é permitido** (não salva), em amarelo o
+  que **exige aceite** (depende de acordo ou convenção) e em azul os avisos. Com algo em amarelo, o botão vira
+  **Assinar o aceite e salvar**: informe o acordo ou a convenção, se houver, e marque o termo. Quem aceita o risco
+  é a **empresa**, por você (admin ou gestor); o termo é interno e o funcionário nunca o vê. O aceite fica
+  guardado com o texto exato, seu nome, e-mail e papel, a hora e o código SHA-256 (clique no nome, na coluna Aceite
+  de risco; o papel leitura vê só que há aceite). Escala salva não
+  muda: crie outra e atribua no lugar.
+- **Atribuições** — **Atribuir escala** à empresa, a um time ou a um funcionário, a partir de hoje ou depois. Sem
+  fim, vale um ano. Uma atribuição nova encerra a anterior do mesmo alvo na véspera. A que ainda não começou pode
+  ser cancelada.
+- **Por funcionário** — qual escala vale para cada um numa data e de onde ela vem: do funcionário, do time, da
+  empresa ou a jornada padrão.
+- **Times** — o time é o campo **Time** (antiga Equipe) do funcionário. Crie, renomeie e escolha os membros. Time
+  inativo não recebe funcionário.
+
+Nesta etapa o espelho de ponto, o débito e as horas extras ainda usam a jornada padrão (8h de segunda a sexta e
+4h no sábado).
 
 ---
 

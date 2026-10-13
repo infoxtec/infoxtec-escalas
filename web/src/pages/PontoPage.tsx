@@ -322,21 +322,20 @@ function Espelho({ linhas }: { linhas: PontoEspelho[] | null }) {
   )
 }
 
-// Ajustes de ponto com justificativa (backlog 084 entrega 2, decisão 52): incluir marcação esquecida ou
-// desconsiderar marcação errada. Nada é apagado; o funcionário recebe aviso no WhatsApp, sem o motivo.
+// Ajustes de ponto com justificativa (backlog 084 entrega 2, decisão 52): desconsiderar marcação errada, abonar e
+// folga compensatória. O gestor não inclui marcação (decisão 89): a esquecida entra pelo pedido do funcionário; sem
+// pedido, o gestor abona com justificativa. Nada é apagado; o funcionário recebe aviso no WhatsApp, sem o motivo.
 function Ajustes({ linhas, marcacoes, funcionarios, tecnico, hoje, podeAjustar, aoAjustar }: {
   linhas: PontoAjuste[] | null; marcacoes: PontoAcompanhamento[] | null; funcionarios: PontoHoje[]
   tecnico: string; hoje: string; podeAjustar: boolean; aoAjustar: () => Promise<void>
 }) {
   const [func, setFunc] = useState(tecnico)
-  const [acao, setAcao] = useState<'incluir' | 'desconsiderar' | 'abonar' | 'folga'>('incluir')
+  const [acao, setAcao] = useState<'desconsiderar' | 'abonar' | 'folga'>('desconsiderar')
   const [trabalhado, setTrabalhado] = useState('')
   const [diaInteiro, setDiaInteiro] = useState(true)
   const [ini, setIni] = useState('')
   const [fim, setFim] = useState('')
   const [data, setData] = useState(hoje)
-  const [hora, setHora] = useState('')
-  const [tipo, setTipo] = useState('saida')
   const [marcacao, setMarcacao] = useState('')
   const [motivo, setMotivo] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -354,8 +353,8 @@ function Ajustes({ linhas, marcacoes, funcionarios, tecnico, hoje, podeAjustar, 
       .map(a => ({ valor: `a:${a.id}`, texto: `${a.data} ${a.hora} · ${PONTO_ROTULO[a.tipo] ?? a.tipo} · incluída por ajuste` })),
   ]
   const motivoOk = motivo.trim().length >= 10
-  const pronto = !!func && (acao === 'folga' ? !!data && !!trabalhado : motivoOk && (acao === 'incluir' ? !!data && !!hora && !!tipo
-    : acao === 'abonar' ? !!data && (diaInteiro || (!!ini && !!fim && ini < fim)) : !!marcacao))
+  const pronto = !!func && (acao === 'folga' ? !!data && !!trabalhado : motivoOk && (
+    acao === 'abonar' ? !!data && (diaInteiro || (!!ini && !!fim && ini < fim)) : !!marcacao))
 
   const salvar = async () => {
     setSalvando(true); setErro(null); setOk(null)
@@ -370,14 +369,12 @@ function Ajustes({ linhas, marcacoes, funcionarios, tecnico, hoje, podeAjustar, 
         setOk(`Abono de ${a.data} (${a.detalhe}) registrado. O funcionário foi avisado, sem o motivo.`)
         setMotivo(''); setIni(''); setFim(''); await aoAjustar(); return
       }
-      const r = await api.pontoAjustar(acao === 'incluir'
-        ? { tecnico: func, acao, motivo: motivo.trim(), data, hora, tipo }
-        : { tecnico: func, acao, motivo: motivo.trim(),
-            ...(marcacao.startsWith('a:') ? { ajuste: marcacao.slice(2) } : { marcacao: marcacao.slice(2) }) })
+      const r = await api.pontoAjustar({ tecnico: func, acao, motivo: motivo.trim(),
+        ...(marcacao.startsWith('a:') ? { ajuste: marcacao.slice(2) } : { marcacao: marcacao.slice(2) }) })
       setOk(`Ajuste de ${r.data} às ${r.hora} registrado. ` + (r.avisado
         ? 'O funcionário foi avisado pelo WhatsApp (sem o motivo).'
         : 'Sem novo aviso ao funcionário: ele não autorizou mensagens, está inativo ou já foi avisado de um ajuste nos últimos 5 minutos.'))
-      setMotivo(''); setHora(''); setMarcacao('')
+      setMotivo(''); setMarcacao('')
       await aoAjustar()
     } catch (e) { setErro(erroMsg(e)) }
     finally { setSalvando(false) }
@@ -396,8 +393,7 @@ function Ajustes({ linhas, marcacoes, funcionarios, tecnico, hoje, podeAjustar, 
               </Select>
             </Field>
             <Field label="Ajuste">
-              <Select value={acao} onChange={e => setAcao(e.target.value as 'incluir' | 'desconsiderar' | 'abonar' | 'folga')}>
-                <option value="incluir">Incluir marcação esquecida</option>
+              <Select value={acao} onChange={e => setAcao(e.target.value as 'desconsiderar' | 'abonar' | 'folga')}>
                 <option value="desconsiderar">Desconsiderar marcação errada</option>
                 <option value="abonar">Abonar falta ou atraso</option>
                 <option value="folga">Folga compensatória (domingo ou feriado trabalhado)</option>
@@ -413,14 +409,6 @@ function Ajustes({ linhas, marcacoes, funcionarios, tecnico, hoje, podeAjustar, 
                 <Field label="Das"><Input type="time" value={ini} onChange={e => setIni(e.target.value)} /></Field>
                 <Field label="Às"><Input type="time" value={fim} onChange={e => setFim(e.target.value)} /></Field>
               </>}
-            </>) : acao === 'incluir' ? (<>
-              <Field label="Data"><Input type="date" value={data} max={hoje} onChange={e => setData(e.target.value)} /></Field>
-              <Field label="Hora"><Input type="time" value={hora} onChange={e => setHora(e.target.value)} /></Field>
-              <Field label="Marcação">
-                <Select value={tipo} onChange={e => setTipo(e.target.value)}>
-                  {Object.entries(PONTO_ROTULO).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </Select>
-              </Field>
             </>) : (
               <Field label="Marcação do período">
                 <Select value={marcacao} onChange={e => setMarcacao(e.target.value)} disabled={!func}>
@@ -437,7 +425,7 @@ function Ajustes({ linhas, marcacoes, funcionarios, tecnico, hoje, podeAjustar, 
             </p>
           ) : <Field label="Motivo (obrigatório, fica guardado 5 anos; não vai para o funcionário)">
             <Textarea rows={2} value={motivo} maxLength={500} onChange={e => setMotivo(e.target.value)}
-              placeholder="Ex.: esqueceu de marcar a saída; confirmado com o supervisor da obra. Não escreva diagnóstico, CID nem doença: use “atestado apresentado”." />
+              placeholder="Ex.: esqueceu de marcar a saída e não pediu o ajuste; jornada confirmada com o supervisor da obra. Não escreva diagnóstico, CID nem doença: use “atestado apresentado”." />
           </Field>}
           <div className="flex flex-wrap items-center gap-3">
             <Button size="sm" disabled={!pronto || salvando} onClick={() => void salvar()}>
@@ -449,8 +437,9 @@ function Ajustes({ linhas, marcacoes, funcionarios, tecnico, hoje, podeAjustar, 
           {ok && <SuccessBox>{ok}</SuccessBox>}
           <p className="text-xs text-muted-foreground">
             O ajuste não apaga nem altera a marcação original (Portaria 671): fica registrado com autor, data e motivo, e o
-            espelho passa a considerá-lo. Ajuste lançado não se apaga: inclusão com hora errada se corrige desconsiderando a
-            inclusão e lançando a certa. Não escreva dado de saúde no motivo (diagnóstico, CID, doença).
+            espelho passa a considerá-lo. O gestor não inclui marcação: a esquecida entra pelo pedido de ajuste do
+            funcionário (aprovado aqui); se ele não pedir, abone a falta ou o atraso com a justificativa. Não escreva dado
+            de saúde no motivo (diagnóstico, CID, doença).
           </p>
         </div>
       )}

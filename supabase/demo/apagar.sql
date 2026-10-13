@@ -2,7 +2,8 @@
 -- Uso: ./scripts/demo-homologacao.sh apagar
 --
 -- Remove só o que o criar.sql criou: a empresa de CNPJ 99.999.999/0001-91, os técnicos e locais dela, as
--- escalas desses técnicos (com notificações, respostas, ligações e eventos) e os tipos com "(demo)" no nome.
+-- escalas desses técnicos (com notificações, respostas, ligações e eventos), as escalas de carga horária e os times
+-- da empresa e os tipos com "(demo)" no nome.
 -- Recusa se houver registro de ponto da empresa (imutável por lei) ou escala real num local da demonstração.
 
 do $demo$
@@ -39,6 +40,17 @@ begin
 
   delete from escalas where tecnico_id in (select id from tecnicos where empresa_id = v_emp);
   get diagnostics v_esc = row_count;
+  -- escalas de carga horária e times da demonstração (decisão 88). As tabelas de escala não deixam apagar (histórico);
+  -- aqui o dado é fictício e só da demonstração, então as travas saem só durante esta transação.
+  alter table carga_atribuicoes disable trigger trg_carga_atribuicoes_guarda;
+  alter table carga_aceites disable trigger trg_carga_aceites_imutavel;
+  alter table cargas_horarias disable trigger trg_cargas_horarias_imutavel;
+  delete from carga_atribuicoes where empresa_id = v_emp;
+  delete from carga_aceites where empresa_id = v_emp;
+  delete from cargas_horarias where empresa_id = v_emp;
+  alter table carga_atribuicoes enable trigger trg_carga_atribuicoes_guarda;
+  alter table carga_aceites enable trigger trg_carga_aceites_imutavel;
+  alter table cargas_horarias enable trigger trg_cargas_horarias_imutavel;
   delete from tecnicos where empresa_id = v_emp;
   get diagnostics v_tec = row_count;
   delete from locais where cliente_empresa_id = v_emp;
@@ -54,6 +66,7 @@ begin
     and not exists (select 1 from documentos x where x.tipo_documento_id = td.id)
     and not exists (select 1 from tipo_atividade_documentos tad join tipos_atividade ta on ta.id = tad.tipo_id
                      where tad.tipo_documento_id = td.id and ta.nome not like '% (demo)');
+  delete from times where empresa_id = v_emp;
   delete from empresas where id = v_emp;
 
   raise notice 'Demonstração apagada: % escalas, % técnicos, % locais.', v_esc, v_tec, v_loc;
