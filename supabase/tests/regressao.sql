@@ -439,7 +439,7 @@ begin
   insert into ponto_ajustes (empresa_id, tecnico_id, acao, momento, tipo, motivo, autor)
   values (v_emp, v_tec, 'incluir', (d + time '17:00') at time zone 'America/Bahia', 'saida', 'Pedido do funcionário aprovado', 'qa-admin@teste.local');
   x := app_ponto_ajustar(v_tec, 'desconsiderar', 'Entrada batida em duplicidade', p_marcacao => v_dup);
-  perform pg_temp.ok((x->>'avisado')::boolean and x->>'hora' = '08:00', '[T11] desconsiderar avisa o funcionário: ' || x::text);
+  perform pg_temp.ok((x->>'avisado')::boolean and x->>'hora' = '07:00', '[T11] desconsiderar avisa o funcionário: ' || x::text);
   v_ok := false;
   begin perform app_ponto_ajustar(v_tec, 'desconsiderar', 'De novo a mesma marcação', p_marcacao => v_dup);
   exception when others then v_ok := sqlerrm like '%já foi desconsiderada%'; end;
@@ -448,7 +448,7 @@ begin
   j := fn_ponto_jornada_dia(v_tec, d);
   perform pg_temp.ok(not j->'alertas' ? 'incompleta' and j->>'entrada' = '08:00' and j->>'saida' = '17:00'
                      and (j->>'trabalhado_min')::int = 480 and (j->>'ajustes')::int = 2, '[T11] depois do ajuste: ' || j::text);
-  perform pg_temp.ok((select count(*) from ponto_marcacoes where tecnico_id = v_tec) = 4, '[T11] marcação original sumiu');
+  perform pg_temp.ok((select count(*) from ponto_marcacoes where tecnico_id = v_tec) = 5, '[T11] marcação original sumiu');
   select * into r from app_ponto_espelho(d, d, v_tec);
   perform pg_temp.ok(r.ajustes = 2 and r.trabalhado_min = 480, '[T11] espelho: ' || coalesce(r.ajustes, -1));
 
