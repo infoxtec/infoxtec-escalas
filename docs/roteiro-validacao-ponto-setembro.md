@@ -1,8 +1,9 @@
 # Roteiro de validação do ponto — setembro/2026 (homologação)
 
 Pedido do responsável em 13/10: validar o registro de ponto e a folha do mês para assinatura, com todas as
-situações. A massa foi criada na **homologação** por `supabase/setup/validacao-ponto-setembro.sql`. Ela é
-fictícia e permanente, porque marcação de ponto é imutável.
+situações. A massa foi criada na **homologação** por `supabase/setup/validacao-ponto-setembro.sql`, que já saiu do
+repositório. **Em 14/10 a homologação foi limpa e recebeu a carga geral nova** (plano de trabalho, 14/10): a massa de
+setembro não existe mais e este roteiro fica como registro do que foi validado.
 
 - **Empresa:** Validação do Ponto Ltda (fictícia), CNPJ de exemplo 88.888.888/0001-91.
 - **Local:** Sede Validação (fictícia).
@@ -184,5 +185,5 @@ Em **Ponto › Espelhos mensais**, Mês **2026-09**:
 ## 8. Encerramento
 
 - Responda com a lista de NOK: cada um vira correção ou item de backlog.
-- Com tudo OK: o script `supabase/setup/validacao-ponto-setembro.sql` sai do repositório no próximo PR. A massa continua na homologação para demonstração e treino.
+- O script `supabase/setup/validacao-ponto-setembro.sql` saiu do repositório em 14/10, com a carga geral nova da homologação.
 - Cuidado: a massa usa o mês de setembro e a empresa fictícia. Não lance nada real nela.

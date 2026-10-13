@@ -1,6 +1,7 @@
 # Publicar o painel no Vercel
 
 > **Endereço de produção:** https://infoxtec-escalas.vercel.app
+> **Endereço da homologação:** https://infoxtec-escalas-homologacao.vercel.app (seção 6; decisão 92)
 > Mudou o domínio (Cloudflare Pages, domínio próprio)? Atualizar `ORIGEM_PAINEL` em
 > `supabase/functions/documento-ocr/index.ts`, ou a leitura de documento passa a ser barrada pelo navegador.
 > O projeto no Vercel usa **Root Directory `web`**. O carimbo de versão no topo do painel
@@ -56,3 +57,27 @@ Quem tem login mas nao esta na aba Usuarios ve "Acesso nao autorizado".
 
 O servidor de e-mail padrao do Supabase envia poucas mensagens por hora e serve para convites
 eventuais. Se um convite nao chegar, confira o spam ou aguarde alguns minutos.
+
+## 6. Painel publicado da homologação
+
+Projeto separado na Vercel, **`infoxtec-escalas-homologacao`**, ligado ao mesmo repositório (decisão 92). Publica a
+`main` a cada merge, junto com a produção, mas fala com o banco da homologação (**infoxtec-escalas-dev**).
+
+1. **Vercel → Add New → Project** → repositório `infoxtec/infoxtec-escalas`, **Root Directory** `web`.
+2. **Environment Variables** (Production e Preview):
+
+   | Nome | Valor |
+   |---|---|
+   | `VITE_SUPABASE_URL` | `https://oruwnlxyvznpigbpjjbx.supabase.co` |
+   | `VITE_SUPABASE_ANON_KEY` | a chave publicável de `web/.env.homologacao` |
+   | `VITE_AMBIENTE` | `homologacao` (faixa de homologação no topo do painel) |
+
+3. Supabase **infoxtec-escalas-dev → Authentication → URL Configuration**: Site URL
+   `https://infoxtec-escalas-homologacao.vercel.app` e, em Redirect URLs, o mesmo endereço com `/**`. Cadastro público
+   desligado, como na produção.
+4. Quem testa: convite em Authentication → Users e o mesmo e-mail na aba **Usuários** do painel da homologação.
+
+A leitura de documentos aceita esse endereço só na função da homologação (`ORIGENS_HOMOLOGACAO` em
+`supabase/functions/documento-ocr/index.ts`). **Se o projeto da Vercel for apagado, tirar o endereço dessa lista**:
+o nome `*.vercel.app` fica livre para outra pessoa registrar. A homologação não tem WhatsApp: o login do funcionário por código e os
+envios não funcionam nela. Dados só fictícios; o endereço é aberto na internet, mas só entra quem foi convidado.
