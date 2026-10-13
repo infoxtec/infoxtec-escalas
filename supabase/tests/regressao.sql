@@ -206,7 +206,7 @@ end $$;
 
 -- T4 marcações imutáveis ------------------------------------------------------------------------------
 do $$
-declare v_ok boolean;
+declare v_ok boolean; v_msg text;
 begin
   v_ok := false;
   begin update ponto_marcacoes set tipo = 'saida' where empresa_id = (select v::uuid from qa where k = 'emp');
@@ -338,7 +338,7 @@ do $$
 declare v_ok boolean := false;
 begin
   begin perform fn_webhook_evolution('token-errado', '{"event":"messages.upsert","data":{}}');
-  exception when others then v_ok := sqlerrm like '%token%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%token%'; end;
   perform pg_temp.ok(v_ok, '[T8] webhook aceitou token inválido');
   v_ok := false;
   begin perform fn_webhook_evolution('', '{}');
@@ -413,19 +413,19 @@ begin
   -- motivo curto ou longo, ação inválida, inclusão pelo gestor (decisão 89), marcação de outro funcionário: recusados
   v_ok := false;
   begin perform app_ponto_ajustar(v_tec, 'desconsiderar', 'curto', p_marcacao => v_dup);
-  exception when others then v_ok := sqlerrm like '%pelo menos 10%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%pelo menos 10%'; end;
   perform pg_temp.ok(v_ok, '[T11] aceitou motivo curto');
   v_ok := false;
   begin perform app_ponto_ajustar(v_tec, 'desconsiderar', repeat('x', 501), p_marcacao => v_dup);
-  exception when others then v_ok := sqlerrm like '%500%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%500%'; end;
   perform pg_temp.ok(v_ok, '[T11] aceitou motivo de 501 letras');
   v_ok := false;
   begin perform app_ponto_ajustar(v_tec, 'apagar', 'motivo suficiente aqui');
-  exception when others then v_ok := sqlerrm like '%inválida%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%inválida%'; end;
   perform pg_temp.ok(v_ok, '[T11] aceitou ação inválida');
   v_ok := false;
   begin perform app_ponto_ajustar(v_tec, 'incluir', 'Esqueceu de bater a saída', p_data => d, p_hora => '17:00', p_tipo => 'saida');
-  exception when others then v_ok := sqlerrm like '%não inclui marcação%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%não inclui marcação%'; end;
   perform pg_temp.ok(v_ok, '[T11] gestor incluiu marcação (decisão 89)');
   alter table ponto_marcacoes disable trigger user;
   insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, latitude, longitude, hash_anterior, hash)
@@ -433,11 +433,11 @@ begin
   alter table ponto_marcacoes enable trigger user;
   v_ok := false;
   begin perform app_ponto_ajustar(v_tec, 'desconsiderar', 'motivo suficiente aqui', p_marcacao => (select id from ponto_marcacoes where nsr = 910009 and tecnico_id = v_tec));
-  exception when others then v_ok := sqlerrm like '%62 dias%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%62 dias%'; end;
   perform pg_temp.ok(v_ok, '[T11] desconsiderou marcação de 70 dias atrás');
   v_ok := false;
   begin perform app_ponto_ajustar(v_outro, 'desconsiderar', 'motivo suficiente aqui', p_marcacao => v_dup);
-  exception when others then v_ok := sqlerrm like '%não encontrada%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%não encontrada%'; end;
   perform pg_temp.ok(v_ok, '[T11] desconsiderou marcação de outro funcionário');
 
   -- a saída esquecida entra como na aprovação do pedido do funcionário (hora local da empresa); a entrada
@@ -448,7 +448,7 @@ begin
   perform pg_temp.ok((x->>'avisado')::boolean and x->>'hora' = '07:00', '[T11] desconsiderar avisa o funcionário: ' || x::text);
   v_ok := false;
   begin perform app_ponto_ajustar(v_tec, 'desconsiderar', 'De novo a mesma marcação', p_marcacao => v_dup);
-  exception when others then v_ok := sqlerrm like '%já foi desconsiderada%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%já foi desconsiderada%'; end;
   perform pg_temp.ok(v_ok, '[T11] desconsiderou duas vezes');
 
   j := fn_ponto_jornada_dia(v_tec, d);
@@ -472,7 +472,7 @@ begin
   perform pg_temp.ok(r.entrada = '08:00' and r.ajustes = 3, '[T11] inclusão desfeita: ' || coalesce(r.entrada, '-'));
   v_ok := false;
   begin perform app_ponto_ajustar(v_tec, 'desconsiderar', 'De novo a mesma inclusão', p_ajuste => v_inc);
-  exception when others then v_ok := sqlerrm like '%já foi desconsiderada%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%já foi desconsiderada%'; end;
   perform pg_temp.ok(v_ok, '[T11] desconsiderou a inclusão duas vezes');
   -- índice único segura o alvo mesmo sem passar pela função (dois cliques ao mesmo tempo)
   v_ok := false;
@@ -493,7 +493,7 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
   v_ok := false;
   begin perform app_ponto_ajustar(v_tec, 'incluir', 'motivo suficiente aqui', p_data => d, p_hora => '18:00', p_tipo => 'inicio_he');
-  exception when others then v_ok := sqlerrm like '%Sem permissão%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%Sem permissão%'; end;
   perform pg_temp.ok(v_ok, '[T11] leitura lançou ajuste');
   select count(*) into v_n from app_ponto_ajustes(d - 1, d, v_tec) a where a.motivo is null and a.autor is null;
   perform pg_temp.ok(v_n = 5, '[T11] leitura viu motivo ou autor');
@@ -614,13 +614,13 @@ begin
   perform pg_temp.ok(fn_ponto_jornada_dia(v_tec, d1)->'alertas' ? 'falta_abonada', '[T14] abono não cobriu a falta');
   v_ok := false;
   begin perform app_ponto_abonar(v_tec, d1, 'Falta justificada com documento entregue ao RH');
-  exception when others then v_ok := sqlerrm like '%já foi lançado%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%já foi lançado%'; end;
   perform pg_temp.ok(v_ok, '[T14] abono repetido aceito');
   perform app_ponto_estornar_abono(v_ab, 'Abono lançado no dia errado');
   perform pg_temp.ok(fn_ponto_jornada_dia(v_tec, d1)->'alertas' ? 'falta', '[T14] estorno não devolveu a falta');
   v_ok := false;
   begin perform app_ponto_estornar_abono(v_ab, 'Abono lançado no dia errado');
-  exception when others then v_ok := sqlerrm like '%já foi estornado%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%já foi estornado%'; end;
   perform pg_temp.ok(v_ok, '[T14] estorno repetido aceito');
   v_ok := false;
   begin update ponto_abonos set motivo = 'trocado depois do fato' where id = v_ab;
@@ -656,7 +656,7 @@ begin
   perform pg_temp.ok(fn_ponto_jornada_dia(v_tec, d2)->>'saida' = '17:05', '[T14] saída fora do espelho');
   v_ok := false;
   begin perform app_ponto_decidir(x.id, false, 'motivo qualquer longo');
-  exception when others then v_ok := sqlerrm like '%já foi decidido%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%já foi decidido%'; end;
   perform pg_temp.ok(v_ok, '[T14] pedido decidido duas vezes');
 
   -- atraso de 40 min: pedido pelo app (função comum), aprovado vira abono
@@ -664,7 +664,7 @@ begin
   r := fn_ponto_justificativa_criar(v_tec, 'atraso_saida', d3, null, null, '08:00', '08:40', 'Ônibus quebrou na BR', 'app');
   v_ok := false;
   begin perform fn_ponto_justificativa_criar(v_tec, 'atraso_saida', d3, null, null, '08:00', '08:40', null, 'app');
-  exception when others then v_ok := sqlerrm like '%pedido igual%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%pedido igual%'; end;
   perform pg_temp.ok(v_ok, '[T14] pedido repetido aceito');
   perform app_ponto_decidir((r->>'id')::uuid, true);
   perform pg_temp.ok(fn_ponto_jornada_dia(v_tec, d3)->'alertas' ? 'atraso_abonado', '[T14] atraso não abonado: '
@@ -674,7 +674,7 @@ begin
   r := fn_ponto_justificativa_criar(v_tec, 'falha_registro', d1, 'entrada', '08:00', null, null, null, 'app');
   v_ok := false;
   begin perform app_ponto_decidir((r->>'id')::uuid, false, 'curto');
-  exception when others then v_ok := sqlerrm like '%pelo menos 10%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%pelo menos 10%'; end;
   perform pg_temp.ok(v_ok, '[T14] negativa sem motivo aceita');
   perform app_ponto_decidir((r->>'id')::uuid, false, 'Não há registro do funcionário na obra nesse dia');
   perform pg_temp.ok((select status from ponto_justificativas where id = (r->>'id')::uuid) = 'negada', '[T14] negativa não gravou');
@@ -684,7 +684,7 @@ begin
   perform pg_temp.ok(v_ok, '[T14] pedido para o futuro aceito');
   v_ok := false;
   begin perform ponto_justificar('token-invalido', 'esqueci_marcar', d2, 'entrada', '08:00');
-  exception when others then v_ok := sqlerrm like '%Sessão%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%Sessão%'; end;
   perform pg_temp.ok(v_ok, '[T14] app sem sessão aceito');
 
   -- leitura: vê os pedidos sem observação nem resposta, e não decide
@@ -693,7 +693,7 @@ begin
   perform pg_temp.ok(v_n = 3, '[T14] leitura viu observação ou resposta: ' || v_n);
   v_ok := false;
   begin perform app_ponto_abonar(v_tec, d1, 'Falta justificada com documento entregue');
-  exception when others then v_ok := sqlerrm like '%Sem permissão%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%Sem permissão%'; end;
   perform pg_temp.ok(v_ok, '[T14] leitura abonou');
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
@@ -711,11 +711,11 @@ begin
   -- documento obrigatório e conferido pelos primeiros bytes
   v_ok := false;
   begin perform ponto_justificar_atestado(v_tok, 'atestado', d, d + 1);
-  exception when others then v_ok := sqlerrm like '%Falta o documento%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%Falta o documento%'; end;
   perform pg_temp.ok(v_ok, '[T15] atestado sem documento aceito');
   v_ok := false;
   begin perform ponto_justificar_atestado(v_tok, 'atestado', d, d + 1, null, encode(v_jpg, 'base64'), 'application/pdf');
-  exception when others then v_ok := sqlerrm like '%foto (JPG ou PNG) ou PDF%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%foto (JPG ou PNG) ou PDF%'; end;
   perform pg_temp.ok(v_ok, '[T15] tipo falso aceito');
   r := ponto_justificar_atestado(v_tok, 'atestado', d, d + 1, 'Fui ao posto de saúde', encode(v_jpg, 'base64'), 'image/jpeg');
   select * into x from ponto_justificativas where numero = (r->>'numero')::bigint;
@@ -732,10 +732,10 @@ begin
   perform pg_temp.ok(x.restrito and not x.pode_decidir and x.motivo_nome = 'Justificativa de saúde' and x.motivo = 'saude'
                      and x.observacao is null, '[T15] saúde aberta para quem não vê atestados: ' || x.motivo);
   v_ok := false;
-  begin perform app_ponto_decidir(v_id, true); exception when others then v_ok := sqlerrm like '%atestados%'; end;
+  begin perform app_ponto_decidir(v_id, true); exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%atestados%'; end;
   perform pg_temp.ok(v_ok, '[T15] decidiu saúde sem permissão');
   v_ok := false;
-  begin perform app_ponto_anexo_ver(v_anexo); exception when others then v_ok := sqlerrm like '%atestados%'; end;
+  begin perform app_ponto_anexo_ver(v_anexo); exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%atestados%'; end;
   perform pg_temp.ok(v_ok, '[T15] abriu documento sem permissão');
 
   -- com a permissão: abre (registrado), decide, abono de cada dia
@@ -760,7 +760,7 @@ begin
   perform pg_temp.ok(v_n >= 1, '[T15] leitura viu motivo de saúde');
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
   v_ok := false;
-  begin perform app_definir_ve_saude('qa-leitura@teste.local', true); exception when others then v_ok := sqlerrm like '%admin ou gestor%'; end;
+  begin perform app_definir_ve_saude('qa-leitura@teste.local', true); exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%admin ou gestor%'; end;
   perform pg_temp.ok(v_ok, '[T15] leitura ganhou ver atestados');
   -- descarte controlado: o documento sai, a marca e o histórico de acesso ficam
   perform app_definir_ve_saude('qa-admin@teste.local', true);
@@ -783,7 +783,7 @@ begin
   select * into x from app_ponto_justificativas(d - 30, d - 30, v_tec) a where a.numero = (r->>'numero')::bigint;
   perform pg_temp.ok(x.restrito and not x.pode_decidir and x.motivo = 'casamento', '[T15] família sem permissão decidível');
   v_ok := false;
-  begin perform app_ponto_decidir(x.id, true); exception when others then v_ok := sqlerrm like '%documentos%'; end;
+  begin perform app_ponto_decidir(x.id, true); exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%documentos%'; end;
   perform pg_temp.ok(v_ok, '[T15] decidiu família sem permissão');
 end $$;
 
@@ -810,11 +810,11 @@ begin
   -- validade obrigatória; o caminho genérico não aceita atestado
   v_ok := false;
   begin perform ponto_justificar_atestado(v_tok, 'atestado', v_hoje - 1, null, null, encode(v_jpg, 'base64'), 'image/jpeg');
-  exception when others then v_ok := sqlerrm like '%até quando vale%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%até quando vale%'; end;
   perform pg_temp.ok(v_ok, '[T16] atestado sem validade aceito');
   v_ok := false;
   begin perform ponto_justificar_falta(v_tok, 'atestado', v_hoje - 1, v_hoje + 2, null, null, null, encode(v_jpg, 'base64'), 'image/jpeg');
-  exception when others then v_ok := sqlerrm like '%envio próprio%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%envio próprio%'; end;
   perform pg_temp.ok(v_ok, '[T16] atestado pelo caminho genérico');
   r := ponto_justificar_atestado(v_tok, 'atestado', v_hoje - 1, v_hoje + 2, null, encode(v_jpg, 'base64'), 'image/jpeg');
   perform pg_temp.ok(ponto_eu(v_tok, 'qa')->>'afastado_ate' = to_char(v_hoje + 2, 'DD/MM/YYYY'), '[T16] app não sabe do afastamento');
@@ -828,7 +828,7 @@ begin
   begin
     insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
     values (v_tec, v_loc, v_hoje + 1, '08:00', 'QA afastado', 'agendada', 'qa');
-  exception when others then v_ok := sqlerrm like '%afastado%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%afastado%'; end;
   perform pg_temp.ok(v_ok, '[T16] afastado recebeu escala');
   if v_janela then
     update config set valor = '00:00' where chave = 'janela_envio_inicio';
@@ -1011,7 +1011,7 @@ begin
   perform pg_temp.ok(v_ok, '[T18] registro foi alterado');
   v_ok := false;
   begin update ponto_documento_sequencia set ultimo = ultimo + 5 where empresa_id = v_emp;
-  exception when others then v_ok := sqlerrm like '%de um em um%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%de um em um%'; end;
   perform pg_temp.ok(v_ok, '[T18] contador pulou números');
   perform app_definir_ve_saude('qa-admin@teste.local', true);
   perform app_ponto_anexo_descartar(v_anexo, 'Documento enviado por engano no teste');
@@ -1080,7 +1080,7 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
   v_ok := false;
   begin perform app_ponto_registrar_alta(v_tec, v_hoje, encode(v_jpg, 'base64'), 'image/jpeg');
-  exception when others then v_ok := sqlerrm like '%ver atestados%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%ver atestados%'; end;
   perform pg_temp.ok(v_ok, '[T20] alta registrada sem "vê atestados"');
 
   perform app_definir_ve_saude('qa-admin@teste.local', true);
@@ -1088,7 +1088,7 @@ begin
   perform pg_temp.ok(x.afastado_ate = v_hoje + 1 and x.pode_registrar_alta, '[T20] lista de afastados');
   v_ok := false;
   begin perform app_ponto_registrar_alta(v_tec, v_hoje, null, null);
-  exception when others then v_ok := sqlerrm like '%liberação médica%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%liberação médica%'; end;
   perform pg_temp.ok(v_ok, '[T20] alta sem documento aceita');
 
   r := app_ponto_registrar_alta(v_tec, v_hoje, encode(v_jpg, 'base64'), 'image/jpeg', 'Liberação entregue ao gestor');
@@ -1101,7 +1101,7 @@ begin
   perform pg_temp.ok(not exists (select 1 from app_ponto_afastados() a where a.tecnico_id = v_tec), '[T20] continua na lista de afastados');
   v_ok := false;
   begin perform app_ponto_registrar_alta(v_tec, v_hoje, encode(v_jpg, 'base64'), 'image/jpeg');
-  exception when others then v_ok := sqlerrm like '%não está afastado%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%não está afastado%'; end;
   perform pg_temp.ok(v_ok, '[T20] alta repetida aceita');
   perform app_definir_ve_saude('qa-admin@teste.local', false);
 end $$;
@@ -1167,7 +1167,7 @@ begin
   update config set valor = 'true' where chave = 'mfa_obrigatorio';
   v_ok := false;
   begin perform app_exigir(array['admin']);
-  exception when others then v_ok := sqlerrm like '%autenticador%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%autenticador%'; end;
   perform pg_temp.ok(v_ok, '[T23] MFA obrigatório aceitou sessão sem o código');
   perform pg_temp.ok((app_meu_acesso()->>'mfa_obrigatorio')::boolean, '[T23] painel não sabe que o MFA é obrigatório');
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
@@ -1343,7 +1343,7 @@ end $$;
 
 -- T27 monitor_ping_url só aceita o ping do healthchecks.io (migration 81) --------------------------------
 do $$
-declare v_ok boolean;
+declare v_ok boolean; v_msg text;
 begin
   update config set valor = 'https://hc-ping.com/0f0e0d0c-0b0a-4908-8706-050403020100' where chave = 'monitor_ping_url';
   update config set valor = '' where chave = 'monitor_ping_url';
@@ -1508,7 +1508,7 @@ begin
   perform pg_temp.ok(app_painel_gerencial(v_seg, v_seg + 13) is not null, '[T31] leitura barrado');
   v_ok := false;
   begin perform app_painel_gerencial(v_seg, v_seg + 63);
-  exception when others then v_ok := sqlerrm like '%62 dias%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%62 dias%'; end;
   perform pg_temp.ok(v_ok, '[T31] período de 64 dias aceito');
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
@@ -1650,7 +1650,7 @@ begin
   perform pg_temp.ok(exists (select 1 from ponto_afd_geracoes where empresa_id = v_emp and sha256 = r->>'sha256'), '[T34] geração não registrada');
   -- data futura recusada; o papel leitura não gera (o arquivo tem o CPF de todos)
   v_ok := false;
-  begin perform app_ponto_afd(v_emp, current_date, current_date + 1); exception when others then v_ok := sqlerrm like '%Período inválido%'; end;
+  begin perform app_ponto_afd(v_emp, current_date, current_date + 1); exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%Período inválido%'; end;
   perform pg_temp.ok(v_ok, '[T34] período futuro aceito');
   insert into painel_usuarios (email, nome, papel, ativo) values ('qa-gestor-afd@teste.local', 'QA gestor', 'gestor', true) on conflict do nothing;
   perform set_config('request.jwt.claims', '{"email":"qa-gestor-afd@teste.local","role":"authenticated"}', true);
@@ -1728,7 +1728,7 @@ begin
   perform pg_temp.ok(not (ponto_verificar_espelho('AAAAAAAAAAAAAAAA')->>'encontrado')::boolean, '[T35] código inexistente');
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
   v_ok := false;
-  begin perform app_ponto_emitir_espelhos(current_date, v_tec); exception when others then v_ok := sqlerrm like '%mês já encerrado%'; end;
+  begin perform app_ponto_emitir_espelhos(current_date, v_tec); exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%mês já encerrado%'; end;
   perform pg_temp.ok(v_ok, '[T35] mês em aberto emitido');
   perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
   v_ok := false;
@@ -1789,27 +1789,27 @@ begin
   v_ok := false;
   begin perform ponto_assinar_espelho(v_tok, (select id from ponto_espelhos where tecnico_id = v_tec2),
                                       (select sha256 from ponto_espelhos where tecnico_id = v_tec2), v_png, true);
-  exception when others then v_ok := sqlerrm like '%não encontrado%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%não encontrado%'; end;
   perform pg_temp.ok(v_ok, '[T36] assinou espelho de outro funcionário');
   -- data URL de PNG com bytes que não são PNG: recusado
   v_ok := false;
-  begin perform ponto_assinar_espelho(v_tok, v_id, v_sha, 'data:image/png;base64,QUJDREVGR0g=', true); exception when others then v_ok := sqlerrm like '%inválida%'; end;
+  begin perform ponto_assinar_espelho(v_tok, v_id, v_sha, 'data:image/png;base64,QUJDREVGR0g=', true); exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%inválida%'; end;
   perform pg_temp.ok(v_ok, '[T36] PNG falso aceito');
   -- sem ciência, desenho inválido ou versão diferente da vista: recusado
   v_ok := false;
-  begin perform ponto_assinar_espelho(v_tok, v_id, v_sha, v_png, false); exception when others then v_ok := sqlerrm like '%Confirme%'; end;
+  begin perform ponto_assinar_espelho(v_tok, v_id, v_sha, v_png, false); exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%Confirme%'; end;
   perform pg_temp.ok(v_ok, '[T36] assinou sem ciência');
   v_ok := false;
-  begin perform ponto_assinar_espelho(v_tok, v_id, v_sha, 'javascript:alert(1)', true); exception when others then v_ok := sqlerrm like '%inválida%'; end;
+  begin perform ponto_assinar_espelho(v_tok, v_id, v_sha, 'javascript:alert(1)', true); exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%inválida%'; end;
   perform pg_temp.ok(v_ok, '[T36] assinatura que não é PNG aceita');
   v_ok := false;
-  begin perform ponto_assinar_espelho(v_tok, v_id, repeat('0', 64), v_png, true); exception when others then v_ok := sqlerrm like '%mudou%'; end;
+  begin perform ponto_assinar_espelho(v_tok, v_id, repeat('0', 64), v_png, true); exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%mudou%'; end;
   perform pg_temp.ok(v_ok, '[T36] assinou versão diferente da vista');
   -- assina; a segunda vez é recusada; a conferência pública confirma a assinatura amarrada à versão
   r := ponto_assinar_espelho(v_tok, v_id, v_sha, v_png, true);
   perform pg_temp.ok(r->>'assinado_em' is not null, '[T36] assinatura');
   v_ok := false;
-  begin perform ponto_assinar_espelho(v_tok, v_id, v_sha, v_png, true); exception when others then v_ok := sqlerrm like '%já foi assinado%'; end;
+  begin perform ponto_assinar_espelho(v_tok, v_id, v_sha, v_png, true); exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%já foi assinado%'; end;
   perform pg_temp.ok(v_ok, '[T36] assinou duas vezes');
   select codigo into v_cod from ponto_espelhos where id = v_id;
   r := ponto_verificar_espelho(v_cod);
@@ -1836,7 +1836,7 @@ begin
                                    and pg_get_functiondef(oid) ilike '%fn_ponto_sessao(p_token)%'), '[T36] função de sessão marcada stable');
   -- a folha assinada só abre para quem tem o cofre de RH (migration 92, decisão 86); o leitura nunca
   v_ok := false;
-  begin perform app_ponto_espelho_ver(v_id); exception when others then v_ok := sqlerrm like '%cofre%'; end;
+  begin perform app_ponto_espelho_ver(v_id); exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%cofre%'; end;
   perform pg_temp.ok(v_ok, '[T39] admin sem o cofre de RH abriu a folha assinada');
   perform app_definir_rh_folhas('qa-admin@teste.local', true);
   perform pg_temp.ok((select count(*) from painel_rh_folhas_log where email = 'qa-admin@teste.local' and valor) = 1, '[T39] histórico da permissão');
@@ -1979,10 +1979,10 @@ begin
   begin perform app_ponto_folga_compensatoria(v_tec, v_dom + 6, v_dom); exception when others then v_ok := sqlerrm ~ 'Sábado|domingo ou feriado'; end;
   perform pg_temp.ok(v_ok, '[T38] folga em sábado sem expediente');
   v_ok := false;
-  begin perform app_ponto_folga_compensatoria(v_tec, v_folga, v_dom - 7); exception when others then v_ok := sqlerrm like '%Não há trabalho%'; end;
+  begin perform app_ponto_folga_compensatoria(v_tec, v_folga, v_dom - 7); exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%Não há trabalho%'; end;
   perform pg_temp.ok(v_ok, '[T38] folga de domingo não trabalhado');
   v_ok := false;
-  begin perform app_ponto_folga_compensatoria(v_tec2, v_folga, v_dom); exception when others then v_ok := sqlerrm like '%não foi folga%'; end;
+  begin perform app_ponto_folga_compensatoria(v_tec2, v_folga, v_dom); exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%não foi folga%'; end;
   perform pg_temp.ok(v_ok, '[T38] folga em dia trabalhado');
   -- só admin e gestor; anon nem executa
   perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
@@ -1995,7 +1995,7 @@ begin
   r := app_ponto_folga_compensatoria(v_tec, v_folga, v_dom);
   perform pg_temp.ok(r->>'id' is not null, '[T38] folga lançada');
   v_ok := false;
-  begin perform app_ponto_folga_compensatoria(v_tec, v_folga, v_dom); exception when others then v_ok := sqlerrm like '%já tem folga%'; end;
+  begin perform app_ponto_folga_compensatoria(v_tec, v_folga, v_dom); exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%já tem folga%'; end;
   perform pg_temp.ok(v_ok, '[T38] duas folgas para o mesmo domingo');
 
   -- o domingo compensado não sai a 100%; a folga não gera débito nem conta como liberalidade
@@ -2061,7 +2061,7 @@ begin
   v_ok := false;
   begin perform app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 5x2', 'tipo', 'semanal',
                    'minutos', jsonb_build_array(528,528,528,528,528,0,0), 'intervalo_min', 45), '{"aceito":true,"riscos":["dia_acima_8h"]}');
-  exception when others then v_ok := sqlerrm like '%riscos da escala mudaram%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%riscos da escala mudaram%'; end;
   perform pg_temp.ok(v_ok, '[T40] aceite de riscos diferentes dos mostrados');
   r := app_carga_validar(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 5x2', 'tipo', 'semanal',
          'minutos', jsonb_build_array(528,528,528,528,528,0,0), 'intervalo_min', 60), 'ACT QA');
@@ -2101,7 +2101,7 @@ begin
   perform pg_temp.ok((select count(*) from tecnicos where time_id = v_tm) = 2, '[T40] membros do time');
   insert into times (empresa_id, nome, ativo) values (v_emp, 'QA Inativo', false);
   v_ok := false;
-  begin update tecnicos set equipe = 'qa inativo' where id = v_t1; exception when others then v_ok := sqlerrm like '%inativo%'; end;
+  begin update tecnicos set equipe = 'qa inativo' where id = v_t1; exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%inativo%'; end;
   perform pg_temp.ok(v_ok, '[T40] funcionário posto em time inativo');
   -- prioridade: funcionário > time > empresa
   perform app_atribuir_carga(v_c3, 'empresa', v_emp, v_seg);
@@ -2166,19 +2166,19 @@ begin
   perform pg_temp.ok(l.excedente_min = 0 and l.termo is null, '[T41] dia útil sem excesso');
   v_ok := false;
   begin perform app_criar_escalas(array[v_t], v_loc, v_sab, '08:00', 'QA limite', 480, 'normal', false, null, true);
-  exception when others then v_ok := sqlerrm like '%passa do limite de 2 horas extras%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%passa do limite de 2 horas extras%'; end;
   perform pg_temp.ok(v_ok, '[T41] Programação acima do limite sem aceite');
   a := jsonb_build_object('aceito', true, 'motivo', 'servico_inadiavel', 'justificativa', 'curta demais', 'vistos', jsonb_build_object(v_t::text, v_exc));
   v_ok := false;
   begin perform app_criar_escalas(array[v_t], v_loc, v_sab, '08:00', 'QA limite', 480, 'normal', false, null, true, a);
-  exception when others then v_ok := sqlerrm like '%pelo menos 40%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%pelo menos 40%'; end;
   perform pg_temp.ok(v_ok, '[T41] justificativa curta');
   a := jsonb_build_object('aceito', true, 'motivo', 'servico_inadiavel',
          'justificativa', 'Parada de linha do cliente, o reparo só pode ser feito no sábado e não há outro técnico.',
          'vistos', jsonb_build_object(v_t::text, v_exc - 1));
   v_ok := false;
   begin perform app_criar_escalas(array[v_t], v_loc, v_sab, '08:00', 'QA limite', 480, 'normal', false, null, true, a);
-  exception when others then v_ok := sqlerrm like '%mudou desde a tela%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%mudou desde a tela%'; end;
   perform pg_temp.ok(v_ok, '[T41] excesso diferente do mostrado');
   a := jsonb_set(a, '{vistos}', jsonb_build_object(v_t::text, v_exc));
   select * into x from app_criar_escalas(array[v_t], v_loc, v_sab, '08:00', 'QA limite', 480, 'normal', false, null, false, a);
@@ -2202,13 +2202,13 @@ begin
   perform pg_temp.ok(l.excedente_min > 0, '[T41] duas programações no mesmo dia');
   v_ok := false;
   begin perform app_editar_escala(jsonb_build_object('id', v_id, 'data_servico', v_sab));
-  exception when others then v_ok := sqlerrm like '%passa do limite%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%passa do limite%'; end;
   perform pg_temp.ok(v_ok, '[T41] edição para sábado sem aceite');
   -- substituir técnico de uma recusada: o novo técnico passaria do limite no sábado
   update escalas set status = 'recusada' where tecnico_id = v_t and data_servico = v_sab;
   v_ok := false;
   begin perform app_substituir_tecnico((select id from escalas where tecnico_id = v_t and data_servico = v_sab limit 1), v_t2);
-  exception when others then v_ok := sqlerrm like '%passaria do limite%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%passaria do limite%'; end;
   perform pg_temp.ok(v_ok, '[T41] substituição acima do limite');
   -- ponto: sábado com 7 h trabalhadas passa do limite (4 h + 2 h) pela escala; he_min segue na jornada padrão
   v_d := current_date - ((extract(isodow from current_date)::int + 1) % 7) - 7;  -- sábado retrasado
@@ -2252,7 +2252,7 @@ begin
   v_ok := false;
   begin perform app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA DSR errado', 'tipo', 'semanal',
                    'minutos', jsonb_build_array(480,480,480,480,480,0,0), 'intervalo_min', 60, 'dsr_dia', 3));
-  exception when others then v_ok := sqlerrm like '%descanso semanal%'; end;
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%descanso semanal%'; end;
   perform pg_temp.ok(v_ok, '[T42] DSR em dia de trabalho');
   v_id := app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 5x2 DSR', 'tipo', 'semanal',
             'minutos', jsonb_build_array(480,480,480,480,480,0,0), 'intervalo_min', 60));
@@ -2303,10 +2303,10 @@ begin
   perform pg_temp.ok(d is null or (d->>'debito_min')::int = 0, '[T42] folga da 12x36 sem débito: ' || coalesce(d::text, '-'));
   -- 12x36 só a um funcionário e com plantão que termina no mesmo dia (revisão do seguranca)
   v_ok := false;
-  begin perform app_atribuir_carga(c12, 'empresa', v_emp, current_date + 1); exception when others then v_ok := sqlerrm like '%cada funcionário%'; end;
+  begin perform app_atribuir_carga(c12, 'empresa', v_emp, current_date + 1); exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%cada funcionário%'; end;
   perform pg_temp.ok(v_ok, '[T42] 12x36 atribuída à empresa');
   v_ok := false;
-  begin perform app_atribuir_carga(c12, 'tecnico', v_t2, current_date + 70); exception when others then v_ok := sqlerrm like '%vira a noite%'; end;
+  begin perform app_atribuir_carga(c12, 'tecnico', v_t2, current_date + 70); exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%vira a noite%'; end;
   perform pg_temp.ok(v_ok, '[T42] 12x36 sem entrada (plantão que pode virar a noite)');
 end $$;
 
@@ -2335,7 +2335,7 @@ end $$;
 
 -- T44 trava de envio da homologação (migration 99, decisão 94) ----------------------------------------------
 do $$
-declare v_ok boolean;
+declare v_ok boolean; v_msg text;
 begin
   update config set valor = 'homologacao' where chave = 'ambiente';
   insert into config (chave, valor) values ('telefones_homologacao', '5571900000044'), ('evolution_instancia', 'trilha-homologacao')
@@ -2345,23 +2345,23 @@ begin
   perform pg_temp.ok(not fn_pode_enviar('5571988880044'), '[T44] técnico de teste com número real liberado');
   v_ok := false;
   begin perform fn_evo_post('/message/sendText/infoxtec', '{"number":"5571900000044","text":"x"}');
-  exception when others then v_ok := sqlerrm like '%instância configurada%'; end;
-  perform pg_temp.ok(v_ok, '[T44] envio por outra instância');
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%instância configurada%'; end;
+  perform pg_temp.ok(v_ok, '[T44] envio por outra instância: ' || coalesce(v_msg, 'sem erro')); v_msg := null;
   v_ok := false;
   begin perform fn_evo_post('/message/sendText/trilha-homologacao', '{"text":"x"}');
-  exception when others then v_ok := sqlerrm like '%sem destinatário%'; end;
-  perform pg_temp.ok(v_ok, '[T44] mensagem sem destinatário');
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%sem destinatário%'; end;
+  perform pg_temp.ok(v_ok, '[T44] mensagem sem destinatário: ' || coalesce(v_msg, 'sem erro')); v_msg := null;
   update config set valor = 'infoxtec' where chave = 'evolution_instancia';
   v_ok := false;
   begin perform fn_evo_post('/message/sendText/infoxtec', '{"number":"5571900000044","text":"x"}');
-  exception when others then v_ok := sqlerrm like '%só usa a instância trilha-homologacao%'; end;
-  perform pg_temp.ok(v_ok, '[T44] homologação pela instância da produção');
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%só usa a instância trilha-homologacao%'; end;
+  perform pg_temp.ok(v_ok, '[T44] homologação pela instância da produção: ' || coalesce(v_msg, 'sem erro')); v_msg := null;
   update config set valor = 'producao' where chave = 'ambiente';
   update config set valor = 'trilha-homologacao' where chave = 'evolution_instancia';
   v_ok := false;
   begin perform fn_evo_post('/message/sendText/trilha-homologacao', '{"number":"5571900000044","text":"x"}');
-  exception when others then v_ok := sqlerrm like '%não serve à produção%'; end;
-  perform pg_temp.ok(v_ok, '[T44] produção pela instância da homologação');
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%não serve à produção%'; end;
+  perform pg_temp.ok(v_ok, '[T44] produção pela instância da homologação: ' || coalesce(v_msg, 'sem erro')); v_msg := null;
   perform pg_temp.ok(fn_pode_enviar('5571988880044'), '[T44] produção libera qualquer número');
 end $$;
 
