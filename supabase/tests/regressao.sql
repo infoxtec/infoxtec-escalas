@@ -48,13 +48,16 @@
 \set ON_ERROR_STOP on
 begin;
 
--- Trava: a produção é o único banco com tarefas no pg_cron (supabase/setup/cron.sql). O T7 trava
--- ponto_marcacoes até o rollback, o que bloquearia as batidas reais.
+-- Trava: banco com tarefas no pg_cron só se for a homologação (decisão 94: ela tem agendador próprio). O T7
+-- trava ponto_marcacoes até o rollback, o que bloquearia as batidas reais da produção.
 do $$
 declare n int := 0;
 begin
   if to_regclass('cron.job') is not null then execute 'select count(*) from cron.job' into n; end if;
-  if n > 0 then raise exception 'regressao.sql: banco com pg_cron agendado (produção?). Abortado.'; end if;
+  if n > 0 and (coalesce(fn_config('ambiente'), 'producao') <> 'homologacao'
+                or coalesce(fn_config('webhook_url'), '') not like '%oruwnlxyvznpigbpjjbx%') then
+    raise exception 'regressao.sql: banco com pg_cron agendado que não é a homologação (produção?). Abortado.';
+  end if;
 end $$;
 
 create temp table qa (k text primary key, v text) on commit drop;

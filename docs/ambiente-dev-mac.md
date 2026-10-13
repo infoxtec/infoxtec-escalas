@@ -76,7 +76,7 @@ npx supabase db push                               # aplica as migrations; confi
    O e-mail do admin já é cadastrado em `painel_usuarios` pela migration 14; outros e-mails
    precisam ser incluídos lá.
 
-**Não rode `setup/cron.sql` e não cadastre segredos da Evolution nem da Twilio no dev.**
+**Não rode `setup/cron.sql` (o da produção) e não cadastre no dev o token da instância de produção da Evolution nem os segredos da Twilio.** O WhatsApp da homologação usa instância própria e `setup/cron-homologacao.sql` (decisão 94).
 
 ## 4. Rodar o painel
 

@@ -24,9 +24,11 @@ declare
                           'Técnica de climatização', 'Técnico de manutenção', 'Eletricista', 'Técnico de climatização',
                           'Técnica de manutenção', 'Supervisor de campo'];
 begin
-  -- trava dupla: config ambiente = homologacao (migration 39) e nenhuma tarefa no pg_cron (só a produção tem)
+  -- trava dupla: config ambiente = homologacao (migration 39) e, se houver pg_cron, o webhook da homologação
   if to_regclass('cron.job') is not null then execute 'select count(*) from cron.job' into i; end if;
-  if i > 0 or coalesce(fn_config('ambiente'), 'producao') <> 'homologacao' then
+  -- com agendador, só a homologação configurada (decisão 94: webhook_url do projeto de homologação)
+  if coalesce(fn_config('ambiente'), 'producao') <> 'homologacao'
+     or (i > 0 and coalesce(fn_config('webhook_url'), '') not like '%oruwnlxyvznpigbpjjbx%') then
     raise exception 'Este banco não é a homologação (config ambiente ou tarefas no pg_cron). A demonstração só roda na homologação.';
   end if;
   if exists (select 1 from empresas where cnpj = '99999999000191') then

@@ -3,7 +3,7 @@
 # Uso, de qualquer pasta dentro do repositório:
 #   ./scripts/demo-homologacao.sh criar    # empresa fictícia, 10 técnicos, 5 locais, uma semana de escalas
 #   ./scripts/demo-homologacao.sh apagar   # remove tudo o que o "criar" fez
-# Roda só no projeto de homologação; o SQL também se recusa a rodar num banco com tarefas no pg_cron.
+# Roda só no projeto de homologação; o SQL também se recusa a rodar fora dela (config ambiente e, com pg_cron, o webhook).
 set -euo pipefail
 
 DEV=oruwnlxyvznpigbpjjbx
