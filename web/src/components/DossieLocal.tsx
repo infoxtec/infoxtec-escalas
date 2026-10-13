@@ -48,7 +48,7 @@ function imprimir(d: Dossie) {
     const tr = el('tr', undefined, corpo)
     el('td', t.tecnico, tr); el('td', t.funcao ?? '—', tr); el('td', t.hora, tr); el('td', t.atividades ?? '—', tr)
     const docs = el('td', undefined, tr)
-    if (t.sem_atividade) el('div', 'Atividade não informada na escala', docs)
+    if (t.sem_atividade) el('div', 'Atividade não informada na programação', docs)
     else if (t.documentos.length === 0) docs.textContent = 'Nenhum exigido pela atividade'
     for (const x of t.documentos) el('div', `${x.documento}: ${situacaoTexto(x)}`, docs)
     el('td', t.apto ? 'Apto' : 'Pendente', tr)
@@ -117,7 +117,7 @@ export default function DossieLocal({ local, onClose }: { local: Local; onClose:
                       <td className="px-3 py-2 font-mono text-xs">{t.hora}</td>
                       <td className="px-3 py-2 text-xs">{t.atividades ?? '—'}</td>
                       <td className="px-3 py-2 text-xs">
-                        {t.sem_atividade && <p className="text-red-700">Atividade não informada na escala</p>}
+                        {t.sem_atividade && <p className="text-red-700">Atividade não informada na programação</p>}
                         {t.documentos.length === 0 ? (!t.sem_atividade && <span className="text-muted-foreground">Nenhum exigido pela atividade</span>)
                           : t.documentos.map((x, j) => <p key={j}>{x.documento}: <span className={COR[x.situacao]}>{situacaoTexto(x)}</span></p>)}
                       </td>

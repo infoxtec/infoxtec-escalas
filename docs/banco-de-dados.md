@@ -254,6 +254,14 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 93 (13/10): "Escala" vira "Programação" nos textos (decisão 87)
+
+- Só textos entre aspas, em 21 funções (mensagens do WhatsApp e da URA, avisos ao supervisor, mensagens de
+  erro): `fn_titulo_escala` ("PROGRAMAÇÃO — dd/mm"), `fn_payload_escala`, `fn_msg_supervisor`,
+  `fn_wh_mensagem`, `fn_voz_twiml`, `fn_voz_resposta`, `fn_alerta_prazo_escala`, `fn_vigiar_motor`,
+  `fn_remover_escala`, `app_editar_escala`, `app_reenviar_escala`, `app_substituir_tecnico`, entre outras.
+  Nomes de tabelas, colunas e funções não mudam.
+
 ### Migration 92 (13/10): cofre das folhas assinadas (decisão 86)
 
 - `painel_usuarios.rh_folhas` e `fn_rh_folhas(email)`: permissão "cofre de folhas assinadas" (admin ou gestor,

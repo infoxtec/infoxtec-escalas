@@ -1104,3 +1104,19 @@ registradas (`ponto_espelho_acessos`, só inclusão). O documento em si não mud
 pasta do processo, enviar por canal seguro, apagar dos downloads); o aviso de privacidade cobre a extração para
 defesa em processo (LGPD art. 7º, VI); a prova não repete o CPF (já está no documento). **Pendentes:** consulta
 de quem abriu cada folha (hoje só a contagem); descarte depois dos 5 anos, junto com o resto do ponto.
+
+## 87. "Escala" vira "Programação"; o ponto ganha menu próprio (Gestão de Ponto)
+
+**Data:** 13/10/2026. **Pedidos do responsável (1 e 4; backlog 102 e 103):** a ordem de serviço enviada ao
+técnico (dia, hora, local e tarefa) passa a se chamar **Programação** em todo o painel e já nas mensagens do
+WhatsApp e da URA. "Escala" fica reservada para a **carga horária** do funcionário (Pedido 2, backlog 104). O
+botão azul "+ Nova escala" sai; fica a aba "Nova Programação". O Registro de Ponto sai da Agenda e vira o menu
+**Gestão de Ponto**, com abas: Hoje, Marcações, Espelho de jornada, Ajustes e pedidos, Folhas mensais, Cofre
+(RH) e AFD (as duas últimas só para quem tem a permissão). **Decisão (migration 93, painel 3.34.0):** só
+textos — nenhuma regra, tabela, nome interno ou permissão muda (a tabela continua `escalas`). As 21 funções
+do banco com texto ao técnico, ao supervisor ou de erro foram recriadas a partir da definição atual (idêntica
+à da homologação, conferida pelo MD5 do corpo) trocando só o que está entre aspas; a marca "Trilha Escala" e
+os registros internos ("escala ja respondida") ficam como estão. **Respostas do responsável aos Pedidos 2 e 3**
+(escala da empresa, times opcionais, vigência anual, modelos, validação CLT com aceite de risco, limites de HE
+pela CLT, alerta crítico no painel e no WhatsApp, limpeza da homologação com carga nova) estão nos itens 104 e
+105 do backlog; a implantação é decidida depois desta entrega.

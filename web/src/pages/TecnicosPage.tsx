@@ -90,7 +90,7 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
     setExcluindo(true); setErroExcluir(null)
     try {
       const r = await api.excluirTecnico(alvo.id)
-      toast(`Técnico excluído. ${r.escalas_removidas} escala${r.escalas_removidas !== 1 ? 's' : ''} removida${r.escalas_removidas !== 1 ? 's' : ''}.`)
+      toast(`Técnico excluído. ${r.escalas_removidas} ${r.escalas_removidas !== 1 ? 'programações' : 'programação'} removida${r.escalas_removidas !== 1 ? 's' : ''}.`)
       setAlvo(null); await recarregar()
     } catch (e) { setErroExcluir(erroMsg(e)) }
     finally { setExcluindo(false) }
@@ -228,7 +228,7 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
               <Input type="date" value={edit.desligado_em ?? ''} disabled={salvando}
                 onChange={e => setEdit(p => ({ ...p, desligado_em: e.target.value || null }))} />
             </Field>
-            {edit.id && <ToggleRow label="Ativo" description={edit.ativo ? 'Aparece na seleção de novas escalas.' : 'Inativo: não aparece em novas escalas; o histórico fica preservado.'}
+            {edit.id && <ToggleRow label="Ativo" description={edit.ativo ? 'Aparece na seleção de novas programações.' : 'Inativo: não aparece em novas programações; o histórico fica preservado.'}
               checked={!!edit.ativo} onChange={v => setEdit(p => ({ ...p, ativo: v }))} disabled={salvando} />}
             {erro && <ErrorBox>{erro}</ErrorBox>}
             {ok && <SuccessBox>{ok}</SuccessBox>}
@@ -244,7 +244,7 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
 
       <Confirm open={!!alvo} title="Excluir técnico definitivamente" confirmLabel="Excluir definitivamente" destructive
         busy={excluindo} disabled={confirmaNome !== alvo?.nome} onCancel={() => setAlvo(null)} onConfirm={() => void excluir()}>
-        <p>Esta ação não pode ser desfeita. <strong className="text-foreground">{alvo?.nome}</strong> e todo o histórico de escalas, mensagens e respostas serão apagados. Para só impedir novos envios, edite o técnico e desmarque <strong className="text-foreground">Ativo</strong>.</p>
+        <p>Esta ação não pode ser desfeita. <strong className="text-foreground">{alvo?.nome}</strong> e todo o histórico de programações, mensagens e respostas serão apagados. Para só impedir novos envios, edite o técnico e desmarque <strong className="text-foreground">Ativo</strong>.</p>
         <Field label="Digite o nome do técnico para confirmar">
           <Input value={confirmaNome} onChange={e => setConfirmaNome(e.target.value)} placeholder={alvo?.nome} autoComplete="off" disabled={excluindo} />
         </Field>

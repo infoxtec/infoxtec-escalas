@@ -30,7 +30,7 @@ function QuadroMotor({ m }: { m: EstadoMotor }) {
       ? ['border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950/30 dark:text-green-300', <CheckCircle2 key="i" className="h-4 w-4" />,
          `Motor de envio em dia · última execução às ${hora}.`]
       : ['border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300', <XCircle key="i" className="h-4 w-4" />,
-         `Motor de envio parado há ${m.minutos} min (última execução às ${hora}). Escalas não estão saindo. ${m.alerta_ativo ? 'Supervisores avisados.' : 'Supervisores serão avisados.'}`]
+         `Motor de envio parado há ${m.minutos} min (última execução às ${hora}). Programações não estão saindo. ${m.alerta_ativo ? 'Supervisores avisados.' : 'Supervisores serão avisados.'}`]
   return (
     <div className={`flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm ${classe}`}>
       {icone}<span>{texto}</span>
@@ -118,7 +118,7 @@ export default function OperacaoPage() {
             <p className="mt-0.5 text-2xl font-bold">{locais.length}</p>
           </div>
           <div className="rounded-lg border bg-card p-3">
-            <p className="text-xs text-muted-foreground">Escalas no dia</p>
+            <p className="text-xs text-muted-foreground">Programações no dia</p>
             <p className="mt-0.5 text-2xl font-bold">{total}</p>
           </div>
           <div className="rounded-lg border bg-card p-3">
@@ -135,7 +135,7 @@ export default function OperacaoPage() {
       )}
 
       {locais.length === 0 && !carregando && (
-        <div className="rounded-lg border bg-card py-12 text-center text-muted-foreground">Nenhuma escala neste dia</div>
+        <div className="rounded-lg border bg-card py-12 text-center text-muted-foreground">Nenhuma programação neste dia</div>
       )}
 
       <div className="grid gap-3 xl:grid-cols-2">

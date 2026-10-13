@@ -15,11 +15,11 @@ const PRIORIDADE_BADGE: Record<string, string> = {
 }
 
 const EVENTO_LABEL: Record<string, string> = {
-  criada: 'Escala criada', status_alterado: 'Status alterado', mensagem_enviada: 'Mensagem enviada',
+  criada: 'Programação criada', status_alterado: 'Status alterado', mensagem_enviada: 'Mensagem enviada',
   entregue_no_aparelho: 'Entregue no aparelho', lida: 'Lida', supervisor_acionado: 'Supervisor acionado',
   reenvio_manual: 'Reenvio manual', resposta_confirmacao: 'Técnico confirmou', resposta_problema: 'Técnico informou problema',
-  resposta_motivo: 'Técnico informou o motivo', escala_editada: 'Escala editada',
-  substituida: 'Técnico substituído', substitui: 'Substitui escala recusada', resposta_texto_livre: 'Técnico escreveu uma mensagem',
+  resposta_motivo: 'Técnico informou o motivo', escala_editada: 'Programação editada',
+  substituida: 'Técnico substituído', substitui: 'Substitui programação recusada', resposta_texto_livre: 'Técnico escreveu uma mensagem',
 }
 
 type Acao =
@@ -61,12 +61,12 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
   }
   const salvarEdicao = async () => {
     if (!edicao) return
-    if (!edicao.local_id) return setErro('Escolha o local. Escala sem local não é enviada.')
+    if (!edicao.local_id) return setErro('Escolha o local. Programação sem local não é enviada.')
     setBusy(true); setErro(null)
     try {
       const r = await api.editarEscala({ id: edicao.id, data_servico: edicao.data_servico, hora_inicio: edicao.hora_inicio,
         local_id: edicao.local_id ?? '', descricao_tarefa: edicao.descricao_tarefa })
-      toast(!r.alterada ? 'Nada mudou.' : r.nova_confirmacao ? 'Escala alterada. O técnico recebeu de novo e precisa confirmar.' : 'Escala alterada.')
+      toast(!r.alterada ? 'Nada mudou.' : r.nova_confirmacao ? 'Programação alterada. O técnico recebeu de novo e precisa confirmar.' : 'Programação alterada.')
       setEdicao(null); onRefresh(); void carregarTimeline(escala.id)
     } catch (e) { setErro(erroMsg(e)); setEdicao(null) } finally { setBusy(false) }
   }
@@ -75,7 +75,7 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
     setBusy(true); setErro(null)
     try {
       await api.substituirTecnico(escala.id, substituto)
-      toast('Nova escala criada para o técnico escolhido. Ela sai pelo WhatsApp em até 1 minuto.')
+      toast('Nova programação criada para o técnico escolhido. Ela sai pelo WhatsApp em até 1 minuto.')
       setSubstituto(null); onRefresh(); onClose()
     } catch (e) { setErro(erroMsg(e)); setSubstituto(null) } finally { setBusy(false) }
   }
@@ -98,7 +98,7 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
         onRefresh(); void carregarTimeline(escala.id)
       } else {
         const r = await api.removerEscala(escala.id)
-        toast(r.aviso_enviado ? 'Escala removida. Aviso de cancelamento enviado ao técnico.' : 'Escala removida.')
+        toast(r.aviso_enviado ? 'Programação removida. Aviso de cancelamento enviado ao técnico.' : 'Programação removida.')
         setAcao(null); onRefresh(); onClose()
         return
       }
@@ -118,7 +118,7 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
 
   return (
     <>
-      <Sheet open={open} onClose={onClose} title="Detalhes da escala">
+      <Sheet open={open} onClose={onClose} title="Detalhes da programação">
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${SEMAFORO_CLASSES[escala.semaforo]}`}>
@@ -179,7 +179,7 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
                 {podeEditarEscala && <Button size="sm" variant="outline" disabled={busy} onClick={() => void abrirEdicao()}>Editar</Button>}
                 {s === 'recusada' && <Button size="sm" variant="outline" disabled={busy} onClick={() => setSubstituto('')}>Substituir técnico</Button>}
                 {podeLiberar && <Button size="sm" variant="outline" disabled={busy}
-                  onClick={() => setAcao({ tipo: 'status', status: 'agendada', label: 'Liberar envio', texto: 'A escala sai pelo WhatsApp em até 1 minuto.' })}>Liberar envio</Button>}
+                  onClick={() => setAcao({ tipo: 'status', status: 'agendada', label: 'Liberar envio', texto: 'A programação sai pelo WhatsApp em até 1 minuto.' })}>Liberar envio</Button>}
                 {podeReenviar && <Button size="sm" variant="outline" disabled={busy} onClick={() => setAcao({ tipo: 'reenviar' })}>
                   <SendHorizonal className="h-3.5 w-3.5" /> Reenviar WhatsApp</Button>}
                 {podeReenviar && <Button size="sm" variant="outline" disabled={busy} onClick={() => setAcao({ tipo: 'ligar' })}>
@@ -189,9 +189,9 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
                 {podeConcluir && <Button size="sm" variant="outline" disabled={busy}
                   onClick={() => setAcao({ tipo: 'status', status: 'concluida', label: 'Concluir', texto: 'O serviço foi finalizado.' })}>Concluir</Button>}
                 {podeCancelar && <Button size="sm" variant="destructive" disabled={busy}
-                  onClick={() => setAcao({ tipo: 'status', status: 'cancelada', label: 'Cancelar escala', destrutiva: true, texto: 'A escala fica no histórico como cancelada e o motor para de cobrar o técnico.' })}>Cancelar</Button>}
+                  onClick={() => setAcao({ tipo: 'status', status: 'cancelada', label: 'Cancelar programação', destrutiva: true, texto: 'A programação fica no histórico como cancelada e o motor para de cobrar o técnico.' })}>Cancelar</Button>}
                 {escala.pode_remover && <Button size="sm" variant="destructive-outline" disabled={busy} onClick={() => setAcao({ tipo: 'remover' })}>
-                  <Trash2 className="h-3.5 w-3.5" /> Remover escala</Button>}
+                  <Trash2 className="h-3.5 w-3.5" /> Remover programação</Button>}
               </div>
             </div>
           )}
@@ -250,7 +250,7 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
         onCancel={() => setAcao(null)}
         onConfirm={() => void executar()}
         destructive={acao?.tipo === 'remover' || (acao?.tipo === 'status' && acao.destrutiva)}
-        title={acao?.tipo === 'remover' ? 'Remover escala definitivamente'
+        title={acao?.tipo === 'remover' ? 'Remover programação definitivamente'
           : acao?.tipo === 'reenviar' ? 'Reenviar pelo WhatsApp'
           : acao?.tipo === 'ligar' ? 'Ligar para o técnico'
           : (acao?.tipo === 'status' ? acao.label : '')}
@@ -258,18 +258,18 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
           : acao?.tipo === 'ligar' ? 'Ligar agora' : 'Confirmar'}
       >
         {acao?.tipo === 'remover' && <>
-          <p>O técnico ainda não recebeu esta escala, então ela pode ser apagada sem deixar histórico.</p>
+          <p>O técnico ainda não recebeu esta programação, então ela pode ser apagada sem deixar histórico.</p>
           {envioSaiu && <p className="font-medium text-foreground">A mensagem já saiu: o técnico vai receber um aviso de cancelamento logo em seguida.</p>}
         </>}
         {acao?.tipo === 'reenviar' && <p>A mensagem sai agora de novo, com os botões, e conta como uma nova tentativa.</p>}
         {acao?.tipo === 'ligar' && <>
-          <p>O sistema liga para o técnico agora. Uma voz lê a escala e pede para digitar <strong className="text-foreground">1 para aprovar</strong> ou <strong className="text-foreground">2 para negar</strong>.</p>
+          <p>O sistema liga para o técnico agora. Uma voz lê a programação e pede para digitar <strong className="text-foreground">1 para aprovar</strong> ou <strong className="text-foreground">2 para negar</strong>.</p>
           <p>A resposta cai no mesmo lugar da resposta do WhatsApp e o status muda na hora.</p>
         </>}
         {acao?.tipo === 'status' && <p>{acao.texto}</p>}
       </Confirm>
 
-      <Modal open={!!edicao} onClose={() => { if (!busy) setEdicao(null) }} title="Editar escala"
+      <Modal open={!!edicao} onClose={() => { if (!busy) setEdicao(null) }} title="Editar programação"
         footer={<><Button variant="outline" disabled={busy} onClick={() => setEdicao(null)}>Cancelar</Button>
           <Button disabled={busy} onClick={() => void salvarEdicao()}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
         {edicao && <div className="space-y-3">
@@ -291,9 +291,9 @@ export default function EscalaDrawer({ escala, open, onClose, onRefresh, podeEdi
 
       <Modal open={substituto !== null} onClose={() => { if (!busy) setSubstituto(null) }} title="Substituir técnico"
         footer={<><Button variant="outline" disabled={busy} onClick={() => setSubstituto(null)}>Cancelar</Button>
-          <Button disabled={busy || !substituto} onClick={() => void salvarSubstituto()}>{busy ? 'Criando...' : 'Criar escala'}</Button></>}>
+          <Button disabled={busy || !substituto} onClick={() => void salvarSubstituto()}>{busy ? 'Criando...' : 'Criar programação'}</Button></>}>
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">Cria uma escala igual (mesmo dia, hora, local e tarefa) para outro técnico. A recusada fica no histórico.</p>
+          <p className="text-sm text-muted-foreground">Cria uma programação igual (mesmo dia, hora, local e tarefa) para outro técnico. A recusada fica no histórico.</p>
           <Field label="Novo técnico">
             <Select value={substituto ?? ''} onChange={e => setSubstituto(e.target.value)}>
               <option value="">Escolha...</option>
