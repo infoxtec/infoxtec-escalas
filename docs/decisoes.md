@@ -1193,4 +1193,16 @@ conta pela escala; `he_min` (pagamento) continua na jornada padrão até a etapa
 supervisor o Alerta Crítico com o texto do `juridico` (só o primeiro nome, sem motivo). `app_carga_excedida` alimenta
 os Indicadores. **Efeito na regra de hoje:** o sábado passa a contar 4 h de jornada (antes, 8 h fixas para o aviso
 de HE), então o aviso sai a partir de 6 h no sábado, como manda a escala 44h 6x1.
+**Revisão do `seguranca` (aplicada):** `programacao_aceites` sem chave estrangeira para Programação, técnico e
+empresa (o termo guarda data, nome e excesso), para a Programação e o técnico continuarem removíveis; Programação de
+teste pede o aceite, mas não gera termo; criação e edição travam por técnico e dia (duas ao mesmo tempo não passam
+juntas do limite); o Alerta Crítico calcula a jornada só nos dias com marcação ou ajuste; a tela pede que a
+justificativa não traga motivo de saúde, afastamento ou dado pessoal; a lista de termos vai até 62 dias. O Alerta
+Crítico é a exceção pedida pelo responsável à regra da decisão 78 (Indicadores sem nome): mostra o funcionário,
+como já mostram as telas do ponto ao papel leitura; o leitura não vê os aceites nem os termos. **LGPD:** o termo
+guarda o nome do funcionário e o nome, o e-mail e o papel de quem assina, mais a justificativa em texto livre.
+Finalidade: prova de gestão da jornada pela empregadora (CLT arts. 59 e 61). Base: art. 7º, II (obrigação legal) e
+VI (exercício regular de direitos). Veem admin e gestor. Retenção: 5 anos, mais o prazo de uma ação em curso;
+descarte junto com o do ponto. **Pendências:** concorrência com outras escritas na mesma Programação; fuso por
+empresa no "hoje" do Alerta Crítico (antes do segundo cliente, backlog 074); aceite na importação em lote.
 

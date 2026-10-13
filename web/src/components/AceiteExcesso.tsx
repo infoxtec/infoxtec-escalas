@@ -84,9 +84,10 @@ export default function AceiteExcesso({ excessos, data, hora, ignorar, onAceite 
         </Field>
         <Field label={`Justificativa (mínimo ${minimo} caracteres)`}>
           <Textarea rows={3} value={justificativa} maxLength={1000} onChange={e => setJustificativa(e.target.value)}
-            placeholder="O que aconteceu, qual cliente ou serviço, e por que não dava para remarcar ou trocar o técnico." />
+            placeholder="O que aconteceu, qual cliente ou serviço, e por que não dava para remarcar ou trocar o técnico. Não escreva motivo de saúde, afastamento nem dado pessoal de funcionário." />
         </Field>
       </div>
+      <p>A justificativa fica guardada para sempre no termo: descreva o serviço e o fato, sem motivo de saúde, afastamento ou dado pessoal de funcionário.</p>
       {motivo === 'outro' && <p className="font-medium">Fora das hipóteses do art. 61 o excesso não tem cobertura legal. A decisão fica registrada.</p>}
       {excessos.some(x => x.previsto_min > 720) && motivo !== 'forca_maior' &&
         <p className="font-medium">O dia previsto passa de 12 horas: fora da força maior, a CLT não permite (art. 61, § 2º).</p>}

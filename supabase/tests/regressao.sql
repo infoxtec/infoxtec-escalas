@@ -2173,7 +2173,7 @@ begin
   exception when others then v_ok := sqlerrm like '%mudou desde a tela%'; end;
   perform pg_temp.ok(v_ok, '[T41] excesso diferente do mostrado');
   a := jsonb_set(a, '{vistos}', jsonb_build_object(v_t::text, 120));
-  select * into x from app_criar_escalas(array[v_t], v_loc, v_sab, '08:00', 'QA limite', 480, 'normal', false, null, true, a);
+  select * into x from app_criar_escalas(array[v_t], v_loc, v_sab, '08:00', 'QA limite', 480, 'normal', false, null, false, a);
   perform pg_temp.ok(x.resultado = 'criada', '[T41] criada com aceite: ' || x.resultado);
   perform pg_temp.ok((select count(*) = 1 and bool_and(sha256 = encode(sha256(convert_to(texto, 'UTF8')), 'hex'))
                              and bool_and(email = 'qa-admin@teste.local' and excedente_min = 120 and motivo = 'servico_inadiavel')
@@ -2181,6 +2181,12 @@ begin
   v_ok := false;
   begin update programacao_aceites set justificativa = 'trocada' where escala_id = x.escala_id; exception when others then v_ok := true; end;
   perform pg_temp.ok(v_ok, '[T41] aceite alterado');
+  -- Programação de teste acima do limite: pede o aceite, mas não gera termo e continua removível
+  select * into x from app_criar_escalas(array[v_t2], v_loc, v_sab, '08:00', 'QA limite teste', 480, 'normal', false, null, true,
+                                         jsonb_set(a, '{vistos}', jsonb_build_object(v_t2::text, 120)));
+  perform pg_temp.ok(x.resultado = 'criada' and not exists (select 1 from programacao_aceites where escala_id = x.escala_id), '[T41] teste sem termo');
+  perform app_remover_escala(x.escala_id);
+  perform pg_temp.ok(not exists (select 1 from escalas where id = x.escala_id and status not in ('cancelada')), '[T41] Programação de teste removida');
   -- segunda: duas Programações (08:00 e 14:00) passam do limite; mudar a data para sábado também pede aceite
   select * into x from app_criar_escalas(array[v_t2], v_loc, v_seg, '08:00', 'QA limite seg', 480, 'normal', false, null, true);
   v_id := x.escala_id;
@@ -2220,6 +2226,9 @@ begin
   begin perform app_programacao_aceites(v_sab, v_sab); exception when others then v_ok := true; end;
   perform pg_temp.ok(v_ok, '[T41] leitura abriu os termos');
   perform pg_temp.ok(not has_function_privilege('anon', 'app_programacao_limite(uuid[],date,time,uuid,text,text)', 'execute'), '[T41] anon consulta o limite');
+  v_ok := false;
+  begin perform app_programacao_limite(array[v_t], v_sab, '08:00'); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T41] leitura consultou o limite');
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
 

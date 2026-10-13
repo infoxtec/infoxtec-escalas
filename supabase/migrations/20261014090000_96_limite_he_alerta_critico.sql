@@ -13,9 +13,10 @@
 -- Aceite da Programação acima do limite ----------------------------------------------------------------------
 create table if not exists programacao_aceites (
   id              uuid primary key default gen_random_uuid(),
-  escala_id       uuid not null references escalas(id),
-  empresa_id      uuid references empresas(id),
-  tecnico_id      uuid not null references tecnicos(id),
+  -- sem chave estrangeira: a Programação de teste e o técnico continuam removíveis; o termo guarda data, nome e excesso
+  escala_id       uuid not null,
+  empresa_id      uuid,
+  tecnico_id      uuid not null,
   data            date not null,
   previsto_min    int not null,
   contratual_min  int not null,
@@ -29,7 +30,7 @@ create table if not exists programacao_aceites (
   papel           text not null,
   aceito_em       timestamptz not null default now()
 );
-comment on table programacao_aceites is 'Aceite de risco da empresa para Programação que passa do limite de 2 h extras no dia (decisão 90). Interno; só inclusão.';
+comment on table programacao_aceites is 'Aceite de risco da empresa para Programação que passa do limite de 2 h extras no dia (decisão 90). Interno; só inclusão. LGPD: art. 7º, II e VI; admin e gestor; 5 anos.';
 alter table programacao_aceites enable row level security;
 create index if not exists programacao_aceites_data_idx on programacao_aceites (data);
 create index if not exists programacao_aceites_tecnico_idx on programacao_aceites (tecnico_id, data);
@@ -189,10 +190,11 @@ returns table (id uuid, data date, tecnico text, previsto_min int, contratual_mi
 language plpgsql stable security definer set search_path = public, extensions as $function$
 begin
   perform app_exigir(array['admin','gestor']);
+  if p_de is null or p_ate is null or p_ate < p_de or p_ate - p_de > 62 then raise exception 'Período de até 62 dias.'; end if;
   return query
-    select a.id, a.data, t.nome, a.previsto_min, a.contratual_min, a.excedente_min, fn_programacao_motivo(a.motivo),
+    select a.id, a.data, coalesce(t.nome, '(funcionário removido)'), a.previsto_min, a.contratual_min, a.excedente_min, fn_programacao_motivo(a.motivo),
            a.justificativa, a.nome, a.aceito_em, a.texto, a.sha256
-      from programacao_aceites a join tecnicos t on t.id = a.tecnico_id
+      from programacao_aceites a left join tecnicos t on t.id = a.tecnico_id
      where a.data between p_de and p_ate
      order by a.data desc, t.nome;
 end $function$;
@@ -219,7 +221,9 @@ begin
   perform fn_validar_inicio(p_data, p_hora);
 
   -- limite de 2 h extras no dia, pela escala de cada técnico (decisão 90): passou, só com o aceite da empresa
-  for t in select x.id, x.nome from tecnicos x where x.id = any(coalesce(p_tecnicos, '{}')) loop
+  for t in select x.id, x.nome from tecnicos x where x.id = any(coalesce(p_tecnicos, '{}')) order by x.id loop
+    -- uma criação por técnico e dia de cada vez: duas ao mesmo tempo não passam juntas do limite
+    perform pg_advisory_xact_lock(hashtext(t.id::text || p_data::text));
     j := fn_programacao_limite(t.id, p_data, p_hora, null);
     if (j->>'excedente_min')::int > 0 then
       perform fn_programacao_conferir_aceite(p_aceite, t.id, j, t.nome);
@@ -238,7 +242,8 @@ begin
         tipo_atividade_id = coalesce(p_tipo, tipo_atividade_id),
         teste = teste or coalesce(p_teste, false)
       where id = r.escala_id;
-      if v_lim ? r.tecnico_id::text then
+      -- Programação de teste não gera termo (pode ser removida a qualquer momento)
+      if v_lim ? r.tecnico_id::text and not (select x.teste from escalas x where x.id = r.escala_id) then
         perform fn_programacao_registrar_aceite(r.escala_id, p_aceite, v_lim->(r.tecnico_id::text), v_email);
       end if;
     end if;
@@ -291,9 +296,11 @@ begin
   if v_data <> e.data_servico or v_hora <> e.hora_inicio then
     perform fn_validar_inicio(v_data, v_hora);
     -- limite de 2 h extras no novo dia (decisão 90)
+    perform pg_advisory_xact_lock(hashtext(e.tecnico_id::text || v_data::text));
     v_lim := fn_programacao_limite(e.tecnico_id, v_data, v_hora, e.id);
     if (v_lim->>'excedente_min')::int > 0 then
       perform fn_programacao_conferir_aceite(p->'aceite', e.tecnico_id, v_lim, (select nome from tecnicos where id = e.tecnico_id));
+      if e.teste then v_lim := null; end if;  -- teste não gera termo
     else
       v_lim := null;
     end if;
@@ -629,8 +636,19 @@ begin
            greatest(v_ini, coalesce(x.admissao, x.created_at::date)) as ini, least(v_fim, coalesce(x.desligado_em, v_fim)) as fim
       from tecnicos x join empresas m on m.id = x.empresa_id
      where not x.perfil_teste and x.cpf is not null and (x.ativo or x.desligado_em >= v_ini)
+  ), md as (
+    -- só os dias com marcação ou ajuste precisam da jornada (sem marcação, não há hora extra)
+    select distinct m.tecnico_id, (m.momento at time zone 'America/Bahia')::date as dia
+      from ponto_marcacoes m
+     where m.momento >= (v_ini - 1)::timestamp at time zone 'America/Bahia' and m.momento < (v_fim + 2)::timestamp at time zone 'America/Bahia'
+    union
+    select a.tecnico_id, (a.momento at time zone 'America/Bahia')::date
+      from ponto_ajustes a
+     where a.acao = 'incluir' and a.momento >= (v_ini - 1)::timestamp at time zone 'America/Bahia' and a.momento < (v_fim + 2)::timestamp at time zone 'America/Bahia'
   ), d as (
-    select t.id, t.nome, t.empresa, g::date as dia, fn_ponto_jornada_dia(t.id, g::date) as j,
+    select t.id, t.nome, t.empresa, g::date as dia,
+           case when exists (select 1 from md where md.tecnico_id = t.id and md.dia = g::date)
+                then fn_ponto_jornada_dia(t.id, g::date) end as j,
            fn_carga_minutos_dia(t.id, g::date) as contr
       from t cross join lateral generate_series(t.ini, t.fim, interval '1 day') g
      where t.ini <= t.fim

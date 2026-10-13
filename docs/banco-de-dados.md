@@ -257,7 +257,8 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
 ### Migration 96 (14/10): limite de 2 h extras pela escala e Alerta Crítico (decisão 90)
 
 - Tabela `programacao_aceites` (Programação, técnico, data, previsto, jornada do dia, excedente, motivo do art. 61,
-  justificativa, texto do termo, SHA-256, nome, e-mail e papel de quem assina; só inclusão, RLS sem políticas).
+  justificativa, texto do termo, SHA-256, nome, e-mail e papel de quem assina; só inclusão, RLS sem políticas; sem
+  chave estrangeira, para a Programação e o técnico continuarem removíveis). Programação de teste não gera termo.
 - `fn_programacao_limite(tecnico, data, hora, ignorar)`: dia previsto pelas Programações (primeira entrada à última
   saída, menos o maior intervalo), jornada do dia pela escala, limite (+ `ponto_he_limite_min`) e excedente.
   `fn_programacao_termo`, `fn_programacao_conferir_aceite` (motivo, justificativa de 40/80 caracteres, excessos
