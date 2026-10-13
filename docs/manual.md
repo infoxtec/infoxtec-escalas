@@ -240,6 +240,17 @@ gestor. O administrador confere a cadeia das marcações de cada empresa (NSR e 
 Empregadoras (os funcionários batem ponto no CNPJ delas) e clientes (donos dos locais). O CNPJ é
 conferido pelo dígito verificador. Base do Módulo Registro de Ponto.
 
+## 7e. Limite de horas extras e Alerta Crítico
+
+A lei limita a hora extra a 2 horas por dia (CLT art. 59), contadas sobre a jornada do dia na escala do
+funcionário. Ao criar uma **Nova Programação** (ou mudar a data ou a hora de uma) que faz o dia passar desse limite,
+aparece um quadro vermelho com o previsto e o limite: escolha o motivo (força maior, serviço inadiável, prejuízo
+evidente ou outro), escreva a justificativa com o fato concreto e marque o termo. Quem aceita o risco é a
+**empresa**, por você; o funcionário não vê. Na **importação**, a linha acima do limite volta com erro: crie essa
+pela Nova Programação. No ponto, quando o funcionário passa do limite, ele recebe o aviso e o supervisor recebe o
+**Alerta Crítico** no WhatsApp. Em **Indicadores**, o quadro "Alerta Crítico – Funcionário com carga horária
+excedida" mostra quem passou hoje e no mês, e o botão **Aceites da empresa** lista os termos assinados.
+
 ## 7d. Escala / Carga Horária
 
 A carga horária contratual de cada empregadora (decisão 88). Abas:

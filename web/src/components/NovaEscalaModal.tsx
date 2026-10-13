@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, CheckCircle2, Clock, Moon, ShieldAlert, XCircle } from 'lucide-react'
 import MultiSelect from './MultiSelect'
+import AceiteExcesso, { useLimiteProgramacao } from './AceiteExcesso'
 import { Button, ErrorBox, Field, Input, Modal, Select, Textarea, useToast } from './ui'
 import { api, erroMsg } from '../lib/api'
 import { addDays, descricaoJornada, formatTime, hojeBahia } from '../lib/types'
-import type { Aptidao, Jornada, Local, ResultadoLote, Tecnico, TipoAtividade } from '../lib/types'
+import type { AceiteProgramacao, Aptidao, Jornada, Local, ResultadoLote, Tecnico, TipoAtividade } from '../lib/types'
 
 export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, locais, tipos, inicialIds, inicialData, embutido }: {
   open: boolean; onClose: () => void; onSuccess: () => void; tecnicos: Tecnico[]; locais: Local[]
@@ -25,6 +26,9 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
   const [tipo, setTipo] = useState('')
   const [teste, setTeste] = useState(false)
   const [aptidao, setAptidao] = useState<Aptidao[] | null>(null)
+  const [aceite, setAceite] = useState<AceiteProgramacao | null>(null)
+  // limite de 2 h extras no dia pela escala de cada técnico (decisão 90)
+  const excessos = useLimiteProgramacao(ids, data, hora, null, open && !resultado)
 
   useEffect(() => {
     if (open) {
@@ -69,11 +73,13 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
     if (horaNoPassado) return setErro(`A programação precisa começar pelo menos 5 minutos à frente. O mais cedo hoje é ${horaMinima}.`)
     if (!local) return setErro('Escolha o local. Programação sem local não é enviada.')
     if (!tarefa.trim()) return setErro('Descreva a tarefa.')
+    if (excessos.length > 0 && !aceite) return setErro('A programação passa do limite de 2 horas extras no dia: escolha o motivo, escreva a justificativa e assine o aceite da empresa.')
     setSalvando(true)
     try {
       const r = await api.criarEscalas({
         tecnicos: ids, local, data, hora, tarefa: tarefa.trim(),
         duracao: 480, prioridade, enviar, // duracao e recalculada pelo banco (jornada CLT)
+        aceite: excessos.length > 0 ? aceite : null,
       })
       onSuccess()
       if (r.every(x => x.resultado === 'criada')) {
@@ -164,6 +170,7 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
               </div>
             ) : <p className="text-muted-foreground">Calculando a jornada…</p>}
           </div>
+          <AceiteExcesso excessos={excessos} data={data} hora={hora} ignorar={null} onAceite={setAceite} />
           <Field label="Prioridade">
             <Select value={prioridade} onChange={e => setPrioridade(e.target.value)} disabled={salvando} className="w-full">
               <option value="baixa">Baixa</option><option value="normal">Normal</option><option value="urgente">Urgente</option>

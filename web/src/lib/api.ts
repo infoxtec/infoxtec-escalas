@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre, ValidacaoCarga, ModeloCarga, CargaHoraria, CargaAtribuicao, CargaFuncionario, TimeEquipe, AlvoCarga } from './types'
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre, ValidacaoCarga, ModeloCarga, CargaHoraria, CargaAtribuicao, CargaFuncionario, TimeEquipe, AlvoCarga, ProgramacaoLimite, AceiteProgramacao, AceiteProgramacaoAssinado, CargaExcedida } from './types'
 
 function traduzir(msg: string): string {
   if (/JWT expired|invalid JWT|not authenticated/i.test(msg)) return 'Sessão expirada. Entre novamente.'
@@ -59,7 +59,7 @@ export const api = {
   painelGerencial: (de: string, ate: string) => rpc<PainelGerencial>('app_painel_gerencial', { p_de: de, p_ate: ate }),
   dossieLocal: (local: string, data: string) => rpc<DossieLocal>('app_dossie_local', { p_local: local, p_data: data }),
   escalaEdicao: (id: string) => rpc<EscalaEdicao>('app_escala_edicao', { p_escala: id }),
-  editarEscala: (p: { id: string; data_servico: string; hora_inicio: string; local_id: string; descricao_tarefa: string }) =>
+  editarEscala: (p: { id: string; data_servico: string; hora_inicio: string; local_id: string; descricao_tarefa: string; aceite?: AceiteProgramacao | null }) =>
     rpc<{ alterada: boolean; nova_confirmacao?: boolean }>('app_editar_escala', { p }),
   substituirTecnico: (escala: string, tecnico: string) =>
     rpc<{ escala: string }>('app_substituir_tecnico', { p_escala: escala, p_tecnico: tecnico }),
@@ -74,11 +74,18 @@ export const api = {
   criarEscalas: (p: {
     tecnicos: string[]; local: string; data: string; hora: string
     tarefa: string; duracao: number; prioridade: string; enviar: boolean; tipo?: string | null; teste?: boolean
+    aceite?: AceiteProgramacao | null
   }) => rpc<ResultadoLote[]>('app_criar_escalas', {
     p_tecnicos: p.tecnicos, p_local: p.local, p_data: p.data, p_hora: p.hora,
     p_tarefa: p.tarefa, p_duracao: p.duracao, p_prioridade: p.prioridade, p_enviar: p.enviar,
-    p_tipo: p.tipo ?? null, p_teste: p.teste ?? false,
+    p_tipo: p.tipo ?? null, p_teste: p.teste ?? false, p_aceite: p.aceite ?? null,
   }),
+  // Limite de 2 h extras no dia pela escala e aceite da empresa (decisão 90)
+  programacaoLimite: (tecnicos: string[], data: string, hora: string, ignorar: string | null, motivo: string | null, justificativa: string | null) =>
+    rpc<ProgramacaoLimite[]>('app_programacao_limite', { p_tecnicos: tecnicos, p_data: data, p_hora: hora, p_ignorar: ignorar,
+      p_motivo: motivo, p_justificativa: justificativa }),
+  programacaoAceites: (de: string, ate: string) => rpc<AceiteProgramacaoAssinado[]>('app_programacao_aceites', { p_de: de, p_ate: ate }),
+  cargaExcedida: (mes: string | null) => rpc<CargaExcedida>('app_carga_excedida', { p_mes: mes }),
   mudarStatus: (escalaId: string, status: string) =>
     rpc<string>('app_mudar_status', { p_escala: escalaId, p_status: status }),
   removerEscala: (escalaId: string) =>

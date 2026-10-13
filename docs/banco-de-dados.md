@@ -254,6 +254,22 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 96 (14/10): limite de 2 h extras pela escala e Alerta Crítico (decisão 90)
+
+- Tabela `programacao_aceites` (Programação, técnico, data, previsto, jornada do dia, excedente, motivo do art. 61,
+  justificativa, texto do termo, SHA-256, nome, e-mail e papel de quem assina; só inclusão, RLS sem políticas; sem
+  chave estrangeira, para a Programação e o técnico continuarem removíveis). Programação de teste não gera termo.
+- `fn_programacao_limite(tecnico, data, hora, ignorar)`: dia previsto pelas Programações (primeira entrada à última
+  saída, menos o maior intervalo), jornada do dia pela escala, limite (+ `ponto_he_limite_min`) e excedente.
+  `fn_programacao_termo`, `fn_programacao_conferir_aceite` (motivo, justificativa de 40/80 caracteres, excessos
+  vistos) e `fn_programacao_registrar_aceite`.
+- `app_criar_escalas` ganha `p_aceite jsonb` (a versão de 10 parâmetros sai); `app_editar_escala` aceita `p.aceite`
+  ao mudar data ou hora; `app_substituir_tecnico` recusa acima do limite. `app_programacao_limite` (admin e gestor)
+  mostra o previsto e o termo; `app_programacao_aceites` lista os termos (admin e gestor).
+- `fn_ponto_jornada_dia`: `contratual_min`, `he_escala_min` e `limite_min`; `he_acima_limite` pela escala.
+  `fn_ponto_avisar`: Alerta Crítico ao supervisor. `app_carga_excedida(p_mes)` (admin, gestor e leitura; o leitura
+  sem os aceites): quem passou do limite hoje e no mês.
+
 ### Migration 95 (13/10): o gestor não inclui marcação (decisão 89)
 
 - `app_ponto_ajustar` recriada sem o ramo `incluir`: recusa com a orientação de usar o pedido do funcionário ou o

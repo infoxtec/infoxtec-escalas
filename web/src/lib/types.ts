@@ -510,3 +510,24 @@ export interface CargaFuncionario {
   origem: 'funcionário' | 'time' | 'empresa' | 'padrão'; semanal_min: number
 }
 export interface TimeEquipe { id: string; empresa_id: string; empresa: string; nome: string; ativo: boolean; membros: number }
+
+/** Limite de 2 h extras no dia pela escala (decisão 90): previsão do dia com a Programação nova. */
+export interface ProgramacaoLimite {
+  tecnico_id: string; tecnico: string; previsto_min: number; contratual_min: number; limite_min: number
+  excedente_min: number; termo: string | null
+}
+export type MotivoExcesso = 'forca_maior' | 'servico_inadiavel' | 'prejuizo_evidente' | 'outro'
+/** Aceite da empresa enviado com a Programação que passa do limite. vistos: excesso mostrado por técnico. */
+export interface AceiteProgramacao { aceito: boolean; motivo: MotivoExcesso; justificativa: string; vistos: Record<string, number> }
+export interface AceiteProgramacaoAssinado {
+  id: string; data: string; tecnico: string; previsto_min: number; contratual_min: number; excedente_min: number
+  motivo: string; justificativa: string; nome: string; aceito_em: string; texto: string; sha256: string
+}
+/** Alerta Crítico: funcionário com carga horária excedida (app_carga_excedida). */
+export interface CargaExcedida {
+  mes: string; apurado_ate?: string; limite_dia_min: number; hoje: number; mes_total: number; aceites_mes?: number | null
+  funcionarios: {
+    tecnico_id: string; tecnico: string; empresa: string; dias_acima: number; maior_he_min: number; he_mes_min: number
+    limite_mes_min: number; hoje_he_min: number; hoje_acima: boolean; ultimo_dia: string | null; aceites: number | null
+  }[]
+}
