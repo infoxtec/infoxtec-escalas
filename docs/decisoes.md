@@ -1235,3 +1235,19 @@ fechado gera versão nova (o conteúdo ganhou campos); DSR fixo no revezamento; 
 dias seguidos sem folga ficam para depois; os Indicadores (decisão 78) ainda calculam a HE do conjunto pela regra
 de antes.
 
+
+## 92. Homologação com painel publicado próprio
+
+**Data:** 14/10/2026. **Decisão do responsável:** a homologação ganha endereço público fixo, sem depender da máquina
+local: https://infoxtec-escalas-homologacao.vercel.app. **Como:** segundo projeto na Vercel, no mesmo repositório
+(Root Directory `web`), publicando a `main` com as variáveis da homologação. Preferido a um branch `homologacao` no
+projeto da produção, que exigiria manter o branch atualizado a cada merge e desligar a proteção dos previews. **Efeitos:**
+a função `documento-ocr` aceita esse endereço (e o painel local) só quando roda no projeto da homologação ou no
+Supabase local — falha fechada, por sugestão do `seguranca`; o login da homologação tem o
+endereço novo nas Redirect URLs. **Limites:** a homologação continua sem segredos da Evolution e da Twilio e sem o
+`cron.sql` (sem WhatsApp, sem login do funcionário por código); só dados fictícios. O plano gratuito da Vercel segue
+com a ressalva de uso comercial (decisão 75): demonstração a cliente entra na decisão de migrar para o Cloudflare
+Pages. **Pendente:** conferir se as variáveis de **Preview** do projeto da produção apontam para a homologação (fase 1
+de `docs/fluxo-de-desenvolvimento.md`); se apontarem para a produção, os previews de PR usam o banco real
+(achado médio do `seguranca`, prazo: antes do próximo PR com preview). **Revisão do `seguranca`:** sem achado alto;
+produção sem mudança de origem; cadastro público da homologação desligado a confirmar.
