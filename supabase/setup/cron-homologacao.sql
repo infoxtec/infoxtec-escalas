@@ -21,5 +21,8 @@ begin
   raise notice 'Agendador da homologação ligado: % tarefas ativas.', (select count(*) from cron.job where active);
 end $$;
 
--- Para desligar tudo (parar os testes de WhatsApp):
+-- Pausar (antes de rodar a regressão, que recusa banco com tarefas ativas) e religar depois:
+-- select cron.alter_job(jobid, active := false) from cron.job;
+-- select cron.alter_job(jobid, active := true) from cron.job;
+-- Desligar de vez (fim dos testes de WhatsApp):
 -- select cron.unschedule(jobname) from cron.job;

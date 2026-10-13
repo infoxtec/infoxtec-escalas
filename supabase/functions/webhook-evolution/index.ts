@@ -112,9 +112,11 @@ async function receberMidia(tecnico: string, midiaId: string, data: unknown) {
     const d = data as { key?: unknown; message?: unknown };
     const [cfg] = await sql`
       select fn_config('evolution_url') as url, fn_config('evolution_instancia') as inst,
-             fn_segredo('EVOLUTION_API_KEY') as chave
+             fn_segredo('EVOLUTION_API_KEY') as chave, coalesce(fn_config('ambiente'), 'producao') as ambiente
     `;
     if (!cfg?.url || !cfg?.inst || !cfg?.chave) throw new Error("evolution sem configuracao");
+    // a homologação só usa a instância dela, e a produção nunca a da homologação (decisão 94)
+    if ((cfg.ambiente === "homologacao") !== (cfg.inst === "trilha-homologacao")) throw new Error("instancia fora do ambiente");
     const resp = await fetch(`${cfg.url}/chat/getBase64FromMediaMessage/${encodeURIComponent(cfg.inst)}`, {
       method: "POST",
       headers: { apikey: cfg.chave, "Content-Type": "application/json" },

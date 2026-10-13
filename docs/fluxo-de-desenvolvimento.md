@@ -62,7 +62,8 @@ flowchart TD
 
 **O banco dev nunca recebe o token da instância de produção da Evolution, os segredos da Twilio nem o
 `setup/cron.sql` da produção.** Desde a decisão 94 ele tem instância própria (`trilha-homologacao`) e o
-`setup/cron-homologacao.sql`; a trava de ambiente (decisão 44) só deixa sair mensagem para os números de teste.
+`setup/cron-homologacao.sql`; a trava de ambiente (decisão 44, migration 99) só deixa sair mensagem para os números de
+`telefones_homologacao`. A chave global da Evolution não vai para nenhum Vault.
 
 ## Onde o Claude Code entra
 

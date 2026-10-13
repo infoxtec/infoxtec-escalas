@@ -254,6 +254,13 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 99 (14/10): trava de envio da homologação (decisão 94)
+
+`fn_pode_enviar`: na homologação só os números de `telefones_homologacao` liberam envio (a marca `perfil_teste` do
+técnico deixou de liberar — ela se edita no painel). `fn_evo_post` falha fechada: o caminho precisa terminar na
+instância de `evolution_instancia`; a homologação só usa `trilha-homologacao`, a produção nunca a usa; na homologação,
+`/message/*` sem `number` é recusado. Na produção o envio não muda. Regressão: T44.
+
 ### Migration 98 (14/10): Indicadores pela escala (decisão 93)
 
 `app_painel_gerencial` (aba Indicadores) passa a contar a hora extra, o saldo e as semanas pela jornada do dia na

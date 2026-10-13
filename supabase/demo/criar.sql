@@ -28,7 +28,8 @@ begin
   if to_regclass('cron.job') is not null then execute 'select count(*) from cron.job' into i; end if;
   -- com agendador, só a homologação configurada (decisão 94: webhook_url do projeto de homologação)
   if coalesce(fn_config('ambiente'), 'producao') <> 'homologacao'
-     or (i > 0 and coalesce(fn_config('webhook_url'), '') not like '%oruwnlxyvznpigbpjjbx%') then
+     or (i > 0 and (coalesce(fn_config('webhook_url'), '') not like '%oruwnlxyvznpigbpjjbx%'
+                     or coalesce(fn_config('evolution_instancia'), '') <> 'trilha-homologacao')) then
     raise exception 'Este banco não é a homologação (config ambiente ou tarefas no pg_cron). A demonstração só roda na homologação.';
   end if;
   if exists (select 1 from empresas where cnpj = '99999999000191') then

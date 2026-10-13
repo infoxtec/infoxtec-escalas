@@ -1277,11 +1277,20 @@ teste mandar mensagem real. **Decisão:** a homologação ganha **instância pr�
 (`trilha-homologacao`, outro número, em `https://163-176-68-206.sslip.io`) e agendador próprio
 (`supabase/setup/cron-homologacao.sql`, as mesmas tarefas da produção). A regra passa a ser: **nunca o token da
 instância da produção (`infoxtec`) nem os segredos da Twilio** na homologação, e nunca o `cron.sql` da produção.
-**Proteções:** a trava de ambiente (decisão 44) só deixa sair mensagem para os números de `telefones_homologacao`
-(ou técnico marcado como teste); ligação automática desligada (`ligacao_ativa = false`, sem Twilio); número
-separado, então um engano não sai pelo número oficial. **Efeito nas travas dos scripts:** regressão e demonstração
-reconheciam a homologação por "não ter pg_cron"; agora aceitam pg_cron só com `ambiente = homologacao` e o
-`webhook_url` do projeto de homologação (a produção continua recusada nos dois). **Configuração:**
+A **chave global** da Evolution não vai para nenhum Vault (abre todas as instâncias): fica só no servidor.
+**Proteções (migration 99, por achado alto do `seguranca`):** na homologação, só a lista `telefones_homologacao`
+libera envio — a marca de técnico de teste deixou de liberar, porque se edita no painel e o painel da homologação é
+público; `fn_evo_post` falha fechada: o caminho precisa terminar na instância configurada, a homologação só fala pela
+`trilha-homologacao`, a produção nunca por ela, e na homologação mensagem sem destinatário é recusada; o
+`webhook-evolution` confere a mesma regra ao baixar mídia. Ligação automática desligada (`ligacao_ativa = false`,
+sem Twilio; a ligação também passa pela trava); número separado, então um engano não sai pelo número oficial.
+**Travas dos scripts:** a regressão recusa banco com tarefa ativa no pg_cron (na homologação, pausar o agendador
+antes: o T7 trava as marcações até o fim); a demonstração aceita pg_cron só com `ambiente = homologacao`, o
+`webhook_url` e a instância da homologação. **LGPD:** quem testa é da equipe e concordou; o telefone fica em
+`tecnicos` e `config` da homologação; quem escrever para o número de teste deixa telefone e texto em
+`webhook_eventos` (retenção do `limpeza-logs`); o número não é divulgado; ao fim dos testes os telefones voltam a ser
+fictícios. **Risco aceito:** a instância de teste roda no mesmo servidor da produção (um laço de envio na homologação
+pesaria nela). **Pendências P3:** comparação do token do webhook em tempo constante. **Configuração:**
 `supabase/setup/homologacao-whatsapp.sql` (instância, webhook, números liberados, três funcionários da carga geral
 com o telefone de quem testa) e os segredos `EVOLUTION_API_KEY` e `WEBHOOK_TOKEN` da instância de homologação no
 Vault. **Achado:** o `evolution_url` da homologação ainda apontava para o servidor de terceiros `evo.vluma.com.br`
