@@ -2076,7 +2076,7 @@ begin
   v_ok := false;
   begin update cargas_horarias set intervalo_min = 30 where id = v_c1; exception when others then v_ok := true; end;
   perform pg_temp.ok(v_ok, '[T40] escala salva alterada');
-  v_c2 := app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 12x36', 'tipo', '12x36', 'plantao_min', 720, 'intervalo_min', 60), '{"aceito":true,"riscos":["12x36"]}');
+  v_c2 := app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 12x36', 'tipo', '12x36', 'plantao_min', 720, 'intervalo_min', 60, 'entrada', '07:00'), '{"aceito":true,"riscos":["12x36"]}');
   v_c3 := app_salvar_carga(jsonb_build_object('empresa_id', v_emp, 'nome', 'QA 40h', 'tipo', 'semanal',
             'minutos', jsonb_build_array(480,480,480,480,480,0,0), 'intervalo_min', 60));
   perform pg_temp.ok(not exists (select 1 from carga_aceites where carga_id = v_c3), '[T40] escala sem risco não pede aceite');
@@ -2101,12 +2101,12 @@ begin
   perform pg_temp.ok(v_ok, '[T40] funcionário posto em time inativo');
   -- prioridade: funcionário > time > empresa
   perform app_atribuir_carga(v_c3, 'empresa', v_emp, v_seg);
-  perform app_atribuir_carga(v_c2, 'time', v_tm, v_seg);
-  perform app_atribuir_carga(v_c1, 'tecnico', v_t3, v_seg);
+  perform app_atribuir_carga(v_c1, 'time', v_tm, v_seg);
+  perform app_atribuir_carga(v_c2, 'tecnico', v_t3, v_seg);  -- a 12x36 é de cada funcionário (migration 97)
   perform pg_temp.ok(fn_carga_minutos_dia(v_t1, v_seg) = 480 and fn_carga_minutos_dia(v_t1, v_seg + 5) = 0, '[T40] empresa: 40 h');
-  perform pg_temp.ok(fn_carga_minutos_dia(v_t2, v_seg) = 720 and fn_carga_minutos_dia(v_t2, v_seg + 1) = 0
-                     and fn_carga_minutos_dia(v_t2, v_seg + 2) = 720, '[T40] time: 12x36');
-  perform pg_temp.ok(fn_carga_minutos_dia(v_t3, v_seg) = 528, '[T40] funcionário: 5x2');
+  perform pg_temp.ok(fn_carga_minutos_dia(v_t2, v_seg) = 528, '[T40] time: 5x2');
+  perform pg_temp.ok(fn_carga_minutos_dia(v_t3, v_seg) = 720 and fn_carga_minutos_dia(v_t3, v_seg + 1) = 0
+                     and fn_carga_minutos_dia(v_t3, v_seg + 2) = 720, '[T40] funcionário: 12x36');
   v_ok := false;
   begin perform app_atribuir_carga(v_c1, 'tecnico', v_inativo, v_seg); exception when others then v_ok := true; end;
   perform pg_temp.ok(v_ok or (select not ativo from tecnicos where id = v_inativo) is not true, '[T40] escala atribuída a funcionário inativo');
