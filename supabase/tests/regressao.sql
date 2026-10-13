@@ -2140,7 +2140,7 @@ declare
   v_loc uuid := (select v::uuid from qa where k = 'loc');
   v_sab date := current_date + (13 - extract(isodow from current_date)::int) % 7 + 7;  -- sábado da semana que vem
   v_seg date := current_date + (8 - extract(isodow from current_date)::int);        -- próxima segunda
-  v_t uuid; v_t2 uuid; l record; x record; r jsonb; v_ok boolean; v_id uuid; a jsonb; v_d date;
+  v_t uuid; v_t2 uuid; l record; x record; r jsonb; v_ok boolean; v_id uuid; a jsonb; v_d date; v_exc int;
 begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
   -- fora do perfil de teste e com admissão antiga, para entrar no Alerta Crítico do mês
@@ -2148,9 +2148,12 @@ begin
   values ('QA Limite Um', '5579999994141', true, false, pg_temp.cpf('414141401'), v_emp, false, current_date - 90) returning id into v_t;
   insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste)
   values ('QA Limite Dois', '5579999994142', true, true, pg_temp.cpf('414141402'), v_emp, true) returning id into v_t2;
-  -- sábado: jornada padrão de 4 h; uma Programação de 8 h passa 2 h do limite (4 h + 2 h)
+  -- sábado: a jornada do dia vem da escala da empresa (o T40 deixou uma 5x2: sábado de folga) ou da padrão (4 h);
+  -- em qualquer caso, uma Programação de 8 h passa do limite (jornada do dia + 2 h)
   select * into l from app_programacao_limite(array[v_t], v_sab, '08:00', null, 'servico_inadiavel', 'Parada de linha do cliente, reparo só no sábado, sem outro técnico.');
-  perform pg_temp.ok(l.contratual_min = 240 and l.previsto_min = 480 and l.excedente_min = 120
+  v_exc := l.excedente_min;
+  perform pg_temp.ok(l.contratual_min = fn_carga_minutos_dia(v_t, v_sab) and l.contratual_min <= 240 and l.previsto_min = 480
+                     and v_exc = 480 - (l.contratual_min + 120) and v_exc > 0
                      and l.termo like 'Termo interno de aceite de risco: Programação%representante da empregadora%não é mostrado a ele nem assinado por ele%',
                      '[T41] limite do sábado: ' || row_to_json(l)::text);
   -- segunda: 8 h cabem na jornada; não pede aceite
@@ -2160,30 +2163,30 @@ begin
   begin perform app_criar_escalas(array[v_t], v_loc, v_sab, '08:00', 'QA limite', 480, 'normal', false, null, true);
   exception when others then v_ok := sqlerrm like '%passa do limite de 2 horas extras%'; end;
   perform pg_temp.ok(v_ok, '[T41] Programação acima do limite sem aceite');
-  a := jsonb_build_object('aceito', true, 'motivo', 'servico_inadiavel', 'justificativa', 'curta demais', 'vistos', jsonb_build_object(v_t::text, 120));
+  a := jsonb_build_object('aceito', true, 'motivo', 'servico_inadiavel', 'justificativa', 'curta demais', 'vistos', jsonb_build_object(v_t::text, v_exc));
   v_ok := false;
   begin perform app_criar_escalas(array[v_t], v_loc, v_sab, '08:00', 'QA limite', 480, 'normal', false, null, true, a);
   exception when others then v_ok := sqlerrm like '%pelo menos 40%'; end;
   perform pg_temp.ok(v_ok, '[T41] justificativa curta');
   a := jsonb_build_object('aceito', true, 'motivo', 'servico_inadiavel',
          'justificativa', 'Parada de linha do cliente, o reparo só pode ser feito no sábado e não há outro técnico.',
-         'vistos', jsonb_build_object(v_t::text, 60));
+         'vistos', jsonb_build_object(v_t::text, v_exc - 1));
   v_ok := false;
   begin perform app_criar_escalas(array[v_t], v_loc, v_sab, '08:00', 'QA limite', 480, 'normal', false, null, true, a);
   exception when others then v_ok := sqlerrm like '%mudou desde a tela%'; end;
   perform pg_temp.ok(v_ok, '[T41] excesso diferente do mostrado');
-  a := jsonb_set(a, '{vistos}', jsonb_build_object(v_t::text, 120));
+  a := jsonb_set(a, '{vistos}', jsonb_build_object(v_t::text, v_exc));
   select * into x from app_criar_escalas(array[v_t], v_loc, v_sab, '08:00', 'QA limite', 480, 'normal', false, null, false, a);
   perform pg_temp.ok(x.resultado = 'criada', '[T41] criada com aceite: ' || x.resultado);
   perform pg_temp.ok((select count(*) = 1 and bool_and(sha256 = encode(sha256(convert_to(texto, 'UTF8')), 'hex'))
-                             and bool_and(email = 'qa-admin@teste.local' and excedente_min = 120 and motivo = 'servico_inadiavel')
+                             and bool_and(email = 'qa-admin@teste.local' and excedente_min = v_exc and motivo = 'servico_inadiavel')
                         from programacao_aceites where escala_id = x.escala_id), '[T41] aceite gravado com hash');
   v_ok := false;
   begin update programacao_aceites set justificativa = 'trocada' where escala_id = x.escala_id; exception when others then v_ok := true; end;
   perform pg_temp.ok(v_ok, '[T41] aceite alterado');
   -- Programação de teste acima do limite: pede o aceite, mas não gera termo e continua removível
   select * into x from app_criar_escalas(array[v_t2], v_loc, v_sab, '08:00', 'QA limite teste', 480, 'normal', false, null, true,
-                                         jsonb_set(a, '{vistos}', jsonb_build_object(v_t2::text, 120)));
+                                         jsonb_set(a, '{vistos}', jsonb_build_object(v_t2::text, (fn_programacao_limite(v_t2, v_sab, '08:00')->>'excedente_min')::int)));
   perform pg_temp.ok(x.resultado = 'criada' and not exists (select 1 from programacao_aceites where escala_id = x.escala_id), '[T41] teste sem termo');
   perform app_remover_escala(x.escala_id);
   perform pg_temp.ok(not exists (select 1 from escalas where id = x.escala_id and status not in ('cancelada')), '[T41] Programação de teste removida');
