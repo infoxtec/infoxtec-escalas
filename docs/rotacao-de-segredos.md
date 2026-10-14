@@ -161,6 +161,9 @@ agora") e confirme que saiu. É a prova de que a Evolution aceitou a chave nova.
 
 ## 4. Fase 2 — `WEBHOOK_TOKEN` (15 minutos, janela de segundos)
 
+> **Desde a migration 103 (decisão 98) esta fase é automática:** o banco troca o `WEBHOOK_TOKEN` sozinho, com o
+> anterior aceito por 15 minutos, confere e desfaz se falhar. O roteiro manual abaixo fica só como registro.
+
 Esta é a única rotação com **três passos que precisam acontecer em sequência rápida**.
 
 ### Antes de começar (T09, quarta 14/10, 21h às 21h30)
@@ -370,6 +373,8 @@ Depois de rotacionar, atualize também:
 ---
 
 ## 8. Melhoria opcional (P2): rotação sem janela no webhook
+
+> **Feita na migration 103 (decisão 98):** atual e anterior aceitos na troca, e a troca é do próprio sistema.
 
 Hoje o webhook aceita **um** token. Uma migration pequena pode aceitar o atual **e** o anterior
 (`WEBHOOK_TOKEN_ANTERIOR`), o que permite trocar sem nenhum segundo de 401 — o mesmo padrão que a

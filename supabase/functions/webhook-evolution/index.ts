@@ -1,8 +1,7 @@
 // Webhook da Evolution API -> Supabase
-// Autenticacao: token no cabecalho x-webhook-token (decisao 51, parte 3), conferido dentro do banco
-// contra o Vault. Cabecalho presente e errado = 401, sem tentar a URL. Transicao: sem o cabecalho,
-// ainda aceita o token na URL (?token=...) e registra um aviso no log, sem o valor. A aceitacao pela
-// URL sai depois de 3 a 7 dias sem esse aviso.
+// Autenticacao: token so no cabecalho x-webhook-token (decisao 51, parte 3), conferido dentro do banco
+// contra o Vault; token na URL nao e mais aceito (decisao 98). O banco troca o token sozinho e aceita o
+// anterior por alguns minutos na troca (migration 103): nada aqui muda quando o token muda.
 // Toda a regra de negocio mora em SQL (fn_webhook_evolution). Esta funcao so repassa, com uma excecao:
 // quando o banco pede (acao ponto_baixar_midia, so na etapa do documento do pedido de ajuste), baixa o
 // arquivo da Evolution e entrega a fn_ponto_midia_receber, que confere e cifra no cofre (migration 70).
@@ -29,14 +28,7 @@ const json = (body: unknown, status = 200) =>
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ ok: true, info: "webhook evolution" });
 
-  const doCabecalho = req.headers.get("x-webhook-token");
-  let token: string;
-  if (doCabecalho !== null) {
-    token = doCabecalho;
-  } else {
-    token = new URL(req.url).searchParams.get("token") ?? "";
-    if (token) console.warn("webhook: token pela URL (legado)");
-  }
+  const token = req.headers.get("x-webhook-token") ?? "";
   if (!token) return json({ ok: false, erro: "token ausente" }, 401);
 
   // lido em fluxo com teto: sem content-length (envio em partes) também não passa de CORPO_MAX_BYTES

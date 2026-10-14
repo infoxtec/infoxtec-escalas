@@ -254,6 +254,15 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 103 (15/10): token do webhook trocado pelo sistema (decisão 98)
+
+Tabela `webhook_token_trocas` (RLS sem políticas; motivo, pedido ao `pg_net`, janela do anterior, confirmação ou falha;
+nunca o valor). `fn_segredo_gravar` (cria ou troca um segredo no Vault), `fn_webhook_token_ok` (aceita o atual ou o
+anterior na janela; fecha em falso), `fn_webhook_apontar` (`/webhook/set` com o token no cabeçalho),
+`fn_webhook_token_trocar` e `fn_webhook_token_manutencao` (confere, desfaz se falhou, limpa, troca na primeira vez e a cada
+`webhook_token_dias`). `fn_webhook_evolution` passa a usar `fn_webhook_token_ok`; `fn_vigiar_motor` chama a manutenção
+(falha dela não derruba a vigia). Nenhuma é executável pela API. Regressão: T47.
+
 ### Migration 102 (14/10): checagens mínimas do fechamento (decisão 97)
 
 `fn_ponto_folha_pendencias` ganha `nivel` (`bloqueia` ou `confirmar`): bloqueia pedido pendente, marcação incompleta e
