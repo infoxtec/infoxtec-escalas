@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Edit2, Loader2, Plus, RefreshCw } from 'lucide-react'
-import { Button, ErrorBox, Field, Input, Modal, ToggleRow } from '../components/ui'
+import { Button, ErrorBox, Field, Input, Modal, Select, ToggleRow } from '../components/ui'
 import { api, erroMsg } from '../lib/api'
-import { cnpjValido, formatCnpj } from '../lib/types'
+import { LOGOS_EMPRESA, cnpjValido, formatCnpj, logoEmpresa } from '../lib/types'
 import type { Empresa } from '../lib/types'
 
-const NOVA: Partial<Empresa> = { cnpj: '', razao_social: '', nome_fantasia: '', endereco: '', cidade: 'Salvador', uf: 'BA', empregadora: false, ativo: true }
+const NOVA: Partial<Empresa> = { cnpj: '', razao_social: '', nome_fantasia: '', endereco: '', cidade: 'Salvador', uf: 'BA', empregadora: false, ativo: true, logo: '' }
 
 // Empresas: empregadoras (dono do ponto dos funcionários) e clientes (dono dos locais).
 // Base do Módulo Registro de Ponto (docs/modulo-registro-de-ponto/).
@@ -28,7 +28,7 @@ export default function EmpresasPage({ podeEditar }: { podeEditar: boolean }) {
     if (!cnpjValido(edit.cnpj ?? '')) return setErro('CNPJ inválido.')
     if (!edit.razao_social?.trim()) return setErro('Razão social é obrigatória.')
     setSalvando(true)
-    try { await api.salvarEmpresa(edit); await carregar(); setEdit(null) }
+    try { await api.salvarEmpresa({ ...edit, logo: edit.logo ?? '' }); await carregar(); setEdit(null) }
     catch (e) { setErro(erroMsg(e)) }
     finally { setSalvando(false) }
   }
@@ -89,6 +89,17 @@ export default function EmpresasPage({ podeEditar }: { podeEditar: boolean }) {
             </div>
             <ToggleRow label="Empregadora" description="Os funcionários desta empresa batem ponto no CNPJ dela."
               checked={!!edit.empregadora} onChange={v => set('empregadora', v)} disabled={salvando} />
+            {edit.empregadora && (
+              <Field label="Logotipo no espelho de ponto" hint="Sai no topo da folha de ponto a partir da próxima emissão; a folha já emitida não muda.">
+                <Select value={edit.logo ?? ''} onChange={e => set('logo', e.target.value)} disabled={salvando}>
+                  <option value="">Sem logotipo</option>
+                  {Object.entries(LOGOS_EMPRESA).map(([id, l]) => <option key={id} value={id}>{l.nome}</option>)}
+                </Select>
+                {logoEmpresa(edit.logo) && (
+                  <img src={logoEmpresa(edit.logo)!.src} alt={logoEmpresa(edit.logo)!.nome} className="mt-2 h-8 w-auto rounded bg-[#0d1e3c] px-1.5 py-1" />
+                )}
+              </Field>
+            )}
             {edit.id && <ToggleRow label="Ativa" checked={!!edit.ativo} onChange={v => set('ativo', v)} disabled={salvando} />}
             {erro && <ErrorBox>{erro}</ErrorBox>}
           </div>

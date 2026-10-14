@@ -254,6 +254,22 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 101 (14/10): validação e fechamento da folha, logotipo no espelho (decisão 96)
+
+`empresas.logo` (nome de um logotipo publicado com o painel; a Infoxtec já sai com `infoxtec`). Tabela
+`ponto_folha_fechamentos` (RLS sem políticas, imutável): funcionário, competência, espelho, faltas confirmadas, quem e
+quando fechou. `fn_ponto_folha_pendencias(tecnico, mes)`: pedido pendente e marcação incompleta (`bloqueia = true`) e
+dia devido sem registro (`sem_registro`, precisa de confirmação). `app_ponto_validar_folha(competencia)` (admin, gestor,
+leitura): todos os funcionários do mês com pendências, espelho vigente e último fechamento.
+`app_ponto_fechar_folha(competencia, tecnico, confirmar_faltas)` (admin, gestor): sem bloqueio e com as faltas
+confirmadas, emite e registra o fechamento. `app_ponto_emitir_espelhos` recusa quem tem bloqueio (`com_pendencia`) e
+grava `empregador.logo` no conteúdo; ganhou `p_confirmar_faltas` (a de dois parâmetros saiu): sem ele, quem tem falta sem
+justificativa não é emitido (`faltas_a_confirmar`), e toda emissão grava o fechamento. `app_salvar_empresa` aceita `logo`
+(sem a chave, mantém). O papel leitura vê a validação sem o e-mail de quem fechou. Regressão: T45.
+**LGPD de `ponto_folha_fechamentos`:** finalidade, prova do fechamento e das faltas aceitas para desconto; base legal,
+obrigação legal (art. 7º, II; Portaria MTP 671/2021); retenção igual à do ponto (5 anos), descarte só por migration
+própria que desligue o gatilho; quem vê, admin e gestor (o papel leitura só a contagem de faltas).
+
 ### Migration 100 (14/10): WhatsApp sem prévia de link (decisão 95)
 
 `fn_evo_post` acrescenta `linkPreview = false` a todo `/message/sendText/*` que não traga a chave: com a prévia, a

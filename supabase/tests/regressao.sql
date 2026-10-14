@@ -46,6 +46,7 @@
 -- T43 Indicadores pela escala: hora extra pela jornada do dia (folga e DSR inteiros, 12x36 acima do plantão)
 -- T44 trava de envio da homologação: só a lista libera; instância conferida; mensagem sem destinatário recusada;
 --     texto sem prévia de link (decisão 95)
+-- T45 validação e fechamento da folha: pendência bloqueia, faltas pedem confirmação, registro de quem fechou, logotipo
 
 \set ON_ERROR_STOP on
 begin;
@@ -1737,7 +1738,7 @@ begin
   alter table ponto_marcacoes enable trigger user;
 
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
-  r := app_ponto_emitir_espelhos(v_mes, v_tec);
+  r := app_ponto_emitir_espelhos(v_mes, v_tec, true);
   perform pg_temp.ok((r->>'emitidos')::int = 1, '[T35] emissão: ' || r::text);
   select codigo, registro into v_cod, v_reg from ponto_espelhos where tecnico_id = v_tec;
   perform pg_temp.ok((select (conteudo->'totais'->>'trabalhado_min')::int from ponto_espelhos where tecnico_id = v_tec) = 480,
@@ -1745,15 +1746,19 @@ begin
   perform pg_temp.ok((select conteudo->'trabalhador'->>'nome' from ponto_espelhos where tecnico_id = v_tec) = 'QA Espelho Mensal',
                      '[T35] trabalhador no espelho');
   -- reemitir sem mudança não cria versão; mudança no ponto cria a versão 2 e substitui a 1
-  r := app_ponto_emitir_espelhos(v_mes, v_tec);
+  r := app_ponto_emitir_espelhos(v_mes, v_tec, true);
   perform pg_temp.ok((r->>'sem_mudanca')::int = 1, '[T35] reemissão igual: ' || r::text);
+  -- o dia incluído vem inteiro: marcação incompleta barra o fechamento (decisão 96)
   insert into ponto_ajustes (empresa_id, tecnico_id, acao, momento, tipo, motivo, autor)
-  values (v_emp, v_tec, 'incluir', ((v_mes + 3) + time '08:00') at time zone 'America/Bahia', 'entrada', 'Esqueceu de marcar', 'qa-admin@teste.local');
+  values (v_emp, v_tec, 'incluir', ((v_mes + 3) + time '08:00') at time zone 'America/Bahia', 'entrada', 'Esqueceu de marcar', 'qa-admin@teste.local'),
+         (v_emp, v_tec, 'incluir', ((v_mes + 3) + time '12:00') at time zone 'America/Bahia', 'saida', 'Esqueceu de marcar', 'qa-admin@teste.local');
   -- desconsiderada não tem momento próprio: precisa aparecer no espelho com a hora da marcação (Art. 84, V)
   insert into ponto_ajustes (empresa_id, tecnico_id, marcacao_id, acao, motivo, autor)
   values (v_emp, v_tec, (select id from ponto_marcacoes where tecnico_id = v_tec and nsr = 935002), 'desconsiderar',
-          'Marcou a saída do almoço por engano', 'qa-admin@teste.local');
-  r := app_ponto_emitir_espelhos(v_mes, v_tec);
+          'Marcou a saída do almoço por engano', 'qa-admin@teste.local'),
+         (v_emp, v_tec, (select id from ponto_marcacoes where tecnico_id = v_tec and nsr = 935003), 'desconsiderar',
+          'Marcou a volta do almoço por engano', 'qa-admin@teste.local');
+  r := app_ponto_emitir_espelhos(v_mes, v_tec, true);
   perform pg_temp.ok((r->>'emitidos')::int = 1 and (select count(*) from ponto_espelhos where tecnico_id = v_tec) = 2
                      and (select registro from ponto_espelhos where tecnico_id = v_tec and versao = 2) = v_reg + 1,
                      '[T35] nova versão com registro seguinte: ' || r::text);
@@ -1787,7 +1792,7 @@ begin
   perform pg_temp.ok(v_ok, '[T35] mês em aberto emitido');
   perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
   v_ok := false;
-  begin perform app_ponto_emitir_espelhos(v_mes, v_tec); exception when others then v_ok := true; end;
+  begin perform app_ponto_emitir_espelhos(v_mes, v_tec, true); exception when others then v_ok := true; end;
   perform pg_temp.ok(v_ok, '[T35] leitura emitiu espelho');
   perform pg_temp.ok((select count(*) from app_ponto_espelhos(v_mes) e where e.tecnico_id = v_tec) = 1, '[T35] lista mostra só a versão atual');
   -- assinado não é substituído nem reemitido; a assinatura é gravada uma vez só
@@ -1800,7 +1805,7 @@ begin
   perform pg_temp.ok(v_ok, '[T35] assinatura regravada');
   -- a conferência é aberta ao anon; a emissão não
   perform pg_temp.ok(has_function_privilege('anon', 'ponto_verificar_espelho(text)', 'execute')
-                     and not has_function_privilege('anon', 'app_ponto_emitir_espelhos(date,uuid)', 'execute')
+                     and not has_function_privilege('anon', 'app_ponto_emitir_espelhos(date,uuid,boolean)', 'execute')
                      and not has_function_privilege('anon', 'app_ponto_espelhos(date)', 'execute'), '[T35] permissões do anon');
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
@@ -1821,13 +1826,14 @@ begin
   alter table ponto_marcacoes disable trigger user;
   insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, hash_anterior, hash)
   select v_emp, 936000 + k, x.t, (select cpf from tecnicos where id = x.t), ((v_mes + 5) + h) at time zone 'America/Bahia',
-         'entrada', 'ura', 'qa', md5(random()::text)
-    from (values (1, v_tec, time '08:00'), (2, v_tec2, time '08:05')) x(k, t, h);
+         tp, 'ura', 'qa', md5(random()::text)
+    from (values (1, v_tec, time '08:00', 'entrada'), (2, v_tec2, time '08:05', 'entrada'),
+                 (3, v_tec, time '12:00', 'saida'), (4, v_tec2, time '12:05', 'saida')) x(k, t, h, tp);
   alter table ponto_marcacoes enable trigger user;
 
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
-  perform app_ponto_emitir_espelhos(v_mes, v_tec);
-  perform app_ponto_emitir_espelhos(v_mes, v_tec2);
+  perform app_ponto_emitir_espelhos(v_mes, v_tec, true);
+  perform app_ponto_emitir_espelhos(v_mes, v_tec2, true);
   c := app_ponto_gerar_codigo(v_tec);
   v_tok := ponto_entrar(v_cpf, c->>'codigo')->>'token';
 
@@ -1871,7 +1877,7 @@ begin
   perform pg_temp.ok((r->>'assinatura_integra')::boolean and r->>'assinado_em' is not null, '[T36] conferência da assinatura: ' || (r - 'sha256')::text);
   perform pg_temp.ok(r::text not like '%iVBOR%', '[T36] imagem da assinatura na conferência pública');
   -- assinado não é reemitido; o envio só considera os pendentes
-  r := app_ponto_emitir_espelhos(v_mes, v_tec);
+  r := app_ponto_emitir_espelhos(v_mes, v_tec, true);
   perform pg_temp.ok((r->>'ja_assinados')::int = 1, '[T36] assinado reemitido: ' || r::text);
   -- desligado não recebe o link; sem WhatsApp liberado não fica marcado como enviado
   update tecnicos set ativo = false, desligado_em = current_date where id = v_tec2;
@@ -2388,7 +2394,79 @@ begin
                      '[T43] jornada pela escala: ' || (b->'jornada')::text);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T44' as resultado,
+-- T45 validação e fechamento da folha (migration 101, decisão 96) ------------------------------------------
+do $$
+declare
+  v_emp uuid := (select v::uuid from qa where k = 'emp');
+  v_mes date := date_trunc('month', current_date - interval '1 month')::date;
+  v_tec uuid; v_j uuid; p jsonb; r jsonb; v jsonb;
+begin
+  update empresas set logo = 'infoxtec' where id = v_emp;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA Fecha Folha', '5579999994545', true, true, pg_temp.cpf('454545401'), v_emp, false, v_mes - 60) returning id into v_tec;
+  -- dia 3 completo; dia 5 só com a entrada (incompleta); os outros dias da escala ficam sem registro
+  alter table ponto_marcacoes disable trigger user;
+  insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, hash_anterior, hash)
+  select v_emp, 945000 + k, v_tec, (select cpf from tecnicos where id = v_tec), ((v_mes + d) + h) at time zone 'America/Bahia',
+         tp, 'ura', 'qa', md5(random()::text)
+    from (values (1, 2, time '08:00', 'entrada'), (2, 2, time '12:00', 'saida'), (3, 4, time '08:00', 'entrada')) x(k, d, h, tp);
+  alter table ponto_marcacoes enable trigger user;
+  insert into ponto_justificativas (empresa_id, tecnico_id, motivo, data, tipo_marcacao, hora, canal)
+  values (v_emp, v_tec, 'esqueci_marcar', v_mes + 4, 'saida', '12:00', 'app') returning id into v_j;
+
+  p := fn_ponto_folha_pendencias(v_tec, v_mes);
+  perform pg_temp.ok(p @> '[{"tipo":"pedido_pendente","bloqueia":true}]' and p @> '[{"tipo":"marcacao_incompleta","bloqueia":true}]'
+                     and p @> '[{"tipo":"sem_registro","bloqueia":false}]', '[T45] pendências: ' || p::text);
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  v := app_ponto_validar_folha(v_mes);
+  perform pg_temp.ok((select (f->>'bloqueios')::int = 2 and (f->>'sem_registro')::int > 0 and (f->>'com_ponto')::boolean
+                        from jsonb_array_elements(v->'funcionarios') f where f->>'tecnico_id' = v_tec::text), '[T45] painel de validação');
+  -- pendência que bloqueia: não fecha nem emite
+  r := app_ponto_fechar_folha(v_mes, v_tec, true);
+  perform pg_temp.ok(r->>'situacao' = 'pendente', '[T45] fechou com pendência: ' || r::text);
+  r := app_ponto_emitir_espelhos(v_mes, v_tec, true);
+  perform pg_temp.ok((r->>'com_pendencia')::int = 1 and (r->>'emitidos')::int = 0, '[T45] emitiu com pendência: ' || r::text);
+
+  -- o pedido é decidido e a saída entra: sobram só as faltas, que pedem confirmação
+  insert into ponto_ajustes (empresa_id, tecnico_id, acao, momento, tipo, motivo, autor)
+  values (v_emp, v_tec, 'incluir', ((v_mes + 4) + time '12:00') at time zone 'America/Bahia', 'saida', 'Pedido aprovado', 'qa-admin@teste.local');
+  update ponto_justificativas set status = 'aprovada', decidido_por = 'qa-admin@teste.local', decidido_em = now() where id = v_j;
+  -- a emissão direta também não desconta falta sem confirmação
+  r := app_ponto_emitir_espelhos(v_mes, v_tec);
+  perform pg_temp.ok((r->>'faltas_a_confirmar')::int = 1 and (r->>'emitidos')::int = 0, '[T45] emitiu falta sem confirmação: ' || r::text);
+  r := app_ponto_fechar_folha(v_mes, v_tec, false);
+  perform pg_temp.ok(r->>'situacao' = 'confirmar_faltas' and jsonb_array_length(r->'faltas') > 0, '[T45] faltas sem confirmação: ' || r::text);
+  r := app_ponto_fechar_folha(v_mes, v_tec, true);
+  perform pg_temp.ok(r->>'situacao' = 'fechado', '[T45] fechamento: ' || r::text);
+  perform pg_temp.ok((select jsonb_array_length(faltas_confirmadas) > 0 and fechado_por = 'qa-admin@teste.local'
+                        from ponto_folha_fechamentos where tecnico_id = v_tec), '[T45] registro do fechamento');
+  perform pg_temp.ok((select conteudo->'empregador'->>'logo' from ponto_espelhos where tecnico_id = v_tec and substituido_em is null) = 'infoxtec',
+                     '[T45] logotipo no espelho');
+  -- fechar de novo sem mudança não duplica o registro; o registro não se altera
+  r := app_ponto_fechar_folha(v_mes, v_tec, true);
+  perform pg_temp.ok(r->>'situacao' = 'sem_mudanca' and (select count(*) from ponto_folha_fechamentos where tecnico_id = v_tec) = 1,
+                     '[T45] refechamento: ' || r::text);
+  begin
+    update ponto_folha_fechamentos set fechado_por = 'x' where tecnico_id = v_tec;
+    raise exception 'FALHA [T45] registro do fechamento alterado';
+  exception when others then
+    if sqlerrm like 'FALHA%' then raise; end if;
+  end;
+  -- o papel leitura vê a validação, mas não fecha
+  perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
+  perform pg_temp.ok((select f->'fechado'->>'fechado_por' is null and (f->'fechado'->>'faltas_confirmadas')::int > 0
+                        from jsonb_array_elements(app_ponto_validar_folha(v_mes)->'funcionarios') f where f->>'tecnico_id' = v_tec::text),
+                     '[T45] leitura vê quem fechou');
+  begin
+    perform app_ponto_fechar_folha(v_mes, v_tec, true);
+    raise exception 'FALHA [T45] leitura fechou a folha';
+  exception when others then
+    if sqlerrm like 'FALHA%' then raise; end if;
+  end;
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T45' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

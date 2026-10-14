@@ -1309,3 +1309,25 @@ saída de WhatsApp, manda todo `sendText` com `linkPreview = false`, salvo quem 
 lá o espelho com link também corre o risco de não chegar. **Achado junto:** na homologação, `app_url` (link do app do
 ponto nas mensagens) e `voz_url` apontavam para a produção; passaram a apontar para a própria homologação em 14/10, e
 o `supabase/setup/homologacao-whatsapp.sql` já grava os dois.
+
+## 96. Validação antes do fechamento da folha, fechamento num clique e logotipo no espelho
+
+**Data:** 14/10/2026. **Pedido do responsável:** fechar a folha num clique, mas antes ver, num painel separado e por
+funcionário, o que falta registrar ou justificar; e o logotipo da Infoxtec na folha de ponto. **Problema:** o
+fechamento era só emitir e enviar os espelhos, sem conferência: dia sem marcação virava falta sem ninguém olhar, pedido
+pendente não segurava a emissão (e o espelho assinado não se reemite), não havia registro de quem aceitou as faltas, e a
+emissão de todos numa chamada passava do limite de 8 s com uns 6 funcionários. **Decisão:** `fn_ponto_folha_pendencias`
+aponta, por funcionário e mês, o que **bloqueia** (pedido aguardando decisão, marcação incompleta) e o que **precisa de
+confirmação** (dia devido pela escala sem marcação nem abono, que sai como falta descontada). A regra fica no banco:
+`app_ponto_emitir_espelhos` recusa quem tem bloqueio e, sem `p_confirmar_faltas`, quem tem falta sem justificativa; toda
+emissão grava em `ponto_folha_fechamentos` (imutável) quem fechou e quais faltas confirmou; `app_ponto_fechar_folha`
+fecha um funcionário por vez por esse caminho. O papel leitura vê a validação sem o e-mail de quem fechou (revisão do
+`seguranca`, dois achados médios corrigidos no mesmo pacote). O painel ganha a aba
+**Fechamento da folha** (`app_ponto_validar_folha`): cartões por situação, a lista do que falta e um botão que fecha um
+funcionário por chamada (cabe no limite de tempo) e envia os links no fim. A aba Folhas mensais fica para consulta,
+reenvio e impressão. **Logotipo:** `empresas.logo` guarda o nome de um logotipo publicado com o painel
+(`LOGOS_EMPRESA`); entra congelado no espelho, em `empregador.logo`, na emissão; a Infoxtec (CNPJ 04.309.223/0001-96)
+sai com o dela nos dois ambientes pela própria migration. **Fora do escopo, para o backlog:** travar a competência
+depois de fechada (hoje, ajuste depois do fechamento gera nova versão enquanto o funcionário não assinou); validação
+acima de uns 100 funcionários passa de 8 s e vai precisar de paginação ou cálculo por empresa. Roteiro:
+`docs/roteiro-fechamento-folha.md`.

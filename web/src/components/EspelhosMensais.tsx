@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Eye, ExternalLink, FileSignature, Lock, Printer, RefreshCw, Send } from 'lucide-react'
+import { Eye, ExternalLink, Lock, Printer, RefreshCw, Send } from 'lucide-react'
 import { Button, ErrorBox, Field, Input, Modal, SuccessBox } from './ui'
 import EspelhoDocumento from './EspelhoDocumento'
 import { api, erroMsg } from '../lib/api'
 import type { EspelhoCompleto, PontoEspelhoEmitido } from '../lib/types'
 
-// Espelho de ponto mensal congelado (decisão 82, parte A): o gestor emite o espelho de um mês encerrado; cada
-// funcionário ganha registro, código de verificação e hash; depois envia o link pelo WhatsApp e o funcionário
-// assina no app do ponto (parte B).
+// Espelho de ponto mensal congelado (decisão 82): cada funcionário tem registro, código de verificação e hash, e
+// assina no app do ponto. A emissão e o envio em lote saíram daqui para a aba Fechamento da folha, que valida antes
+// (decisão 96); aqui ficam a consulta, o reenvio e a impressão.
 
 function mesAnterior(hoje: string) {
   const [a, m] = hoje.split('-').map(Number)
@@ -18,7 +18,6 @@ const dataHora = (s: string | null) => s ? new Date(s).toLocaleString('pt-BR', {
 export default function EspelhosMensais({ hoje, podeEmitir, rhFolhas }: { hoje: string; podeEmitir: boolean; rhFolhas: boolean }) {
   const [mes, setMes] = useState(mesAnterior(hoje))
   const [lista, setLista] = useState<PontoEspelhoEmitido[] | null>(null)
-  const [emitindo, setEmitindo] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
@@ -31,17 +30,7 @@ export default function EspelhosMensais({ hoje, podeEmitir, rhFolhas }: { hoje: 
   }, [mes])
   useEffect(() => { void carregar() }, [carregar])
 
-  const emitir = async () => {
-    setErro(null); setOk(null); setEmitindo(true)
-    try {
-      const r = await api.pontoEmitirEspelhos(`${mes}-01`)
-      setOk(`${r.emitidos} emitido(s); ${r.sem_mudanca} sem mudança desde a última emissão; ${r.ja_assinados} já assinado(s), não reemitidos; ${r.sem_dados} sem marcação no mês.`)
-      await carregar()
-    } catch (e) { setErro(erroMsg(e)) }
-    finally { setEmitindo(false) }
-  }
-
-  const enviar = async (espelho: string | null = null) => {
+  const enviar = async (espelho: string) => {
     setErro(null); setOk(null); setEnviando(true)
     try {
       const r = await api.pontoEnviarEspelhos(`${mes}-01`, espelho)
@@ -54,21 +43,16 @@ export default function EspelhosMensais({ hoje, podeEmitir, rhFolhas }: { hoje: 
     setErro(null)
     try { setVisto(await api.pontoEspelhoVer(id)) } catch (e) { setErro(erroMsg(e)) }
   }
-  const pendentes = lista?.filter(e => !e.assinado_em && !e.enviado_em).length ?? 0
 
   return (
     <section className="space-y-2">
       <h3 className="text-sm font-semibold">Espelho mensal assinado</h3>
       <p className="text-xs text-muted-foreground">
-        Emite o espelho de ponto de um mês encerrado para cada funcionário: o conteúdo fica congelado, com número de registro e
-        código de verificação (QR). Se algo mudar no ponto do mês, emitir de novo gera uma nova versão; espelho já assinado não é
-        reemitido. Depois, envie o link pelo WhatsApp: o funcionário confere e assina no app do ponto.
+        Os espelhos emitidos no fechamento do mês: conteúdo congelado, com número de registro e código de verificação (QR). Para
+        fechar o mês, emitir ou enviar em lote, use a aba Fechamento da folha, que confere antes o que falta em cada funcionário.
       </p>
       <div className="flex flex-wrap items-end gap-2">
-        <Field label="Mês"><Input type="month" value={mes} max={mesAnterior(hoje)} onChange={e => setMes(e.target.value)} disabled={emitindo} /></Field>
-        {podeEmitir && <Button size="sm" disabled={emitindo || !mes} onClick={() => void emitir()}><FileSignature className="h-3.5 w-3.5" /> {emitindo ? 'Emitindo...' : 'Emitir espelhos do mês'}</Button>}
-        {podeEmitir && <Button size="sm" variant="outline" disabled={enviando || pendentes === 0} onClick={() => void enviar(null)}>
-          <Send className="h-3.5 w-3.5" /> {enviando ? 'Enviando...' : `Enviar pelo WhatsApp (${pendentes})`}</Button>}
+        <Field label="Mês"><Input type="month" value={mes} max={mesAnterior(hoje)} onChange={e => setMes(e.target.value)} /></Field>
         <Button variant="outline" size="sm" onClick={() => void carregar()}><RefreshCw className="h-3.5 w-3.5" /> Atualizar</Button>
       </div>
       {erro && <ErrorBox>{erro}</ErrorBox>}

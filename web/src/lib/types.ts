@@ -82,7 +82,15 @@ export interface Local {
 export interface Empresa {
   id: string; cnpj: string; razao_social: string; nome_fantasia: string | null; endereco: string | null
   cidade: string; uf: string; fuso: string; empregadora: boolean; ativo: boolean; created_at: string
+  logo?: string | null
 }
+
+// Logotipos publicados com o painel (web/public), escolhidos no cadastro da empresa e congelados no espelho (decisão 96)
+export const LOGOS_EMPRESA: Record<string, { nome: string; src: string }> = {
+  infoxtec: { nome: 'Infoxtec', src: '/logo-infoxtec.png' },
+}
+/** Logotipo pelo nome gravado na empresa; só os do mapa (nada herdado do protótipo, como "constructor"). */
+export const logoEmpresa = (id: string | null | undefined) => id && Object.prototype.hasOwnProperty.call(LOGOS_EMPRESA, id) ? LOGOS_EMPRESA[id] : null
 
 // Dígitos verificadores: a mesma regra de fn_cpf_valido / fn_cnpj_valido no banco
 export function cpfValido(v: string): boolean {
@@ -452,7 +460,7 @@ export interface ConferenciaEspelho {
 
 /** Conteúdo congelado do espelho mensal (fn_ponto_espelho_conteudo, Portaria 671 Art. 84). */
 export interface EspelhoConteudo {
-  empregador: { razao_social: string; cnpj: string }
+  empregador: { razao_social: string; cnpj: string; logo?: string }
   trabalhador: { nome: string; cpf: string; admissao: string | null; funcao: string | null }
   competencia: string; de: string; ate: string
   jornada: { dia_util_min: number; sabado_min: number; intervalo_min: number; escalas?: { escala: string; de: string; ate: string }[] }
@@ -532,3 +540,21 @@ export interface CargaExcedida {
     limite_mes_min: number; hoje_he_min: number; hoje_acima: boolean; ultimo_dia: string | null; aceites: number | null
   }[]
 }
+
+// Validação e fechamento da folha mensal (migration 101, decisão 96)
+export type PendenciaFolha =
+  | { tipo: 'pedido_pendente'; bloqueia: true; data: string; numero: number; motivo: string }
+  | { tipo: 'marcacao_incompleta'; bloqueia: true; data: string; marcacoes: number }
+  | { tipo: 'sem_registro'; bloqueia: false; data: string; minutos: number }
+export interface FuncionarioFolha {
+  tecnico_id: string; nome: string; empresa: string; pendencias: PendenciaFolha[]
+  bloqueios: number; sem_registro: number; com_ponto: boolean
+  espelho: { id: string; versao: number; registro: number; emitido_em: string; enviado_em: string | null; assinado_em: string | null } | null
+  fechado: { fechado_por: string; fechado_em: string; faltas_confirmadas: number } | null
+}
+export interface ValidacaoFolha { competencia: string; funcionarios: FuncionarioFolha[] }
+export type FechamentoFolha =
+  | { situacao: 'pendente'; pendencias: PendenciaFolha[] }
+  | { situacao: 'confirmar_faltas'; faltas: PendenciaFolha[] }
+  | { situacao: 'sem_dados' }
+  | { situacao: 'fechado' | 'sem_mudanca' | 'ja_assinado'; espelho: string; faltas_confirmadas: number }
