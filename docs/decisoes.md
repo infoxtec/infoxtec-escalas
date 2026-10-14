@@ -1296,3 +1296,16 @@ com o telefone de quem testa) e os segredos `EVOLUTION_API_KEY` e `WEBHOOK_TOKEN
 Vault. **Achado:** o `evolution_url` da homologação ainda apontava para o servidor de terceiros `evo.vluma.com.br`
 (`31.97.86.173`), de antes da Evolution própria (decisão 43); a configuração nova o substitui. O servidor é de
 terceiros: não cabe a nós desligá-lo, e o aparelho da empresa já foi desconectado dele em 30/09 (backlog 073).
+
+## 95. WhatsApp sem prévia de link
+
+**Data:** 14/10/2026. **Problema:** na homologação, o espelho de ponto enviado para assinatura não chegou a nenhum dos
+números de teste, embora a Evolution respondesse 201. Pelos avisos de entrega em `webhook_eventos`, as mensagens com
+link ficaram só no aceite do servidor do WhatsApp (`SERVER_ACK`), sem `DELIVERY_ACK`; as sem link, no mesmo número e
+minutos antes, chegaram e foram lidas. Teste controlado no número de quem testa: sem link, entregue e lida; com link e
+prévia, não entregue; com link e `linkPreview = false`, entregue e lida. **Decisão:** `fn_evo_post`, único ponto de
+saída de WhatsApp, manda todo `sendText` com `linkPreview = false`, salvo quem pedir a prévia de forma explícita
+(migration 100). O link continua clicável; só some o cartão de prévia. Vale para a produção, que usa a mesma Evolution:
+lá o espelho com link também corre o risco de não chegar. **Achado junto:** na homologação, `app_url` (link do app do
+ponto nas mensagens) e `voz_url` apontavam para a produção; passaram a apontar para a própria homologação em 14/10, e
+o `supabase/setup/homologacao-whatsapp.sql` já grava os dois.

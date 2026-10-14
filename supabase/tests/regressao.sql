@@ -44,7 +44,8 @@
 -- T41 limite de 2 h extras pela escala: aceite da empresa na Programação, substituição recusada, Alerta Crítico
 -- T42 espelho pela escala: folga a 50%, DSR a 100%, débito pela jornada do dia, 12x36 com feriado compensado
 -- T43 Indicadores pela escala: hora extra pela jornada do dia (folga e DSR inteiros, 12x36 acima do plantão)
--- T44 trava de envio da homologação: só a lista libera; instância conferida; mensagem sem destinatário recusada
+-- T44 trava de envio da homologação: só a lista libera; instância conferida; mensagem sem destinatário recusada;
+--     texto sem prévia de link (decisão 95)
 
 \set ON_ERROR_STOP on
 begin;
@@ -196,6 +197,10 @@ begin
   exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%não serve à produção%'; end;
   perform pg_temp.ok(v_ok, '[T44] produção pela instância da homologação: ' || coalesce(v_msg, 'sem erro')); v_msg := null;
   perform pg_temp.ok(fn_pode_enviar('5571988880044'), '[T44] produção libera qualquer número');
+  -- texto sai sem prévia de link, salvo pedido explícito (migration 100, decisão 95): o envio de verdade não roda no CI
+  perform pg_temp.ok((select prosrc ~ $re$p_path like '/message/sendText/%' and not \(v_body \? 'linkPreview'\)$re$
+                             and prosrc ~ $re$jsonb_build_object\('linkPreview', false\)$re$ and prosrc ~ 'body +:= v_body'
+                        from pg_proc where oid = 'fn_evo_post(text,jsonb)'::regprocedure), '[T44] texto com prévia de link');
   -- devolve o estado para os testes seguintes
   delete from config where chave in ('ambiente', 'evolution_instancia', 'telefones_homologacao');
   insert into config (chave, valor) select k, v from (values ('ambiente', v_amb), ('evolution_instancia', v_inst),

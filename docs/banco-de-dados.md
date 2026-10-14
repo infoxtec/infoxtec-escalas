@@ -254,6 +254,11 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 100 (14/10): WhatsApp sem prévia de link (decisão 95)
+
+`fn_evo_post` acrescenta `linkPreview = false` a todo `/message/sendText/*` que não traga a chave: com a prévia, a
+mensagem com link ficava só no aceite do servidor do WhatsApp e não chegava ao celular (o espelho para assinatura).
+
 ### Migration 99 (14/10): trava de envio da homologação (decisão 94)
 
 `fn_pode_enviar`: na homologação só os números de `telefones_homologacao` liberam envio (a marca `perfil_teste` do
