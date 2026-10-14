@@ -254,6 +254,19 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 102 (14/10): checagens mínimas do fechamento (decisão 97)
+
+`fn_ponto_folha_pendencias` ganha `nivel` (`bloqueia` ou `confirmar`): bloqueia pedido pendente, marcação incompleta e
+marcação duplicada (mesmo tipo em seguida ou duas a menos de 3 min, sem contar as desconsideradas); confirmar falta
+injustificada (`sem_registro`, fora dos dias cobertos por pedido em aberto), `intervalo_curto`, `sem_intervalo`,
+`he_acima_limite`, `interjornada_curta` e `abono_em_dia_trabalhado`. `fn_ponto_abono_rotulo` (de onde vem o abono, sem
+motivo de saúde) e `fn_ponto_folha_conteudo` (o espelho como é emitido: cálculo, logotipo e `abono_motivo` por dia).
+`app_ponto_previa_folha(competencia, tecnico)` (admin, gestor): a prévia do espelho e as pendências. A emissão e o
+fechamento pedem confirmação de todas as ocorrências `confirmar` (resposta `a_confirmar`, situação `confirmar`).
+`app_ponto_fechar_folha` ganha `p_ocorrencias_vistas` (a quantidade que o painel mostrou; diferente da atual, devolve
+`confirmar`). O pedido pendente não leva o motivo (código de saúde). `ponto_folha_fechamentos.faltas_confirmadas` passa a
+`ocorrencias_confirmadas`. Regressão: T46.
+
 ### Migration 101 (14/10): validação e fechamento da folha, logotipo no espelho (decisão 96)
 
 `empresas.logo` (nome de um logotipo publicado com o painel; a Infoxtec já sai com `infoxtec`). Tabela
