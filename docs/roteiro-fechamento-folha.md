@@ -80,7 +80,7 @@ no espelho na emissão: a folha já emitida não muda; a próxima emissão (ou o
 
 ## 5. Roteiro de teste na homologação
 
-Massa: funcionário **David (homologação)**, Infoxtec, jornada padrão (8 h + 4 h sábado), de maio a setembro de 2026
+Massa: funcionário **Renato (homologação)**, abril (só ocorrências a confirmar) e maio (duplicada em 06/05, incompletas em 07 e 14/05, pedido pendente de 07/05), carga de 15/10. Também o **David (homologação)**, Infoxtec, jornada padrão (8 h + 4 h sábado), de maio a setembro de 2026
 (carga de 14/10, registrada no plano de trabalho). Também Ana, Bruno e Gabriela, de junho a setembro.
 
 | Mês | Situações do David |
