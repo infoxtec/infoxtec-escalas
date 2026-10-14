@@ -1354,3 +1354,26 @@ evita reemissão; o fechamento repetido sem mudança não gera versão nova; o p
 aberta ao papel leitura); a confirmação leva a quantidade de ocorrências vistas e, se apareceu ocorrência nova desde a
 validação, o fechamento devolve para conferir de novo. **Efeito conhecido:** o espelho ainda não assinado que tem abono
 sai em versão nova no próximo fechamento (o rótulo do abono muda o conteúdo), com novo número de registro.
+
+## 98. Token do webhook trocado pelo próprio sistema, sem trabalho manual
+
+**Data:** 15/10/2026. **Pedido do responsável:** nem ele nem o cliente trocam token da Evolution à mão, nunca; a T09
+(troca manual do token que já esteve na URL) sai da sprint. **Análise (`seguranca`):** a proposta de proxy com mTLS ou
+token de minutos na frente da Evolution não se aplica — o `pg_net` não apresenta certificado, os IPs de saída do Supabase
+não são fixos e um token de minutos só muda de lugar o segredo de longa duração; a outra metade da proposta (cliente nunca
+vê chave, instância própria por QR no painel, chave global só no servidor) já é o modelo (decisão 94). **Decisão
+(migration 103):** o banco troca o `WEBHOOK_TOKEN` sozinho. Gera o novo, guarda o atual como `WEBHOOK_TOKEN_ANTERIOR`
+(aceito por 15 minutos, então nenhuma mensagem é recusada na transição), reaponta o webhook da instância com o novo no
+cabeçalho pelo `fn_evo_post` e, na vigia do motor (a cada 5 minutos, sem agendamento novo), confere a resposta da
+Evolution: deu certo, apaga a resposta guardada (ela repete o token) e, vencida a janela, apaga o anterior; deu errado,
+volta sozinho ao token anterior, reaponta o webhook para ele e avisa o suporte, sem nova tentativa por um dia. A primeira
+troca acontece na primeira passada depois da migration (é a T09) e as seguintes a cada `webhook_token_dias` (90).
+Histórico em `webhook_token_trocas`, sem o valor do token. A `webhook-evolution` deixa de aceitar token na URL (T14 e
+T15). **Revisão do `seguranca`** (3 médios corrigidos no mesmo pacote): trava contra duas trocas ao mesmo tempo (trava de
+sessão e índice único); o anterior segue aceito enquanto a troca não é confirmada, e a janela de 15 minutos conta da
+confirmação; aviso ao suporte, no máximo um por dia, quando a troca falha ou não consegue rodar, e nenhuma troca nova
+enquanto uma volta ao anterior estiver falhando. Também: `fn_segredo_gravar` só grava os dois tokens do webhook,
+`webhook_url` com parâmetros é recusada e a comparação é por resumo SHA-256. **Princípio:** rotação é resposta a exposição
+e higiene automática, nunca tarefa de calendário de uma pessoa.
+**Fora daqui:** restringir o `/manager` da Evolution no Caddy (SEG-16), no servidor da Oracle, e o token da URA na URL
+pela assinatura da Twilio (SEG-05).

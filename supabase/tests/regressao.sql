@@ -48,6 +48,7 @@
 --     texto sem prévia de link (decisão 95)
 -- T45 validação e fechamento da folha: pendência bloqueia, faltas pedem confirmação, registro de quem fechou, logotipo
 -- T46 checagens do fechamento: duplicada, intervalo, pedido aberto não é falta, abono do atestado no espelho, prévia
+-- T47 token do webhook trocado sozinho: janela com os dois, confirmação, limpeza, reversão em falha, espera de um dia
 
 \set ON_ERROR_STOP on
 begin;
@@ -2550,7 +2551,70 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T46' as resultado,
+-- T47 troca automática do token do webhook (migration 103, decisão 98) -----------------------------------
+do $$
+declare r jsonb; v_a text := 'token-antigo-qa-0000'; v_n text; v_ok boolean;
+begin
+  insert into config (chave, valor) values ('evolution_instancia', 'infoxtec'), ('webhook_url', 'https://exemplo.invalid/webhook')
+  on conflict (chave) do update set valor = excluded.valor;
+  perform fn_segredo_gravar('WEBHOOK_TOKEN', v_a);
+  delete from webhook_token_trocas;
+  delete from net._http_response where id = 0;   -- o stub de fn_evo_post devolve o pedido 0
+
+  -- primeira passada: troca (é a T09), o novo vale e o anterior segue aceito na janela
+  r := fn_webhook_token_manutencao();
+  v_n := fn_segredo('WEBHOOK_TOKEN');
+  perform pg_temp.ok(r->>'situacao' = 'iniciada' and v_n <> v_a and length(v_n) = 64, '[T47] primeira troca: ' || r::text);
+  perform pg_temp.ok(fn_webhook_token_ok(v_n) and fn_webhook_token_ok(v_a) and not fn_webhook_token_ok('outro') and not fn_webhook_token_ok(''),
+                     '[T47] tokens aceitos na janela');
+  perform pg_temp.ok(fn_webhook_token_manutencao()->>'situacao' = 'aguardando resposta', '[T47] sem resposta da Evolution');
+  -- com a troca pendente, o anterior segue aceito mesmo depois dos 15 minutos; e não começa outra troca
+  update webhook_token_trocas set anterior_ate = now() - interval '1 minute';
+  perform pg_temp.ok(fn_webhook_token_ok(v_a), '[T47] anterior recusado com troca pendente');
+  perform pg_temp.ok(fn_webhook_token_trocar('manual')->>'situacao' = 'troca em andamento', '[T47] segunda troca simultânea');
+  v_ok := false;
+  begin insert into webhook_token_trocas (motivo, anterior_ate) values ('manual', now()); exception when unique_violation then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T47] duas trocas abertas');
+  v_ok := false;
+  begin perform fn_segredo_gravar('EVOLUTION_API_KEY', 'x'); exception when others then v_ok := sqlerrm like '%não permitido%'; end;
+  perform pg_temp.ok(v_ok, '[T47] fn_segredo_gravar gravou outro segredo');
+  -- a Evolution aceitou: confirma e apaga a resposta (ela repete o token)
+  insert into net._http_response (id, status_code, content, created) values (0, 201, '{"webhook":{"headers":{}}}', now());
+  r := fn_webhook_token_manutencao();   -- em comando separado: a conferência abaixo precisa enxergar o que ela apagou
+  perform pg_temp.ok(r->>'situacao' = 'confirmada' and not exists (select 1 from net._http_response where id = 0),
+                     '[T47] confirmação: ' || r::text);
+  -- passou a janela: o anterior sai do Vault e deixa de valer
+  update webhook_token_trocas set anterior_ate = now() - interval '1 minute';
+  r := fn_webhook_token_manutencao();
+  perform pg_temp.ok(r->>'situacao' = 'em dia' and fn_segredo('WEBHOOK_TOKEN_ANTERIOR') is null and not fn_webhook_token_ok(v_a),
+                     '[T47] fim da janela: ' || r::text);
+  v_ok := false;
+  begin perform fn_webhook_evolution(v_a, '{}'); exception when others then v_ok := sqlerrm like '%token invalido%'; end;
+  perform pg_temp.ok(v_ok, '[T47] webhook aceitou o token antigo');
+
+  -- troca vencida que falha: volta ao token que valia, reaponta e não tenta de novo no mesmo dia
+  update webhook_token_trocas set confirmada_em = now() - interval '100 days';
+  perform pg_temp.ok(fn_webhook_token_manutencao()->>'situacao' = 'iniciada', '[T47] troca agendada');
+  insert into net._http_response (id, status_code, content, created) values (0, 500, 'erro', now());
+  r := fn_webhook_token_manutencao();
+  perform pg_temp.ok(r->>'situacao' = 'falhou' and fn_segredo('WEBHOOK_TOKEN') = v_n
+                     and exists (select 1 from webhook_token_trocas where motivo = 'reversao' and confirmada_em is null),
+                     '[T47] reversão: ' || r::text);
+  insert into net._http_response (id, status_code, content, created) values (0, 201, '{}', now());
+  perform pg_temp.ok(fn_webhook_token_manutencao()->>'situacao' = 'confirmada', '[T47] reversão confirmada');
+  perform pg_temp.ok(fn_webhook_token_manutencao()->>'situacao' like 'aguardando um dia%', '[T47] nova troca logo depois da falha');
+  -- a volta também falhou: os dois seguem aceitos e nada novo começa até o suporte resolver
+  update webhook_token_trocas set falhou_em = now() - interval '2 days' where falhou_em is not null;
+  update webhook_token_trocas set falhou_em = now() - interval '2 days', anterior_ate = now() + interval '7 days', falha = 'teste'
+   where motivo = 'reversao';
+  perform pg_temp.ok(fn_webhook_token_manutencao()->>'situacao' = 'aguardando suporte', '[T47] troca nova com a volta falhada');
+  -- nada disso é executável pela API
+  perform pg_temp.ok(not has_function_privilege('authenticated', 'fn_webhook_token_manutencao()', 'execute')
+                     and not has_function_privilege('anon', 'fn_segredo_gravar(text,text)', 'execute')
+                     and not has_function_privilege('service_role', 'fn_webhook_token_trocar(text)', 'execute'), '[T47] permissões');
+end $$;
+
+select 'REGRESSÃO OK: T1 a T47' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
