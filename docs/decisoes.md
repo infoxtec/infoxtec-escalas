@@ -1331,3 +1331,26 @@ sai com o dela nos dois ambientes pela própria migration. **Fora do escopo, par
 depois de fechada (hoje, ajuste depois do fechamento gera nova versão enquanto o funcionário não assinou); validação
 acima de uns 100 funcionários passa de 8 s e vai precisar de paginação ou cálculo por empresa. Roteiro:
 `docs/roteiro-fechamento-folha.md`.
+
+## 97. Checagens mínimas para aprovar o fechamento da folha
+
+**Data:** 14/10/2026. **Pedido do responsável:** antes de aprovar o fechamento, conferir (1) dia normal sem ponto,
+registro faltando, intervalo mínimo e registro duplicado; (2) justificativa em aberto; (3) se abonos e HE foram
+calculados devidamente; (4) dia normal sem justificativa; (5) chamar de **Falta injustificada** o dia sem registro e sem
+pedido em aberto; (6) o dia de atestado sair na folha como **Abono - Atestado**; e criar regras próprias que deixem o
+fechamento mais eficiente, seguro e confortável. **Decisão (migration 102, painel 3.41.0):** duas classes de pendência.
+**Bloqueia** (não fecha até resolver): pedido aguardando aprovação; marcação faltando; marcação duplicada (o mesmo tipo em
+seguida, ou duas a menos de 3 min). **Confirmar** (fecha com a confirmação de quem fecha, que fica registrada com as
+ocorrências em `ponto_folha_fechamentos.ocorrencias_confirmadas`): falta injustificada; intervalo abaixo do mínimo ou
+jornada sem intervalo; hora extra acima de 2 h no dia; descanso entre jornadas abaixo de 11 h; abono do dia inteiro em dia
+com marcação (abono e trabalho somados por engano). Dia coberto por pedido em aberto não é falta injustificada: é o
+pedido que bloqueia. Para o item 3, a **Prévia** mostra, antes de fechar, o espelho exatamente como será emitido (HE 50%
+e 100%, noturno, débito, abonos), sem registro nem QR. **Espelho:** cada abono diz de onde vem — Atestado (todo motivo de
+saúde, sem detalhe, LGPD e decisão 56), Licença legal (CLT art. 473), Convocação legal, Folga compensatória, Justificativa
+aprovada ou Abono da empresa; o texto livre do gestor não vai ao espelho. O dia sem registro nem abono sai como **Falta
+injustificada**. **Regras próprias:** a confirmação vale para todas as ocorrências amarelas e fica registrada; a prévia
+evita reemissão; o fechamento repetido sem mudança não gera versão nova; o painel diz o que fazer em cada linha. **Revisão do
+`seguranca`:** a pendência de pedido em aberto não leva o código do motivo (de saúde é dado sensível, e a validação é
+aberta ao papel leitura); a confirmação leva a quantidade de ocorrências vistas e, se apareceu ocorrência nova desde a
+validação, o fechamento devolve para conferir de novo. **Efeito conhecido:** o espelho ainda não assinado que tem abono
+sai em versão nova no próximo fechamento (o rótulo do abono muda o conteúdo), com novo número de registro.

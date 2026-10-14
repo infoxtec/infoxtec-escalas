@@ -470,6 +470,7 @@ export interface EspelhoConteudo {
     previsto_min?: number; he50_min?: number; he100_min?: number; noturno_min?: number; debito_min?: number
     feriado?: string | null
     folga_de?: string | null; compensado_em?: string | null   // folga compensatória (decisão 84)
+    abono_motivo?: string   // de onde vem o abono, sem o motivo de saúde (decisão 97)
   })[]
   ajustes: { acao: 'incluir' | 'desconsiderar'; data: string; hora: string; tipo: string; motivo: string }[]
   totais: { trabalhado_min: number; he_min: number; faltas: number; atrasos: number; dias_abonados: number }
@@ -541,20 +542,23 @@ export interface CargaExcedida {
   }[]
 }
 
-// Validação e fechamento da folha mensal (migration 101, decisão 96)
-export type PendenciaFolha =
-  | { tipo: 'pedido_pendente'; bloqueia: true; data: string; numero: number; motivo: string }
-  | { tipo: 'marcacao_incompleta'; bloqueia: true; data: string; marcacoes: number }
-  | { tipo: 'sem_registro'; bloqueia: false; data: string; minutos: number }
+// Validação e fechamento da folha mensal (migrations 101 e 102, decisões 96 e 97)
+type DiaPendencia = { data: string; bloqueia: boolean; nivel: 'bloqueia' | 'confirmar' }
+export type PendenciaFolha = DiaPendencia & (
+  | { tipo: 'pedido_pendente'; numero: number }
+  | { tipo: 'marcacao_incompleta' | 'marcacao_duplicada' | 'abono_em_dia_trabalhado'; marcacoes: number }
+  | { tipo: 'sem_registro'; minutos: number }
+  | { tipo: 'intervalo_curto' | 'sem_intervalo' | 'he_acima_limite' | 'interjornada_curta'; intervalo_min: number | null; he_min: number | null; interjornada_min: number | null })
 export interface FuncionarioFolha {
   tecnico_id: string; nome: string; empresa: string; pendencias: PendenciaFolha[]
-  bloqueios: number; sem_registro: number; com_ponto: boolean
+  bloqueios: number; a_confirmar: number; sem_registro: number; com_ponto: boolean
   espelho: { id: string; versao: number; registro: number; emitido_em: string; enviado_em: string | null; assinado_em: string | null } | null
-  fechado: { fechado_por: string; fechado_em: string; faltas_confirmadas: number } | null
+  fechado: { fechado_por: string | null; fechado_em: string; ocorrencias_confirmadas: number } | null
 }
 export interface ValidacaoFolha { competencia: string; funcionarios: FuncionarioFolha[] }
 export type FechamentoFolha =
   | { situacao: 'pendente'; pendencias: PendenciaFolha[] }
-  | { situacao: 'confirmar_faltas'; faltas: PendenciaFolha[] }
+  | { situacao: 'confirmar'; ocorrencias: PendenciaFolha[] }
   | { situacao: 'sem_dados' }
-  | { situacao: 'fechado' | 'sem_mudanca' | 'ja_assinado'; espelho: string; faltas_confirmadas: number }
+  | { situacao: 'fechado' | 'sem_mudanca' | 'ja_assinado'; espelho: string; ocorrencias_confirmadas: number }
+export interface PreviaFolha { conteudo: EspelhoConteudo; pendencias: PendenciaFolha[] }

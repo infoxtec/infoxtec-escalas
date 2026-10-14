@@ -47,6 +47,7 @@
 -- T44 trava de envio da homologação: só a lista libera; instância conferida; mensagem sem destinatário recusada;
 --     texto sem prévia de link (decisão 95)
 -- T45 validação e fechamento da folha: pendência bloqueia, faltas pedem confirmação, registro de quem fechou, logotipo
+-- T46 checagens do fechamento: duplicada, intervalo, pedido aberto não é falta, abono do atestado no espelho, prévia
 
 \set ON_ERROR_STOP on
 begin;
@@ -2433,12 +2434,12 @@ begin
   update ponto_justificativas set status = 'aprovada', decidido_por = 'qa-admin@teste.local', decidido_em = now() where id = v_j;
   -- a emissão direta também não desconta falta sem confirmação
   r := app_ponto_emitir_espelhos(v_mes, v_tec);
-  perform pg_temp.ok((r->>'faltas_a_confirmar')::int = 1 and (r->>'emitidos')::int = 0, '[T45] emitiu falta sem confirmação: ' || r::text);
+  perform pg_temp.ok((r->>'a_confirmar')::int = 1 and (r->>'emitidos')::int = 0, '[T45] emitiu falta sem confirmação: ' || r::text);
   r := app_ponto_fechar_folha(v_mes, v_tec, false);
-  perform pg_temp.ok(r->>'situacao' = 'confirmar_faltas' and jsonb_array_length(r->'faltas') > 0, '[T45] faltas sem confirmação: ' || r::text);
+  perform pg_temp.ok(r->>'situacao' = 'confirmar' and jsonb_array_length(r->'ocorrencias') > 0, '[T45] faltas sem confirmação: ' || r::text);
   r := app_ponto_fechar_folha(v_mes, v_tec, true);
   perform pg_temp.ok(r->>'situacao' = 'fechado', '[T45] fechamento: ' || r::text);
-  perform pg_temp.ok((select jsonb_array_length(faltas_confirmadas) > 0 and fechado_por = 'qa-admin@teste.local'
+  perform pg_temp.ok((select jsonb_array_length(ocorrencias_confirmadas) > 0 and fechado_por = 'qa-admin@teste.local'
                         from ponto_folha_fechamentos where tecnico_id = v_tec), '[T45] registro do fechamento');
   perform pg_temp.ok((select conteudo->'empregador'->>'logo' from ponto_espelhos where tecnico_id = v_tec and substituido_em is null) = 'infoxtec',
                      '[T45] logotipo no espelho');
@@ -2454,7 +2455,7 @@ begin
   end;
   -- o papel leitura vê a validação, mas não fecha
   perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
-  perform pg_temp.ok((select f->'fechado'->>'fechado_por' is null and (f->'fechado'->>'faltas_confirmadas')::int > 0
+  perform pg_temp.ok((select f->'fechado'->>'fechado_por' is null and (f->'fechado'->>'ocorrencias_confirmadas')::int > 0
                         from jsonb_array_elements(app_ponto_validar_folha(v_mes)->'funcionarios') f where f->>'tecnico_id' = v_tec::text),
                      '[T45] leitura vê quem fechou');
   begin
@@ -2466,7 +2467,90 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T45' as resultado,
+-- T46 checagens do fechamento (migration 102, decisão 97) ------------------------------------------------
+do $$
+declare
+  v_emp uuid := (select v::uuid from qa where k = 'emp');
+  v_mes date := date_trunc('month', current_date - interval '1 month')::date;
+  v_tec uuid; v_j uuid; p jsonb; r jsonb; v_ok boolean; v_dia date;
+begin
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA Checagens Folha', '5579999994646', true, true, pg_temp.cpf('464646401'), v_emp, false, v_mes - 60) returning id into v_tec;
+  alter table ponto_marcacoes disable trigger user;
+  insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, hash_anterior, hash)
+  select v_emp, 946000 + k, v_tec, (select cpf from tecnicos where id = v_tec), ((v_mes + d) + h) at time zone 'America/Bahia',
+         tp, 'ura', 'qa', md5(random()::text)
+    from (values -- dia 2: entrada duplicada (1 min depois)
+                 (1, 1, time '08:00', 'entrada'), (2, 1, time '08:01', 'entrada'), (3, 1, time '12:00', 'saida'),
+                 -- dia 3: intervalo de 20 min numa jornada de 8 h
+                 (4, 2, time '08:00', 'entrada'), (5, 2, time '12:00', 'saida_almoco'), (6, 2, time '12:20', 'volta_almoco'),
+                 (7, 2, time '16:20', 'saida')) x(k, d, h, tp);
+  alter table ponto_marcacoes enable trigger user;
+  -- dia 5: atestado aprovado (abono pelo pedido); dia 7: pedido aberto, não é falta injustificada
+  insert into ponto_justificativas (empresa_id, tecnico_id, motivo, data, canal, status, decidido_por, decidido_em)
+  values (v_emp, v_tec, 'atestado', v_mes + 4, 'app', 'pendente', null, null) returning id into v_j;
+  insert into ponto_abonos (empresa_id, tecnico_id, data, justificativa_id, motivo, autor)
+  values (v_emp, v_tec, v_mes + 4, v_j, 'Atestado médico (pedido aprovado)', 'qa-admin@teste.local');
+  update ponto_justificativas set status = 'aprovada', decidido_por = 'qa-admin@teste.local', decidido_em = now() where id = v_j;
+  -- o pedido aberto vai num dia devido do mês (o primeiro que hoje sai como falta injustificada)
+  select min((x->>'data')::date) into v_dia from jsonb_array_elements(fn_ponto_folha_pendencias(v_tec, v_mes)) x
+   where x->>'tipo' = 'sem_registro' and (x->>'data')::date > v_mes + 4;
+  insert into ponto_justificativas (empresa_id, tecnico_id, motivo, data, canal)
+  values (v_emp, v_tec, 'comparecimento', v_dia, 'app');
+
+  p := fn_ponto_folha_pendencias(v_tec, v_mes);
+  perform pg_temp.ok(p @> jsonb_build_array(jsonb_build_object('tipo', 'marcacao_duplicada', 'data', v_mes + 1, 'bloqueia', true)),
+                     '[T46] duplicada: ' || p::text);
+  perform pg_temp.ok(p @> jsonb_build_array(jsonb_build_object('tipo', 'intervalo_curto', 'data', v_mes + 2, 'nivel', 'confirmar')),
+                     '[T46] intervalo abaixo do mínimo');
+  perform pg_temp.ok(not p @> jsonb_build_array(jsonb_build_object('tipo', 'sem_registro', 'data', v_mes + 4)), '[T46] dia do atestado como falta');
+  perform pg_temp.ok(not p @> jsonb_build_array(jsonb_build_object('tipo', 'sem_registro', 'data', v_dia))
+                     and p @> jsonb_build_array(jsonb_build_object('tipo', 'pedido_pendente', 'data', v_dia)),
+                     '[T46] dia com pedido aberto como falta injustificada');
+  perform pg_temp.ok((select count(*) from jsonb_array_elements(p) x where x->>'tipo' = 'pedido_pendente') = 1, '[T46] pedido repetido');
+  -- o papel leitura vê a validação com o pedido em aberto, mas não o motivo (código de saúde é dado sensível)
+  perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
+  perform pg_temp.ok((select count(*) from jsonb_array_elements(app_ponto_validar_folha(v_mes)->'funcionarios') f,
+                             jsonb_array_elements(f->'pendencias') x
+                       where f->>'tecnico_id' = v_tec::text and x->>'tipo' = 'pedido_pendente' and not x ? 'motivo') = 1,
+                     '[T46] motivo do pedido na validação');
+
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  -- a prévia diz de onde vem o abono, sem o motivo de saúde
+  r := app_ponto_previa_folha(v_mes, v_tec);
+  perform pg_temp.ok((select d->>'abono_motivo' from jsonb_array_elements(r->'conteudo'->'dias') d where (d->>'data')::date = v_mes + 4) = 'Atestado',
+                     '[T46] abono do atestado na prévia');
+  -- duplicada bloqueia; o gestor desconsidera a segunda entrada e sobra o que confirmar
+  r := app_ponto_fechar_folha(v_mes, v_tec, true);
+  perform pg_temp.ok(r->>'situacao' = 'pendente', '[T46] fechou com duplicada');
+  insert into ponto_ajustes (empresa_id, tecnico_id, marcacao_id, acao, motivo, autor)
+  values (v_emp, v_tec, (select id from ponto_marcacoes where tecnico_id = v_tec and nsr = 946002), 'desconsiderar', 'Entrada em dobro', 'qa-admin@teste.local');
+  update ponto_justificativas set status = 'negada', decidido_por = 'qa-admin@teste.local', decidido_em = now()
+   where tecnico_id = v_tec and status = 'pendente';
+  p := fn_ponto_folha_pendencias(v_tec, v_mes);
+  perform pg_temp.ok(not p @> '[{"bloqueia":true}]' and p @> jsonb_build_array(jsonb_build_object('tipo', 'sem_registro', 'data', v_dia)),
+                     '[T46] depois dos ajustes: ' || p::text);
+  r := app_ponto_fechar_folha(v_mes, v_tec, false);
+  perform pg_temp.ok(r->>'situacao' = 'confirmar', '[T46] fechou sem confirmar: ' || r::text);
+  -- confirmou menos ocorrências do que há agora (apareceu uma depois da validação): volta para conferir
+  r := app_ponto_fechar_folha(v_mes, v_tec, true, jsonb_array_length(r->'ocorrencias') - 1);
+  perform pg_temp.ok(r->>'situacao' = 'confirmar', '[T46] fechou com ocorrência não vista: ' || r::text);
+  r := app_ponto_fechar_folha(v_mes, v_tec, true, jsonb_array_length(r->'ocorrencias'));
+  perform pg_temp.ok(r->>'situacao' = 'fechado'
+                     and (select ocorrencias_confirmadas @> '[{"tipo":"intervalo_curto"}]' from ponto_folha_fechamentos where tecnico_id = v_tec),
+                     '[T46] fechamento com as ocorrências: ' || r::text);
+  perform pg_temp.ok((select d->>'abono_motivo' from ponto_espelhos e, jsonb_array_elements(e.conteudo->'dias') d
+                       where e.tecnico_id = v_tec and e.substituido_em is null and (d->>'data')::date = v_mes + 4) = 'Atestado',
+                     '[T46] abono do atestado no espelho');
+  -- o papel leitura não abre a prévia (o espelho tem o CPF)
+  perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
+  v_ok := false;
+  begin perform app_ponto_previa_folha(v_mes, v_tec); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T46] leitura abriu a prévia');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T46' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

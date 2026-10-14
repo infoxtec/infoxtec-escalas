@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre, ValidacaoCarga, ModeloCarga, CargaHoraria, CargaAtribuicao, CargaFuncionario, TimeEquipe, AlvoCarga, ProgramacaoLimite, AceiteProgramacao, AceiteProgramacaoAssinado, CargaExcedida, ValidacaoFolha, FechamentoFolha } from './types'
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre, ValidacaoCarga, ModeloCarga, CargaHoraria, CargaAtribuicao, CargaFuncionario, TimeEquipe, AlvoCarga, ProgramacaoLimite, AceiteProgramacao, AceiteProgramacaoAssinado, CargaExcedida, ValidacaoFolha, FechamentoFolha, PreviaFolha } from './types'
 
 function traduzir(msg: string): string {
   if (/JWT expired|invalid JWT|not authenticated/i.test(msg)) return 'Sessão expirada. Entre novamente.'
@@ -145,11 +145,12 @@ export const api = {
     rpc<PontoGeo[]>('app_ponto_geo', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
   pontoAfd: (empresa: string, de: string, ate: string) => rpc<PontoAfd>('app_ponto_afd', { p_empresa: empresa, p_de: de, p_ate: ate }),
   pontoEmitirEspelhos: (competencia: string, tecnico: string | null = null) =>
-    rpc<{ emitidos: number; sem_mudanca: number; ja_assinados: number; sem_dados: number; com_pendencia: number; faltas_a_confirmar: number }>('app_ponto_emitir_espelhos', { p_competencia: competencia, p_tecnico: tecnico }),
+    rpc<{ emitidos: number; sem_mudanca: number; ja_assinados: number; sem_dados: number; com_pendencia: number; a_confirmar: number }>('app_ponto_emitir_espelhos', { p_competencia: competencia, p_tecnico: tecnico }),
   // Validação e fechamento da folha (decisão 96): o fechamento vai um funcionário por chamada
   pontoValidarFolha: (competencia: string) => rpc<ValidacaoFolha>('app_ponto_validar_folha', { p_competencia: competencia }),
-  pontoFecharFolha: (competencia: string, tecnico: string, confirmarFaltas: boolean) =>
-    rpc<FechamentoFolha>('app_ponto_fechar_folha', { p_competencia: competencia, p_tecnico: tecnico, p_confirmar_faltas: confirmarFaltas }),
+  pontoFecharFolha: (competencia: string, tecnico: string, confirmar: boolean, vistas: number) =>
+    rpc<FechamentoFolha>('app_ponto_fechar_folha', { p_competencia: competencia, p_tecnico: tecnico, p_confirmar_faltas: confirmar, p_ocorrencias_vistas: vistas }),
+  pontoPreviaFolha: (competencia: string, tecnico: string) => rpc<PreviaFolha>('app_ponto_previa_folha', { p_competencia: competencia, p_tecnico: tecnico }),
   pontoEspelhosEmitidos: (competencia: string) => rpc<PontoEspelhoEmitido[]>('app_ponto_espelhos', { p_competencia: competencia }),
   verificarEspelho: (codigo: string) => rpc<ConferenciaEspelho>('ponto_verificar_espelho', { p_codigo: codigo }),
   pontoEnviarEspelhos: (competencia: string, espelho: string | null = null) =>

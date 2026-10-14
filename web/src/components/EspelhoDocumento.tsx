@@ -76,7 +76,7 @@ function Resumo({ r }: { r: EspelhoResumo }) {
   )
 }
 
-export default function EspelhoDocumento({ e }: { e: EspelhoCompleto }) {
+export default function EspelhoDocumento({ e, previa }: { e: EspelhoCompleto; previa?: boolean }) {
   const c = e.conteudo
   if (!c) return <p className="text-sm text-muted-foreground">Esta versão do espelho foi substituída por uma mais nova.</p>
   const url = `${window.location.origin}/v?c=${e.codigo}`
@@ -98,12 +98,14 @@ export default function EspelhoDocumento({ e }: { e: EspelhoCompleto }) {
           {c.jornada.escalas && c.jornada.escalas.length > 0
             ? <p>Escala: {c.jornada.escalas.map(x => `${x.escala} (${x.de} a ${x.ate})`).join('; ')} · intervalo de {minutosHm(c.jornada.intervalo_min)}</p>
             : <p>Jornada: {minutosHm(c.jornada.dia_util_min)} de segunda a sexta, {minutosHm(c.jornada.sabado_min)} no sábado, intervalo de {minutosHm(c.jornada.intervalo_min)}</p>}
-          <p className="text-[11px] text-gray-600">Período {dataBr(c.de)} a {dataBr(c.ate)} · Registro nº {e.registro}{e.versao > 1 ? ` (versão ${e.versao})` : ''} · emitido em {dataHora(e.emitido_em)}</p>
+          {previa
+            ? <p className="text-[11px] font-semibold text-amber-700">Período {dataBr(c.de)} a {dataBr(c.ate)} · PRÉVIA, ainda não emitida: é o que sai ao fechar a folha</p>
+            : <p className="text-[11px] text-gray-600">Período {dataBr(c.de)} a {dataBr(c.ate)} · Registro nº {e.registro}{e.versao > 1 ? ` (versão ${e.versao})` : ''} · emitido em {dataHora(e.emitido_em)}</p>}
         </div>
-        <div className="shrink-0 text-center">
+        {!previa && <div className="shrink-0 text-center">
           <Qr texto={url} />
           <p className="font-mono text-[9px]">{e.codigo}</p>
-        </div>
+        </div>}
       </div>
 
       <table className="w-full border-collapse text-[11px]">
@@ -128,8 +130,9 @@ export default function EspelhoDocumento({ e }: { e: EspelhoCompleto }) {
                 <td>{[d.feriado ? `Feriado: ${d.feriado}` : null,
                       d.folga_de ? `Folga compensatória do trabalho de ${d.folga_de}` : null,
                       d.compensado_em ? `Compensado com folga em ${d.compensado_em}` : null,
-                      novo && d.debito_min && !d.trabalhado_min && !d.entrada && !d.saida ? 'Sem registro' : null,
-                      ...(d.alertas ?? []).map(a => ALERTA_JORNADA[a] ?? a), d.abono ? `Abono: ${d.abono}` : null,
+                      // dia da escala sem marcação nem abono: falta injustificada (decisão 97)
+                      novo && d.debito_min && !d.trabalhado_min && !d.entrada && !d.saida && !d.abono ? 'Falta injustificada' : null,
+                      ...(d.alertas ?? []).map(a => ALERTA_JORNADA[a] ?? a), d.abono ? (d.abono_motivo ? `Abono - ${d.abono_motivo}${d.abono !== 'dia inteiro' ? ` (${d.abono})` : ''}` : `Abono: ${d.abono}`) : null,
                       d.ajustes ? 'Ajustado' : null].filter(Boolean).join(' · ') || ''}</td>
               </tr>
             ))}
@@ -160,7 +163,7 @@ export default function EspelhoDocumento({ e }: { e: EspelhoCompleto }) {
         </div>
       )}
 
-      <div className="flex items-end justify-between gap-4 border-t border-gray-400 pt-2">
+      {!previa && <div className="flex items-end justify-between gap-4 border-t border-gray-400 pt-2">
         <div>
           {e.assinado_em && e.assinatura_png
             ? <><img src={e.assinatura_png} alt="Assinatura do funcionário" className="h-16 max-w-[240px] object-contain" />
@@ -170,7 +173,7 @@ export default function EspelhoDocumento({ e }: { e: EspelhoCompleto }) {
         <p className="max-w-[45%] text-right text-[9px] text-gray-600">
           Confira a autenticidade pelo QR ou em {window.location.host}/v com o código {e.codigo}. SHA-256 {e.sha256.slice(0, 16)}…
         </p>
-      </div>
+      </div>}
     </div>
   )
 }

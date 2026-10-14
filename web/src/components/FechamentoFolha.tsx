@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertTriangle, CheckCircle2, ClipboardCheck, Lock, RefreshCw } from 'lucide-react'
-import { Button, ErrorBox, Field, Input, SuccessBox } from './ui'
+import { AlertTriangle, CheckCircle2, ClipboardCheck, Eye, Lock, Printer, RefreshCw } from 'lucide-react'
+import { Button, ErrorBox, Field, Input, Modal, SuccessBox } from './ui'
+import EspelhoDocumento from './EspelhoDocumento'
 import { api, erroMsg } from '../lib/api'
-import type { FuncionarioFolha, PendenciaFolha, ValidacaoFolha } from '../lib/types'
+import type { EspelhoCompleto, FuncionarioFolha, PendenciaFolha, ValidacaoFolha } from '../lib/types'
 
-// Validação e fechamento da folha mensal (decisão 96). Antes de fechar, o painel aponta por funcionário o que falta:
-// pedido aguardando decisão e marcação incompleta impedem o fechamento; dia sem registro nem justificativa sai como
-// falta descontada e precisa da confirmação do gestor. O fechamento emite o espelho de cada funcionário pronto (uma
-// chamada por funcionário) e, no fim, envia pelo WhatsApp para assinatura.
+// Validação e fechamento da folha mensal (decisões 96 e 97). Antes de fechar, o painel aponta por funcionário o que
+// falta: pedido aguardando decisão, marcação incompleta e marcação duplicada impedem o fechamento; falta injustificada,
+// intervalo abaixo do mínimo, HE acima de 2 h, descanso curto entre jornadas e abono em dia trabalhado precisam da
+// confirmação do gestor. A prévia mostra o espelho como vai sair (HE, abonos, débitos). O fechamento emite o espelho de
+// cada funcionário pronto (uma chamada por funcionário) e, no fim, envia pelo WhatsApp para assinatura.
 
 function mesAnterior(hoje: string) {
   const [a, m] = hoje.split('-').map(Number)
@@ -19,23 +21,32 @@ const hm = (m: number) => `${Math.floor(m / 60)}h${m % 60 ? String(m % 60).padSt
 const dataHora = (s: string) => new Date(s).toLocaleString('pt-BR', { timeZone: 'America/Bahia', dateStyle: 'short', timeStyle: 'short' })
 
 function textoPendencia(p: PendenciaFolha) {
-  if (p.tipo === 'pedido_pendente') return `${dia(p.data)} · pedido nº ${p.numero} aguardando decisão`
-  if (p.tipo === 'marcacao_incompleta') return `${dia(p.data)} · marcação incompleta (${p.marcacoes} de ${p.marcacoes % 2 ? p.marcacoes + 1 : p.marcacoes + 2})`
-  return `${dia(p.data)} · sem registro nem justificativa (${hm(p.minutos)})`
+  const d = dia(p.data)
+  switch (p.tipo) {
+    case 'pedido_pendente': return `${d} · pedido nº ${p.numero} aguardando aprovação`
+    case 'marcacao_incompleta': return `${d} · marcação faltando (${p.marcacoes} registrada${p.marcacoes === 1 ? '' : 's'})`
+    case 'marcacao_duplicada': return `${d} · marcação duplicada: desconsidere a repetida`
+    case 'sem_registro': return `${d} · falta injustificada (${hm(p.minutos)} sem registro nem pedido)`
+    case 'intervalo_curto': return `${d} · intervalo abaixo do mínimo${p.intervalo_min != null ? ` (${hm(p.intervalo_min)})` : ''}`
+    case 'sem_intervalo': return `${d} · jornada sem intervalo`
+    case 'he_acima_limite': return `${d} · hora extra acima de 2 h${p.he_min ? ` (${hm(p.he_min)})` : ''}`
+    case 'interjornada_curta': return `${d} · descanso entre jornadas abaixo de 11 h${p.interjornada_min ? ` (${hm(p.interjornada_min)})` : ''}`
+    case 'abono_em_dia_trabalhado': return `${d} · abono do dia inteiro em dia com marcação: confira`
+  }
 }
 
-type Situacao = 'assinado' | 'sem_ponto' | 'pendente' | 'faltas' | 'pronto' | 'fechado'
+type Situacao = 'assinado' | 'sem_ponto' | 'pendente' | 'confirmar' | 'pronto' | 'fechado'
 function situacao(f: FuncionarioFolha): Situacao {
   if (f.espelho?.assinado_em) return 'assinado'
   if (!f.com_ponto && f.pendencias.length === 0) return 'sem_ponto'
   if (f.bloqueios > 0) return 'pendente'
   if (f.espelho) return 'fechado'
-  if (f.sem_registro > 0) return 'faltas'
+  if (f.a_confirmar > 0) return 'confirmar'
   return 'pronto'
 }
 const ROTULO: Record<Situacao, { texto: string; cor: string }> = {
   pendente: { texto: 'Ajustar antes de fechar', cor: 'bg-red-100 text-red-800' },
-  faltas: { texto: 'Confirmar faltas', cor: 'bg-amber-100 text-amber-800' },
+  confirmar: { texto: 'Confirmar ocorrências', cor: 'bg-amber-100 text-amber-800' },
   pronto: { texto: 'Pronto para fechar', cor: 'bg-green-100 text-green-800' },
   fechado: { texto: 'Fechado', cor: 'bg-blue-100 text-blue-800' },
   assinado: { texto: 'Assinado', cor: 'bg-emerald-100 text-emerald-800' },
@@ -60,6 +71,17 @@ export default function FechamentoFolha({ hoje, podeFechar }: { hoje: string; po
   const [confirmo, setConfirmo] = useState(false)
   const [enviar, setEnviar] = useState(true)
   const [progresso, setProgresso] = useState<string | null>(null)
+  const [previa, setPrevia] = useState<{ nome: string; e: EspelhoCompleto } | null>(null)
+
+  // o espelho como vai sair ao fechar: HE, abonos (de onde vem cada um) e débitos
+  const verPrevia = async (f: FuncionarioFolha) => {
+    setErro(null)
+    try {
+      const r = await api.pontoPreviaFolha(`${mes}-01`, f.tecnico_id)
+      setPrevia({ nome: f.nome, e: { id: '', registro: 0, versao: 1, codigo: '', sha256: '', emitido_em: new Date().toISOString(),
+                                    substituido: false, conteudo: r.conteudo, assinado_em: null, assinatura_png: null } })
+    } catch (e) { setErro(erroMsg(e)) }
+  }
 
   const carregar = useCallback(async () => {
     setErro(null); setCarregando(true)
@@ -72,10 +94,10 @@ export default function FechamentoFolha({ hoje, podeFechar }: { hoje: string; po
   const lista = v?.funcionarios ?? []
   const conta = (s: Situacao) => lista.filter(f => situacao(f) === s).length
   // fechado e ainda sem assinatura entra de novo: se algo mudou no ponto, sai uma nova versão do espelho
-  const fechavel = (f: FuncionarioFolha) => ['pronto', 'faltas', 'fechado'].includes(situacao(f))
-  const aFechar = lista.filter(f => fechavel(f) && (f.sem_registro === 0 || confirmo))
-  const comFaltas = lista.filter(f => fechavel(f) && f.sem_registro > 0)
-  const faltasAConfirmar = comFaltas.reduce((n, f) => n + f.sem_registro, 0)
+  const fechavel = (f: FuncionarioFolha) => ['pronto', 'confirmar', 'fechado'].includes(situacao(f))
+  const aFechar = lista.filter(f => fechavel(f) && (f.a_confirmar === 0 || confirmo))
+  const comFaltas = lista.filter(f => fechavel(f) && f.a_confirmar > 0)
+  const faltasAConfirmar = comFaltas.reduce((n, f) => n + f.a_confirmar, 0)
 
   const fechar = async () => {
     setErro(null); setOk(null)
@@ -84,9 +106,9 @@ export default function FechamentoFolha({ hoje, podeFechar }: { hoje: string; po
       for (let i = 0; i < aFechar.length; i++) {
         const f = aFechar[i]
         setProgresso(`Fechando ${i + 1} de ${aFechar.length}: ${f.nome}`)
-        const r = await api.pontoFecharFolha(`${mes}-01`, f.tecnico_id, confirmo)
+        const r = await api.pontoFecharFolha(`${mes}-01`, f.tecnico_id, confirmo, f.a_confirmar)
         if (r.situacao === 'fechado') fechados++
-        else if (r.situacao === 'pendente' || r.situacao === 'confirmar_faltas') pendentes++
+        else if (r.situacao === 'pendente' || r.situacao === 'confirmar') pendentes++
         else if (r.situacao === 'sem_dados') semDados++
         else outros++
       }
@@ -107,10 +129,11 @@ export default function FechamentoFolha({ hoje, podeFechar }: { hoje: string; po
       <div>
         <h3 className="flex items-center gap-1.5 text-sm font-semibold"><ClipboardCheck className="h-4 w-4" /> Validação e fechamento da folha</h3>
         <p className="text-xs text-muted-foreground">
-          Antes de fechar, confira o que falta em cada funcionário. Pedido aguardando decisão e marcação incompleta impedem o
-          fechamento: resolva na aba Ajustes e pedidos. Dia da escala sem marcação e sem justificativa sai como falta
-          descontada: justifique (abono) ou confirme abaixo. Fechar emite o espelho de cada funcionário pronto e envia o link
-          pelo WhatsApp para assinatura.
+          Antes de fechar, confira o que falta em cada funcionário. Em vermelho, o que impede o fechamento (pedido aguardando
+          aprovação, marcação faltando ou duplicada): resolva na aba Ajustes e pedidos. Em amarelo, o que precisa da sua
+          confirmação (falta injustificada, intervalo abaixo do mínimo, hora extra acima de 2 h, descanso curto entre
+          jornadas, abono em dia trabalhado). Em <strong>Prévia</strong>, veja o espelho como vai sair, com HE, abonos e
+          débitos. Fechar emite o espelho de cada funcionário pronto e envia o link pelo WhatsApp para assinatura.
         </p>
       </div>
       <div className="flex flex-wrap items-end gap-2">
@@ -123,7 +146,7 @@ export default function FechamentoFolha({ hoje, podeFechar }: { hoje: string; po
       {v && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           <Cartao titulo="Ajustar antes de fechar" valor={conta('pendente')} cor="text-red-700" />
-          <Cartao titulo="Confirmar faltas" valor={conta('faltas')} cor="text-amber-700" />
+          <Cartao titulo="Confirmar ocorrências" valor={conta('confirmar')} cor="text-amber-700" />
           <Cartao titulo="Prontos para fechar" valor={conta('pronto')} cor="text-green-700" />
           <Cartao titulo="Fechados, sem assinatura" valor={conta('fechado')} cor="text-blue-700" />
           <Cartao titulo="Assinados" valor={conta('assinado')} cor="text-emerald-700" />
@@ -135,11 +158,11 @@ export default function FechamentoFolha({ hoje, podeFechar }: { hoje: string; po
           <table className="w-full text-sm">
             <thead><tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
               <th className="px-3 py-2">Funcionário</th><th className="px-3 py-2">Situação</th>
-              <th className="px-3 py-2">O que falta</th><th className="px-3 py-2">Espelho</th>
+              <th className="px-3 py-2">O que falta</th><th className="px-3 py-2">Espelho</th>{podeFechar && <th className="px-3 py-2" />}
             </tr></thead>
             <tbody>
               {lista.length === 0 ? (
-                <tr><td colSpan={4} className="py-8 text-center text-muted-foreground">Nenhum funcionário com ponto neste mês</td></tr>
+                <tr><td colSpan={5} className="py-8 text-center text-muted-foreground">Nenhum funcionário com ponto neste mês</td></tr>
               ) : lista.map(f => {
                 const s = situacao(f)
                 const bloq = f.pendencias.filter(p => p.bloqueia)
@@ -153,7 +176,7 @@ export default function FechamentoFolha({ hoje, podeFechar }: { hoje: string; po
                         <ul className="space-y-0.5">
                           {bloq.map((p, i) => <li key={`b${i}`} className="flex items-start gap-1 text-red-800"><AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" /> {textoPendencia(p)}</li>)}
                           {falt.slice(0, 6).map((p, i) => <li key={`f${i}`} className="text-amber-800">{textoPendencia(p)}</li>)}
-                          {falt.length > 6 && <li className="text-amber-800">e mais {falt.length - 6} dia(s) sem registro</li>}
+                          {falt.length > 6 && <li className="text-amber-800">e mais {falt.length - 6} ocorrência(s)</li>}
                         </ul>
                       )}
                     </td>
@@ -162,8 +185,11 @@ export default function FechamentoFolha({ hoje, podeFechar }: { hoje: string; po
                         : f.espelho?.enviado_em ? <span className="text-amber-700">nº {f.espelho.registro}, enviado, aguardando assinatura</span>
                         : f.espelho ? <span>nº {f.espelho.registro}, emitido em {dataHora(f.espelho.emitido_em)}</span>
                         : <span className="text-muted-foreground">não emitido</span>}
-                      {f.fechado && <p className="text-muted-foreground">fechado por {f.fechado.fechado_por}{f.fechado.faltas_confirmadas > 0 && `, ${f.fechado.faltas_confirmadas} falta(s) confirmada(s)`}</p>}
+                      {f.fechado && <p className="text-muted-foreground">fechado{f.fechado.fechado_por && ` por ${f.fechado.fechado_por}`}{f.fechado.ocorrencias_confirmadas > 0 && `, ${f.fechado.ocorrencias_confirmadas} ocorrência(s) confirmada(s)`}</p>}
                     </td>
+                    {podeFechar && <td className="px-3 py-2 text-right">
+                      {f.com_ponto && !f.espelho?.assinado_em && <Button variant="ghost" size="sm" onClick={() => void verPrevia(f)} title="O espelho como vai sair ao fechar"><Eye className="h-3.5 w-3.5" /> Prévia</Button>}
+                    </td>}
                   </tr>
                 )
               })}
@@ -177,8 +203,8 @@ export default function FechamentoFolha({ hoje, podeFechar }: { hoje: string; po
           {faltasAConfirmar > 0 && (
             <label className="flex items-start gap-2 text-sm">
               <input type="checkbox" className="mt-1" checked={confirmo} onChange={e => setConfirmo(e.target.checked)} disabled={!!progresso} />
-              <span>Conferi os {faltasAConfirmar} dia(s) sem registro nem justificativa de {comFaltas.length} funcionário(s) e confirmo que saem como falta
-                descontada. Meu nome fica registrado no fechamento.</span>
+              <span>Conferi as {faltasAConfirmar} ocorrência(s) em amarelo de {comFaltas.length} funcionário(s) e confirmo: falta injustificada sai
+                descontada; intervalo, hora extra e descanso saem como calculados no espelho. Meu nome e as ocorrências ficam registrados no fechamento.</span>
             </label>
           )}
           <label className="flex items-center gap-2 text-sm">
@@ -191,10 +217,17 @@ export default function FechamentoFolha({ hoje, podeFechar }: { hoje: string; po
             </Button>
             {progresso && <span className="text-xs text-muted-foreground">{progresso}</span>}
             {!progresso && conta('pendente') > 0 && <span className="text-xs text-red-700">{conta('pendente')} funcionário(s) ficam de fora até ajustar.</span>}
-            {!progresso && faltasAConfirmar > 0 && !confirmo && <span className="text-xs text-amber-700">Quem tem falta sem justificativa só fecha com a confirmação.</span>}
+            {!progresso && faltasAConfirmar > 0 && !confirmo && <span className="text-xs text-amber-700">Quem tem ocorrência em amarelo só fecha com a confirmação.</span>}
           </div>
         </div>
       )}
+      <Modal open={!!previa} onClose={() => setPrevia(null)} width="max-w-3xl" title={`Prévia do espelho · ${previa?.nome ?? ''}`}
+        footer={<>
+          <Button variant="outline" onClick={() => setPrevia(null)}>Fechar</Button>
+          <Button onClick={() => window.print()}><Printer className="h-4 w-4" /> Imprimir</Button>
+        </>}>
+        {previa && <EspelhoDocumento e={previa.e} previa />}
+      </Modal>
     </section>
   )
 }
