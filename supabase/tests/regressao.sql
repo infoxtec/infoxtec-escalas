@@ -1684,11 +1684,18 @@ begin
   perform pg_temp.ok(length(l[v_n]) = 64 and left(l[v_n], 9) = '999999999' and right(l[v_n], 1) = '9'
                      and substr(l[v_n], 55, 9)::int = (r->>'marcacoes')::int, '[T34] trailer fora do leiaute (tamanho ' || length(l[v_n]) || ')');
   perform pg_temp.ok(r->>'nome' ~ '^AFD[0-9]{17}[0-9]{14}REP_P_CONFERENCIA\.txt$' and (r->>'conferencia')::boolean, '[T34] nome: ' || (r->>'nome'));
-  -- o encadeamento vem de antes do período: o último registro tem o mesmo hash num período mais curto
+  -- o encadeamento vem de antes do período: o último registro do período mais curto tem a mesma linha (e o mesmo
+  -- hash) no período longo; procura pelo NSR, porque o arquivo vai por NSR e a massa não tem NSR em ordem de data
   r2 := app_ponto_afd(v_emp, current_date - 10, current_date - 1);
   l2 := string_to_array(left(r2->>'conteudo', -2), E'\r\n');
   if array_length(l2, 1) > 2 then
-    perform pg_temp.ok(l2[array_length(l2, 1) - 1] = l[v_n - 1], '[T34] hash depende do início do período');
+    v_ok := false;
+    for i in 2 .. v_n - 1 loop
+      if left(l[i], 9) = left(l2[array_length(l2, 1) - 1], 9) then
+        v_ok := l[i] = l2[array_length(l2, 1) - 1];
+      end if;
+    end loop;
+    perform pg_temp.ok(v_ok, '[T34] hash depende do início do período');
   end if;
   perform pg_temp.ok(exists (select 1 from ponto_afd_geracoes where empresa_id = v_emp and sha256 = r->>'sha256'), '[T34] geração não registrada');
   -- data futura recusada; o papel leitura não gera (o arquivo tem o CPF de todos)
