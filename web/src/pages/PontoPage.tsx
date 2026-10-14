@@ -5,6 +5,7 @@ import { api, erroMsg } from '../lib/api'
 import Cofre from '../components/Cofre'
 import PontoAfd from '../components/PontoAfd'
 import EspelhosMensais from '../components/EspelhosMensais'
+import FechamentoFolha from '../components/FechamentoFolha'
 import CofreFolhas from '../components/CofreFolhas'
 import { prepararArquivo } from '../lib/arquivo'
 import { ALERTA_JORNADA, PONTO_ROTULO, hojeBahia, minutosHm } from '../lib/types'
@@ -43,7 +44,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
   const [metricas, setMetricas] = useState<PontoMetricas | null>(null)
   const [abonos, setAbonos] = useState<PontoAbono[] | null>(null)
   // Gestão de Ponto (pedido do responsável, 13/10): cada assunto numa aba
-  const [vista, setVista] = useState<'hoje' | 'marcacoes' | 'espelho' | 'ajustes' | 'folhas' | 'cofre' | 'afd'>('hoje')
+  const [vista, setVista] = useState<'hoje' | 'marcacoes' | 'espelho' | 'ajustes' | 'fechamento' | 'folhas' | 'cofre' | 'afd'>('hoje')
   // O ponto é visto sempre por mês (pedido do responsável, 13/10): não há fechamento que cruze meses
   const [mes, setMes] = useState(hoje.slice(0, 7))
   const de = `${mes}-01`
@@ -113,7 +114,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
 
       <div className="flex flex-wrap items-center gap-1 rounded-md border p-0.5 lg:w-fit">
         {([['hoje', 'Hoje'], ['marcacoes', 'Marcações'], ['espelho', 'Espelho de jornada'], ['ajustes', 'Ajustes e pedidos'],
-           ['folhas', 'Folhas mensais'], ...(rhFolhas ? [['cofre', 'Cofre (RH)']] : []), ...(papel === 'admin' ? [['afd', 'AFD']] : [])] as [typeof vista, string][])
+           ['fechamento', 'Fechamento da folha'], ['folhas', 'Folhas mensais'], ...(rhFolhas ? [['cofre', 'Cofre (RH)']] : []), ...(papel === 'admin' ? [['afd', 'AFD']] : [])] as [typeof vista, string][])
           .map(([id, rotulo]) => (
           <button key={id} type="button" onClick={() => setVista(id)}
             className={`rounded px-3 py-1.5 text-sm font-medium ${vista === id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
@@ -244,6 +245,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
         </section>
       )}
 
+      {vista === 'fechamento' && <FechamentoFolha hoje={hoje} podeFechar={papel !== 'leitura'} />}
       {vista === 'folhas' && <EspelhosMensais hoje={hoje} podeEmitir={papel !== 'leitura'} rhFolhas={rhFolhas} />}
 
       {vista === 'cofre' && rhFolhas && <CofreFolhas hoje={hoje} />}

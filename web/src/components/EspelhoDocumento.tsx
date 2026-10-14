@@ -1,5 +1,5 @@
 import qrcode from 'qrcode-generator'
-import { ALERTA_JORNADA, PONTO_ROTULO, minutosHm } from '../lib/types'
+import { ALERTA_JORNADA, PONTO_ROTULO, logoEmpresa, minutosHm } from '../lib/types'
 import type { EspelhoCompleto, EspelhoResumo } from '../lib/types'
 
 // Espelho de ponto mensal como documento (decisão 82): conteúdo congelado, registro, QR de conferência pública
@@ -81,10 +81,16 @@ export default function EspelhoDocumento({ e }: { e: EspelhoCompleto }) {
   if (!c) return <p className="text-sm text-muted-foreground">Esta versão do espelho foi substituída por uma mais nova.</p>
   const url = `${window.location.origin}/v?c=${e.codigo}`
   const novo = !!c.resumo   // espelhos emitidos antes da migration 90 não têm o resumo de pagamento
+  const logo = logoEmpresa(c.empregador.logo)
   return (
     <div className="area-impressao space-y-3 bg-white text-[12px] text-black">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-0.5">
+          {/* logotipo da empresa, congelado no espelho na emissão (decisão 96); fundo escuro do próprio logotipo */}
+          {logo && (
+            <img src={logo.src} alt={logo.nome}
+                 className="mb-1 h-8 w-auto rounded bg-[#0d1e3c] px-1.5 py-1 print:[-webkit-print-color-adjust:exact] print:[print-color-adjust:exact]" />
+          )}
           <p className="text-sm font-semibold">Espelho de ponto · {c.competencia}</p>
           <p>{c.empregador.razao_social} · CNPJ {cnpjFmt(c.empregador.cnpj)}</p>
           <p>{c.trabalhador.nome} · CPF {cpfFmt(c.trabalhador.cpf)}</p>
