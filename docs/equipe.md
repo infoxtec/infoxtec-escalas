@@ -15,7 +15,7 @@ o que toca a produção são dele.
 | **Fullstack** | `fullstack.md` | Painel React, `api.ts`, Edge Functions, experiência do usuário | Regra de negócio no navegador; produção |
 | **Infra/BD** | `infra-bd.md` | Desempenho, capacidade, cron, backup, CI, hospedagem, scripts, observabilidade | Mudar regra de negócio |
 | **Segurança** | `seguranca.md` | Revisão antes do merge, LGPD, segredos, permissões, dependências | Aprovar o próprio código; relaxar regra para caber no prazo |
-| **Jurídico** | `juridico.md` | Base legal trabalhista e cível, prazos de falta e abono, convenções coletivas, textos legais ao funcionário | Assinar parecer ou se apresentar como advogado (é persona de apoio, sem OAB — decisão 58) |
+| **Jurídico** | `juridico.md` | Base legal trabalhista e cível, prazos de falta e abono, convenções coletivas, textos legais ao funcionário; classifica a fonte e o risco, rotula pendências (decisão 99) | Assinar parecer ou se apresentar como advogado (é persona de apoio, sem OAB — decisão 58); decidir escopo, arquitetura ou prioridade; tratar de folha de pagamento e eSocial (fora do produto) |
 | **Marca e Comercial** | `marca.md` | Estratégia de marca, assinatura, grito, chamada para ação, narrativa, tom de voz, posicionamento, proposta comercial; análise crítica com embasamento | Decidir preço, SLA ou garantia; afirmar capacidade sem lastro na matriz |
 
 ## Como o trabalho anda entre os papéis

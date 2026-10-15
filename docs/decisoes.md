@@ -1377,3 +1377,22 @@ enquanto uma volta ao anterior estiver falhando. Também: `fn_segredo_gravar` s�
 e higiene automática, nunca tarefa de calendário de uma pessoa.
 **Fora daqui:** restringir o `/manager` da Evolution no Caddy (SEG-16), no servidor da Oracle, e o token da URA na URL
 pela assinatura da Twilio (SEG-05).
+
+## 99. Um só consultor jurídico, com o método do consultor jurídico-operacional
+
+**Data:** 15/10/2026. **Pedido do responsável:** avaliar a inclusão de uma persona de "consultor
+jurídico-operacional" (trabalho, folha, eSocial, SST, LGPD e ponto). **Parecer do `po`, do `cto` e do
+`seguranca`, unânime:** não criar persona nova — cerca de 70% repete o `juridico` (decisão 58), e duas
+personas jurídicas dariam pareceres conflitantes sem dono para desempatar. **Decidido:** o `juridico`
+(`.claude/agents/juridico.md` e `.dsh/skills/juridico/`) incorpora o método do prompt — classificação de
+cada afirmação pela natureza da fonte, rótulos de pendência (dados ausentes, pendência bloqueante,
+validação profissional), "preservar o fato" (não restringir, não marcar automaticamente, correção como
+registro novo; GPS não prova trabalho), itens de LGPD (finalidade e prazo por dado, revisão humana de
+decisão automática, prazo da ANPD em incidente) e a lista de julgamentos a acompanhar. **Papel:** o parecer
+é insumo, não requisito; o `po` transforma em critério de aceite, o `cto` decide arquitetura e escopo, o
+`seguranca` revisa a aplicação de LGPD e o responsável aceita o risco. **Fora do produto:** folha de
+pagamento, rubricas, eSocial, DCTFWeb e FGTS Digital — o Trilha entrega espelho, AFD e AEJ à folha do
+contador; módulo de folha só com cliente pedindo, com a Andreia (item 077). **Pendências levantadas:**
+avaliar, antes do enquadramento como REP-P, a recusa de marcação sem localização e durante afastamento
+(decisão 60) contra a regra de não restringir a marcação; roteiro de incidente com prazo da ANPD e RIPD da
+localização e do cofre (`seguranca`); vigência nos valores de `ponto_motivos` e das escalas (`cto`).
