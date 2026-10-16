@@ -256,9 +256,12 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
 
 ### Migration 105 (16/10): abono até a assinatura do espelho (decisão 100, item 6)
 
-- `fn_ponto_mes_assinado(tecnico, data)`: o espelho vigente do mês já tem assinatura do funcionário.
-- `app_ponto_abonar`, `app_ponto_estornar_abono` e `app_ponto_ajustar` (desconsiderar) deixam o limite de 62 dias e
-  passam a recusar só o mês com espelho assinado. Abono continua só até hoje.
+- `fn_ponto_mes_espelho(tecnico, data)`: `assinado`, `emitido` ou `sem_espelho`; trava a versão vigente (`for update`),
+  como a assinatura, para abono e assinatura não se cruzarem.
+- `app_ponto_abonar`: sem o limite de 62 dias; recusa só mês assinado. `app_ponto_estornar_abono` e `app_ponto_ajustar`
+  (desconsiderar): 62 dias, ou mês com espelho emitido e não assinado; mês assinado nunca.
+- As três devolvem `espelho_desatualizado` quando o mês tem espelho emitido e não assinado: o painel pede para fechar de
+  novo (painel 3.43.0). Competência no fuso do sistema, o mesmo da emissão.
 
 ### Migration 104 (16/10): inconsistências do ponto, parte 1 (decisão 100)
 

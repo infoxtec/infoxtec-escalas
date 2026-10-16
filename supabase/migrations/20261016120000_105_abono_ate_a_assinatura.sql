@@ -1,17 +1,27 @@
--- Migration 105 (16/10/2026): abono, estorno e "desconsiderar" valem enquanto o espelho do mês não foi assinado
--- (decisão 100, pedido do responsável em 16/10). Antes, o limite era de 62 dias: um dia travado no fechamento por
--- intervalo não registrado ou marcação duplicada, mais antigo que isso, não tinha como ser resolvido. Agora o limite é
--- a assinatura do espelho do mês pelo funcionário (depois dela o espelho não muda, decisão 82). Abono continua só até hoje.
+-- Migration 105 (16/10/2026): prazo do abono pela assinatura do espelho (decisão 100, item 6, pedido do responsável).
+-- Antes, abono, estorno e "desconsiderar" tinham limite de 62 dias: um dia travado no fechamento, mais antigo que isso,
+-- não tinha como ser resolvido. Agora:
+--   - abono (a favor do funcionário): vale enquanto o espelho do mês não foi assinado, sem limite de dias;
+--   - estorno de abono e desconsiderar marcação (contra o funcionário): até 62 dias, ou depois disso só em mês com espelho
+--     emitido e ainda não assinado — mês sem espelho não fica aberto para sempre (revisão do seguranca: proteção contra
+--     mexer em meses antigos antes de um processo);
+--   - mês com espelho assinado: nada muda (decisão 82).
+-- Mudança em mês com espelho emitido e não assinado devolve espelho_desatualizado: o gestor fecha de novo para sair
+-- a versão nova. A competência é calculada no fuso do sistema, o mesmo da emissão do espelho.
 -- Base: definições atuais da homologação em 16/10 (app_ponto_abonar e app_ponto_estornar_abono da migration 66;
 -- app_ponto_ajustar da 104).
 
--- O espelho do mês da data já foi assinado pelo funcionário (versão vigente)
-create or replace function fn_ponto_mes_assinado(p_tecnico uuid, p_data date)
-returns boolean language sql stable set search_path = public, extensions as $$
-  select exists (select 1 from ponto_espelhos e
-                  where e.tecnico_id = p_tecnico and e.competencia = date_trunc('month', p_data)::date
-                    and e.assinado_em is not null and e.substituido_em is null)
-$$;
+-- Situação do espelho do mês da data: 'assinado', 'emitido' (vigente, sem assinatura) ou 'sem_espelho'. Trava a versão
+-- vigente até o fim da transação (ponto_assinar_espelho também trava: abono e assinatura não se cruzam).
+create or replace function fn_ponto_mes_espelho(p_tecnico uuid, p_data date)
+returns text language plpgsql set search_path = public, extensions as $$
+declare v_ass timestamptz; v_id uuid;
+begin
+  select e.id, e.assinado_em into v_id, v_ass from ponto_espelhos e
+   where e.tecnico_id = p_tecnico and e.competencia = date_trunc('month', p_data)::date and e.substituido_em is null
+   for update;
+  return case when v_id is null then 'sem_espelho' when v_ass is not null then 'assinado' else 'emitido' end;
+end $$;
 
 create or replace function app_ponto_abonar(p_tecnico uuid, p_data date, p_motivo text,
   p_inicio time without time zone default null, p_fim time without time zone default null)
@@ -22,6 +32,7 @@ declare
   v_hoje  date;
   v_id    uuid;
   v_det   text;
+  v_esp   text;
 begin
   select t.id, t.empresa_id, t.telefone_e164, t.ativo, t.opt_in, coalesce(e.fuso, 'America/Bahia') as fuso
     into v_tec from tecnicos t left join empresas e on e.id = t.empresa_id where t.id = p_tecnico;
@@ -29,7 +40,8 @@ begin
   if v_tec.empresa_id is null then raise exception 'Funcionário sem empresa cadastrada não tem ponto.'; end if;
   v_hoje := (now() at time zone v_tec.fuso)::date;
   if p_data is null or p_data > v_hoje then raise exception 'Abono só até hoje.'; end if;
-  if fn_ponto_mes_assinado(p_tecnico, p_data) then
+  v_esp := fn_ponto_mes_espelho(p_tecnico, p_data);
+  if v_esp = 'assinado' then
     raise exception 'O espelho deste mês já foi assinado pelo funcionário: não cabe mais abono.';
   end if;
   if length(trim(coalesce(p_motivo, ''))) not between 10 and 500 then raise exception 'Escreva o motivo do abono (10 a 500 letras).'; end if;
@@ -46,7 +58,8 @@ begin
     perform fn_ponto_wa(v_tec.telefone_e164, '📝 *Ponto · abono do gestor*' || E'\n' || 'Seu registro de ' || to_char(p_data, 'DD/MM')
       || ' foi abonado (' || v_det || '): esse período não é descontado.');
   end if;
-  return jsonb_build_object('id', v_id, 'data', to_char(p_data, 'DD/MM/YYYY'), 'detalhe', v_det);
+  return jsonb_build_object('id', v_id, 'data', to_char(p_data, 'DD/MM/YYYY'), 'detalhe', v_det,
+                            'espelho_desatualizado', v_esp = 'emitido');
 end $$;
 
 create or replace function app_ponto_estornar_abono(p_abono uuid, p_motivo text)
@@ -55,11 +68,16 @@ declare
   v_email text := app_exigir(array['admin','gestor']);
   a       record;
   v_id    uuid;
+  v_esp   text;
 begin
   select * into a from ponto_abonos where id = p_abono;
   if not found or a.estorno_de is not null then raise exception 'Abono não encontrado.'; end if;
-  if fn_ponto_mes_assinado(a.tecnico_id, a.data) then
+  v_esp := fn_ponto_mes_espelho(a.tecnico_id, a.data);
+  if v_esp = 'assinado' then
     raise exception 'O espelho deste mês já foi assinado pelo funcionário: o abono não pode mais ser estornado.';
+  end if;
+  if v_esp = 'sem_espelho' and a.data < (now() at time zone coalesce(fn_config('fuso'), 'America/Bahia'))::date - 62 then
+    raise exception 'Estorno só para os últimos 62 dias, ou para mês com espelho emitido e ainda não assinado.';
   end if;
   if length(trim(coalesce(p_motivo, ''))) not between 10 and 500 then raise exception 'Escreva o motivo do estorno (10 a 500 letras).'; end if;
   begin
@@ -68,10 +86,10 @@ begin
     returning id into v_id;
   exception when unique_violation then raise exception 'Este abono já foi estornado.';
   end;
-  return jsonb_build_object('id', v_id);
+  return jsonb_build_object('id', v_id, 'espelho_desatualizado', v_esp = 'emitido');
 end $$;
 
--- O gestor só desconsidera marcação (decisão 100), agora enquanto o espelho do mês não foi assinado
+-- O gestor só desconsidera marcação (decisão 100): até 62 dias, ou em mês com espelho emitido e não assinado
 create or replace function app_ponto_ajustar(p_tecnico uuid, p_acao text, p_motivo text,
   p_marcacao uuid default null, p_ajuste uuid default null)
 returns jsonb language plpgsql security definer set search_path = public, extensions as $$
@@ -86,6 +104,7 @@ declare
   v_texto   text;
   v_fuso    text;
   v_avisado boolean := false;
+  v_esp     text;
 begin
   select t.id, t.nome, t.telefone_e164, t.opt_in, t.ativo, t.empresa_id, coalesce(e.fuso, 'America/Bahia') as fuso
     into v_tec from tecnicos t left join empresas e on e.id = t.empresa_id where t.id = p_tecnico;
@@ -117,8 +136,12 @@ begin
     raise exception 'Esta marcação já foi desconsiderada.';
   end if;
   v_mom := v_alvo.momento; v_tipo := v_alvo.tipo; v_emp := v_alvo.empresa_id;
-  if fn_ponto_mes_assinado(p_tecnico, (v_mom at time zone v_fuso)::date) then
+  v_esp := fn_ponto_mes_espelho(p_tecnico, (v_mom at time zone coalesce(fn_config('fuso'), 'America/Bahia'))::date);
+  if v_esp = 'assinado' then
     raise exception 'O espelho deste mês já foi assinado pelo funcionário: o ponto do mês não muda mais.';
+  end if;
+  if v_esp = 'sem_espelho' and v_mom < now() - interval '62 days' then
+    raise exception 'Ajuste só para os últimos 62 dias, ou para mês com espelho emitido e ainda não assinado.';
   end if;
 
   begin
@@ -147,6 +170,7 @@ begin
   end if;
 
   return jsonb_build_object('id', v_id, 'acao', p_acao, 'tipo', v_tipo, 'avisado', v_avisado,
+    'espelho_desatualizado', v_esp = 'emitido',
     'data', to_char(v_mom at time zone v_fuso, 'DD/MM/YYYY'), 'hora', to_char(v_mom at time zone v_fuso, 'HH24:MI'));
 end $$;
 

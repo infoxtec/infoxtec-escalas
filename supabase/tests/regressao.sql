@@ -485,11 +485,10 @@ begin
   values (v_emp, 910009, v_tec, (select cpf from tecnicos where id = v_tec), now() - interval '70 days', 'entrada', 'app', -12.9, -38.4, 'qa', md5(random()::text));
   alter table ponto_marcacoes enable trigger user;
   v_ok := false;
-  -- desde a 105 o limite é a assinatura do espelho do mês, não 62 dias: aceita (e desfaz, para não mexer no resto do T11)
+  -- mês sem espelho emitido: desconsiderar (contra o funcionário) segue limitado a 62 dias (migration 105)
   begin perform app_ponto_ajustar(v_tec, 'desconsiderar', 'motivo suficiente aqui', p_marcacao => (select id from ponto_marcacoes where nsr = 910009 and tecnico_id = v_tec));
-    raise exception 'aceito';
-  exception when others then v_ok := sqlerrm = 'aceito'; end;
-  perform pg_temp.ok(v_ok, '[T11] recusou desconsiderar marcação de 70 dias atrás em mês sem espelho assinado');
+  exception when others then v_ok := sqlerrm like '%62 dias%'; end;
+  perform pg_temp.ok(v_ok, '[T11] desconsiderou marcação de 70 dias atrás em mês sem espelho');
   v_ok := false;
   begin perform app_ponto_ajustar(v_outro, 'desconsiderar', 'motivo suficiente aqui', p_marcacao => v_dup);
   exception when others then v_ok := sqlerrm like '%não encontrada%'; end;
@@ -2709,6 +2708,14 @@ begin
   p := fn_ponto_folha_pendencias(v_tec, v_mes);
   r := app_ponto_fechar_folha(v_mes, v_tec, true, (select count(*)::int from jsonb_array_elements(p) x where not (x->>'bloqueia')::boolean));
   perform pg_temp.ok(r->>'situacao' = 'fechado', '[T48] fechamento para a assinatura: ' || r::text);
+  -- espelho emitido e não assinado: abono entra e avisa que o espelho ficou desatualizado (desfeito em seguida)
+  v_ok := false;
+  begin
+    r := app_ponto_abonar(v_tec, v_mes + 5, 'Abono depois da emissão do espelho');
+    v_ok := (r->>'espelho_desatualizado')::boolean;
+    raise exception 'desfaz';
+  exception when others then null; end;
+  perform pg_temp.ok(v_ok, '[T48] abono em mês com espelho emitido sem aviso de desatualizado');
   update ponto_espelhos set assinado_em = now(), assinatura_png = 'x', assinatura_sha256 = 'x' where tecnico_id = v_tec and substituido_em is null;
   v_ok := false;
   begin perform app_ponto_abonar(v_tec, v_mes + 5, 'Abono depois da assinatura do espelho');

@@ -33,6 +33,9 @@ function fimDoMes(mes: string, hoje: string) {
 
 // Registro de Ponto (submenu da Agenda): acompanhamento online (hoje, atualiza sozinho) e histórico das marcações (backlog 090).
 // As marcações são imutáveis: correção é ajuste com justificativa, registro à parte (migration 65). Docs: docs/modulo-registro-de-ponto/.
+// o espelho do mês já foi emitido e ainda não assinado: a mudança só entra nele quando a folha é fechada de novo (migration 105)
+const DESATUALIZADO = ' O espelho deste mês já foi emitido: feche a folha de novo (Fechamento da folha) para sair a versão nova antes da assinatura.'
+
 export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leitura' }) {
   const hoje = hojeBahia()
   const [situacao, setSituacao] = useState<PontoHoje[] | null>(null)
@@ -368,14 +371,15 @@ function Ajustes({ linhas, marcacoes, funcionarios, tecnico, hoje, podeAjustar, 
       }
       if (acao === 'abonar') {
         const a = await api.pontoAbonar(func, data, motivo.trim(), diaInteiro ? null : ini, diaInteiro ? null : fim)
-        setOk(`Abono de ${a.data} (${a.detalhe}) registrado. O funcionário foi avisado, sem o motivo.`)
+        setOk(`Abono de ${a.data} (${a.detalhe}) registrado. O funcionário foi avisado, sem o motivo.` + (a.espelho_desatualizado ? DESATUALIZADO : ''))
         setMotivo(''); setIni(''); setFim(''); await aoAjustar(); return
       }
       const r = await api.pontoAjustar({ tecnico: func, acao, motivo: motivo.trim(),
         ...(marcacao.startsWith('a:') ? { ajuste: marcacao.slice(2) } : { marcacao: marcacao.slice(2) }) })
       setOk(`Ajuste de ${r.data} às ${r.hora} registrado. ` + (r.avisado
         ? 'O funcionário foi avisado pelo WhatsApp (sem o motivo).'
-        : 'Sem novo aviso ao funcionário: ele não autorizou mensagens, está inativo ou já foi avisado de um ajuste nos últimos 5 minutos.'))
+        : 'Sem novo aviso ao funcionário: ele não autorizou mensagens, está inativo ou já foi avisado de um ajuste nos últimos 5 minutos.')
+        + (r.espelho_desatualizado ? DESATUALIZADO : ''))
       setMotivo(''); setMarcacao('')
       await aoAjustar()
     } catch (e) { setErro(erroMsg(e)) }
