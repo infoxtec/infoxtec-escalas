@@ -83,6 +83,7 @@ export interface Empresa {
   id: string; cnpj: string; razao_social: string; nome_fantasia: string | null; endereco: string | null
   cidade: string; uf: string; fuso: string; empregadora: boolean; ativo: boolean; created_at: string
   logo?: string | null
+  exige_registro_intervalo?: boolean   // decisão 100: sem o par de intervalo, o fechamento bloqueia
 }
 
 // Logotipos publicados com o painel (web/public), escolhidos no cadastro da empresa e congelados no espelho (decisão 96)
@@ -548,6 +549,7 @@ export type PendenciaFolha = DiaPendencia & (
   | { tipo: 'pedido_pendente'; numero: number }
   | { tipo: 'marcacao_incompleta' | 'marcacao_duplicada' | 'abono_em_dia_trabalhado'; marcacoes: number }
   | { tipo: 'sem_registro'; minutos: number }
+  | { tipo: 'intervalo_nao_registrado'; trabalhado_min: number | null }
   | { tipo: 'intervalo_curto' | 'sem_intervalo' | 'he_acima_limite' | 'interjornada_curta'; intervalo_min: number | null; he_min: number | null; interjornada_min: number | null })
 export interface FuncionarioFolha {
   tecnico_id: string; nome: string; empresa: string; pendencias: PendenciaFolha[]

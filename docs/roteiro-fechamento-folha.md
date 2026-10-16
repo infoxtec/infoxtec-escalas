@@ -45,8 +45,9 @@ Regras no banco (não dependem do painel):
 | Pedido de ajuste ou justificativa aguardando aprovação | **Bloqueia** | Aprovar ou negar na aba Ajustes e pedidos |
 | Marcação faltando (entrada sem saída, almoço sem volta) | **Bloqueia** | Pedido do funcionário pelo app ou WhatsApp, ou desconsiderar a marcação errada |
 | Marcação duplicada (o mesmo tipo em seguida, ou duas a menos de 3 min) | **Bloqueia** | Desconsiderar a repetida (aba Ajustes e pedidos) |
+| Intervalo não registrado em dia acima de 4 h, com a empresa exigindo o registro (decisão 100) | **Bloqueia** | Pedido de ajuste do funcionário aprovado, ou abono do gestor do período ou do intervalo (hora abonada; nenhuma marcação é criada) |
 | Falta injustificada: dia da escala sem marcação, sem abono e sem pedido em aberto | Confirmar | Abonar se houver justificativa; senão, confirmar: sai descontada |
-| Intervalo abaixo do mínimo ou jornada sem intervalo | Confirmar | Sai como intervalo não concedido (+50%) no espelho |
+| Intervalo abaixo do mínimo, ou jornada sem intervalo já abonada (ou empresa sem a exigência) | Confirmar | Sai como intervalo não concedido (+50%) no espelho |
 | Hora extra acima de 2 h no dia | Confirmar | Sai como HE; conferir o aceite da empresa (decisão 90) |
 | Descanso entre jornadas abaixo de 11 h | Confirmar | Conferir; é ocorrência trabalhista |
 | Abono do dia inteiro em dia com marcação | Confirmar | Estornar o abono se foi engano, ou confirmar |
@@ -80,7 +81,7 @@ no espelho na emissão: a folha já emitida não muda; a próxima emissão (ou o
 
 ## 5. Roteiro de teste na homologação
 
-Massa: funcionário **David (homologação)**, Infoxtec, jornada padrão (8 h + 4 h sábado), de maio a setembro de 2026
+Massa: funcionário **Renato (homologação)**, abril (só ocorrências a confirmar) e maio (duplicada em 06/05, incompletas em 07 e 14/05, pedido pendente de 07/05), carga de 15/10. Também o **David (homologação)**, Infoxtec, jornada padrão (8 h + 4 h sábado), de maio a setembro de 2026
 (carga de 14/10, registrada no plano de trabalho). Também Ana, Bruno e Gabriela, de junho a setembro.
 
 | Mês | Situações do David |

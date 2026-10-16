@@ -26,6 +26,7 @@ function textoPendencia(p: PendenciaFolha) {
     case 'pedido_pendente': return `${d} · pedido nº ${p.numero} aguardando aprovação`
     case 'marcacao_incompleta': return `${d} · marcação faltando (${p.marcacoes} registrada${p.marcacoes === 1 ? '' : 's'})`
     case 'marcacao_duplicada': return `${d} · marcação duplicada: desconsidere a repetida`
+    case 'intervalo_nao_registrado': return `${d} · intervalo não registrado${p.trabalhado_min ? ` (${hm(p.trabalhado_min)} de jornada)` : ''}: aguarde o pedido do funcionário ou abone o intervalo`
     case 'sem_registro': return `${d} · falta injustificada (${hm(p.minutos)} sem registro nem pedido)`
     case 'intervalo_curto': return `${d} · intervalo abaixo do mínimo${p.intervalo_min != null ? ` (${hm(p.intervalo_min)})` : ''}`
     case 'sem_intervalo': return `${d} · jornada sem intervalo`

@@ -9,7 +9,7 @@ const NOVA: Partial<Empresa> = { cnpj: '', razao_social: '', nome_fantasia: '', 
 
 // Empresas: empregadoras (dono do ponto dos funcionários) e clientes (dono dos locais).
 // Base do Módulo Registro de Ponto (docs/modulo-registro-de-ponto/).
-export default function EmpresasPage({ podeEditar }: { podeEditar: boolean }) {
+export default function EmpresasPage({ podeEditar, ehAdmin }: { podeEditar: boolean; ehAdmin: boolean }) {
   const [empresas, setEmpresas] = useState<Empresa[] | null>(null)
   const [edit, setEdit] = useState<Partial<Empresa> | null>(null)
   const [salvando, setSalvando] = useState(false)
@@ -99,6 +99,11 @@ export default function EmpresasPage({ podeEditar }: { podeEditar: boolean }) {
                   <img src={logoEmpresa(edit.logo)!.src} alt={logoEmpresa(edit.logo)!.nome} className="mt-2 h-8 w-auto rounded bg-[#0d1e3c] px-1.5 py-1" />
                 )}
               </Field>
+            )}
+            {edit.empregadora && (
+              <ToggleRow label="Exige registro do intervalo"
+                description={'Dia com mais de 4 h sem a saída e a volta do intervalo trava o fechamento da folha até o pedido do funcionário ou o abono do gestor. Desligue se a empresa usa a pré-assinalação do intervalo (CLT art. 74, §2º).' + (ehAdmin ? '' : ' Só o administrador altera.')}
+                checked={!!edit.exige_registro_intervalo} onChange={v => set('exige_registro_intervalo', v)} disabled={salvando || !ehAdmin} />
             )}
             {edit.id && <ToggleRow label="Ativa" checked={!!edit.ativo} onChange={v => set('ativo', v)} disabled={salvando} />}
             {erro && <ErrorBox>{erro}</ErrorBox>}

@@ -114,7 +114,6 @@ function Painel({ token, onSair }: { token: string; onSair: () => void }) {
   const [erro, setErro] = useState<string | null>(null)
   const [batendo, setBatendo] = useState<PontoTipo | null>(null)
   const [comprovante, setComprovante] = useState<PontoComprovante | null>(null)
-  const [previo, setPrevio] = useState<{ tipo: PontoTipo; texto: string } | null>(null)
   // link do WhatsApp do espelho mensal: /ponto?espelho=id abre direto nele (decisão 82)
   const [espelhoLink] = useState(() => new URLSearchParams(window.location.search).get('espelho'))
   const [aba, setAba] = useState<'ponto' | 'ajuste' | 'espelho'>(() => espelhoLink ? 'espelho' : 'ponto')
@@ -130,20 +129,12 @@ function Painel({ token, onSair }: { token: string; onSair: () => void }) {
   }, [token, onSair])
   useEffect(() => { void carregar() }, [carregar])
 
-  // Antes da volta do almoço: avisa se o intervalo ainda está abaixo do mínimo (não bloqueia)
-  const escolher = async (tipo: PontoTipo) => {
-    setErro(null)
-    if (tipo === 'volta_almoco') {
-      try {
-        const t = await ponto.avisoPrevio(token, tipo)
-        if (t) { setPrevio({ tipo, texto: t.replace(/\*/g, '').replace(/^⚠️\s*/, '') }); return }
-      } catch { /* sem aviso: segue para a marcação */ }
-    }
-    await bater(tipo)
-  }
+  // A marcação nunca espera confirmação (Portaria MTP 671/2021; decisão 100): o intervalo abaixo do mínimo
+  // aparece depois, no comprovante, como aviso informativo
+  const escolher = (tipo: PontoTipo) => bater(tipo)
 
   const bater = async (tipo: PontoTipo) => {
-    setErro(null); setPrevio(null); setBatendo(tipo)
+    setErro(null); setBatendo(tipo)
     try {
       const p = await posicao()
       const c = await ponto.bater(token, tipo, p.coords.latitude, p.coords.longitude, Math.round(p.coords.accuracy), APP_VERSAO)
@@ -218,19 +209,6 @@ function Painel({ token, onSair }: { token: string; onSair: () => void }) {
 
       </>)}
       {comprovante && <Comprovante c={comprovante} onFechar={() => setComprovante(null)} />}
-      {previo && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center" onClick={() => setPrevio(null)}>
-          <div className="w-full max-w-md space-y-3 rounded-xl bg-card p-5" onClick={e => e.stopPropagation()}>
-            <p className="flex items-start gap-2 text-sm text-amber-900 dark:text-amber-200">
-              <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" /> {previo.texto}
-            </p>
-            <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => setPrevio(null)}>Voltar</Button>
-              <Button className="flex-1" onClick={() => void bater(previo.tipo)}>Registrar mesmo assim</Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -257,7 +235,10 @@ function Comprovante({ c, onFechar }: { c: PontoComprovante; onFechar: () => voi
             <XCircle className="mt-0.5 h-4 w-4 shrink-0" /> Você está a {c.distancia_m} m do local. A marcação foi registrada normalmente e o gestor será avisado.
           </p>
         )}
-        {c.avisos?.map((a, i) => (
+        {c.avisos?.map((a, i) => a.startsWith('🍽️') ? (
+          // informação (horário de retorno do intervalo), não alerta
+          <p key={i} className="rounded-md bg-muted p-2 text-xs">{a}</p>
+        ) : (
           <p key={i} className="flex items-start gap-1.5 rounded-md bg-amber-50 p-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
             <XCircle className="mt-0.5 h-4 w-4 shrink-0" /> {a.replace(/^⚠️\s*/, '')}
           </p>

@@ -49,6 +49,8 @@
 -- T45 validação e fechamento da folha: pendência bloqueia, faltas pedem confirmação, registro de quem fechou, logotipo
 -- T46 checagens do fechamento: duplicada, intervalo, pedido aberto não é falta, abono do atestado no espelho, prévia
 -- T47 token do webhook trocado sozinho: janela com os dois, confirmação, limpeza, reversão em falha, espera de um dia
+-- T48 intervalo não registrado bloqueia o fechamento (opção da empresa), abono libera, gestor não cria marcação,
+--     retorno do intervalo no comprovante, só o administrador muda a opção
 
 \set ON_ERROR_STOP on
 begin;
@@ -475,7 +477,7 @@ begin
   exception when others then v_ok := sqlerrm like '%inválida%'; end;
   perform pg_temp.ok(v_ok, '[T11] aceitou ação inválida');
   v_ok := false;
-  begin perform app_ponto_ajustar(v_tec, 'incluir', 'Esqueceu de bater a saída', p_data => d, p_hora => '17:00', p_tipo => 'saida');
+  begin perform app_ponto_ajustar(v_tec, 'incluir', 'Esqueceu de bater a saída');   -- sem os parâmetros da inclusão desde a 104
   exception when others then v_ok := sqlerrm like '%não inclui marcação%'; end;
   perform pg_temp.ok(v_ok, '[T11] gestor incluiu marcação (decisão 89)');
   alter table ponto_marcacoes disable trigger user;
@@ -543,7 +545,7 @@ begin
   insert into painel_usuarios (email, nome, papel, ativo) values ('qa-leitura@teste.local', 'QA Leitura', 'leitura', true);
   perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
   v_ok := false;
-  begin perform app_ponto_ajustar(v_tec, 'incluir', 'motivo suficiente aqui', p_data => d, p_hora => '18:00', p_tipo => 'inicio_he');
+  begin perform app_ponto_ajustar(v_tec, 'desconsiderar', 'motivo suficiente aqui', p_marcacao => v_dup);
   exception when others then v_ok := sqlerrm like '%Sem permissão%'; end;
   perform pg_temp.ok(v_ok, '[T11] leitura lançou ajuste');
   select count(*) into v_n from app_ponto_ajustes(d - 1, d, v_tec) a where a.motivo is null and a.autor is null;
@@ -2614,7 +2616,91 @@ begin
                      and not has_function_privilege('service_role', 'fn_webhook_token_trocar(text)', 'execute'), '[T47] permissões');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T47' as resultado,
+-- T48 inconsistências do ponto, parte 1 (migration 104, decisão 100) ------------------------------------
+do $$
+declare
+  v_emp uuid := (select v::uuid from qa where k = 'emp');
+  v_mes date := date_trunc('month', current_date - interval '1 month')::date;
+  v_tec uuid; p jsonb; r jsonb; v_ok boolean; v_av text[];
+begin
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA Intervalo', '5579999994848', true, true, pg_temp.cpf('484848401'), v_emp, false, v_mes - 60) returning id into v_tec;
+  alter table ponto_marcacoes disable trigger user;
+  insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, hash_anterior, hash)
+  select v_emp, 948000 + k, v_tec, (select cpf from tecnicos where id = v_tec), ((v_mes + d) + h) at time zone 'America/Bahia',
+         tp, 'ura', 'qa', md5(random()::text)
+    from (values -- dia 2: 9 h seguidas, sem intervalo
+                 (1, 1, time '08:00', 'entrada'), (2, 1, time '17:00', 'saida'),
+                 -- dia 3: 4 h, dois registros bastam
+                 (3, 2, time '08:00', 'entrada'), (4, 2, time '12:00', 'saida'),
+                 -- dia 4: 5 h sem os 15 min
+                 (5, 3, time '08:00', 'entrada'), (6, 3, time '13:00', 'saida')) x(k, d, h, tp);
+  alter table ponto_marcacoes enable trigger user;
+
+  -- empresa sem a exigência: segue "confirmar", como antes
+  update empresas set exige_registro_intervalo = false where id = v_emp;
+  p := fn_ponto_folha_pendencias(v_tec, v_mes);
+  perform pg_temp.ok(p @> jsonb_build_array(jsonb_build_object('tipo', 'sem_intervalo', 'data', v_mes + 1, 'nivel', 'confirmar'))
+                     and not p @> '[{"bloqueia":true}]', '[T48] sem a exigência: ' || p::text);
+  -- com a exigência: acima de 4 h sem o par bloqueia; até 4 h não aponta nada
+  update empresas set exige_registro_intervalo = true where id = v_emp;
+  p := fn_ponto_folha_pendencias(v_tec, v_mes);
+  perform pg_temp.ok(p @> jsonb_build_array(jsonb_build_object('tipo', 'intervalo_nao_registrado', 'data', v_mes + 1, 'bloqueia', true))
+                     and p @> jsonb_build_array(jsonb_build_object('tipo', 'intervalo_nao_registrado', 'data', v_mes + 3, 'bloqueia', true))
+                     and not exists (select 1 from jsonb_array_elements(p) x where (x->>'data')::date = v_mes + 2
+                                       and x->>'tipo' in ('intervalo_nao_registrado', 'sem_intervalo')),
+                     '[T48] com a exigência: ' || p::text);
+  r := app_ponto_fechar_folha(v_mes, v_tec, true);
+  perform pg_temp.ok(r->>'situacao' = 'pendente', '[T48] fechou com intervalo não registrado: ' || r::text);
+  -- o abono do gestor no dia libera (vira ocorrência a confirmar), sem criar marcação
+  insert into ponto_abonos (empresa_id, tecnico_id, data, inicio, fim, motivo, autor) values
+    (v_emp, v_tec, v_mes + 1, '12:00', '13:00', 'Intervalo abonado pelo gestor', 'qa-admin@teste.local'),
+    (v_emp, v_tec, v_mes + 3, '10:00', '10:15', 'Intervalo abonado pelo gestor', 'qa-admin@teste.local');
+  p := fn_ponto_folha_pendencias(v_tec, v_mes);
+  perform pg_temp.ok(not p @> '[{"tipo":"intervalo_nao_registrado"}]'
+                     and p @> jsonb_build_array(jsonb_build_object('tipo', 'sem_intervalo', 'data', v_mes + 1, 'nivel', 'confirmar'))
+                     and (select count(*) from ponto_marcacoes where tecnico_id = v_tec) = 6,
+                     '[T48] abono do intervalo: ' || p::text);
+
+  -- o gestor nunca cria marcação: não há mais a assinatura com a inclusão, e "incluir" é recusado
+  perform pg_temp.ok(not exists (select 1 from pg_proc where proname = 'app_ponto_ajustar' and pronargs = 8), '[T48] assinatura antiga');
+  v_ok := false;
+  begin perform app_ponto_ajustar(v_tec, 'incluir', 'Marcação esquecida pelo gestor');
+  exception when others then v_ok := sqlerrm like '%não inclui marcação%'; end;
+  perform pg_temp.ok(v_ok, '[T48] gestor incluiu marcação');
+
+  -- comprovante da saída para o intervalo: "retorno a partir de" (só em dia com jornada acima de 4 h)
+  if fn_carga_minutos_dia(v_tec, (now() at time zone 'America/Bahia')::date) > 240 then
+    alter table ponto_marcacoes disable trigger user;
+    insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, hash_anterior, hash)
+    values (v_emp, 948010, v_tec, (select cpf from tecnicos where id = v_tec), now() - interval '1 minute', 'saida_almoco', 'ura', 'qa', 'qa');
+    alter table ponto_marcacoes enable trigger user;
+    v_av := fn_ponto_avisar(v_tec, 'saida_almoco');
+    perform pg_temp.ok(array_to_string(v_av, ' ') like '%Retorno a partir de%', '[T48] retorno no comprovante: ' || coalesce(array_to_string(v_av, ' '), '-'));
+    perform pg_temp.ok(fn_ponto_aviso_previo(v_tec, 'volta_almoco') like '%registrada normalmente%', '[T48] aviso da volta informativo');
+  end if;
+
+  -- só o administrador muda a exigência
+  insert into painel_usuarios (email, nome, papel, ativo) values ('qa-gestor@teste.local', 'QA Gestor', 'gestor', true)
+  on conflict (email) do update set papel = 'gestor', ativo = true;
+  perform set_config('request.jwt.claims', '{"email":"qa-gestor@teste.local","role":"authenticated"}', true);
+  v_ok := false;
+  begin
+    perform app_salvar_empresa(jsonb_build_object('id', v_emp, 'cnpj', '11444777000161', 'razao_social', 'QA Regressão Ltda',
+                                                  'empregadora', true, 'exige_registro_intervalo', false));
+  exception when others then v_ok := sqlerrm like '%administrador%'; end;
+  perform pg_temp.ok(v_ok, '[T48] gestor mudou a exigência');
+  -- o gestor salva o cadastro sem mexer na opção (painel antigo não manda o campo)
+  perform app_salvar_empresa(jsonb_build_object('id', v_emp, 'cnpj', '11444777000161', 'razao_social', 'QA Regressão Ltda', 'empregadora', true));
+  perform pg_temp.ok((select exige_registro_intervalo from empresas where id = v_emp), '[T48] cadastro sem o campo perdeu a opção');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  perform app_salvar_empresa(jsonb_build_object('id', v_emp, 'cnpj', '11444777000161', 'razao_social', 'QA Regressão Ltda',
+                                                'empregadora', true, 'exige_registro_intervalo', false));
+  perform pg_temp.ok(not (select exige_registro_intervalo from empresas where id = v_emp), '[T48] administrador mudou a exigência');
+  perform pg_temp.ok(not has_function_privilege('authenticated', 'fn_ponto_aviso_intervalo_pendente()', 'execute'), '[T48] permissões');
+end $$;
+
+select 'REGRESSÃO OK: T1 a T48' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
