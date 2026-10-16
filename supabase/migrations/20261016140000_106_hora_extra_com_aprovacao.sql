@@ -35,7 +35,8 @@ returns trigger language plpgsql set search_path = public, extensions as $$
 begin
   if tg_op = 'DELETE' then raise exception 'Autorização de hora extra não se apaga.'; end if;
   if old.status <> 'pendente' or new.marcacao_id <> old.marcacao_id or new.tecnico_id <> old.tecnico_id
-     or new.inicio <> old.inicio or new.data <> old.data or new.origem <> old.origem then
+     or new.inicio <> old.inicio or new.data <> old.data or new.origem <> old.origem or new.empresa_id <> old.empresa_id
+     or new.escala_id is distinct from old.escala_id then
     raise exception 'Autorização de hora extra já decidida não muda.';
   end if;
   return new;
@@ -164,16 +165,16 @@ begin
     exception when others then v_btn := null;
     end;
   end if;
-  if v_btn is null or v_btn !~ '^he:(ok|nao):[0-9a-f-]{36}$' then return null; end if;
+  if v_btn is null or v_btn !~ '^he:(ok|nao):[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then return null; end if;
   v_id := split_part(v_btn, ':', 3)::uuid;
 
   select j into v_jid from unnest(array[v_key->>'remoteJid', v_key->>'remoteJidAlt', v_key->>'senderPn', p_data->>'sender']) as j
    where j like '%@s.whatsapp.net' limit 1;
   select t.id, t.nome, t.telefone_e164, t.empresa_id into v_sup from tecnicos t
-   where t.is_supervisor and t.ativo and fn_tel_canonico(t.telefone_e164) = fn_tel_canonico(split_part(coalesce(v_jid, ''), '@', 1));
+   where t.is_supervisor and t.ativo and t.opt_in and not t.perfil_teste and fn_tel_canonico(t.telefone_e164) = fn_tel_canonico(split_part(coalesce(v_jid, ''), '@', 1));
   if v_sup.id is null then return jsonb_build_object('ignorado', 'hora extra: resposta de quem não é supervisor'); end if;
   select * into h from ponto_he_autorizacoes where id = v_id;
-  if h.id is null or (v_sup.empresa_id is not null and v_sup.empresa_id <> h.empresa_id) then
+  if h.id is null or h.tecnico_id = v_sup.id or (v_sup.empresa_id is not null and v_sup.empresa_id <> h.empresa_id) then
     return jsonb_build_object('ignorado', 'hora extra: pedido de outra empresa ou inexistente');
   end if;
   begin
@@ -259,9 +260,21 @@ begin
   end if;
 
   -- início de hora extra: autorizada pela Programação ou enviada ao gestor para aprovar (decisão 100, parte 2)
+  -- bloco próprio: uma falha aqui não desfaz os avisos, e uma falha nos avisos não desfaz o pedido (seguranca)
   if p_tipo = 'inicio_he' then
-    v_he := fn_ponto_he_inicio(p_tecnico);
-    if v_he is not null then v_saida := v_saida || v_he; end if;
+    begin
+      v_he := fn_ponto_he_inicio(p_tecnico);
+      if v_he is not null then v_saida := v_saida || v_he; end if;
+    exception when others then
+      raise warning 'ponto: pedido de aprovação de hora extra falhou: %', sqlerrm;
+      begin
+        perform fn_avisar_tecnico('⚠️ *HORA EXTRA*' || E'\n\n' || 'O pedido de aprovação de uma hora extra iniciada agora '
+          || 'falhou e não foi enviado ao gestor. Confira em Ponto › Marcações e decida no painel.');
+      exception when others then null;
+      end;
+      v_saida := v_saida || 'Início de hora extra registrado. Avise o seu gestor para aprovar.'::text;
+    end;
+    return v_saida;
   end if;
 
   j := fn_ponto_jornada_dia(p_tecnico, v_data);
@@ -494,101 +507,6 @@ begin
 
   return v_res;
 end $function$;
-
--- Vigia do motor: passa também pela manutenção do token (a falha dela nunca derruba a vigia) -----------------
-create or replace function fn_vigiar_motor()
-returns jsonb language plpgsql security definer set search_path = public, extensions as $function$
-declare
-  v        motor_estado;
-  v_limite int := coalesce(fn_config_int('motor_alerta_min'), 5);
-  v_local  timestamp := now() at time zone fn_config('fuso');
-  v_janela boolean;
-  v_min    int;
-  v_desde  text;
-  v_texto  text;
-  v_mb     int;
-begin
-  -- token do webhook (decisão 98): troca, confere e limpa sozinho
-  begin
-    perform fn_webhook_token_manutencao();
-  exception when others then
-    raise warning 'token do webhook: %', sqlerrm;
-    -- o suporte fica sabendo, no máximo uma vez por dia
-    update motor_estado set token_alerta_em = current_date where id and token_alerta_em is distinct from current_date;
-    if found then
-      perform fn_avisar_tecnico('⚠️ *TOKEN DO WEBHOOK*' || E'\n\n'
-        || 'A troca automática do token do webhook não conseguiu rodar: ' || left(sqlerrm, 150) || E'\n'
-        || 'O WhatsApp segue com o token atual. Acione o suporte.');
-    end if;
-  end;
-
-  select * into v from motor_estado where id;
-  if not found then
-    insert into motor_estado (id) values (true);
-    return jsonb_build_object('situacao', 'iniciado');
-  end if;
-
-  v_min := floor(extract(epoch from now() - v.ultima_execucao_ok) / 60)::int;
-  v_janela := v_local::time between fn_config('janela_envio_inicio')::time and fn_config('janela_envio_fim')::time;
-  v_desde := to_char(v.ultima_execucao_ok at time zone fn_config('fuso'), 'DD/MM HH24:MI');
-
-  -- tamanho do banco: um aviso por dia, dentro da janela
-  v_mb := (pg_database_size(current_database()) / 1048576)::int;
-  if v_janela and v_mb >= coalesce(fn_config_int('banco_alerta_mb'), 350)
-     and v.banco_alerta_em is distinct from v_local::date then
-    perform fn_avisar_tecnico(
-      '⚠️ *BANCO DE DADOS PERTO DO LIMITE*' || E'\n\n'
-      || 'O banco está com ' || v_mb || ' MB. O plano gratuito para de gravar em 500 MB.' || E'\n'
-      || 'Acione o suporte para limpar ou arquivar dados.');
-    update motor_estado set banco_alerta_em = v_local::date where id;
-  end if;
-
-  if v_min >= v_limite then
-    if v.alerta_enviado_em is not null then
-      return jsonb_build_object('situacao', 'parado', 'minutos', v_min, 'alerta', 'ja enviado');
-    end if;
-    if not v_janela then
-      return jsonb_build_object('situacao', 'parado', 'minutos', v_min, 'alerta', 'aguardando janela de envio');
-    end if;
-    v_texto := '⚠️ *MOTOR DE ENVIO PARADO*' || E'\n\n'
-      || 'Nenhuma execução concluída desde ' || v_desde || ' (' || v_min || ' min).' || E'\n'
-      || 'Programações, lembretes e alertas não estão saindo. Acione o suporte.';
-    perform fn_avisar_supervisores(v_texto);
-    perform fn_avisar_tecnico(v_texto);
-    update motor_estado set alerta_enviado_em = now(), atualizado_em = now() where id;
-    return jsonb_build_object('situacao', 'parado', 'minutos', v_min, 'alerta', 'enviado');
-  end if;
-
-  if v.alerta_enviado_em is not null then
-    if not v_janela then
-      return jsonb_build_object('situacao', 'normalizado', 'alerta', 'aguardando janela de envio');
-    end if;
-    v_texto := '✅ *MOTOR DE ENVIO NORMALIZADO*' || E'\n\n'
-      || 'Voltou a funcionar. Última execução: ' || v_desde || '.' || E'\n'
-      || 'Confira no painel as programações do período parado.';
-    perform fn_avisar_supervisores(v_texto);
-    perform fn_avisar_tecnico(v_texto);
-    update motor_estado set alerta_enviado_em = null, atualizado_em = now() where id;
-    return jsonb_build_object('situacao', 'normalizado', 'alerta', 'enviado');
-  end if;
-
-  return jsonb_build_object('situacao', 'em dia', 'minutos', v_min);
-end $function$;
-
--- Permissões por laço (decisão 12) ----------------------------------------------------------------
-do $$
-declare f record;
-begin
-  execute 'revoke execute on all functions in schema public from public, anon, authenticated, service_role';
-  for f in select p.oid::regprocedure as a from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-           where n.nspname = 'public' and p.proname like 'app\_%' loop
-    execute format('grant execute on function %s to authenticated', f.a);
-  end loop;
-  for f in select p.oid::regprocedure as a from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-           where n.nspname = 'public' and p.proname like 'ponto\_%' loop
-    execute format('grant execute on function %s to anon, authenticated', f.a);
-  end loop;
-end $$;
 
 do $$
 declare f record;

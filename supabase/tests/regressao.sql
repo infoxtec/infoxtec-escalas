@@ -2774,6 +2774,17 @@ begin
   perform pg_temp.ok(r->>'acao' = 'he_ja_decidida' and (select status from ponto_he_autorizacoes where id = v_h) = 'aprovada',
                      '[T49] segunda decisão: ' || coalesce(r::text, '-'));
   perform pg_temp.ok(fn_ponto_he_resposta(pg_temp.msg('5579999994909', 'HE3', '{"conversation":"ok"}')) is null, '[T49] texto comum interceptado');
+  -- supervisor de outra empresa e botão montado fora do formato não decidem
+  insert into empresas (cnpj, razao_social, empregadora, ativo) values ('11222333000181', 'QA Outra Empresa', true, true)
+  on conflict (cnpj) do nothing;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, empresa_id, perfil_teste, is_supervisor)
+  values ('QA Supervisor Outra', '5579999994908', true, true, (select id from empresas where cnpj = '11222333000181'), false, true);
+  perform fn_ponto_he_inicio(v_a);   -- sem marcação nova: nada muda
+  perform pg_temp.ok(fn_ponto_he_resposta(pg_temp.msg('5579999994908', 'HE4', jsonb_build_object('buttonsResponseMessage',
+                       jsonb_build_object('selectedButtonId', 'he:nao:' || v_h))))->>'ignorado' like '%outra empresa%',
+                     '[T49] supervisor de outra empresa decidiu');
+  perform pg_temp.ok(fn_ponto_he_resposta(pg_temp.msg('5579999994909', 'HE5', jsonb_build_object('buttonsResponseMessage',
+                       jsonb_build_object('selectedButtonId', 'he:ok:' || repeat('-', 36))))) is null, '[T49] botão fora do formato');
   v_ok := false;
   begin update ponto_he_autorizacoes set status = 'reprovada' where id = v_h; exception when others then v_ok := true; end;
   perform pg_temp.ok(v_ok, '[T49] decisão alterada');
