@@ -1406,7 +1406,8 @@ localização e do cofre (`seguranca`); vigência nos valores de `ponto_motivos`
    intervalo" (aba Empresas), ligada na Infoxtec; desligada para quem usa pré-assinalação (CLT art. 74, §2º).
 2. **O gestor nunca cria marcação, em nenhuma hipótese** (reforça a decisão 89). Ele aprova ou reprova o
    pedido de ajuste ou a justificativa enviados pelo funcionário, ou **abona o período ou o intervalo**, que
-   conta como hora abonada, sem criar marcação. A referência a "incluir" sai do sistema (ação morta em
+   conta como hora abonada, sem criar marcação; qualquer abono do gestor no dia libera a trava do intervalo (o gestor
+   responde pelo abono, com motivo). A referência a "incluir" sai do sistema (ação morta em
    `app_ponto_ajustar` e textos). No dia seguinte, o funcionário recebe "faltou registrar o intervalo de
    DD/MM, peça o ajuste".
 3. **Hora extra com aprovação do gestor:** o início de HE ou já vem programado pelo gestor na Programação,

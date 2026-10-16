@@ -38,7 +38,8 @@ async function emailVerificado(req: Request): Promise<string | null> {
   if (!/^Bearer\s+\S+/i.test(auth)) return null;
   // a chave publicável que o painel manda primeiro: a SUPABASE_ANON_KEY do ambiente é a chave JWT antiga, que
   // deixa de valer quando as chaves antigas são desativadas (T12). Só identifica o projeto: quem protege é o token
-  const apikey = req.headers.get("apikey") ?? Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  const doCliente = req.headers.get("apikey") ?? "";
+  const apikey = /^sb_publishable_[A-Za-z0-9_-]{1,100}$/.test(doCliente) ? doCliente : (Deno.env.get("SUPABASE_ANON_KEY") ?? "");
   try {
     const resp = await fetch(`${Deno.env.get("SUPABASE_URL")}/auth/v1/user`, {
       headers: { Authorization: auth, apikey },
