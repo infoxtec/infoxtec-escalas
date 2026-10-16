@@ -122,7 +122,7 @@ export const api = {
   pontoDecidir: (id: string, aprovar: boolean, resposta: string | null) =>
     rpc<{ numero: number; status: string }>('app_ponto_decidir', { p_id: id, p_aprovar: aprovar, p_resposta: resposta }),
   pontoAbonar: (tecnico: string, data: string, motivo: string, inicio: string | null, fim: string | null) =>
-    rpc<{ id: string; data: string; detalhe: string }>('app_ponto_abonar', { p_tecnico: tecnico, p_data: data, p_motivo: motivo, p_inicio: inicio, p_fim: fim }),
+    rpc<{ id: string; data: string; detalhe: string; espelho_desatualizado?: boolean }>('app_ponto_abonar', { p_tecnico: tecnico, p_data: data, p_motivo: motivo, p_inicio: inicio, p_fim: fim }),
   pontoFolgaCompensatoria: (tecnico: string, folga: string, trabalhado: string) =>
     rpc<{ id: string; folga: string; trabalhado: string }>('app_ponto_folga_compensatoria', { p_tecnico: tecnico, p_folga: folga, p_trabalhado: trabalhado }),
   pontoAbonos: (de: string, ate: string, tecnico: string | null) =>
@@ -134,12 +134,12 @@ export const api = {
   pontoAnexoDescartar: (anexo: string, motivo: string) => rpc<void>('app_ponto_anexo_descartar', { p_anexo: anexo, p_motivo: motivo }),
   veSaudeHistorico: () => rpc<{ email: string; valor: boolean; autor: string; em: string }[]>('app_ve_saude_historico'),
   usuariosMfa: () => rpc<{ ativos: { email: string; desde: string }[]; historico: { email: string; acao: 'ativou' | 'desativou'; em: string }[] }>('app_usuarios_mfa'),
-  pontoEstornarAbono: (abono: string, motivo: string) => rpc<{ id: string }>('app_ponto_estornar_abono', { p_abono: abono, p_motivo: motivo }),
+  pontoEstornarAbono: (abono: string, motivo: string) => rpc<{ id: string; espelho_desatualizado?: boolean }>('app_ponto_estornar_abono', { p_abono: abono, p_motivo: motivo }),
   pontoAjustes: (de: string, ate: string, tecnico: string | null) =>
     rpc<PontoAjuste[]>('app_ponto_ajustes', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
   // desconsiderar: marcação ou inclusão vinda de pedido aprovado (o gestor não inclui marcação, decisão 89)
   pontoAjustar: (a: { tecnico: string; acao: 'desconsiderar'; motivo: string; marcacao?: string; ajuste?: string }) =>
-    rpc<{ id: string; data: string; hora: string; avisado: boolean }>('app_ponto_ajustar', {
+    rpc<{ id: string; data: string; hora: string; avisado: boolean; espelho_desatualizado?: boolean }>('app_ponto_ajustar', {
       p_tecnico: a.tecnico, p_acao: a.acao, p_motivo: a.motivo, p_marcacao: a.marcacao ?? null, p_ajuste: a.ajuste ?? null }),
   pontoGeo: (de: string, ate: string, tecnico: string | null) =>
     rpc<PontoGeo[]>('app_ponto_geo', { p_de: de, p_ate: ate, p_tecnico: tecnico }),

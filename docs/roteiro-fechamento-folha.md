@@ -1,6 +1,6 @@
 # Fechamento da folha de ponto — revisão do processo e roteiro
 
-Decisões 96 e 97, migrations 101 e 102, painel 3.41.0. Pedido do responsável em 14/10: fechar a folha num clique, mas só depois de
+Decisões 96, 97 e 100, migrations 101, 102 e 104, painel 3.42.0. Versão ilustrada: artefato "Fechamento da Folha de Ponto" (https://claude.ai/artifact/GktN1owP9yyHfQ7xCTswFe). Pedido do responsável em 14/10: fechar a folha num clique, mas só depois de
 o sistema apontar, por funcionário, o que falta registrar ou justificar.
 
 ## 1. Como era e o que estava errado
@@ -22,7 +22,7 @@ Aba **Ponto › Fechamento da folha**, separada das outras. Ela valida o mês e 
 
 | Situação | O que significa | O que fazer |
 |---|---|---|
-| **Ajustar antes de fechar** (vermelho) | Pedido do funcionário aguardando decisão, marcação incompleta (entrada sem saída, almoço sem volta) ou duplicada | Aba Ajustes e pedidos: decidir o pedido; para a marcação que falta, o funcionário pede o ajuste pelo app ou WhatsApp (o gestor não inclui marcação, decisão 89) ou o gestor desconsidera a marcação errada ou abona o dia |
+| **Ajustar antes de fechar** (vermelho) | Pedido do funcionário aguardando decisão, marcação incompleta (entrada sem saída, almoço sem volta, início de HE sem fim), duplicada ou intervalo não registrado | Aba Ajustes e pedidos: decidir o pedido; para a marcação que falta, o funcionário pede o ajuste pelo app ou WhatsApp (o gestor não inclui marcação, decisão 89) ou o gestor desconsidera a marcação errada ou abona o dia |
 | **Confirmar ocorrências** (amarelo) | Falta injustificada, intervalo, HE acima de 2 h, descanso curto, abono em dia trabalhado | Conferir (Prévia); justificar o que tiver justificativa; marcar a confirmação |
 | **Pronto para fechar** (verde) | Nada pendente | Entra no fechamento |
 | **Fechado** (azul) | Espelho emitido, ainda sem assinatura | Fechar de novo só gera nova versão se o ponto mudou |
@@ -37,6 +37,22 @@ Regras no banco (não dependem do painel):
   altera nem se apaga. O papel leitura vê a validação, sem o e-mail de quem fechou, e não fecha.
 - Dia devido segue a escala (`fn_carga_dia`). Feriado não é devido, salvo o plantão da 12x36. Sábado sem escala e sem
   expediente é abonado pela regra interna.
+
+### O papel do gestor (decisão 100)
+
+O gestor **nunca cria marcação**, em nenhuma hipótese: aprova ou reprova o pedido de ajuste ou a justificativa do
+funcionário, desconsidera a marcação errada (com motivo) ou abona o período ou o intervalo, que conta como hora abonada.
+Abonar o intervalo não equivale a intervalo gozado: se o funcionário trabalhou no almoço, segue devida a indenização do
+tempo suprimido (+50%, CLT art. 71, §4º).
+
+### Registros mínimos por dia (decisão 100)
+
+Até 4 h: entrada e saída. De 4 a 6 h: mais o par de intervalo de 15 min. Acima de 6 h (44 h e 40 h semanais): o par de
+intervalo de 1 h. Com a opção da empresa "Exige registro do intervalo" (ligada na Infoxtec; desligar para pré-assinalação,
+CLT art. 74, §2º; só o administrador muda), o dia sem o par **bloqueia** o fechamento até o pedido do funcionário ou o
+abono do gestor. A marcação nunca é travada nem pede confirmação (Portaria MTP 671/2021): na saída para o intervalo o
+comprovante diz "retorno a partir de HH:MM"; volta antes do mínimo gera aviso ao funcionário e ao gestor; no dia seguinte,
+quem não registrou o intervalo recebe o convite para pedir o ajuste se fez o intervalo.
 
 ### Checagens mínimas (decisão 97)
 
@@ -81,7 +97,7 @@ no espelho na emissão: a folha já emitida não muda; a próxima emissão (ou o
 
 ## 5. Roteiro de teste na homologação
 
-Massa: funcionário **Renato (homologação)**, abril (só ocorrências a confirmar) e maio (duplicada em 06/05, incompletas em 07 e 14/05, pedido pendente de 07/05), carga de 15/10. Também o **David (homologação)**, Infoxtec, jornada padrão (8 h + 4 h sábado), de maio a setembro de 2026
+Massa principal: funcionário **Renato (homologação)**, **setembro** (carga de 16/10): intervalo não registrado em 06, 11 e 25/09; duplicada em 14/09; saída faltando em 15/09 (com pedido pendente) e 21/09 (sem pedido); HE acima de 2 h, descanso curto, intervalo de 40 min, falta em 17/09, abono em dia trabalhado em 24/09; folga, atestado e testemunha. Desde a migration 105, o abono vale enquanto o espelho do mês não foi assinado (antes, 62 dias); estorno e desconsiderar seguem com 62 dias, ou mês com espelho emitido e não assinado. Abril e maio do Renato (carga de 15/10) não servem para o teste: a entrada duplicada de maio não pode mais ser desconsiderada. Também o **David (homologação)**, Infoxtec, jornada padrão (8 h + 4 h sábado), de maio a setembro de 2026
 (carga de 14/10, registrada no plano de trabalho). Também Ana, Bruno e Gabriela, de junho a setembro.
 
 | Mês | Situações do David |
