@@ -192,6 +192,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Migration 91 e painel 3.31.0: **Folga compensatória e assinatura com HMAC** — o gestor lança a folga de um domingo ou feriado trabalhado, que deixa de sair a 100%; a assinatura do espelho passa a ser conferida com chave no Vault (13/10)
 - [x] **Homologação com painel publicado próprio** em https://infoxtec-escalas-homologacao.vercel.app (decisão 92, 14/10)
 - [x] **WhatsApp na homologação** com instância própria (`trilha-homologacao`), agendador próprio e envio só para os números de teste (decisão 94, 14/10)
+- [ ] Migration 105: **abono, estorno e desconsiderar até a assinatura do espelho** do mês, no lugar de 62 dias (decisão 100, 16/10)
 - [ ] Migration 104 e painel 3.42.0: **intervalo não registrado trava o fechamento** (opção por empresa), gestor nunca cria marcação, comprovante com o horário de retorno do intervalo, aviso no dia seguinte (decisão 100, parte 1)
 - [x] Migration 103: **token do webhook trocado pelo próprio sistema** — sem troca manual nunca mais; o anterior vale 15 min na troca; falha volta sozinha e avisa; token na URL não é mais aceito (decisão 98, 15/10)
 - [x] Migration 102 e painel 3.41.0: **Checagens mínimas do fechamento** — marcação duplicada e faltando bloqueiam; falta injustificada, intervalo, HE acima de 2 h, descanso curto e abono em dia trabalhado pedem confirmação; prévia do espelho; abono do atestado sai como "Abono - Atestado" (decisão 97, 14/10)

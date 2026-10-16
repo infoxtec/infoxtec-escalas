@@ -1424,3 +1424,6 @@ localização e do cofre (`seguranca`); vigência nos valores de `ponto_motivos`
    trabalhou no intervalo, segue devida a indenização do tempo suprimido (+50%, art. 71, §4º). Validar com o
    Gabriel (item 076) o art. 74 da Portaria 671 e a convenção da Infoxtec.
 **Pacote:** um, tamanho M, depois da T12 e do fechamento de maio do Renato; PR até 23/10.
+6. **Prazo do abono (16/10, responsável):** abono, estorno de abono e "desconsiderar marcação" valem enquanto o
+   espelho do mês não foi assinado pelo funcionário, no lugar do limite de 62 dias (migration 105). Depois da
+   assinatura, o mês não muda (decisão 82).

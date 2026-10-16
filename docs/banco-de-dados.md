@@ -254,6 +254,12 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 105 (16/10): abono até a assinatura do espelho (decisão 100, item 6)
+
+- `fn_ponto_mes_assinado(tecnico, data)`: o espelho vigente do mês já tem assinatura do funcionário.
+- `app_ponto_abonar`, `app_ponto_estornar_abono` e `app_ponto_ajustar` (desconsiderar) deixam o limite de 62 dias e
+  passam a recusar só o mês com espelho assinado. Abono continua só até hoje.
+
 ### Migration 104 (16/10): inconsistências do ponto, parte 1 (decisão 100)
 
 - `empresas.exige_registro_intervalo` (padrão desligado; ligado na Infoxtec pela migration). Só o administrador muda

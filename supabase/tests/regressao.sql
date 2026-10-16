@@ -485,9 +485,11 @@ begin
   values (v_emp, 910009, v_tec, (select cpf from tecnicos where id = v_tec), now() - interval '70 days', 'entrada', 'app', -12.9, -38.4, 'qa', md5(random()::text));
   alter table ponto_marcacoes enable trigger user;
   v_ok := false;
+  -- desde a 105 o limite é a assinatura do espelho do mês, não 62 dias: aceita (e desfaz, para não mexer no resto do T11)
   begin perform app_ponto_ajustar(v_tec, 'desconsiderar', 'motivo suficiente aqui', p_marcacao => (select id from ponto_marcacoes where nsr = 910009 and tecnico_id = v_tec));
-  exception when others then v_ok := sqlerrm like '%62 dias%'; end;
-  perform pg_temp.ok(v_ok, '[T11] desconsiderou marcação de 70 dias atrás');
+    raise exception 'aceito';
+  exception when others then v_ok := sqlerrm = 'aceito'; end;
+  perform pg_temp.ok(v_ok, '[T11] recusou desconsiderar marcação de 70 dias atrás em mês sem espelho assinado');
   v_ok := false;
   begin perform app_ponto_ajustar(v_outro, 'desconsiderar', 'motivo suficiente aqui', p_marcacao => v_dup);
   exception when others then v_ok := sqlerrm like '%não encontrada%'; end;
@@ -2698,6 +2700,28 @@ begin
                                                 'empregadora', true, 'exige_registro_intervalo', false));
   perform pg_temp.ok(not (select exige_registro_intervalo from empresas where id = v_emp), '[T48] administrador mudou a exigência');
   perform pg_temp.ok(not has_function_privilege('authenticated', 'fn_ponto_aviso_intervalo_pendente()', 'execute'), '[T48] permissões');
+
+  -- migration 105: abono vale enquanto o espelho do mês não foi assinado (não mais 62 dias)
+  v_ok := false;
+  begin perform app_ponto_abonar(v_tec, current_date - 70, 'Abono de mês antigo sem espelho assinado'); raise exception 'aceito';
+  exception when others then v_ok := sqlerrm = 'aceito'; end;
+  perform pg_temp.ok(v_ok, '[T48] recusou abono de 70 dias atrás em mês sem espelho assinado');
+  p := fn_ponto_folha_pendencias(v_tec, v_mes);
+  r := app_ponto_fechar_folha(v_mes, v_tec, true, (select count(*)::int from jsonb_array_elements(p) x where not (x->>'bloqueia')::boolean));
+  perform pg_temp.ok(r->>'situacao' = 'fechado', '[T48] fechamento para a assinatura: ' || r::text);
+  update ponto_espelhos set assinado_em = now(), assinatura_png = 'x', assinatura_sha256 = 'x' where tecnico_id = v_tec and substituido_em is null;
+  v_ok := false;
+  begin perform app_ponto_abonar(v_tec, v_mes + 5, 'Abono depois da assinatura do espelho');
+  exception when others then v_ok := sqlerrm like '%assinado%'; end;
+  perform pg_temp.ok(v_ok, '[T48] abonou mês com espelho assinado');
+  v_ok := false;
+  begin perform app_ponto_estornar_abono((select id from ponto_abonos where tecnico_id = v_tec and data = v_mes + 1 limit 1), 'Estorno depois da assinatura');
+  exception when others then v_ok := sqlerrm like '%assinado%'; end;
+  perform pg_temp.ok(v_ok, '[T48] estornou abono de mês com espelho assinado');
+  v_ok := false;
+  begin perform app_ponto_ajustar(v_tec, 'desconsiderar', 'Depois da assinatura do espelho', p_marcacao => (select id from ponto_marcacoes where nsr = 948001));
+  exception when others then v_ok := sqlerrm like '%assinado%'; end;
+  perform pg_temp.ok(v_ok, '[T48] desconsiderou marcação de mês com espelho assinado');
 end $$;
 
 select 'REGRESSÃO OK: T1 a T48' as resultado,

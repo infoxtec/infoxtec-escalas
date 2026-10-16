@@ -97,7 +97,7 @@ no espelho na emissão: a folha já emitida não muda; a próxima emissão (ou o
 
 ## 5. Roteiro de teste na homologação
 
-Massa principal: funcionário **Renato (homologação)**, **setembro** (carga de 16/10): intervalo não registrado em 06, 11 e 25/09; duplicada em 14/09; saída faltando em 15/09 (com pedido pendente) e 21/09 (sem pedido); HE acima de 2 h, descanso curto, intervalo de 40 min, falta em 17/09, abono em dia trabalhado em 24/09; folga, atestado e testemunha. O abono do gestor vale só para os últimos 62 dias: abril e maio do Renato (carga de 15/10) ficaram fora do prazo e servem só para ver as telas. Também o **David (homologação)**, Infoxtec, jornada padrão (8 h + 4 h sábado), de maio a setembro de 2026
+Massa principal: funcionário **Renato (homologação)**, **setembro** (carga de 16/10): intervalo não registrado em 06, 11 e 25/09; duplicada em 14/09; saída faltando em 15/09 (com pedido pendente) e 21/09 (sem pedido); HE acima de 2 h, descanso curto, intervalo de 40 min, falta em 17/09, abono em dia trabalhado em 24/09; folga, atestado e testemunha. Desde a migration 105, o abono, o estorno e o desconsiderar valem enquanto o espelho do mês não foi assinado (antes, 62 dias); abril e maio do Renato (carga de 15/10) também podem ser fechados. Também o **David (homologação)**, Infoxtec, jornada padrão (8 h + 4 h sábado), de maio a setembro de 2026
 (carga de 14/10, registrada no plano de trabalho). Também Ana, Bruno e Gabriela, de junho a setembro.
 
 | Mês | Situações do David |
