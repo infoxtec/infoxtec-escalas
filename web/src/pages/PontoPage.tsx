@@ -462,7 +462,7 @@ function Ajustes({ linhas, marcacoes, funcionarios, tecnico, hoje, podeAjustar, 
                   <td className="px-3 py-2 text-xs">{a.tecnico}</td>
                   <td className="px-3 py-2 text-xs">
                     <span className={`rounded px-1 ${a.acao === 'incluir' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
-                      {a.acao === 'incluir' ? 'incluída' : 'desconsiderada'}
+                      {a.acao === 'incluir' ? 'pedido aprovado' : 'desconsiderada'}
                     </span>{' '}
                     {PONTO_ROTULO[a.tipo] ?? a.tipo}{a.marcacao_nsr != null && <span className="text-muted-foreground"> · NSR {a.marcacao_nsr}</span>}
                     {a.desfaz_inclusao && <span className="text-muted-foreground"> · inclusão anterior</span>}

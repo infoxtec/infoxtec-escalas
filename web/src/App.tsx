@@ -220,7 +220,7 @@ function Painel({ email }: { email: string }) {
         {aba === 'gerencial' && <GerencialPage />}
         {aba === 'habilidades' && <HabilidadesPage tecnicos={tecnicos} podeEditar={podeEditar} />}
         {aba === 'tecnicos' && <TecnicosPage tecnicos={tecnicos} recarregar={recarregarCadastros} podeEditar={podeEditar} podeExcluir={papel === 'admin'} />}
-        {aba === 'empresas' && <EmpresasPage podeEditar={podeEditar} />}
+        {aba === 'empresas' && <EmpresasPage podeEditar={podeEditar} ehAdmin={papel === 'admin'} />}
         {aba === 'locais' && <LocaisPage locais={locais} recarregar={recarregarCadastros} podeEditar={podeEditar} />}
         {aba === 'usuarios' && papel === 'admin' && <UsuariosPage />}
         {aba === 'roadmap' && papel === 'admin' && <RoadmapPage podeEditar />}

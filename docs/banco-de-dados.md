@@ -254,6 +254,21 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 104 (16/10): inconsistências do ponto, parte 1 (decisão 100)
+
+- `empresas.exige_registro_intervalo` (padrão desligado; ligado na Infoxtec pela migration). Só o administrador muda
+  (`app_salvar_empresa` recusa o gestor; painel antigo que não manda o campo mantém o valor).
+- `fn_ponto_folha_pendencias`: com a opção ligada, o dia acima de 4 h sem o par de intervalo vira
+  `intervalo_nao_registrado` (**bloqueia**); com abono no dia (o período ou o intervalo, lançado pelo gestor) volta a
+  `sem_intervalo` (confirmar). Até 4 h, dois registros bastam. A marcação nunca é travada.
+- `app_ponto_ajustar(p_tecnico, p_acao, p_motivo, p_marcacao, p_ajuste)`: sem os parâmetros da inclusão; o gestor só
+  desconsidera (decisão 100). Inclusão em `ponto_ajustes` só vem de pedido do funcionário aprovado.
+- `fn_ponto_avisar`: na saída para o intervalo, o comprovante (app e WhatsApp) diz "retorno a partir de HH:MM"
+  (15 min de 4 a 6 h, 1 h acima de 6 h na jornada do dia). `fn_ponto_aviso_previo`: texto só informativo; o app
+  registra a volta direto, sem o diálogo "Registrar mesmo assim".
+- `fn_ponto_aviso_intervalo_pendente` (chamada por `fn_ponto_lembrete_almoco`, das 08:00 às 09:00): no dia seguinte,
+  convite ao funcionário para pedir o ajuste se fez o intervalo e não marcou; sem abono e sem pedido aberto, uma vez.
+
 ### Migration 103 (15/10): token do webhook trocado pelo sistema (decisão 98)
 
 Tabela `webhook_token_trocas` (RLS sem políticas; motivo, pedido ao `pg_net`, janela do anterior, confirmação ou falha;
