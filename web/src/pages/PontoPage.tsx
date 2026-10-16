@@ -6,6 +6,7 @@ import Cofre from '../components/Cofre'
 import PontoAfd from '../components/PontoAfd'
 import EspelhosMensais from '../components/EspelhosMensais'
 import FechamentoFolha from '../components/FechamentoFolha'
+import HoraExtraAprovacao from '../components/HoraExtraAprovacao'
 import CofreFolhas from '../components/CofreFolhas'
 import { prepararArquivo } from '../lib/arquivo'
 import { ALERTA_JORNADA, PONTO_ROTULO, hojeBahia, minutosHm } from '../lib/types'
@@ -179,6 +180,7 @@ export default function PontoPage({ papel }: { papel: 'admin' | 'gestor' | 'leit
         {vista === 'ajustes' ? (
           <div className="space-y-5">
             {papel !== 'leitura' && <Afastados hoje={hoje} aoRegistrar={carregar} />}
+            <HoraExtraAprovacao de={de} ate={ate} podeDecidir={papel !== 'leitura'} />
             <Pedidos linhas={pedidos} metricas={metricas} podeDecidir={papel !== 'leitura'} aoDecidir={carregar} />
             <Ajustes linhas={ajustes} marcacoes={lista} funcionarios={situacao ?? []} tecnico={tecnico} hoje={hoje}
               podeAjustar={papel !== 'leitura'} aoAjustar={carregar} />

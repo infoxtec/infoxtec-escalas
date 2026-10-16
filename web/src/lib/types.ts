@@ -550,6 +550,7 @@ export type PendenciaFolha = DiaPendencia & (
   | { tipo: 'marcacao_incompleta' | 'marcacao_duplicada' | 'abono_em_dia_trabalhado'; marcacoes: number }
   | { tipo: 'sem_registro'; minutos: number }
   | { tipo: 'intervalo_nao_registrado'; trabalhado_min: number | null }
+  | { tipo: 'he_pendente' | 'he_reprovada'; numero: number; hora: string }
   | { tipo: 'intervalo_curto' | 'sem_intervalo' | 'he_acima_limite' | 'interjornada_curta'; intervalo_min: number | null; he_min: number | null; interjornada_min: number | null })
 export interface FuncionarioFolha {
   tecnico_id: string; nome: string; empresa: string; pendencias: PendenciaFolha[]
@@ -564,3 +565,10 @@ export type FechamentoFolha =
   | { situacao: 'sem_dados' }
   | { situacao: 'fechado' | 'sem_mudanca' | 'ja_assinado'; espelho: string; ocorrencias_confirmadas: number }
 export interface PreviaFolha { conteudo: EspelhoConteudo; pendencias: PendenciaFolha[] }
+
+// Hora extra iniciada pelo funcionário e a decisão (migration 106, decisão 100 parte 2)
+export interface PontoHeAutorizacao {
+  id: string; numero: number; tecnico_id: string; nome: string; data: string; hora: string
+  origem: 'programada' | 'pedido'; status: 'pendente' | 'aprovada' | 'reprovada'
+  decidido_em: string | null; canal: 'programacao' | 'whatsapp' | 'painel' | null; decidido_por: string | null
+}
