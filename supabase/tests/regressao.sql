@@ -51,6 +51,7 @@
 -- T47 token do webhook trocado sozinho: janela com os dois, confirmação, limpeza, reversão em falha, espera de um dia
 -- T48 intervalo não registrado bloqueia o fechamento (opção da empresa), abono libera, gestor não cria marcação,
 --     retorno do intervalo no comprovante, só o administrador muda a opção
+-- T49 hora extra com aprovação: Programação autoriza, pedido ao supervisor, botões Aprovar/Reprovar, fechamento
 
 \set ON_ERROR_STOP on
 begin;
@@ -2731,7 +2732,93 @@ begin
   perform pg_temp.ok(v_ok, '[T48] desconsiderou marcação de mês com espelho assinado');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T48' as resultado,
+-- T49 hora extra com aprovação do gestor (migration 106, decisão 100 parte 2) ---------------------------------
+do $$
+declare
+  v_emp uuid := (select v::uuid from qa where k = 'emp');
+  v_loc uuid := (select v::uuid from qa where k = 'loc');
+  v_agora timestamp := now() at time zone 'America/Bahia';
+  v_a uuid; v_b uuid; v_sup uuid; v_h uuid; v_t text; r jsonb; p jsonb; v_ok boolean;
+begin
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA HE Pedido', '5579999994901', true, true, pg_temp.cpf('494949401'), v_emp, false, current_date - 90) returning id into v_a;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA HE Programada', '5579999994902', true, true, pg_temp.cpf('494949402'), v_emp, false, current_date - 90) returning id into v_b;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, empresa_id, perfil_teste, is_supervisor)
+  values ('QA Supervisor HE', '5579999994909', true, true, v_emp, false, true) returning id into v_sup;
+  alter table ponto_marcacoes disable trigger user;
+  insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, hash_anterior, hash)
+  values (v_emp, 949001, v_a, (select cpf from tecnicos where id = v_a), now() - interval '2 minutes', 'inicio_he', 'ura', 'qa', 'qa1');
+  alter table ponto_marcacoes enable trigger user;
+
+  -- sem Programação: pedido ao supervisor; a marcação já vale
+  v_t := fn_ponto_he_inicio(v_a);
+  select id into v_h from ponto_he_autorizacoes where tecnico_id = v_a;
+  perform pg_temp.ok(v_t like '%enviado ao gestor%' and (select status from ponto_he_autorizacoes where id = v_h) = 'pendente',
+                     '[T49] pedido de HE: ' || coalesce(v_t, '-'));
+  perform pg_temp.ok(fn_ponto_he_inicio(v_a) is null, '[T49] pedido em dobro para a mesma marcação');
+  p := fn_ponto_folha_pendencias(v_a, date_trunc('month', current_date)::date);
+  perform pg_temp.ok(p @> '[{"tipo":"he_pendente","bloqueia":true}]', '[T49] HE pendente no fechamento: ' || p::text);
+
+  -- só supervisor decide pelo botão; a decisão vale uma vez
+  r := fn_ponto_he_resposta(pg_temp.msg('5579999994902', 'HE0', jsonb_build_object('buttonsResponseMessage',
+         jsonb_build_object('selectedButtonId', 'he:ok:' || v_h))));
+  perform pg_temp.ok(r->>'ignorado' like '%supervisor%' and (select status from ponto_he_autorizacoes where id = v_h) = 'pendente',
+                     '[T49] funcionário aprovou HE: ' || coalesce(r::text, '-'));
+  r := fn_ponto_he_resposta(pg_temp.msg('5579999994909', 'HE1', jsonb_build_object('buttonsResponseMessage',
+         jsonb_build_object('selectedButtonId', 'he:ok:' || v_h))));
+  perform pg_temp.ok(r->>'acao' = 'he_aprovada' and (select status || canal_decisao from ponto_he_autorizacoes where id = v_h) = 'aprovadawhatsapp',
+                     '[T49] aprovação pelo botão: ' || coalesce(r::text, '-'));
+  r := fn_ponto_he_resposta(pg_temp.msg('5579999994909', 'HE2', jsonb_build_object('buttonsResponseMessage',
+         jsonb_build_object('selectedButtonId', 'he:nao:' || v_h))));
+  perform pg_temp.ok(r->>'acao' = 'he_ja_decidida' and (select status from ponto_he_autorizacoes where id = v_h) = 'aprovada',
+                     '[T49] segunda decisão: ' || coalesce(r::text, '-'));
+  perform pg_temp.ok(fn_ponto_he_resposta(pg_temp.msg('5579999994909', 'HE3', '{"conversation":"ok"}')) is null, '[T49] texto comum interceptado');
+  v_ok := false;
+  begin update ponto_he_autorizacoes set status = 'reprovada' where id = v_h; exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T49] decisão alterada');
+  v_ok := false;
+  begin delete from ponto_he_autorizacoes where id = v_h; exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T49] autorização apagada');
+
+  -- reprovada pelo painel: a marcação fica; no fechamento sai para confirmar
+  alter table ponto_marcacoes disable trigger user;
+  insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, hash_anterior, hash)
+  values (v_emp, 949002, v_a, (select cpf from tecnicos where id = v_a), now() - interval '1 minute', 'inicio_he', 'ura', 'qa', 'qa2');
+  alter table ponto_marcacoes enable trigger user;
+  perform fn_ponto_he_inicio(v_a);
+  select id into v_h from ponto_he_autorizacoes where tecnico_id = v_a and status = 'pendente';
+  perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
+  v_ok := false;
+  begin perform app_ponto_he_decidir(v_h, false); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T49] leitura decidiu HE');
+  perform pg_temp.ok(not (app_ponto_he_autorizacoes(current_date - 1, current_date)->0 ? 'decidido_por')
+                     or app_ponto_he_autorizacoes(current_date - 1, current_date)->0->>'decidido_por' is null, '[T49] leitura vê quem decidiu');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  r := app_ponto_he_decidir(v_h, false);
+  p := fn_ponto_folha_pendencias(v_a, date_trunc('month', current_date)::date);
+  perform pg_temp.ok(r->>'situacao' = 'reprovada' and p @> '[{"tipo":"he_reprovada","nivel":"confirmar"}]'
+                     and not p @> '[{"tipo":"he_pendente"}]' and (select count(*) from ponto_marcacoes where tecnico_id = v_a) = 2,
+                     '[T49] reprovada pelo painel: ' || p::text);
+
+  -- Programação do dia cobrindo o horário: autorizada sem pedido (só fora da virada do dia, para não falhar à meia-noite)
+  if v_agora::time between time '01:00' and time '22:00' then
+    insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, hora_fim_prevista, descricao_tarefa, status, criado_por)
+    values (v_b, v_loc, v_agora::date, (v_agora - interval '1 hour')::time(0), (v_agora + interval '1 hour')::time(0), 'QA HE programada', 'agendada', 'qa');
+    alter table ponto_marcacoes disable trigger user;
+    insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, hash_anterior, hash)
+    values (v_emp, 949003, v_b, (select cpf from tecnicos where id = v_b), now() - interval '1 minute', 'inicio_he', 'ura', 'qa', 'qa3');
+    alter table ponto_marcacoes enable trigger user;
+    v_t := fn_ponto_he_inicio(v_b);
+    perform pg_temp.ok(v_t like '%autorizada pela Programação%'
+                       and (select status || origem from ponto_he_autorizacoes where tecnico_id = v_b) = 'aprovadaprogramada',
+                       '[T49] HE programada: ' || coalesce(v_t, '-'));
+  end if;
+  perform pg_temp.ok(not has_function_privilege('anon', 'fn_ponto_he_resposta(jsonb)', 'execute')
+                     and not has_function_privilege('authenticated', 'fn_ponto_he_decidir(uuid,boolean,text,text)', 'execute'), '[T49] permissões');
+end $$;
+
+select 'REGRESSÃO OK: T1 a T49' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

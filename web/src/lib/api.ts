@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre, ValidacaoCarga, ModeloCarga, CargaHoraria, CargaAtribuicao, CargaFuncionario, TimeEquipe, AlvoCarga, ProgramacaoLimite, AceiteProgramacao, AceiteProgramacaoAssinado, CargaExcedida, ValidacaoFolha, FechamentoFolha, PreviaFolha } from './types'
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre, ValidacaoCarga, ModeloCarga, CargaHoraria, CargaAtribuicao, CargaFuncionario, TimeEquipe, AlvoCarga, ProgramacaoLimite, AceiteProgramacao, AceiteProgramacaoAssinado, CargaExcedida, ValidacaoFolha, FechamentoFolha, PreviaFolha, PontoHeAutorizacao } from './types'
 
 function traduzir(msg: string): string {
   if (/JWT expired|invalid JWT|not authenticated/i.test(msg)) return 'Sessão expirada. Entre novamente.'
@@ -143,6 +143,10 @@ export const api = {
       p_tecnico: a.tecnico, p_acao: a.acao, p_motivo: a.motivo, p_marcacao: a.marcacao ?? null, p_ajuste: a.ajuste ?? null }),
   pontoGeo: (de: string, ate: string, tecnico: string | null) =>
     rpc<PontoGeo[]>('app_ponto_geo', { p_de: de, p_ate: ate, p_tecnico: tecnico }),
+  // Hora extra com aprovação do gestor (decisão 100, parte 2)
+  pontoHeAutorizacoes: (de: string, ate: string) => rpc<PontoHeAutorizacao[]>('app_ponto_he_autorizacoes', { p_de: de, p_ate: ate }),
+  pontoHeDecidir: (id: string, aprovar: boolean) =>
+    rpc<{ situacao: 'aprovada' | 'reprovada' | 'ja_decidida'; numero: number }>('app_ponto_he_decidir', { p_id: id, p_aprovar: aprovar }),
   pontoAfd: (empresa: string, de: string, ate: string) => rpc<PontoAfd>('app_ponto_afd', { p_empresa: empresa, p_de: de, p_ate: ate }),
   pontoEmitirEspelhos: (competencia: string, tecnico: string | null = null) =>
     rpc<{ emitidos: number; sem_mudanca: number; ja_assinados: number; sem_dados: number; com_pendencia: number; a_confirmar: number }>('app_ponto_emitir_espelhos', { p_competencia: competencia, p_tecnico: tecnico }),

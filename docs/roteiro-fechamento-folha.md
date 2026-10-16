@@ -60,6 +60,7 @@ quem não registrou o intervalo recebe o convite para pedir o ajuste se fez o in
 |---|---|---|
 | Pedido de ajuste ou justificativa aguardando aprovação | **Bloqueia** | Aprovar ou negar na aba Ajustes e pedidos |
 | Marcação faltando (entrada sem saída, almoço sem volta) | **Bloqueia** | Pedido do funcionário pelo app ou WhatsApp, ou desconsiderar a marcação errada |
+| Hora extra iniciada fora da Programação aguardando a decisão do gestor (decisão 100) | **Bloqueia** | Aprovar ou reprovar pelos botões no WhatsApp ou em Ajustes e pedidos; reprovada vira "confirmar" e o tempo trabalhado sai no espelho |
 | Marcação duplicada (o mesmo tipo em seguida, ou duas a menos de 3 min) | **Bloqueia** | Desconsiderar a repetida (aba Ajustes e pedidos) |
 | Intervalo não registrado em dia acima de 4 h, com a empresa exigindo o registro (decisão 100) | **Bloqueia** | Pedido de ajuste do funcionário aprovado, ou abono do gestor do período ou do intervalo (hora abonada; nenhuma marcação é criada) |
 | Falta injustificada: dia da escala sem marcação, sem abono e sem pedido em aberto | Confirmar | Abonar se houver justificativa; senão, confirmar: sai descontada |

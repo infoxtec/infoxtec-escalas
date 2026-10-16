@@ -254,6 +254,19 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 106 (16/10): hora extra com aprovação do gestor (decisão 100, parte 2)
+
+- `ponto_he_autorizacoes`: uma linha por início de HE (`marcacao_id` único), `origem` `programada` ou `pedido`,
+  `status` `pendente`/`aprovada`/`reprovada`, quem decidiu, quando e por onde. RLS ligado sem políticas; gatilho
+  `fn_ponto_he_guarda`: decisão uma vez só, nada se apaga.
+- `fn_ponto_he_inicio` (chamada por `fn_ponto_avisar` no início de HE, app e WhatsApp): Programação do dia cobrindo o
+  horário autoriza; senão cria o pedido e manda aos supervisores da empresa os botões `he:ok:<id>` e `he:nao:<id>`
+  (ou texto, sem `usar_botoes`).
+- `fn_ponto_he_resposta` (chamada por `fn_webhook_evolution` antes do ponto e das escalas): só supervisor ativo da
+  mesma empresa decide; `fn_ponto_he_decidir` grava e avisa o funcionário ("HE aprovada" ou "não autorizada").
+- `app_ponto_he_autorizacoes(de, ate)` (leitura sem quem decidiu) e `app_ponto_he_decidir(id, aprovar)` (admin e gestor).
+- `fn_ponto_folha_pendencias`: `he_pendente` bloqueia; `he_reprovada` para confirmar.
+
 ### Migration 105 (16/10): abono até a assinatura do espelho (decisão 100, item 6)
 
 - `fn_ponto_mes_espelho(tecnico, data)`: `assinado`, `emitido` ou `sem_espelho`; trava a versão vigente (`for update`),

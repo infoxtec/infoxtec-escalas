@@ -27,6 +27,8 @@ function textoPendencia(p: PendenciaFolha) {
     case 'marcacao_incompleta': return `${d} · marcação faltando (${p.marcacoes} registrada${p.marcacoes === 1 ? '' : 's'})`
     case 'marcacao_duplicada': return `${d} · marcação duplicada: desconsidere a repetida`
     case 'intervalo_nao_registrado': return `${d} · intervalo não registrado${p.trabalhado_min ? ` (${hm(p.trabalhado_min)} de jornada)` : ''}: aguarde o pedido do funcionário ou abone o intervalo`
+    case 'he_pendente': return `${d} · hora extra nº ${p.numero} das ${p.hora} aguardando aprovação do gestor`
+    case 'he_reprovada': return `${d} · hora extra nº ${p.numero} das ${p.hora} não autorizada: o tempo trabalhado sai no espelho`
     case 'sem_registro': return `${d} · falta injustificada (${hm(p.minutos)} sem registro nem pedido)`
     case 'intervalo_curto': return `${d} · intervalo abaixo do mínimo${p.intervalo_min != null ? ` (${hm(p.intervalo_min)})` : ''}`
     case 'sem_intervalo': return `${d} · jornada sem intervalo`
@@ -131,7 +133,7 @@ export default function FechamentoFolha({ hoje, podeFechar }: { hoje: string; po
         <h3 className="flex items-center gap-1.5 text-sm font-semibold"><ClipboardCheck className="h-4 w-4" /> Validação e fechamento da folha</h3>
         <p className="text-xs text-muted-foreground">
           Antes de fechar, confira o que falta em cada funcionário. Em vermelho, o que impede o fechamento (pedido aguardando
-          aprovação, marcação faltando ou duplicada, intervalo não registrado): resolva na aba Ajustes e pedidos. Em amarelo, o que precisa da sua
+          aprovação, marcação faltando ou duplicada, intervalo não registrado, hora extra aguardando aprovação): resolva na aba Ajustes e pedidos. Em amarelo, o que precisa da sua
           confirmação (falta injustificada, intervalo abaixo do mínimo, hora extra acima de 2 h, descanso curto entre
           jornadas, abono em dia trabalhado). Em <strong>Prévia</strong>, veja o espelho como vai sair, com HE, abonos e
           débitos. Fechar emite o espelho de cada funcionário pronto e envia o link pelo WhatsApp para assinatura.

@@ -1428,3 +1428,8 @@ localização e do cofre (`seguranca`); vigência nos valores de `ponto_motivos`
    no lugar do limite de 62 dias (migration 105). Estorno de abono e "desconsiderar marcação", que são contra o
    funcionário, seguem com 62 dias, ou depois disso só em mês com espelho emitido e ainda não assinado (revisão do
    `seguranca`: mês sem espelho não fica aberto para sempre). Depois da assinatura, o mês não muda (decisão 82).
+
+7. **Hora extra com aprovação (16/10, responsável; migration 106, painel 3.44.0):** aprovação pelo WhatsApp (botões
+   Aprovar e Reprovar aos supervisores da empresa) e pelo painel (aba Ajustes e pedidos); a Programação do dia que cobre
+   o horário do início autoriza sozinha. HE aguardando decisão **bloqueia** o fechamento; HE não autorizada sai para
+   confirmar, com o tempo trabalhado no espelho (a reprovação não apaga marcação nem hora).
