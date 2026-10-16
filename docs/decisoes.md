@@ -1396,3 +1396,30 @@ contador; módulo de folha só com cliente pedindo, com a Andreia (item 077). **
 avaliar, antes do enquadramento como REP-P, a recusa de marcação sem localização e durante afastamento
 (decisão 60) contra a regra de não restringir a marcação; roteiro de incidente com prazo da ANPD e RIPD da
 localização e do cofre (`seguranca`); vigência nos valores de `ponto_motivos` e das escalas (`cto`).
+
+## 100. Critérios de inconsistência do ponto, intervalo e hora extra com aprovação
+
+**Data:** 16/10/2026. **Decisão do responsável**, sobre proposta revisada pelo `juridico` e pelo `po`:
+1. **Registros mínimos no fechamento da folha:** até 4 h, 2 registros; de 4 a 6 h, o par de intervalo de
+   15 min; acima de 6 h, o par de 1 h. Sem o par, o funcionário fica em "Ajustar antes de fechar" e o
+   espelho não é emitido; a marcação do dia a dia nunca é travada. Opção por empresa "exige registro do
+   intervalo" (aba Empresas), ligada na Infoxtec; desligada para quem usa pré-assinalação (CLT art. 74, §2º).
+2. **O gestor nunca cria marcação, em nenhuma hipótese** (reforça a decisão 89). Ele aprova ou reprova o
+   pedido de ajuste ou a justificativa enviados pelo funcionário, ou **abona o período ou o intervalo**, que
+   conta como hora abonada, sem criar marcação. A referência a "incluir" sai do sistema (ação morta em
+   `app_ponto_ajustar` e textos). No dia seguinte, o funcionário recebe "faltou registrar o intervalo de
+   DD/MM, peça o ajuste".
+3. **Hora extra com aprovação do gestor:** o início de HE ou já vem programado pelo gestor na Programação,
+   ou, quando o funcionário registra o início, vai na hora ao gestor para aprovar ou reprovar; aprovada, o
+   funcionário recebe "HE aprovada". **Limite legal (Portaria MTP 671/2021, art. 74, III, a conferir no
+   DOU):** a aprovação é da hora extra, nunca da marcação — o registro do início e do fim entra sempre, sem
+   autorização prévia, e a reprovação não apaga a marcação nem o tempo trabalhado; HE reprovada aparece ao
+   gestor como ocorrência no fechamento.
+4. **Intervalo de 1 h** para jornada de 44 h ou 40 h semanais (acima de 6 h por dia). Registro abaixo de
+   1 h gera alerta ao funcionário e ao gestor; a volta nunca é impedida. O comprovante da saída para o
+   almoço informa "retorno a partir de HH:MM"; a mensagem da volta antecipada é informativa, com motivo
+   opcional, sem "confirma?". Redução a 30 min só com cláusula da convenção coletiva (art. 611-A, III).
+5. **Ressalva do `juridico`:** abonar o intervalo não equivale a intervalo gozado; se o funcionário
+   trabalhou no intervalo, segue devida a indenização do tempo suprimido (+50%, art. 71, §4º). Validar com o
+   Gabriel (item 076) o art. 74 da Portaria 671 e a convenção da Infoxtec.
+**Pacote:** um, tamanho M, depois da T12 e do fechamento de maio do Renato; PR até 23/10.
