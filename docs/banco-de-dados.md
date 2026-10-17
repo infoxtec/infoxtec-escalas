@@ -254,6 +254,11 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 109 (17/10): HE programada com Programação que passa da meia-noite
+
+- `fn_ponto_he_inicio`: a Programação do dia cobre a HE quando já começou e o fim é posterior à hora da HE ou passa da
+  meia-noite (fim menor que o início). Antes, escala das 16:00 até a 01:00 não cobria a HE das 17:00.
+
 ### Migration 108 (17/10): até 8 pedidos do funcionário em 24 horas
 
 - `fn_ponto_justificativa_criar`: o limite de pedidos de ajuste ou justificativa em 24 horas passa de 5 para 8 (pedido
