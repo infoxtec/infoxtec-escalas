@@ -10,7 +10,8 @@ on conflict (chave) do nothing;
 
 create or replace function fn_ponto_espelho_prazo_dias()
 returns int language sql stable set search_path = public, extensions as $function$
-  select greatest(coalesce(nullif(fn_config('ponto_espelho_prazo_dias'), '')::int, 10), 1)
+  -- valor que não for número cai no padrão: configuração errada não trava abonos e ajustes
+  select greatest(case when fn_config('ponto_espelho_prazo_dias') ~ '^\d{1,3}$' then fn_config('ponto_espelho_prazo_dias')::int else 10 end, 1)
 $function$;
 
 -- Situação do espelho do mês da data: 'assinado', 'emitido' (vigente, sem assinatura, dentro do prazo) ou
@@ -43,7 +44,7 @@ declare
   v_req   bigint;
   v_env   int := 0; v_sem int := 0; v_falha int := 0; v_desl int := 0;
 begin
-  for e in select p.id, p.enviado_em, t.nome, t.telefone_e164, t.opt_in, t.ativo, to_char(p.competencia, 'MM/YYYY') as mes
+  for e in select p.id, p.enviado_em, p.emitido_em, t.nome, t.telefone_e164, t.opt_in, t.ativo, to_char(p.competencia, 'MM/YYYY') as mes
              from ponto_espelhos p join tecnicos t on t.id = p.tecnico_id
             where p.competencia = date_trunc('month', p_competencia)::date and p.substituido_em is null
               and p.assinado_em is null
@@ -60,7 +61,7 @@ begin
           'text', 'Trilha Ponto: ' || split_part(trim(e.nome), ' ', 1) || ', o seu espelho de ponto de ' || e.mes
                   || ' está pronto para conferir e assinar: ' || v_url || '/ponto?espelho=' || e.id
                   || chr(10) || 'Entre com o seu CPF e o código. Se algo estiver errado, peça o ajuste antes de assinar.'
-                  || chr(10) || 'Prazo para conferir e pedir ajuste: ' || fn_ponto_espelho_prazo_dias() || ' dias. Depois disso, o mês é fechado.'));
+                  || chr(10) || 'Confira e peça ajuste até ' || to_char((e.emitido_em + make_interval(days => fn_ponto_espelho_prazo_dias())) at time zone 'America/Bahia', 'DD/MM/YYYY') || '. Depois disso, o mês é fechado.'));
       -- nulo: envio barrado pela trava da homologação; o pedido ao WhatsApp é assíncrono (pg_net)
       if v_req is null then v_sem := v_sem + 1; continue; end if;
       if e.enviado_em is null then update ponto_espelhos set enviado_em = now() where id = e.id; end if;

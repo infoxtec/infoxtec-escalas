@@ -1525,5 +1525,8 @@ o mês de quem nunca assina ficaria aberto para sempre. **Regra (migration 111):
 desconsideração nem decisão de HE, e a assinatura continua possível como ciência. O WhatsApp do envio avisa o prazo.
 **Base legal da assinatura corrigida:** a decisão 84 citava obrigação legal (LGPD art. 7º, II), porque o registro
 "precisa ser assinado"; passa a exercício regular de direitos (art. 7º, VI), para provar a ciência em processo. O aviso
-de privacidade foi corrigido. A confirmação fica com o Gabriel (pergunta V4 da consulta, decisão 103).
+de privacidade foi corrigido. A confirmação fica com o Gabriel (pergunta V4 da consulta, decisão 103). **Revisão do `seguranca`:** a mensagem traz a
+data exata do fechamento; valor inválido no prazo cai no padrão. **Limite assumido:** se o conteúdo do espelho mudar
+depois do prazo (escala ou feriado corrigidos), o gestor pode emitir nova versão, que reinicia o prazo — é a única forma
+de corrigir o documento, e fica registrada como nova versão.
 
