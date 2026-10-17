@@ -1530,3 +1530,13 @@ data exata do fechamento; valor inválido no prazo cai no padrão. **Limite assu
 depois do prazo (escala ou feriado corrigidos), o gestor pode emitir nova versão, que reinicia o prazo — é a única forma
 de corrigir o documento, e fica registrada como nova versão.
 
+## 107. Aviso só ao supervisor da mesma empresa (revisão da decisão 69)
+
+**Data:** 17/10/2026. **Reunião de 17/10 (prontidão SaaS), executada a pedido do responsável.** A decisão 69 deixava o
+supervisor sem empresa receber os avisos de todas, "enquanto houver uma só empregadora". Com mais de um cliente, isso
+vaza nome de funcionário e escala entre empresas. **Regra (migration 112):** supervisor só recebe aviso de funcionário da
+própria empresa; sem empresa, não recebe aviso de funcionário de empresa (o Checklist aponta o cadastro). Funcionário
+sem empresa continua avisando todos os supervisores, para nenhum alerta se perder até o cadastro ser corrigido; alerta
+de sistema (motor parado) segue para todos. O responsável conferiu os supervisores da produção com empresa em 17/10.
+**Também decidido:** o ponto não restringe o local à empresa — é eletrônico com geolocalização (item da ata descartado).
+
