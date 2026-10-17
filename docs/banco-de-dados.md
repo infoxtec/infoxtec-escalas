@@ -254,6 +254,11 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 108 (17/10): até 8 pedidos do funcionário em 24 horas
+
+- `fn_ponto_justificativa_criar`: o limite de pedidos de ajuste ou justificativa em 24 horas passa de 5 para 8 (pedido
+  do responsável); o teto de 10 pedidos em análise ao mesmo tempo continua.
+
 ### Migration 107 (17/10): espelho com o art. 84 completo e PDF assinado (decisão 104)
 
 - `empresas.cei_caepf_cno` (12 a 14 dígitos, opcional; `app_salvar_empresa` aceita e guarda só os dígitos).
