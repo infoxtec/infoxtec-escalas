@@ -955,7 +955,8 @@ de exemplo não pertence a empresa ativa (os dígitos precisam ser válidos para
 
 **Data:** 13/10/2026. **Pedido do responsável** (F5, backlog 085; migration 87, painel 3.27.0). Sem o
 Arquivo Fonte de Dados o Trilha Ponto não se vende como REP-P (Portaria 671, Art. 81). A base é o Anexo V do
-texto consolidado (`docs/AFD.pdf`, enviado pelo responsável), que a Portaria 1.486/2022 **revogou**, passando
+texto consolidado (`docs/AFD.pdf`, enviado pelo responsável; em 17/10 conferiu-se que o arquivo é a compilação
+inteira de 21/07/2026, ver `legal.md` §8), que a Portaria 1.486/2022 **revogou**, passando
 o leiaute para o portal gov.br (inacessível deste ambiente). Por isso o arquivo sai como **versão de
 conferência**: a Andreia confere contra o leiaute vigente antes de valer. **Escolhas a confirmar nessa
 conferência:** CRC-16 na variante KERMIT (o anexo não nomeia); hash SHA-256 em hexadecimal minúsculo sobre os
@@ -1460,14 +1461,17 @@ operando e medindo. **Primeira tarefa:** apoiar o CTO na estimativa da multiempr
 ## 103. Consulta ao advogado sobre o REP-P (decisão G da sprint)
 
 **Data:** 17/10/2026. O parecer do Gabriel (item 076) ainda não foi pedido. O Claude redigiu a consulta
-(`Consulta-REP-P-Trilha-Ponto-v2.docx`, entregue ao responsável; não fica no repositório). A v1 tinha 24 perguntas; a
+(`Consulta-REP-P-Trilha-Ponto-v3.docx`, entregue ao responsável; não fica no repositório). A v1 tinha 24 perguntas; a
 pedido do responsável, o `juridico` respondeu ou sugeriu o que não precisa de advogado e ficou só o vital: **6
 pareceres** (V1 "uso exclusivo" do REP-P num módulo da plataforma, V2 recusas de marcação no afastamento e sem
 localização, V3 responsabilidade do Atestado Técnico, V4 valor da assinatura do espelho e correção depois dela, V5
 abono do intervalo pelo gestor, V6 contrato controlador e operador) e **6 confirmações de sim ou não** (canais,
 código de contingência, assinaturas CAdES e PAdES, base legal da localização, CPF no comprovante, frase comercial).
-Prazo pedido: primeira resposta até 31/10, com prioridade para V1 e V2. **Achados da triagem para o PO** (fonte
-secundária, a conferir no texto vigente): o comprovante legal do REP-P parece exigir PDF assinado em PAdES com hash
+**v3 (17/10), conferida no texto oficial** compilado em 21/07/2026 (`docs/legislacao/`, `legal.md` §8): saíram as
+confirmações respondidas pelo texto (padrões de assinatura e CPF no comprovante) e entrou o **V7** (WhatsApp e ligação
+como coletores, diante do relógio com segundos do Anexo IX, item 3); ficam 7 pareceres e 4 confirmações. Prazo
+pedido: primeira resposta até 31/10, com prioridade para V1, V2 e V7. **Achados para o PO** (confirmados no texto
+oficial): o comprovante legal do REP-P parece exigir PDF assinado em PAdES com hash
 da marcação e número do INPI (arts. 79 e 80), o que a mensagem do WhatsApp não é; e a lei não obriga o funcionário
 a assinar o espelho, o que pede revisar a base citada na decisão 84 e no aviso de privacidade.
 **Consequência:** a avaliação de 30 dias (088) só ganha data com o parecer; `docs/modulo-registro-de-ponto/legal.md`
