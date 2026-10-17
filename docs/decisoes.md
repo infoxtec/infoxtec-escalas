@@ -1502,3 +1502,17 @@ web uma cópia assinada e validada pela empresa." **Como (migration 107, Edge Fu
 - **Crescimento:** cerca de 20 a 60 KB por espelho dentro do banco (um por funcionário por mês); medir junto com o cofre
   (reunião de 17/10, infra-bd).
 
+## 105. Comprovante de cada marcação em PDF e pedido com o tipo trocado barrado
+
+**Data:** 17/10/2026. **Pedido do responsável** (próxima etapa depois da 104). **Comprovante (Portaria 671, arts. 79 e
+80, texto conferido):** a cada marcação, o app oferece o PDF com título, NSR, empregador, local, nome e CPF completos,
+data e hora com segundos, nº do INPI (vazio até o registro, item 078) e SHA-256 da marcação, para as últimas 48 horas
+(migration 110, painel 3.46.0). O PDF é montado no aparelho a partir dos dados do banco; a mensagem do WhatsApp continua
+sendo aviso, com o CPF mascarado. **Falta para cumprir o art. 80, I:** a assinatura PAdES do desenvolvedor (arts. 86 e
+88), que pede o e-CNPJ e leva a montagem para o servidor (como a `espelho-pdf`). **Pedido com o tipo trocado:** saída ou
+volta do almoço que já existe no dia é recusada com a dica do tipo certo — o erro que travou setembro do Renato no
+teste de 17/10. **Revisão do `seguranca`:** o app busca só a marcação pedida; o PDF não fica no servidor e, baixado, fica
+sob controle do funcionário (CPF completo por obrigação legal, art. 79; LGPD art. 7º, II); `pdf-lib` 1.17.1 sem versão
+nova desde 2021, sem vulnerabilidade conhecida e carregada só sob demanda — revisar a dependência quando a assinatura
+PAdES for para o servidor.
+

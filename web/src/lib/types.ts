@@ -595,3 +595,9 @@ export function baixarPdf(p: EspelhoPdf) {
   a.click()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
+
+/** Comprovante de registro de ponto (Portaria 671, art. 79; migration 110), das últimas 48 horas. */
+export interface ComprovanteRegistro {
+  titulo: string; nsr: number; tipo: string; canal: string; empregador: string; cnpj: string; cei_caepf_cno: string | null
+  local: string | null; trabalhador: string; cpf: string; data: string; hora: string; fuso: string; inpi: string | null; sha256: string
+}
