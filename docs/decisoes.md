@@ -1433,3 +1433,36 @@ localização e do cofre (`seguranca`); vigência nos valores de `ponto_motivos`
    Aprovar e Reprovar aos supervisores da empresa) e pelo painel (aba Ajustes e pedidos); a Programação do dia que cobre
    o horário do início autoriza sozinha. HE aguardando decisão **bloqueia** o fechamento; HE não autorizada sai para
    confirmar, com o tempo trabalhado no espelho (a reprovação não apaga marcação nem hora).
+
+## 101. Repositório fechado só para colaboradores (decisão E da sprint)
+
+**Data:** 17/10/2026. **Decisão do responsável:** o repositório `infoxtec/infoxtec-escalas` deixa de ser público e
+passa a privado, visível só aos colaboradores. **Por quê:** a documentação descreve a topologia, as defesas e as
+regras do produto, que passa a ser vendido. **A mudança é do responsável** (Settings → General → Change
+visibility). **Risco a conferir logo depois (CTO e infra-bd):** a publicação do painel pela Vercel no plano Hobby a
+partir de repositório privado de organização; fazer um merge pequeno e ver se a Vercel publica. Se não publicar,
+voltar a público na hora e decidir entre a Vercel paga e outra hospedagem (etapa 17). CI e backup no GitHub Actions
+seguem funcionando (o limite de minutos do repositório privado passa a contar). Depois de fechar, rodar a varredura
+de segredos no histórico.
+
+## 102. Persona engenheiro-saas no time (decisão F da sprint)
+
+**Data:** 17/10/2026. **Decisão do responsável**, contra a recomendação do time de adiar: o time ganha o
+**engenheiro de plataforma SaaS** (`.claude/agents/engenheiro-saas.md` e `.dsh/skills/engenheiro-saas/`), com as
+boas práticas para gerir um produto que vai incorporar módulos novos e servir muitas empresas. **Responde por:**
+multiempresa com isolamento testado (teste de vazamento entre empresas no `regressao.sql`), módulos e planos por
+cliente, configuração por empresa, entrada e saída de cliente (provisionamento, exportação, exclusão LGPD), cotas e
+vizinho barulhento, custo por cliente, mudança sem parada (expandir e contrair), SLO e recuperação por cliente.
+**Divisão com o CTO** (a sobreposição que motivava o adiamento): o engenheiro-saas desenha e mede a prontidão SaaS;
+o CTO decide a arquitetura e registra; havendo divergência, os dois pareceres vão ao responsável. O infra-bd segue
+operando e medindo. **Primeira tarefa:** apoiar o CTO na estimativa da multiempresa (decisão 76, até 30/11).
+
+## 103. Consulta ao advogado sobre o REP-P (decisão G da sprint)
+
+**Data:** 17/10/2026. O parecer do Gabriel (item 076) ainda não foi pedido. O Claude redigiu a consulta
+(`Consulta-REP-P-Trilha-Ponto-v1.docx`, entregue ao responsável; não fica no repositório): o que o sistema já cumpre
+da Portaria 671, os cinco pontos em que pode estar em desacordo (recusa no afastamento, recusa sem localização, HE
+com aprovação, intervalo travando o fechamento, código de contingência do gestor) e 24 perguntas. Prazo pedido:
+primeira resposta até 31/10, com prioridade para enquadramento, afastamento, localização e assinatura dos arquivos.
+**Consequência:** a avaliação de 30 dias (088) só ganha data com o parecer; `docs/modulo-registro-de-ponto/legal.md`
+§2 aponta para a consulta.

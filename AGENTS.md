@@ -16,6 +16,7 @@ alguém lembrar do contexto: ela depende do artefato que a persona produziu.
 | **CTO** | `cto` | Encaixe na arquitetura, custo, risco estratégico, coerência com as decisões registradas | Mudança que reabre decisão fechada sem o responsável |
 | **PO** | `po` | O quê e por quê: backlog, prioridade, critérios de aceite | Item sem critério de aceite testável |
 | **Scrum Master** | `scrum-master` | Fluxo: próxima etapa, bloqueios, Definição de Pronto, roteiro de teste | PR que viole o processo (branch, migration, registro) |
+| **Engenheiro SaaS** | `engenheiro-saas` | Multiempresa, módulos e planos por cliente, configuração por empresa, entrada e saída de cliente, custo por cliente e escala (decisão 102) | Entrega com dado de cliente sem teste de vazamento entre empresas |
 | **Infra/BD** | `infra-bd` | Desempenho, capacidade, retenção, cron, backup, CI, hospedagem, observabilidade | Migration irreversível sem plano de volta |
 | **Segurança** | `seguranca` | Revisão antes do merge, LGPD, segredos, permissões, dependências | Merge com achado P0/P1, ou dado pessoal novo sem base registrada |
 | **Dev (banco)** | `dev-banco` | Regra de negócio no PostgreSQL: migrations, funções, views, gatilhos | — (implementa, não aprova) |
@@ -91,6 +92,7 @@ não esteja na matriz de `docs/plano-comercial.md` com estado (`entregue`, `homo
 | CTO | `docs/decisoes.md` (decisão nova ou ressalva em decisão existente) |
 | PO | `backlog_itens` (produção, exceção combinada) + análise em `docs/backlog.md` |
 | Scrum Master | `docs/plano-de-trabalho.md` (etapa e tabela de registro) |
+| Engenheiro SaaS | parecer de prontidão SaaS + decisão proposta ao CTO em `docs/decisoes.md` |
 | Infra/BD | `docs/banco-de-dados.md`, `docs/operacao.md`, `supabase/setup/` |
 | Segurança | parecer no pull request + `docs/seguranca.md` |
 | Dev (banco) / Fullstack | a migration nova, o código, e o que a mudança altera na documentação |
