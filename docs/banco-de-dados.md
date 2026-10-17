@@ -254,6 +254,14 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 110 (17/10): comprovante do art. 79 e pedido com o tipo trocado (decisão 105)
+
+- `ponto_meus_comprovantes(token)`: marcações do próprio funcionário nas últimas 48 horas com os campos do art. 79
+  (título, NSR, empregador com CNPJ e CEI/CAEPF/CNO, local, nome e CPF, data e hora com segundos, nº do INPI em
+  `config.rep_p_inpi`, SHA-256 da marcação); o app monta o PDF.
+- `fn_ponto_justificativa_criar`: pedido de saída ou volta do almoço que já existe no dia (marcada, incluída ou pedida)
+  é recusado com a dica do tipo certo.
+
 ### Migration 109 (17/10): HE programada com Programação que passa da meia-noite
 
 - `fn_ponto_he_inicio`: a Programação do dia cobre a HE quando já começou e o fim é posterior à hora da HE ou passa da

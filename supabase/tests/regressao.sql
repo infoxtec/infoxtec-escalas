@@ -2926,7 +2926,44 @@ begin
                      and has_function_privilege('anon', 'ponto_meu_espelho_pdf(text,uuid)', 'execute'), '[T50] permissões');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T50' as resultado,
+-- T51 comprovante do art. 79 em 48 horas e pedido com o tipo trocado barrado (migration 110, decisão 105) ----------
+do $$
+declare
+  v_emp uuid := (select v::uuid from qa where k = 'emp');
+  v_cpf text := pg_temp.cpf('515151501');
+  v_tec uuid; v_tok text; r jsonb; v_ok boolean; d date := current_date - 2;
+begin
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA Comprovante', '5579999995151', true, true, v_cpf, v_emp, false, current_date - 90) returning id into v_tec;
+  alter table ponto_marcacoes disable trigger user;
+  insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, hash_anterior, hash) values
+    (v_emp, 951001, v_tec, v_cpf, now() - interval '1 hour', 'entrada', 'ura', 'qa', repeat('a', 64)),
+    (v_emp, 951002, v_tec, v_cpf, now() - interval '3 days', 'saida', 'ura', 'qa', repeat('b', 64)),
+    (v_emp, 951003, v_tec, v_cpf, (d + time '12:00') at time zone 'America/Bahia', 'saida_almoco', 'ura', 'qa', repeat('c', 64));
+  alter table ponto_marcacoes enable trigger user;
+  v_tok := ponto_entrar(v_cpf, app_ponto_gerar_codigo(v_tec)->>'codigo')->>'token';
+
+  r := ponto_meus_comprovantes(v_tok);
+  perform pg_temp.ok(r @> '[{"nsr":951001}]' and not r @> '[{"nsr":951002}]', '[T51] só as últimas 48 horas: ' || r::text);
+  r := (select x from jsonb_array_elements(r) x where (x->>'nsr')::int = 951001);
+  perform pg_temp.ok(r->>'titulo' = 'Comprovante de Registro de Ponto do Trabalhador' and r->>'cpf' = v_cpf
+                     and r->>'sha256' = repeat('a', 64) and r->>'hora' ~ '^\d{2}:\d{2}:\d{2}$' and r->>'cnpj' is not null,
+                     '[T51] campos do art. 79: ' || r::text);
+
+  -- saída do almoço já marcada no dia: pedir outra é recusado com a dica; a volta passa
+  v_ok := false;
+  begin perform fn_ponto_justificativa_criar(v_tec, 'esqueci_marcar', d, 'saida_almoco', '12:05', null, null, 'teste', 'app');
+  exception when others then v_ok := sqlerrm like 'Você já tem%12:00%volta%'; end;
+  perform pg_temp.ok(v_ok, '[T51] saída do almoço repetida aceita');
+  perform fn_ponto_justificativa_criar(v_tec, 'esqueci_marcar', d, 'volta_almoco', '13:00', null, null, 'teste', 'app');
+  v_ok := false;
+  begin perform fn_ponto_justificativa_criar(v_tec, 'esqueci_marcar', d, 'volta_almoco', '13:10', null, null, 'teste', 'app');
+  exception when others then v_ok := sqlerrm like 'Você já tem%13:00%'; end;
+  perform pg_temp.ok(v_ok, '[T51] volta repetida com pedido pendente aceita');
+end $$;
+
+select 'REGRESSÃO OK: T1 a T51' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

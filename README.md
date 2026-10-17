@@ -193,6 +193,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Migration 91 e painel 3.31.0: **Folga compensatória e assinatura com HMAC** — o gestor lança a folga de um domingo ou feriado trabalhado, que deixa de sair a 100%; a assinatura do espelho passa a ser conferida com chave no Vault (13/10)
 - [x] **Homologação com painel publicado próprio** em https://infoxtec-escalas-homologacao.vercel.app (decisão 92, 14/10)
 - [x] **WhatsApp na homologação** com instância própria (`trilha-homologacao`), agendador próprio e envio só para os números de teste (decisão 94, 14/10)
+- [ ] Migration 110 e painel 3.46.0: **comprovante de cada marcação em PDF** com os campos do art. 79 (últimas 48 h, no app) e pedido de almoço com o tipo trocado barrado na origem (decisão 105)
 - [x] Migration 107, Edge Function `espelho-pdf` e painel 3.45.0: **espelho com o art. 84 completo e PDF assinado** guardado no sistema, enviado ao WhatsApp do funcionário e disponível no app e no cofre do RH (decisão 104)
 - [x] Migration 106 e painel 3.44.0: **hora extra com aprovação do gestor** — Programação autoriza; fora dela, botões Aprovar e Reprovar no WhatsApp do supervisor e no painel; pendente trava o fechamento (decisão 100, parte 2)
 - [x] Migration 105 e painel 3.43.0: **abono até a assinatura do espelho** do mês, no lugar de 62 dias; estorno e desconsiderar com 62 dias ou mês com espelho emitido; aviso de espelho desatualizado (decisão 100, 16/10)

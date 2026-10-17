@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre, ValidacaoCarga, ModeloCarga, CargaHoraria, CargaAtribuicao, CargaFuncionario, TimeEquipe, AlvoCarga, ProgramacaoLimite, AceiteProgramacao, AceiteProgramacaoAssinado, CargaExcedida, ValidacaoFolha, FechamentoFolha, PreviaFolha, PontoHeAutorizacao, EspelhoPdf } from './types'
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre, ValidacaoCarga, ModeloCarga, CargaHoraria, CargaAtribuicao, CargaFuncionario, TimeEquipe, AlvoCarga, ProgramacaoLimite, AceiteProgramacao, AceiteProgramacaoAssinado, CargaExcedida, ValidacaoFolha, FechamentoFolha, PreviaFolha, PontoHeAutorizacao, EspelhoPdf, ComprovanteRegistro } from './types'
 
 function traduzir(msg: string): string {
   if (/JWT expired|invalid JWT|not authenticated/i.test(msg)) return 'Sessão expirada. Entre novamente.'
@@ -22,6 +22,7 @@ export const ponto = {
     rpc<{ id: string; competencia: string; registro: number; assinado_em: string | null }[]>('ponto_meus_espelhos', { p_token: token }),
   meuEspelho: (token: string, id: string) => rpc<EspelhoCompleto>('ponto_meu_espelho', { p_token: token, p_id: id }),
   meuEspelhoPdf: (token: string, id: string) => rpc<EspelhoPdf>('ponto_meu_espelho_pdf', { p_token: token, p_id: id }),
+  meusComprovantes: (token: string) => rpc<ComprovanteRegistro[]>('ponto_meus_comprovantes', { p_token: token }),
   assinarEspelho: (token: string, id: string, sha256: string, assinatura: string) =>
     rpc<{ assinado_em: string }>('ponto_assinar_espelho', { p_token: token, p_id: id, p_sha256: sha256, p_assinatura: assinatura, p_ciente: true }),
   entrar: (cpf: string, codigo: string) =>

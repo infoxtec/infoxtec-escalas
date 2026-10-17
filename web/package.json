@@ -1,7 +1,7 @@
 {
   "name": "infoxtec-escalas-web",
   "private": true,
-  "version": "3.45.0",
+  "version": "3.46.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,6 +13,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
     "lucide-react": "^0.400.0",
+    "pdf-lib": "1.17.1",
     "pdfjs-dist": "^6.3.289",
     "qrcode-generator": "2.0.4",
     "react": "^18.3.1",

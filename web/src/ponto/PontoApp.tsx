@@ -5,6 +5,7 @@ import { erroMsg, ponto } from '../lib/api'
 import { formatCpf } from '../lib/types'
 import { prepararArquivo } from '../lib/arquivo'
 import EspelhosApp from './EspelhosApp'
+import { baixarComprovante } from './comprovantePdf'
 import type { PontoComprovante, PontoEu, PontoMarcacao, PontoMeuPedido, PontoTipo } from '../lib/types'
 
 // App do funcionário (Módulo Registro de Ponto, docs/modulo-registro-de-ponto/). Abre em /ponto.
@@ -200,7 +201,14 @@ function Painel({ token, onSair }: { token: string; onSair: () => void }) {
             {historico.map(m => (
               <li key={m.nsr} className="flex items-center justify-between gap-2 px-4 py-2">
                 <div><p className="font-medium">{LABEL[m.tipo]}</p><p className="text-xs text-muted-foreground">{m.data} {m.hora} · NSR {m.nsr}{m.local ? ` · ${m.local}` : ''}</p></div>
-                {m.dentro_area === false && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">fora da área</span>}
+                <div className="flex items-center gap-1.5">
+                  {m.dentro_area === false && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">fora da área</span>}
+                  <button type="button" title="Comprovante em PDF (últimas 48 h)" aria-label={`Comprovante em PDF da marcação ${m.nsr}`}
+                    className="rounded p-1 text-muted-foreground hover:text-primary"
+                    onClick={() => { setErro(null); pdfDoComprovante(token, m.nsr).catch(e => setErro(erroMsg(e))) }}>
+                    <FileText className="h-4 w-4" />
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -208,12 +216,20 @@ function Painel({ token, onSair }: { token: string; onSair: () => void }) {
       </section>
 
       </>)}
-      {comprovante && <Comprovante c={comprovante} onFechar={() => setComprovante(null)} />}
+      {comprovante && <Comprovante c={comprovante} token={token} onFechar={() => setComprovante(null)} />}
     </div>
   )
 }
 
-function Comprovante({ c, onFechar }: { c: PontoComprovante; onFechar: () => void }) {
+// comprovante em PDF (art. 79): só das últimas 48 horas, como o art. 80 exige; depois disso, vale o espelho do mês
+async function pdfDoComprovante(token: string, nsr: number) {
+  const c = (await ponto.meusComprovantes(token)).find(x => x.nsr === nsr)
+  if (!c) throw new Error('O comprovante em PDF fica disponível por 48 horas. Depois disso, confira no espelho do mês.')
+  await baixarComprovante(c)
+}
+
+function Comprovante({ c, token, onFechar }: { c: PontoComprovante; token: string; onFechar: () => void }) {
+  const [erroPdf, setErroPdf] = useState<string | null>(null)
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center" onClick={onFechar}>
       <div className="w-full max-w-md space-y-3 rounded-xl bg-card p-5" onClick={e => e.stopPropagation()}>
@@ -243,6 +259,10 @@ function Comprovante({ c, onFechar }: { c: PontoComprovante; onFechar: () => voi
             <XCircle className="mt-0.5 h-4 w-4 shrink-0" /> {a.replace(/^⚠️\s*/, '')}
           </p>
         ))}
+        {erroPdf && <ErrorBox>{erroPdf}</ErrorBox>}
+        <Button variant="outline" className="w-full" onClick={() => { setErroPdf(null); pdfDoComprovante(token, c.nsr).catch(e => setErroPdf(erroMsg(e))) }}>
+          <FileText className="h-4 w-4" /> Baixar comprovante (PDF)
+        </Button>
         <Button className="w-full" onClick={onFechar}>Fechar</Button>
       </div>
     </div>
