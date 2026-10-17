@@ -11,7 +11,13 @@ import postgres from "npm:postgres@3.4.5";
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "npm:pdf-lib@1.17.1";
 import qrcode from "npm:qrcode-generator@2.0.4";
 
-const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { prepare: false, max: 1, idle_timeout: 20 });
+// consultas com prazo: banco travado não prende a única conexão (revisão do seguranca)
+const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, {
+  prepare: false, max: 1, idle_timeout: 20, connection: { statement_timeout: 15000 },
+});
+
+// o corpo só leva o id do espelho
+const CORPO_MAX_BYTES = 1024;
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -283,15 +289,43 @@ function assinarComCertificado(pdf: Uint8Array): Uint8Array {
   return pdf;
 }
 
+// lido em fluxo com teto (mesma regra do webhook-evolution)
+async function lerComTeto(req: Request, teto: number): Promise<string> {
+  if (Number(req.headers.get("content-length") ?? 0) > teto) throw new Error("grande demais");
+  if (!req.body) throw new Error("sem corpo");
+  const leitor = req.body.getReader();
+  const partes: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await leitor.read();
+    if (done) break;
+    total += value.length;
+    if (total > teto) {
+      await leitor.cancel();
+      throw new Error("grande demais");
+    }
+    partes.push(value);
+  }
+  const tudo = new Uint8Array(total);
+  let pos = 0;
+  for (const p of partes) {
+    tudo.set(p, pos);
+    pos += p.length;
+  }
+  return new TextDecoder().decode(tudo);
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ ok: false, erro: "use POST" }, 405);
   const token = req.headers.get("x-espelho-token") ?? "";
-  if (!token) return json({ ok: false, erro: "token ausente" }, 401);
+  // o token do banco tem 64 caracteres hexadecimais: o resto é recusado sem ir ao banco
+  if (!/^[0-9a-f]{64}$/.test(token)) return json({ ok: false, erro: "nao autorizado" }, 401);
   let id: string;
   try {
-    const corpo = JSON.parse(await req.text());
+    const corpo = JSON.parse(await lerComTeto(req, CORPO_MAX_BYTES));
     id = String(corpo?.id ?? "");
-  } catch {
+  } catch (e) {
+    if (e instanceof Error && e.message === "grande demais") return json({ ok: false, erro: "corpo grande demais" }, 413);
     return json({ ok: false, erro: "json invalido" }, 400);
   }
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id)) return json({ ok: false, erro: "id invalido" }, 400);

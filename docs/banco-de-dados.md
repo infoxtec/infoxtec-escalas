@@ -264,13 +264,15 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
 - `ponto_espelho_pdfs`: o PDF do espelho assinado (`bytea` de 1 KB a 5 MB, começando com `%PDF-`), SHA-256, quando foi
   gerado, pedidos e envio ao WhatsApp. RLS ligado sem políticas; gatilho `fn_ponto_espelho_pdf_imutavel`: gravado, não
   muda nem se apaga.
-- `fn_ponto_espelho_pdf_pedir` (chamada por `ponto_assinar_espelho` e quando alguém pede o PDF que ainda não existe):
-  no máximo um pedido por minuto por espelho; chama a Edge Function `espelho-pdf` (`config.espelho_pdf_url`, vazio
+- `fn_ponto_espelho_pdf_pedir(id, enviar)` (chamada por `ponto_assinar_espelho` com `enviar` e quando alguém pede o PDF
+  que ainda não existe): no máximo um pedido por minuto por espelho; `fn_ponto_espelho_pdf_varrer` (tarefa `espelho-pdf`
+  do agendador, a cada 5 min) refaz até 5 vezes o pedido que não voltou; chama a Edge Function `espelho-pdf` (`config.espelho_pdf_url`, vazio
   desliga) com o token `ESPELHO_PDF_TOKEN` do Vault, criado sozinho no primeiro pedido (`fn_segredo_gravar` aceita o
   nome).
 - `fn_ponto_espelho_pdf_dados` e `fn_ponto_espelho_pdf_gravar`: só para a Edge Function (token conferido no banco);
-  gravar confere o PDF, guarda uma vez e envia ao funcionário pelo WhatsApp como documento (ativo, opt-in, trava da
-  homologação).
+  gravar confere o PDF (até 1 MB), guarda uma vez e, se o pedido veio da assinatura, envia ao funcionário pelo WhatsApp
+  como documento (ativo, opt-in, trava da homologação) — só se o último login foi pelo código do WhatsApp; senão, só o
+  aviso. A tabela também recusa `truncate`.
 - `ponto_meu_espelho_pdf(token, id)` (funcionário, só o dele) e `app_ponto_espelho_pdf(id)` (RH com `rh_folhas`,
   acesso registrado como `pdf` em `ponto_espelho_acessos`); sem PDF ainda, devolvem `pronto = false` e pedem de novo.
 - `ponto_verificar_espelho`: mostra também o SHA-256 do PDF entregue.

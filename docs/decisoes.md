@@ -1490,7 +1490,11 @@ web uma cópia assinada e validada pela empresa." **Como (migration 107, Edge Fu
   de validação da empresa** (registro, SHA-256 do conteúdo, selo HMAC da assinatura e conferência pública, que passa a
   mostrar o SHA-256 do PDF). Guardado em `ponto_espelho_pdfs`, imutável, com a guarda do ponto.
 - **Entrega:** o PDF vai ao WhatsApp do funcionário como documento e fica para baixar no app (só o dele) e no cofre do RH
-  (com a permissão e registro de acesso).
+  (com a permissão e registro de acesso). **Proteção do CPF no WhatsApp (revisão do `seguranca`):** o arquivo só vai ao
+  número que acabou de se provar do funcionário — a assinatura exige login com código enviado a esse WhatsApp; se o
+  login foi pelo código de contingência do gestor, vai só o aviso, e o PDF fica no app. Pedido que não volta é refeito
+  pela tarefa `espelho-pdf` do agendador (até 5 vezes, de 5 em 5 min). Tabela protegida também contra `truncate`; PDF de
+  até 1 MB; a Edge Function limita o corpo, tem prazo nas consultas e recusa token fora do formato sem ir ao banco.
 - **Limite assumido:** a validação da empresa hoje é o selo do sistema (hash e HMAC conferíveis), não a assinatura
   digital ICP-Brasil. O art. 88 pede PAdES com certificado ICP-Brasil para os documentos do REP-P; ela entra num ponto
   só da função (`assinarComCertificado`) quando a Infoxtec tiver o e-CNPJ (item 078). O comprovante de cada marcação

@@ -296,11 +296,12 @@ end $function$
 create table if not exists ponto_espelho_pdfs (
   espelho_id  uuid primary key references ponto_espelhos(id),
   empresa_id  uuid not null references empresas(id),
-  pdf         bytea check (pdf is null or (octet_length(pdf) between 1000 and 5242880 and substr(pdf, 1, 5) = '\x255044462d'::bytea)),
+  pdf         bytea check (pdf is null or (octet_length(pdf) between 1000 and 1048576 and substr(pdf, 1, 5) = '\x255044462d'::bytea)),
   sha256      text,
   gerado_em   timestamptz,
   pedido_em   timestamptz,
   pedidos     int not null default 0,
+  enviar      boolean not null default false,   -- pedido da assinatura: entrega ao WhatsApp; pedido de download: não
   enviado_em  timestamptz,
   envio_req   bigint
 );
@@ -322,6 +323,8 @@ end $function$;
 drop trigger if exists trg_ponto_espelho_pdf_imutavel on ponto_espelho_pdfs;
 create trigger trg_ponto_espelho_pdf_imutavel before update or delete on ponto_espelho_pdfs
   for each row execute function fn_ponto_espelho_pdf_imutavel();
+create or replace trigger trg_ponto_espelho_pdfs_sem_truncate before truncate on ponto_espelho_pdfs
+  for each statement execute function fn_ponto_imutavel();
 
 -- abertura do PDF assinado pelo RH também fica registrada
 alter table ponto_espelho_acessos drop constraint if exists ponto_espelho_acessos_acao_check;
@@ -357,8 +360,9 @@ begin
          and extensions.digest(p_token, 'sha256') = extensions.digest(v, 'sha256');
 end $function$;
 
--- pede o PDF de um espelho assinado; no máximo um pedido por minuto por espelho
-create or replace function fn_ponto_espelho_pdf_pedir(p_id uuid)
+-- pede o PDF de um espelho assinado; no máximo um pedido por minuto por espelho. p_enviar: entregar ao WhatsApp
+-- (só o pedido da assinatura; quem baixa no app ou no cofre não dispara mensagem)
+create or replace function fn_ponto_espelho_pdf_pedir(p_id uuid, p_enviar boolean default false)
 returns bigint language plpgsql set search_path = public, extensions as $function$
 declare
   v_url text := nullif(trim(coalesce(fn_config('espelho_pdf_url'), '')), '');
@@ -370,9 +374,13 @@ begin
   if not found or v_e.assinado_em is null or v_e.substituido_em is not null then return null; end if;
   select * into v_f from ponto_espelho_pdfs where espelho_id = p_id for update;
   if found and (v_f.pdf is not null or v_f.pedido_em > now() - interval '1 minute') then return null; end if;
-  insert into ponto_espelho_pdfs (espelho_id, empresa_id, pedido_em, pedidos) values (p_id, v_e.empresa_id, now(), 1)
-  on conflict (espelho_id) do update set pedido_em = now(), pedidos = ponto_espelho_pdfs.pedidos + 1;
+  insert into ponto_espelho_pdfs (espelho_id, empresa_id, pedido_em, pedidos, enviar)
+  values (p_id, v_e.empresa_id, now(), 1, p_enviar)
+  on conflict (espelho_id) do update set pedido_em = now(), pedidos = ponto_espelho_pdfs.pedidos + 1,
+                                         enviar = ponto_espelho_pdfs.enviar or p_enviar;
   if v_url is null then return null; end if;
+  -- dois primeiros pedidos ao mesmo tempo não disputam a criação do token
+  perform pg_advisory_xact_lock(hashtext('espelho_pdf_token'));
   v_tok := fn_segredo('ESPELHO_PDF_TOKEN');
   if v_tok is null then
     v_tok := encode(extensions.gen_random_bytes(32), 'hex');
@@ -415,11 +423,11 @@ declare
   v_env boolean := false;
 begin
   if not fn_ponto_espelho_pdf_token_ok(p_token) then raise exception 'token inválido'; end if;
-  if p_pdf is null or octet_length(p_pdf) < 1000 or octet_length(p_pdf) > 5242880
+  if p_pdf is null or octet_length(p_pdf) < 1000 or octet_length(p_pdf) > 1048576
      or substr(p_pdf, 1, 5) <> '\x255044462d'::bytea then
     raise exception 'Arquivo inválido: não é um PDF.';
   end if;
-  select e.id, e.empresa_id, e.competencia, e.registro, e.assinado_em, e.substituido_em,
+  select e.id, e.empresa_id, e.tecnico_id, e.competencia, e.registro, e.assinado_em, e.substituido_em,
          t.nome, t.telefone_e164, t.ativo, t.opt_in
     into v_e from ponto_espelhos e join tecnicos t on t.id = e.tecnico_id where e.id = p_id;
   if not found or v_e.assinado_em is null or v_e.substituido_em is not null then
@@ -431,14 +439,26 @@ begin
    where espelho_id = p_id and pdf is null;
   if not found then return jsonb_build_object('gravado', false, 'motivo', 'ja_gerado'); end if;
 
-  if v_e.ativo and v_e.opt_in and v_e.telefone_e164 is not null and fn_pode_enviar(v_e.telefone_e164) then
+  -- o arquivo (com o CPF, art. 84) só vai ao número que acabou de provar ser do funcionário: a assinatura pede login
+  -- com código enviado a esse WhatsApp. Login pelo código do gestor: vai só o aviso, e o PDF fica no app (revisão
+  -- do seguranca, 17/10)
+  if (select enviar from ponto_espelho_pdfs where espelho_id = p_id)
+     and v_e.ativo and v_e.opt_in and v_e.telefone_e164 is not null and fn_pode_enviar(v_e.telefone_e164) then
     begin
+      if coalesce((select s.login_origem from ponto_sessoes s where s.tecnico_id = v_e.tecnico_id
+                    order by s.criada_em desc limit 1), '') <> 'whatsapp' then
+        v_req := fn_evo_post('/message/sendText/' || fn_config('evolution_instancia'),
+          jsonb_build_object('number', v_e.telefone_e164,
+            'text', 'Trilha Ponto: ' || split_part(trim(v_e.nome), ' ', 1) || ', o seu espelho de ponto de '
+                    || to_char(v_e.competencia, 'MM/YYYY') || ' assinado está no app, em Espelho, para baixar em PDF.'));
+      else
       v_req := fn_evo_post('/message/sendMedia/' || fn_config('evolution_instancia'),
         jsonb_build_object('number', v_e.telefone_e164, 'mediatype', 'document', 'mimetype', 'application/pdf',
           'fileName', 'espelho-de-ponto-' || to_char(v_e.competencia, 'MM-YYYY') || '-registro-' || v_e.registro || '.pdf',
           'caption', 'Trilha Ponto: ' || split_part(trim(v_e.nome), ' ', 1) || ', aqui está a sua cópia do espelho de ponto de '
                      || to_char(v_e.competencia, 'MM/YYYY') || ', assinado por você e validado pela empresa. Guarde este arquivo.',
           'media', encode(p_pdf, 'base64')));
+      end if;
       if v_req is not null then
         update ponto_espelho_pdfs set enviado_em = now(), envio_req = v_req where espelho_id = p_id;
         v_env := true;
@@ -448,6 +468,21 @@ begin
     end;
   end if;
   return jsonb_build_object('gravado', true, 'sha256', v_sha, 'enviado', v_env);
+end $function$;
+
+-- refaz o pedido que não voltou (função fora do ar na hora da assinatura): até 5 tentativas, de 5 em 5 minutos, só nos
+-- últimos 30 dias; agendada em supabase/setup/cron.sql (tarefa espelho-pdf)
+create or replace function fn_ponto_espelho_pdf_varrer()
+returns int language plpgsql set search_path = public, extensions as $function$
+declare f record; n int := 0;
+begin
+  for f in select p.espelho_id, p.enviar from ponto_espelho_pdfs p join ponto_espelhos e on e.id = p.espelho_id
+            where p.pdf is null and p.pedidos < 5 and p.pedido_em < now() - interval '5 minutes'
+              and e.assinado_em > now() - interval '30 days' and e.substituido_em is null
+            order by p.pedido_em limit 10 loop
+    if fn_ponto_espelho_pdf_pedir(f.espelho_id, f.enviar) is not null then n := n + 1; end if;
+  end loop;
+  return n;
 end $function$;
 
 -- cópia do funcionário no app (só a dele, só assinada); sem PDF ainda, pede de novo
@@ -532,7 +567,7 @@ begin
    where id = p_id;
   -- PDF assinado: pedido à Edge Function espelho-pdf (assíncrono, sai depois do commit); falha não desfaz a assinatura
   begin
-    perform fn_ponto_espelho_pdf_pedir(p_id);
+    perform fn_ponto_espelho_pdf_pedir(p_id, true);
   exception when others then
     raise warning 'espelho-pdf: pedido não enviado (%)', sqlerrm;
   end;

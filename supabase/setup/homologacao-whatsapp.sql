@@ -33,6 +33,7 @@ begin
     ('webhook_url', 'https://oruwnlxyvznpigbpjjbx.supabase.co/functions/v1/webhook-evolution', 'URL do webhook deste projeto'),
     ('app_url', 'https://infoxtec-escalas-homologacao.vercel.app', 'Painel e app do ponto deste ambiente, nos links do WhatsApp (decisão 95)'),
     ('voz_url', 'https://oruwnlxyvznpigbpjjbx.supabase.co/functions/v1/voz-escala', 'URA deste projeto (decisão 95)'),
+    ('espelho_pdf_url', 'https://oruwnlxyvznpigbpjjbx.supabase.co/functions/v1/espelho-pdf', 'PDF do espelho assinado deste projeto (migration 107)'),
     ('webhook_ativo', 'true', 'Respostas pelo webhook'),
     ('ligacao_ativa', 'false', 'Ligação automática desligada na homologação (decisão 94)'),
     ('telefones_homologacao', array_to_string(v_testadores, ','), 'Números liberados na homologação (decisão 44)')

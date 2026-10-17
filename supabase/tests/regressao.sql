@@ -2897,6 +2897,11 @@ begin
   v_ok := false;
   begin delete from ponto_espelho_pdfs where espelho_id = v_id; exception when others then v_ok := true; end;
   perform pg_temp.ok(v_ok, '[T50] PDF apagado');
+  v_ok := false;
+  begin truncate ponto_espelho_pdfs; exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T50] PDFs apagados por truncate');
+  perform pg_temp.ok((select enviar from ponto_espelho_pdfs where espelho_id = v_id), '[T50] pedido da assinatura marcado para entregar');
+  perform pg_temp.ok(fn_ponto_espelho_pdf_varrer() = 0, '[T50] varredura sem pendência');
 
   -- cópia do funcionário (só a dele), do RH (com a permissão, registrada) e o hash na conferência pública
   r := ponto_meu_espelho_pdf(v_tok, v_id);
