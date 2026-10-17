@@ -254,6 +254,27 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 107 (17/10): espelho com o art. 84 completo e PDF assinado (decisão 104)
+
+- `empresas.cei_caepf_cno` (12 a 14 dígitos, opcional; `app_salvar_empresa` aceita e guarda só os dígitos).
+- `fn_ponto_espelho_conteudo`: `documento` (título do art. 84), empregador com CEI/CAEPF/CNO e endereço, escalas com
+  entrada, intervalo, jornada semanal e minutos por dia (horário contratual), `jornada.pre_assinalado` (empresa que não
+  exige o registro do intervalo), `duracao_min` por dia (hora noturna reduzida) e o aviso das marcações tratadas. Vale
+  para os espelhos emitidos a partir desta versão (os emitidos ficam como estão).
+- `ponto_espelho_pdfs`: o PDF do espelho assinado (`bytea` de 1 KB a 5 MB, começando com `%PDF-`), SHA-256, quando foi
+  gerado, pedidos e envio ao WhatsApp. RLS ligado sem políticas; gatilho `fn_ponto_espelho_pdf_imutavel`: gravado, não
+  muda nem se apaga.
+- `fn_ponto_espelho_pdf_pedir` (chamada por `ponto_assinar_espelho` e quando alguém pede o PDF que ainda não existe):
+  no máximo um pedido por minuto por espelho; chama a Edge Function `espelho-pdf` (`config.espelho_pdf_url`, vazio
+  desliga) com o token `ESPELHO_PDF_TOKEN` do Vault, criado sozinho no primeiro pedido (`fn_segredo_gravar` aceita o
+  nome).
+- `fn_ponto_espelho_pdf_dados` e `fn_ponto_espelho_pdf_gravar`: só para a Edge Function (token conferido no banco);
+  gravar confere o PDF, guarda uma vez e envia ao funcionário pelo WhatsApp como documento (ativo, opt-in, trava da
+  homologação).
+- `ponto_meu_espelho_pdf(token, id)` (funcionário, só o dele) e `app_ponto_espelho_pdf(id)` (RH com `rh_folhas`,
+  acesso registrado como `pdf` em `ponto_espelho_acessos`); sem PDF ainda, devolvem `pronto = false` e pedem de novo.
+- `ponto_verificar_espelho`: mostra também o SHA-256 do PDF entregue.
+
 ### Migration 106 (16/10): hora extra com aprovação do gestor (decisão 100, parte 2)
 
 - `ponto_he_autorizacoes`: uma linha por início de HE (`marcacao_id` único), `origem` `programada` ou `pedido`,

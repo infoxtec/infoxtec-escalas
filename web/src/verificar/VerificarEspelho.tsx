@@ -46,6 +46,11 @@ export default function VerificarEspelho() {
             <dd>{r.assinado_em ? `assinado pelo funcionário em ${r.assinado_em}${r.assinatura_integra === false ? ' (assinatura não confere)' : r.assinatura_chave_indisponivel ? ' (a chave de conferência da assinatura não está disponível neste sistema)' : ''}` : 'ainda não assinado'}</dd>
           </dl>
           <p className="break-all font-mono text-[11px] text-muted-foreground">SHA-256 {r.sha256}</p>
+          {r.pdf_sha256 && (
+            <p className="break-all font-mono text-[11px] text-muted-foreground">
+              PDF assinado entregue ao funcionário{r.pdf_gerado_em ? ` em ${r.pdf_gerado_em}` : ''}: SHA-256 {r.pdf_sha256}
+            </p>
+          )}
           <p className="text-xs text-muted-foreground">
             Esta página não mostra nome, CPF nem horários. Confere apenas que o espelho de número {r.registro} foi emitido pelo
             sistema, com este conteúdo, e se o funcionário o assinou.

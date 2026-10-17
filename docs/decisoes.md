@@ -1476,3 +1476,25 @@ da marcação e número do INPI (arts. 79 e 80), o que a mensagem do WhatsApp n�
 a assinar o espelho, o que pede revisar a base citada na decisão 84 e no aviso de privacidade.
 **Consequência:** a avaliação de 30 dias (088) só ganha data com o parecer; `docs/modulo-registro-de-ponto/legal.md`
 §2 aponta para a consulta.
+
+## 104. Espelho com todas as exigências do art. 84 e PDF assinado entregue ao funcionário
+
+**Data:** 17/10/2026. **Pedido do responsável:** "inclua todas as exigências da portaria no documento que será assinado
+pelo funcionário; o PDF ficará guardado no sistema como conferido e assinado, e o funcionário recebe no WhatsApp e pela
+web uma cópia assinada e validada pela empresa." **Como (migration 107, Edge Function `espelho-pdf`, painel 3.45.0):**
+- **Art. 84 completo** (texto conferido na compilação de 21/07/2026): CEI/CAEPF/CNO do empregador quando houver e
+  endereço (I); nome, CPF, admissão e cargo/função (II); emissão e período (III); horário e jornada contratual de cada
+  escala (IV); marcações registradas e tratadas, com o intervalo pré-assinalado quando a empresa não exige o registro
+  (V); duração da jornada com a hora noturna reduzida (VI). Espelhos já emitidos não mudam: o conteúdo é congelado.
+- **PDF no servidor**, depois da assinatura: montado do conteúdo congelado, com a assinatura desenhada, o QR e o **selo
+  de validação da empresa** (registro, SHA-256 do conteúdo, selo HMAC da assinatura e conferência pública, que passa a
+  mostrar o SHA-256 do PDF). Guardado em `ponto_espelho_pdfs`, imutável, com a guarda do ponto.
+- **Entrega:** o PDF vai ao WhatsApp do funcionário como documento e fica para baixar no app (só o dele) e no cofre do RH
+  (com a permissão e registro de acesso).
+- **Limite assumido:** a validação da empresa hoje é o selo do sistema (hash e HMAC conferíveis), não a assinatura
+  digital ICP-Brasil. O art. 88 pede PAdES com certificado ICP-Brasil para os documentos do REP-P; ela entra num ponto
+  só da função (`assinarComCertificado`) quando a Infoxtec tiver o e-CNPJ (item 078). O comprovante de cada marcação
+  (arts. 79 e 80) é outro documento e continua pendente.
+- **Crescimento:** cerca de 20 a 60 KB por espelho dentro do banco (um por funcionário por mês); medir junto com o cofre
+  (reunião de 17/10, infra-bd).
+

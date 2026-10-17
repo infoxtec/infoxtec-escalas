@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Download, Eye, Lock, Printer, RefreshCw } from 'lucide-react'
+import { Download, Eye, FileText, Lock, Printer, RefreshCw } from 'lucide-react'
 import { Button, ErrorBox, Field, Input, Modal } from './ui'
 import EspelhoDocumento from './EspelhoDocumento'
 import { api, erroMsg } from '../lib/api'
+import { baixarPdf } from '../lib/types'
 import type { EspelhoCompleto, FolhaCofre } from '../lib/types'
 
 // Cofre das folhas de ponto assinadas (decisão 86): só quem tem a permissão de RH vê. Cada abertura e cada prova
@@ -17,6 +18,7 @@ export default function CofreFolhas({ hoje }: { hoje: string }) {
   const [erro, setErro] = useState<string | null>(null)
   const [visto, setVisto] = useState<EspelhoCompleto | null>(null)
   const [baixando, setBaixando] = useState<string | null>(null)
+  const [aviso, setAviso] = useState<string | null>(null)
 
   const carregar = useCallback(async () => {
     setErro(null)
@@ -45,6 +47,18 @@ export default function CofreFolhas({ hoje }: { hoje: string }) {
     finally { setBaixando(null) }
   }
 
+  // PDF assinado guardado no sistema (migration 107): o mesmo arquivo que o funcionário recebeu
+  const pdf = async (f: FolhaCofre) => {
+    setErro(null); setAviso(null); setBaixando(f.id)
+    try {
+      const r = await api.pontoEspelhoPdf(f.id)
+      if (r.pronto) baixarPdf(r)
+      else setAviso('O PDF assinado desta folha está sendo gerado. Tente de novo em alguns segundos.')
+      await carregar()
+    } catch (e) { setErro(erroMsg(e)) }
+    finally { setBaixando(null) }
+  }
+
   return (
     <section className="space-y-2">
       <h3 className="flex items-center gap-1.5 text-sm font-semibold"><Lock className="h-4 w-4" /> Cofre de folhas assinadas (RH)</h3>
@@ -62,6 +76,7 @@ export default function CofreFolhas({ hoje }: { hoje: string }) {
         <Button variant="outline" size="sm" onClick={() => void carregar()}><RefreshCw className="h-3.5 w-3.5" /> Atualizar</Button>
       </div>
       {erro && <ErrorBox>{erro}</ErrorBox>}
+      {aviso && <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">{aviso}</p>}
       {lista && (
         <div className="overflow-x-auto rounded-md border">
           <table className="w-full text-sm">
@@ -82,6 +97,7 @@ export default function CofreFolhas({ hoje }: { hoje: string }) {
                   <td className="px-3 py-2 text-xs">{f.acessos}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-right">
                     <Button variant="ghost" size="sm" onClick={() => void ver(f.id)}><Eye className="h-3.5 w-3.5" /> Ver</Button>
+                    <Button variant="ghost" size="sm" disabled={baixando === f.id} onClick={() => void pdf(f)}><FileText className="h-3.5 w-3.5" /> PDF assinado</Button>
                     <Button variant="ghost" size="sm" disabled={baixando === f.id} onClick={() => void prova(f)}><Download className="h-3.5 w-3.5" /> Baixar prova</Button>
                   </td>
                 </tr>
