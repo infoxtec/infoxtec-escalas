@@ -109,6 +109,8 @@ ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
   </header>
 
   <section class="situacao" aria-label="Situação">
+    <h2 style="margin:0">Situação em 16/10, tarde</h2>
+    <p><strong>Na homologação e testado pelo responsável:</strong> decisão 100 inteira — migration 104 (intervalo não registrado trava o fechamento, gestor só desconsidera), 105 (abono até a assinatura do espelho) e 106 (hora extra com aprovação: pedido nº 1 do Renato aprovado pelos botões no WhatsApp do supervisor, aviso "HE aprovada" recebido); espelho de abril do Renato assinado por ele. <strong>Próximo:</strong> 104, 105 e 106 na produção na segunda (19/10), uma mudança no dia (decisão 77); fechar setembro do Renato com as regras novas; decisões E, F e G (21/10); revisão da sprint (22/10).</p>
     <h2 style="margin:0">Situação em 16/10</h2>
     <p><strong>Concluído:</strong> <strong>T12</strong> — chaves JWT antigas (<code>anon</code> e <code>service_role</code>) desativadas na produção, depois de o <code>documento-ocr</code> passar a usar a chave publicável; login, ponto pelo WhatsApp e pelo app e OCR testados pelo responsável. <strong>Decisão 100, parte 1</strong> (migration 104, painel 3.42.0, PR #133): intervalo não registrado trava o fechamento (opção por empresa), gestor só desconsidera marcação, retorno do intervalo no comprovante, aviso no dia seguinte — na homologação e conferida (Infoxtec com a exigência, abril do Renato com 12 e 22/04 bloqueados); painel 3.42.0 já publicado. <strong>Próximo:</strong> teste conjunto do fechamento na homologação com a regra nova (assinar abril e fechar maio do Renato) e, com o aceite, a migration 104 na produção (Seg 19); parte 2 da decisão 100 (HE com aprovação do gestor) até 23/10.</p>
     <h2 style="margin:0">Situação em 15/10, fim do dia</h2>
@@ -147,7 +149,7 @@ ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
         <tr><td>Sex 16</td><td><strong>T12</strong> desativar a chave service_role antiga (decisão D, fechada pelo PO)</td><td>apagar o WEBHOOK_TOKEN_ANTERIOR (48 h após a T09)</td></tr>
         <tr><td>Seg 19</td><td><strong>T13</strong> 084 entrega 2 na produção (painel 3.14.0)</td><td>—</td></tr>
         <tr><td>Ter 20</td><td><strong>T15</strong> fim do token na URL</td><td>merge da P1</td></tr>
-        <tr><td>Qua 21</td><td>reserva</td><td>decisões E, F e G (abaixo) respondidas</td></tr>
+        <tr><td>Qua 21</td><td>reserva</td><td>decisões E, F e G respondidas em 17/10 (101 a 103)</td></tr>
         <tr><td>Qui 22</td><td>—</td><td>T16 revisão da sprint</td></tr>
       </tbody>
     </table></div>
@@ -317,9 +319,9 @@ flowchart LR
         <tr><td class="mono">B</td><td>O aviso ao gestor leva o nome do funcionário?</td><td>Primeiro nome, nunca o CPF</td><td>Ter 13</td></tr>
         <tr><td class="mono">C</td><td>Quem lança ajuste de ponto?</td><td>Admin e gestor; o funcionário é avisado pelo WhatsApp</td><td>Ter 13</td></tr>
         <tr><td class="mono">D</td><td>Quando desativar a chave service_role antiga?</td><td><strong>Decidido pelo PO:</strong> sex 16, com a 63 estável há 6 dias</td><td>—</td></tr>
-        <tr><td class="mono">E</td><td>O repositório continua público?</td><td>Tornar privado: a documentação expõe topologia e defesas</td><td>Qua 21</td></tr>
-        <tr><td class="mono">F</td><td>Adotar a persona engenheiro-saas?</td><td>Adiar: hoje se sobrepõe ao CTO e ao infra-bd</td><td>Qua 21</td></tr>
-        <tr><td class="mono">G</td><td>Situação do parecer REP-P (076, Gabriel)?</td><td>Informar: sem ele, a avaliação de 30 dias (088) não tem data</td><td>Qua 21</td></tr>
+        <tr><td class="mono">E</td><td>O repositório continua público?</td><td>Tornar privado: a documentação expõe topologia e defesas</td><td>decidido 17/10: privado, só colaboradores (decisão 101)</td></tr>
+        <tr><td class="mono">F</td><td>Adotar a persona engenheiro-saas?</td><td>Adiar: hoje se sobrepõe ao CTO e ao infra-bd</td><td>decidido 17/10: adotada (decisão 102)</td></tr>
+        <tr><td class="mono">G</td><td>Situação do parecer REP-P (076, Gabriel)?</td><td>Informar: sem ele, a avaliação de 30 dias (088) não tem data</td><td>17/10: consulta redigida, a enviar ao Gabriel (decisão 103)</td></tr>
       </tbody>
     </table>
     </div>

@@ -1,6 +1,6 @@
 # Equipe do projeto (subagentes do Claude Code)
 
-Oito papéis, definidos em `.claude/agents/`. Cada um é um especialista que o Claude Code aciona
+Dez papéis, definidos em `.claude/agents/`. Cada um é um especialista que o Claude Code aciona
 pelo nome. Nenhum deles substitui o responsável: decisões de negócio, aprovação de entrega e tudo
 o que toca a produção são dele.
 
@@ -16,6 +16,7 @@ o que toca a produção são dele.
 | **Infra/BD** | `infra-bd.md` | Desempenho, capacidade, cron, backup, CI, hospedagem, scripts, observabilidade | Mudar regra de negócio |
 | **Segurança** | `seguranca.md` | Revisão antes do merge, LGPD, segredos, permissões, dependências | Aprovar o próprio código; relaxar regra para caber no prazo |
 | **Jurídico** | `juridico.md` | Base legal trabalhista e cível, prazos de falta e abono, convenções coletivas, textos legais ao funcionário; classifica a fonte e o risco, rotula pendências (decisão 99) | Assinar parecer ou se apresentar como advogado (é persona de apoio, sem OAB — decisão 58); decidir escopo, arquitetura ou prioridade; tratar de folha de pagamento e eSocial (fora do produto) |
+| **Engenheiro SaaS** | `engenheiro-saas.md` | Plataforma para muitos clientes: multiempresa com teste de vazamento, módulos e planos por cliente, configuração por empresa, entrada e saída de cliente, cotas, custo por cliente, mudança sem parada, SLO e recuperação (decisão 102) | Implementar; decidir arquitetura sozinho (leva ao CTO); custo, plano pago, SLA |
 | **Marca e Comercial** | `marca.md` | Estratégia de marca, assinatura, grito, chamada para ação, narrativa, tom de voz, posicionamento, proposta comercial; análise crítica com embasamento | Decidir preço, SLA ou garantia; afirmar capacidade sem lastro na matriz |
 
 ## Como o trabalho anda entre os papéis

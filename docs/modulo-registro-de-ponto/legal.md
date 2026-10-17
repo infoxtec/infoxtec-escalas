@@ -24,6 +24,9 @@ Monteiro** (contadora). Este documento organiza as perguntas; não substitui o p
 
 ## 2. Perguntas do parecer jurídico (backlog 076 — Gabriel)
 
+As perguntas abaixo foram substituídas pela consulta de 17/10/2026 (`Consulta-REP-P-Trilha-Ponto-v3.docx`, decisão
+103): 7 pareceres e 4 confirmações de sim ou não, conferidos no texto oficial (§8); o resto foi respondido pelo `juridico`.
+
 1. O enquadramento é **REP-P** (programa registrado no INPI, Atestado Técnico emitido pelo
    desenvolvedor)? Nossa leitura: sim — o REP-A dependeria de acordo coletivo em cada cliente, o que
    inviabiliza o produto.
@@ -78,3 +81,37 @@ Mudança grande de versão pede novo registro (barato).
 | "Para software, REP-A, sem atestado" | Software é **REP-P** (INPI + Atestado do desenvolvedor); REP-A exige acordo coletivo — a confirmar no parecer |
 | Arquivo "ACJEF" | Era da Portaria 1510; na 671 é o **AEJ**, e o AFD tem layout novo |
 | "§4º proíbe a pré-assinalação" | O **§2º do art. 74 permite** pré-assinalar o intervalo |
+
+## 8. Conferência no texto oficial (17/10/2026)
+
+Texto: Portaria MTP 671/2021 compilada pelo gov.br em 21/07/2026, em `docs/legislacao/` (o PDF é o mesmo arquivo de
+`docs/AFD.pdf`: a compilação inteira, não só o Anexo V). Conferência do `juridico`; consulta ao Gabriel na v3
+(decisão 103).
+
+**Respondido pelo texto (sai da consulta):**
+- **Quem assina:** AFD e comprovante, o **desenvolvedor** (art. 86, §1º); AEJ, desenvolvedor ou empregador (§2º);
+  Atestado, duas pessoas físicas — responsável técnico e legal — com assinatura qualificada (art. 89, §2º).
+- **Padrões:** ICP-Brasil qualificada; comprovante em PDF com PAdES; AFD e AEJ em CAdES `.p7s` destacado (art. 88).
+- **Comprovante (art. 79):** título literal, NSR, empregador, local, **nome e CPF completos**, data e hora, nº do INPI e
+  **SHA-256 da marcação**; acesso no sistema após cada marcação, sem pedido, e extração das últimas 48 h (art. 80).
+- **Espelho (art. 84):** inclui **data de admissão, cargo, horário e jornada contratual**, marcações incluídas,
+  desconsideradas e pré-assinaladas, e duração com hora noturna reduzida. **Não exige assinatura do empregado.**
+- **Fiscalização:** AFD "prontamente" (art. 81, §2º); AEJ e espelho em no mínimo 2 dias (art. 85).
+- **Tratamento** (art. 82, parágrafo único): só acrescenta informação ou indica marcação indevida. A regra de o gestor
+  nunca incluir marcação (decisões 89 e 100) é cautela nossa, mais rígida que a Portaria.
+- **Guarda de 5 anos:** não está na Portaria (o Anexo IX, item 7, fala em "prazo mínimo legal"); os 5 anos vêm da
+  prescrição (CF art. 7º, XXIX). Anexo VII revogado: o modelo do Atestado está no gov.br.
+
+**O que o Trilha Ponto não cumpre hoje (entra no backlog do PO):**
+1. Comprovante: não é PDF assinado, CPF mascarado, sem INPI, sem extração de 48 h; conferir se o código de
+   autenticação é o SHA-256 da marcação e o título literal.
+2. AFD sem os tipos 2, 5 e 6 e sem CAdES; AEJ inexistente (prazo de adequação vencido em 11/01/2023, art. 97).
+3. Espelho: conferir data de admissão, cargo e horário contratual (art. 84, II e IV).
+4. Anexo IX, item 3: relógio com segundos no coletor — o WhatsApp e a ligação não exibem (pergunta V7).
+5. Anexo IX, item 6: NSR **por estabelecimento** (hoje por empresa; só atende se cada empresa for um CNPJ de
+   estabelecimento); eventos do empregador, do empregado, do ajuste de relógio e sensíveis gravados com o responsável.
+6. Anexo IX, item 2: sincronismo com a Hora Legal Brasileira, variação máxima de 30 s, sem prova hoje.
+7. Anexo IX, item 7: conferir que a exclusão definitiva de técnico (decisão 8) nunca alcança marcações nem eventos.
+8. Anexo IX, itens 8.1 e 13: disponibilidade permanente e alta disponibilidade (login depende do WhatsApp; plano
+   gratuito).
+9. Atestado e INPI: sem eles o empregador não pode usar o sistema (art. 89, §4º).

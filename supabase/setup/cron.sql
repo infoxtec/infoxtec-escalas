@@ -15,3 +15,6 @@ select cron.schedule('ponto-lembrete-almoco', '*/15 * * * *', $$select fn_ponto_
 
 -- Bairro e cidade das marcações do ponto (migration 58): uma consulta ao OpenStreetMap por minuto.
 select cron.schedule('ponto-geo', '* * * * *', $$select fn_ponto_geo_processar()$$);
+
+-- PDF do espelho assinado (migration 107): refaz o pedido que não voltou, a cada 5 minutos.
+select cron.schedule('espelho-pdf', '*/5 * * * *', $$select fn_ponto_espelho_pdf_varrer()$$);

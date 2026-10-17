@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronLeft, Loader2, PenLine, Printer } from 'lucide-react'
+import { ChevronLeft, FileText, Loader2, PenLine, Printer } from 'lucide-react'
 import { Button, ErrorBox, SuccessBox } from '../components/ui'
 import { ponto, erroMsg } from '../lib/api'
 import EspelhoDocumento from '../components/EspelhoDocumento'
 import AssinaturaCanvas from '../components/AssinaturaCanvas'
+import { baixarPdf } from '../lib/types'
 import type { EspelhoCompleto } from '../lib/types'
 
 // Espelho mensal no app do funcionário (decisão 82): ele confere, desenha a assinatura e confirma. O link do
@@ -17,6 +18,7 @@ export default function EspelhosApp({ token, onSair, inicial }: { token: string;
   const [png, setPng] = useState<string | null>(null)
   const [ciente, setCiente] = useState(false)
   const [assinando, setAssinando] = useState(false)
+  const [baixando, setBaixando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
 
@@ -40,11 +42,23 @@ export default function EspelhosApp({ token, onSair, inicial }: { token: string;
     setErro(null); setAssinando(true)
     try {
       const r = await ponto.assinarEspelho(token, aberto.id, aberto.sha256, png)
-      setOk(`Espelho assinado em ${r.assinado_em}. Você pode baixar uma cópia em PDF.`)
+      setOk(`Espelho assinado em ${r.assinado_em}. A cópia em PDF, assinada e validada pela empresa, chega no seu WhatsApp em instantes e fica aqui para baixar.`)
       await abrir(aberto.id)
       setLista(await ponto.meusEspelhos(token))
     } catch (e) { tratar(e) }
     finally { setAssinando(false) }
+  }
+
+  // cópia do PDF assinado guardada no sistema (migration 107); recém-assinado, pode levar alguns segundos
+  const baixar = async () => {
+    if (!aberto) return
+    setErro(null); setBaixando(true)
+    try {
+      const r = await ponto.meuEspelhoPdf(token, aberto.id)
+      if (r.pronto) baixarPdf(r)
+      else setOk('O PDF assinado está sendo gerado. Tente de novo em alguns segundos.')
+    } catch (e) { tratar(e) }
+    finally { setBaixando(false) }
   }
 
   if (aberto) return (
@@ -71,7 +85,12 @@ export default function EspelhosApp({ token, onSair, inicial }: { token: string;
           </Button>
         </div>
       )}
-      {aberto.conteudo && <Button variant="outline" className="w-full" onClick={() => window.print()}><Printer className="h-4 w-4" /> Baixar PDF ou imprimir</Button>}
+      {aberto.conteudo && aberto.assinado_em && (
+        <Button className="w-full" disabled={baixando} onClick={() => void baixar()}>
+          {baixando ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} Baixar PDF assinado
+        </Button>
+      )}
+      {aberto.conteudo && <Button variant="outline" className="w-full" onClick={() => window.print()}><Printer className="h-4 w-4" /> Imprimir</Button>}
     </div>
   )
 

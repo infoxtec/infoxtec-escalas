@@ -1986,7 +1986,7 @@ begin
   perform pg_temp.ok(d->>'feriado' is not null and (d->>'debito_min')::int = 0, '[T37] feriado');
   select x into d from jsonb_array_elements(c->'dias') x where x->>'data' = '2026-09-08';
   perform pg_temp.ok((d->>'debito_min')::int = (c->'jornada'->>'dia_util_min')::int, '[T37] dia útil sem registro');
-  perform pg_temp.ok((c->'resumo'->'informativo'->>'dias_abonados_justificados')::int = 1 and jsonb_array_length(c->'avisos') = 7,
+  perform pg_temp.ok((c->'resumo'->'informativo'->>'dias_abonados_justificados')::int = 1 and jsonb_array_length(c->'avisos') = 8,
                      '[T37] informativo e avisos');
   -- funcionário sem nenhum registro no mês: espelho vazio (o emissor pula)
   c := fn_ponto_espelho_conteudo(v_tec2, '2026-09-01');
@@ -2829,7 +2829,104 @@ begin
                      and not has_function_privilege('authenticated', 'fn_ponto_he_decidir(uuid,boolean,text,text)', 'execute'), '[T49] permissões');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T49' as resultado,
+-- T50 espelho com o art. 84 completo e PDF assinado guardado e entregue (migration 107, decisão 104) -------------
+do $$
+declare
+  v_emp uuid := (select v::uuid from qa where k = 'emp');
+  v_mes date := date_trunc('month', current_date - interval '1 month')::date;
+  v_png text := 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  v_cpf text := pg_temp.cpf('505050501');
+  v_pdf bytea := convert_to('%PDF-1.4 teste', 'UTF8') || decode(repeat('00', 1200), 'hex');
+  v_tec uuid; v_tec2 uuid; v_tok text; v_tok2 text; c jsonb; r jsonb; v_id uuid; v_ok boolean;
+begin
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  -- sem chamada de rede no teste: o pedido do PDF só registra
+  update config set valor = '' where chave = 'espelho_pdf_url';
+  -- CEI/CAEPF/CNO: só dígitos, 12 a 14
+  v_ok := false;
+  begin perform app_salvar_empresa((select to_jsonb(e) from empresas e where id = v_emp) || '{"cei_caepf_cno":"12345"}');
+  exception when others then v_ok := sqlerrm like '%CEI, CAEPF ou CNO inválido%'; end;
+  perform pg_temp.ok(v_ok, '[T50] CEI inválido aceito');
+  perform app_salvar_empresa((select to_jsonb(e) from empresas e where id = v_emp) || '{"cei_caepf_cno":"12.345.67890/12"}');
+  perform pg_temp.ok((select cei_caepf_cno from empresas where id = v_emp) = '123456789012', '[T50] CEI gravado só com dígitos');
+
+  insert into tecnicos (nome, telefone_e164, funcao, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA Espelho PDF', '5579999995050', 'Técnico de campo', true, true, v_cpf, v_emp, false, v_mes - 60) returning id into v_tec;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA Outro PDF', '5579999995051', true, true, pg_temp.cpf('505050502'), v_emp, false, v_mes - 60) returning id into v_tec2;
+  alter table ponto_marcacoes disable trigger user;
+  insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, hash_anterior, hash)
+  select v_emp, 950000 + k, v_tec, v_cpf, ((v_mes + 6) + h) at time zone 'America/Bahia', tp, 'ura', 'qa', md5(random()::text)
+    from (values (1, time '14:00', 'entrada'), (2, time '23:30', 'saida')) x(k, h, tp);
+  alter table ponto_marcacoes enable trigger user;
+
+  -- conteúdo do art. 84: título, CEI, cargo, duração com a hora noturna reduzida, pré-assinalação conforme a empresa
+  perform app_ponto_emitir_espelhos(v_mes, v_tec, true);
+  select id, conteudo into v_id, c from ponto_espelhos where tecnico_id = v_tec and substituido_em is null;
+  perform pg_temp.ok(c->>'documento' like 'Espelho de Ponto Eletrônico%' and c->'empregador'->>'cei_caepf_cno' = '123456789012'
+                     and c->'trabalhador'->>'funcao' = 'Técnico de campo', '[T50] cabeçalho do art. 84: ' || (c - 'dias' - 'resumo' - 'avisos')::text);
+  perform pg_temp.ok((c->'jornada'->>'pre_assinalado')::boolean = not (select exige_registro_intervalo from empresas where id = v_emp),
+                     '[T50] pré-assinalação');
+  r := (select x from jsonb_array_elements(c->'dias') x where x->>'data' = to_char(v_mes + 6, 'YYYY-MM-DD'));
+  perform pg_temp.ok((r->>'duracao_min')::int > (r->>'trabalhado_min')::int, '[T50] duração com hora noturna reduzida: ' || coalesce(r::text, '-'));
+
+  -- assinar pede o PDF; sem PDF, o app responde "gerando"
+  v_tok := ponto_entrar(v_cpf, app_ponto_gerar_codigo(v_tec)->>'codigo')->>'token';
+  r := ponto_assinar_espelho(v_tok, v_id, (select sha256 from ponto_espelhos where id = v_id), v_png, true);
+  perform pg_temp.ok(r->>'pdf' = 'gerando' and (select pedidos from ponto_espelho_pdfs where espelho_id = v_id) = 1, '[T50] pedido do PDF: ' || r::text);
+  perform pg_temp.ok(not (ponto_meu_espelho_pdf(v_tok, v_id)->>'pronto')::boolean, '[T50] PDF pronto antes de gerar');
+
+  -- a Edge Function só entra com o token do Vault; só PDF; grava uma vez e não muda
+  perform fn_segredo_gravar('ESPELHO_PDF_TOKEN', 'qa-token-pdf');
+  v_ok := false;
+  begin perform fn_ponto_espelho_pdf_dados('errado', v_id); exception when others then v_ok := sqlerrm like '%token%'; end;
+  perform pg_temp.ok(v_ok, '[T50] dados com token errado');
+  perform pg_temp.ok(fn_ponto_espelho_pdf_dados('qa-token-pdf', v_id)->>'assinatura_png' = v_png, '[T50] dados para o PDF');
+  perform pg_temp.ok(fn_ponto_espelho_pdf_dados('qa-token-pdf', (select id from ponto_espelhos where tecnico_id = v_tec2 limit 1)) is null,
+                     '[T50] dados de espelho não assinado');
+  v_ok := false;
+  begin perform fn_ponto_espelho_pdf_gravar('qa-token-pdf', v_id, convert_to(repeat('x', 2000), 'UTF8'));
+  exception when others then v_ok := sqlerrm like '%não é um PDF%'; end;
+  perform pg_temp.ok(v_ok, '[T50] arquivo que não é PDF aceito');
+  r := fn_ponto_espelho_pdf_gravar('qa-token-pdf', v_id, v_pdf);
+  perform pg_temp.ok((r->>'gravado')::boolean and r->>'sha256' = encode(sha256(v_pdf), 'hex'), '[T50] PDF gravado: ' || r::text);
+  perform pg_temp.ok(fn_ponto_espelho_pdf_gravar('qa-token-pdf', v_id, v_pdf || '\x00'::bytea)->>'motivo' = 'ja_gerado', '[T50] PDF trocado');
+  v_ok := false;
+  begin update ponto_espelho_pdfs set pdf = v_pdf || '\x00'::bytea where espelho_id = v_id; exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T50] PDF alterado');
+  v_ok := false;
+  begin delete from ponto_espelho_pdfs where espelho_id = v_id; exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T50] PDF apagado');
+  v_ok := false;
+  begin truncate ponto_espelho_pdfs; exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T50] PDFs apagados por truncate');
+  perform pg_temp.ok((select enviar from ponto_espelho_pdfs where espelho_id = v_id), '[T50] pedido da assinatura marcado para entregar');
+  perform pg_temp.ok(fn_ponto_espelho_pdf_varrer() = 0, '[T50] varredura sem pendência');
+
+  -- cópia do funcionário (só a dele), do RH (com a permissão, registrada) e o hash na conferência pública
+  r := ponto_meu_espelho_pdf(v_tok, v_id);
+  perform pg_temp.ok((r->>'pronto')::boolean and decode(r->>'pdf', 'base64') = v_pdf and r->>'nome' like 'espelho-de-ponto-%.pdf', '[T50] cópia no app');
+  v_tok2 := ponto_entrar(pg_temp.cpf('505050502'), app_ponto_gerar_codigo(v_tec2)->>'codigo')->>'token';
+  v_ok := false;
+  begin perform ponto_meu_espelho_pdf(v_tok2, v_id); exception when others then v_ok := sqlerrm like '%não encontrado%'; end;
+  perform pg_temp.ok(v_ok, '[T50] PDF de outro funcionário');
+  update painel_usuarios set rh_folhas = false where email = 'qa-admin@teste.local';
+  v_ok := false;
+  begin perform app_ponto_espelho_pdf(v_id); exception when others then v_ok := sqlerrm like '%cofre de folhas%'; end;
+  perform pg_temp.ok(v_ok, '[T50] PDF sem a permissão do RH');
+  update painel_usuarios set rh_folhas = true where email = 'qa-admin@teste.local';
+  r := app_ponto_espelho_pdf(v_id);
+  perform pg_temp.ok((r->>'pronto')::boolean and exists (select 1 from ponto_espelho_acessos where espelho_id = v_id and acao = 'pdf'),
+                     '[T50] PDF no cofre do RH');
+  perform pg_temp.ok(ponto_verificar_espelho((select codigo from ponto_espelhos where id = v_id))->>'pdf_sha256' = encode(sha256(v_pdf), 'hex'),
+                     '[T50] hash do PDF na conferência pública');
+  perform pg_temp.ok(not has_function_privilege('anon', 'fn_ponto_espelho_pdf_gravar(text,uuid,bytea)', 'execute')
+                     and not has_function_privilege('authenticated', 'fn_ponto_espelho_pdf_dados(text,uuid)', 'execute')
+                     and not has_function_privilege('anon', 'app_ponto_espelho_pdf(uuid)', 'execute')
+                     and has_function_privilege('anon', 'ponto_meu_espelho_pdf(text,uuid)', 'execute'), '[T50] permissões');
+end $$;
+
+select 'REGRESSÃO OK: T1 a T50' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

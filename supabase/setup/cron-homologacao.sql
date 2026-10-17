@@ -18,6 +18,7 @@ begin
   perform cron.schedule('vigia-motor', '*/5 * * * *', 'select fn_vigiar_motor()');
   perform cron.schedule('ponto-lembrete-almoco', '*/15 * * * *', 'select fn_ponto_lembrete_almoco()');
   perform cron.schedule('ponto-geo', '* * * * *', 'select fn_ponto_geo_processar()');
+  perform cron.schedule('espelho-pdf', '*/5 * * * *', 'select fn_ponto_espelho_pdf_varrer()');
   raise notice 'Agendador da homologação ligado: % tarefas ativas.', (select count(*) from cron.job where active);
 end $$;
 

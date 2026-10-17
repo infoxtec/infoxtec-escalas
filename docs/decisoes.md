@@ -955,7 +955,8 @@ de exemplo não pertence a empresa ativa (os dígitos precisam ser válidos para
 
 **Data:** 13/10/2026. **Pedido do responsável** (F5, backlog 085; migration 87, painel 3.27.0). Sem o
 Arquivo Fonte de Dados o Trilha Ponto não se vende como REP-P (Portaria 671, Art. 81). A base é o Anexo V do
-texto consolidado (`docs/AFD.pdf`, enviado pelo responsável), que a Portaria 1.486/2022 **revogou**, passando
+texto consolidado (`docs/AFD.pdf`, enviado pelo responsável; em 17/10 conferiu-se que o arquivo é a compilação
+inteira de 21/07/2026, ver `legal.md` §8), que a Portaria 1.486/2022 **revogou**, passando
 o leiaute para o portal gov.br (inacessível deste ambiente). Por isso o arquivo sai como **versão de
 conferência**: a Andreia confere contra o leiaute vigente antes de valer. **Escolhas a confirmar nessa
 conferência:** CRC-16 na variante KERMIT (o anexo não nomeia); hash SHA-256 em hexadecimal minúsculo sobre os
@@ -1433,3 +1434,71 @@ localização e do cofre (`seguranca`); vigência nos valores de `ponto_motivos`
    Aprovar e Reprovar aos supervisores da empresa) e pelo painel (aba Ajustes e pedidos); a Programação do dia que cobre
    o horário do início autoriza sozinha. HE aguardando decisão **bloqueia** o fechamento; HE não autorizada sai para
    confirmar, com o tempo trabalhado no espelho (a reprovação não apaga marcação nem hora).
+
+## 101. Repositório fechado só para colaboradores (decisão E da sprint)
+
+**Data:** 17/10/2026. **Decisão do responsável:** o repositório `infoxtec/infoxtec-escalas` deixa de ser público e
+passa a privado, visível só aos colaboradores. **Por quê:** a documentação descreve a topologia, as defesas e as
+regras do produto, que passa a ser vendido. **A mudança é do responsável** (Settings → General → Change
+visibility). **Risco a conferir logo depois (CTO e infra-bd):** a publicação do painel pela Vercel no plano Hobby a
+partir de repositório privado de organização; fazer um merge pequeno e ver se a Vercel publica. Se não publicar,
+voltar a público na hora e decidir entre a Vercel paga e outra hospedagem (etapa 17). CI e backup no GitHub Actions
+seguem funcionando (o limite de minutos do repositório privado passa a contar). Depois de fechar, rodar a varredura
+de segredos no histórico.
+
+## 102. Persona engenheiro-saas no time (decisão F da sprint)
+
+**Data:** 17/10/2026. **Decisão do responsável**, contra a recomendação do time de adiar: o time ganha o
+**engenheiro de plataforma SaaS** (`.claude/agents/engenheiro-saas.md` e `.dsh/skills/engenheiro-saas/`), com as
+boas práticas para gerir um produto que vai incorporar módulos novos e servir muitas empresas. **Responde por:**
+multiempresa com isolamento testado (teste de vazamento entre empresas no `regressao.sql`), módulos e planos por
+cliente, configuração por empresa, entrada e saída de cliente (provisionamento, exportação, exclusão LGPD), cotas e
+vizinho barulhento, custo por cliente, mudança sem parada (expandir e contrair), SLO e recuperação por cliente.
+**Divisão com o CTO** (a sobreposição que motivava o adiamento): o engenheiro-saas desenha e mede a prontidão SaaS;
+o CTO decide a arquitetura e registra; havendo divergência, os dois pareceres vão ao responsável. O infra-bd segue
+operando e medindo. **Primeira tarefa:** apoiar o CTO na estimativa da multiempresa (decisão 76, até 30/11).
+
+## 103. Consulta ao advogado sobre o REP-P (decisão G da sprint)
+
+**Data:** 17/10/2026. O parecer do Gabriel (item 076) ainda não foi pedido. O Claude redigiu a consulta
+(`Consulta-REP-P-Trilha-Ponto-v3.docx`, entregue ao responsável; não fica no repositório). A v1 tinha 24 perguntas; a
+pedido do responsável, o `juridico` respondeu ou sugeriu o que não precisa de advogado e ficou só o vital: **6
+pareceres** (V1 "uso exclusivo" do REP-P num módulo da plataforma, V2 recusas de marcação no afastamento e sem
+localização, V3 responsabilidade do Atestado Técnico, V4 valor da assinatura do espelho e correção depois dela, V5
+abono do intervalo pelo gestor, V6 contrato controlador e operador) e **6 confirmações de sim ou não** (canais,
+código de contingência, assinaturas CAdES e PAdES, base legal da localização, CPF no comprovante, frase comercial).
+**v3 (17/10), conferida no texto oficial** compilado em 21/07/2026 (`docs/legislacao/`, `legal.md` §8): saíram as
+confirmações respondidas pelo texto (padrões de assinatura e CPF no comprovante) e entrou o **V7** (WhatsApp e ligação
+como coletores, diante do relógio com segundos do Anexo IX, item 3); ficam 7 pareceres e 4 confirmações. Prazo
+pedido: primeira resposta até 31/10, com prioridade para V1, V2 e V7. **Achados para o PO** (confirmados no texto
+oficial): o comprovante legal do REP-P parece exigir PDF assinado em PAdES com hash
+da marcação e número do INPI (arts. 79 e 80), o que a mensagem do WhatsApp não é; e a lei não obriga o funcionário
+a assinar o espelho, o que pede revisar a base citada na decisão 84 e no aviso de privacidade.
+**Consequência:** a avaliação de 30 dias (088) só ganha data com o parecer; `docs/modulo-registro-de-ponto/legal.md`
+§2 aponta para a consulta.
+
+## 104. Espelho com todas as exigências do art. 84 e PDF assinado entregue ao funcionário
+
+**Data:** 17/10/2026. **Pedido do responsável:** "inclua todas as exigências da portaria no documento que será assinado
+pelo funcionário; o PDF ficará guardado no sistema como conferido e assinado, e o funcionário recebe no WhatsApp e pela
+web uma cópia assinada e validada pela empresa." **Como (migration 107, Edge Function `espelho-pdf`, painel 3.45.0):**
+- **Art. 84 completo** (texto conferido na compilação de 21/07/2026): CEI/CAEPF/CNO do empregador quando houver e
+  endereço (I); nome, CPF, admissão e cargo/função (II); emissão e período (III); horário e jornada contratual de cada
+  escala (IV); marcações registradas e tratadas, com o intervalo pré-assinalado quando a empresa não exige o registro
+  (V); duração da jornada com a hora noturna reduzida (VI). Espelhos já emitidos não mudam: o conteúdo é congelado.
+- **PDF no servidor**, depois da assinatura: montado do conteúdo congelado, com a assinatura desenhada, o QR e o **selo
+  de validação da empresa** (registro, SHA-256 do conteúdo, selo HMAC da assinatura e conferência pública, que passa a
+  mostrar o SHA-256 do PDF). Guardado em `ponto_espelho_pdfs`, imutável, com a guarda do ponto.
+- **Entrega:** o PDF vai ao WhatsApp do funcionário como documento e fica para baixar no app (só o dele) e no cofre do RH
+  (com a permissão e registro de acesso). **Proteção do CPF no WhatsApp (revisão do `seguranca`):** o arquivo só vai ao
+  número que acabou de se provar do funcionário — a assinatura exige login com código enviado a esse WhatsApp; se o
+  login foi pelo código de contingência do gestor, vai só o aviso, e o PDF fica no app. Pedido que não volta é refeito
+  pela tarefa `espelho-pdf` do agendador (até 5 vezes, de 5 em 5 min). Tabela protegida também contra `truncate`; PDF de
+  até 1 MB; a Edge Function limita o corpo, tem prazo nas consultas e recusa token fora do formato sem ir ao banco.
+- **Limite assumido:** a validação da empresa hoje é o selo do sistema (hash e HMAC conferíveis), não a assinatura
+  digital ICP-Brasil. O art. 88 pede PAdES com certificado ICP-Brasil para os documentos do REP-P; ela entra num ponto
+  só da função (`assinarComCertificado`) quando a Infoxtec tiver o e-CNPJ (item 078). O comprovante de cada marcação
+  (arts. 79 e 80) é outro documento e continua pendente.
+- **Crescimento:** cerca de 20 a 60 KB por espelho dentro do banco (um por funcionário por mês); medir junto com o cofre
+  (reunião de 17/10, infra-bd).
+

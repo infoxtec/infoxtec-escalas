@@ -84,6 +84,7 @@ export interface Empresa {
   cidade: string; uf: string; fuso: string; empregadora: boolean; ativo: boolean; created_at: string
   logo?: string | null
   exige_registro_intervalo?: boolean   // decisão 100: sem o par de intervalo, o fechamento bloqueia
+  cei_caepf_cno?: string | null        // Portaria 671, art. 84, I (migration 107)
 }
 
 // Logotipos publicados com o painel (web/public), escolhidos no cadastro da empresa e congelados no espelho (decisão 96)
@@ -457,18 +458,26 @@ export interface ConferenciaEspelho {
   encontrado: boolean; registro?: number; versao?: number; empresa?: string; cnpj?: string; competencia?: string
   emitido_em?: string; substituido?: boolean; integro?: boolean; assinado_em?: string | null
   assinatura_integra?: boolean | null; assinatura_chave_indisponivel?: boolean; sha256?: string
+  pdf_sha256?: string | null; pdf_gerado_em?: string | null   // PDF assinado entregue ao funcionário (migration 107)
 }
 
 /** Conteúdo congelado do espelho mensal (fn_ponto_espelho_conteudo, Portaria 671 Art. 84). */
 export interface EspelhoConteudo {
-  empregador: { razao_social: string; cnpj: string; logo?: string }
+  documento?: string   // título do art. 84 (migration 107)
+  empregador: { razao_social: string; cnpj: string; logo?: string; cei_caepf_cno?: string | null; endereco?: string | null }
   trabalhador: { nome: string; cpf: string; admissao: string | null; funcao: string | null }
   competencia: string; de: string; ate: string
-  jornada: { dia_util_min: number; sabado_min: number; intervalo_min: number; escalas?: { escala: string; de: string; ate: string }[] }
+  jornada: {
+    dia_util_min: number; sabado_min: number; intervalo_min: number; pre_assinalado?: boolean
+    // horário e jornada contratual de cada escala do mês (art. 84, IV; migration 107)
+    escalas?: { escala: string; de: string; ate: string; tipo?: string; entrada?: string | null; intervalo_min?: number | null
+                semanal_min?: number | null; plantao_min?: number | null }[]
+  }
   dias: ({ data: string } & Partial<Omit<PontoEspelho, 'alertas'>> & {
     alertas?: string[]; abonado_min?: number
     // a partir da migration 90 (decisão 83); espelhos emitidos antes não têm
     previsto_min?: number; he50_min?: number; he100_min?: number; noturno_min?: number; debito_min?: number
+    duracao_min?: number   // com a hora noturna reduzida (art. 84, VI; migration 107)
     feriado?: string | null
     folga_de?: string | null; compensado_em?: string | null   // folga compensatória (decisão 84)
     abono_motivo?: string   // de onde vem o abono, sem o motivo de saúde (decisão 97)
@@ -571,4 +580,18 @@ export interface PontoHeAutorizacao {
   id: string; numero: number; tecnico_id: string; nome: string; data: string; hora: string
   origem: 'programada' | 'pedido'; status: 'pendente' | 'aprovada' | 'reprovada'
   decidido_em: string | null; canal: 'programacao' | 'whatsapp' | 'painel' | null; decidido_por: string | null
+}
+
+/** PDF do espelho assinado, guardado no sistema (migration 107). Sem PDF ainda: pronto = false. */
+export interface EspelhoPdf { pronto: boolean; pdf?: string; sha256?: string; nome?: string }
+/** Baixa o PDF do espelho assinado que veio do banco em base64. */
+export function baixarPdf(p: EspelhoPdf) {
+  if (!p.pdf) return
+  const bytes = Uint8Array.from(atob(p.pdf), c => c.charCodeAt(0))
+  const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = p.nome ?? 'espelho-de-ponto.pdf'
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

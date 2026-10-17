@@ -130,6 +130,7 @@ Devem aparecer como pendentes **só a 45 e a 46**. Digite `PRODUCAO`.
 npx --yes supabase@2.118.0 functions deploy documento-ocr     --project-ref zpckrxydqqmmcrphrkxz
 npx --yes supabase@2.118.0 functions deploy voz-escala        --project-ref zpckrxydqqmmcrphrkxz
 npx --yes supabase@2.118.0 functions deploy webhook-evolution --project-ref zpckrxydqqmmcrphrkxz
+npx --yes supabase@2.118.0 functions deploy espelho-pdf       --project-ref zpckrxydqqmmcrphrkxz
 ```
 Cada uma termina com `Deployed Functions on project zpckrxydqqmmcrphrkxz`. A opção de login de cada
 função vem do arquivo `supabase/config.toml`; não precisa digitar.

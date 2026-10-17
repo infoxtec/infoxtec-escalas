@@ -101,6 +101,12 @@ export default function EmpresasPage({ podeEditar, ehAdmin }: { podeEditar: bool
               </Field>
             )}
             {edit.empregadora && (
+              <Field label="CEI, CAEPF ou CNO (se houver)">
+                <Input value={edit.cei_caepf_cno ?? ''} inputMode="numeric" placeholder="Só para quem tem: obra (CNO), pessoa física (CAEPF)"
+                       onChange={e => set('cei_caepf_cno', e.target.value)} disabled={salvando} />
+              </Field>
+            )}
+            {edit.empregadora && (
               <ToggleRow label="Exige registro do intervalo"
                 description={'Dia com mais de 4 h sem a saída e a volta do intervalo trava o fechamento da folha até o pedido do funcionário ou o abono do gestor. Desligue se a empresa usa a pré-assinalação do intervalo (CLT art. 74, §2º).' + (ehAdmin ? '' : ' Só o administrador altera.')}
                 checked={!!edit.exige_registro_intervalo} onChange={v => set('exige_registro_intervalo', v)} disabled={salvando || !ehAdmin} />

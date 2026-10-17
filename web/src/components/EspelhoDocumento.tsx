@@ -81,6 +81,7 @@ export default function EspelhoDocumento({ e, previa }: { e: EspelhoCompleto; pr
   if (!c) return <p className="text-sm text-muted-foreground">Esta versão do espelho foi substituída por uma mais nova.</p>
   const url = `${window.location.origin}/v?c=${e.codigo}`
   const novo = !!c.resumo   // espelhos emitidos antes da migration 90 não têm o resumo de pagamento
+  const duracao = c.dias.some(d => d.duracao_min != null)   // a partir da migration 107 (art. 84, VI)
   const logo = logoEmpresa(c.empregador.logo)
   return (
     <div className="area-impressao space-y-3 bg-white text-[12px] text-black">
@@ -91,13 +92,20 @@ export default function EspelhoDocumento({ e, previa }: { e: EspelhoCompleto; pr
             <img src={logo.src} alt={logo.nome}
                  className="mb-1 h-8 w-auto rounded bg-[#0d1e3c] px-1.5 py-1 print:[-webkit-print-color-adjust:exact] print:[print-color-adjust:exact]" />
           )}
-          <p className="text-sm font-semibold">Espelho de ponto · {c.competencia}</p>
-          <p>{c.empregador.razao_social} · CNPJ {cnpjFmt(c.empregador.cnpj)}</p>
+          <p className="text-sm font-semibold">{c.documento ? 'Espelho de Ponto Eletrônico' : 'Espelho de ponto'} · {c.competencia}</p>
+          <p>{c.empregador.razao_social} · CNPJ {cnpjFmt(c.empregador.cnpj)}
+            {c.empregador.cei_caepf_cno ? ` · CEI/CAEPF/CNO ${c.empregador.cei_caepf_cno}` : ''}
+            {c.empregador.endereco ? ` · ${c.empregador.endereco}` : ''}</p>
           <p>{c.trabalhador.nome} · CPF {cpfFmt(c.trabalhador.cpf)}</p>
-          <p>Função: {c.trabalhador.funcao ?? '—'} · Admissão: {dataBr(c.trabalhador.admissao)}</p>
+          <p>{c.documento ? 'Cargo/função' : 'Função'}: {c.trabalhador.funcao ?? '—'} · Admissão: {dataBr(c.trabalhador.admissao)}</p>
           {c.jornada.escalas && c.jornada.escalas.length > 0
-            ? <p>Escala: {c.jornada.escalas.map(x => `${x.escala} (${x.de} a ${x.ate})`).join('; ')} · intervalo de {minutosHm(c.jornada.intervalo_min)}</p>
-            : <p>Jornada: {minutosHm(c.jornada.dia_util_min)} de segunda a sexta, {minutosHm(c.jornada.sabado_min)} no sábado, intervalo de {minutosHm(c.jornada.intervalo_min)}</p>}
+            ? <p>{c.documento ? 'Horário e jornada contratual' : 'Escala'}: {c.jornada.escalas.map(x => `${x.escala} (${x.de} a ${x.ate})`
+                + (x.entrada ? `, entrada ${x.entrada}` : '')
+                + (x.tipo === '12x36' && x.plantao_min ? `, plantão de ${minutosHm(x.plantao_min)}` : x.semanal_min ? `, ${minutosHm(x.semanal_min)} semanais` : '')
+                + (x.intervalo_min != null && c.documento ? `, intervalo de ${minutosHm(x.intervalo_min)}` : '')).join('; ')}
+                {!c.documento && ` · intervalo de ${minutosHm(c.jornada.intervalo_min)}`}</p>
+            : <p>{c.documento ? 'Jornada contratual' : 'Jornada'}: {minutosHm(c.jornada.dia_util_min)} de segunda a sexta, {minutosHm(c.jornada.sabado_min)} no sábado, intervalo de {minutosHm(c.jornada.intervalo_min)}</p>}
+          {c.jornada.pre_assinalado && <p className="text-[11px] text-gray-600">Intervalo pré-assinalado (CLT art. 74, §2º): quando não registrado, vale o intervalo da jornada contratual.</p>}
           {previa
             ? <p className="text-[11px] font-semibold text-amber-700">Período {dataBr(c.de)} a {dataBr(c.ate)} · PRÉVIA, ainda não emitida: é o que sai ao fechar a folha</p>
             : <p className="text-[11px] text-gray-600">Período {dataBr(c.de)} a {dataBr(c.ate)} · Registro nº {e.registro}{e.versao > 1 ? ` (versão ${e.versao})` : ''} · emitido em {dataHora(e.emitido_em)}</p>}
@@ -112,18 +120,20 @@ export default function EspelhoDocumento({ e, previa }: { e: EspelhoCompleto; pr
         <thead><tr className="border-b border-gray-400 text-left">
           <th className="py-1 pr-2">Dia</th><th className="pr-2">Entrada</th><th className="pr-2">Saída almoço</th><th className="pr-2">Volta</th>
           <th className="pr-2">Saída</th><th className="pr-2">Trabalhado</th>
+          {duracao && <th className="pr-2" title="Duração da jornada com a hora noturna reduzida (52'30&quot; valem 1 hora)">Duração*</th>}
           {novo ? <><th className="pr-2">HE 50%</th><th className="pr-2">HE 100%</th><th className="pr-2">Noturno</th><th className="pr-2">Débito</th></>
                 : <th className="pr-2">HE</th>}
           <th>Observação</th>
         </tr></thead>
         <tbody>
-          {c.dias.length === 0 ? <tr><td colSpan={novo ? 11 : 8} className="py-2 text-center text-gray-600">Sem marcações no mês</td></tr>
+          {c.dias.length === 0 ? <tr><td colSpan={(novo ? 11 : 8) + (duracao ? 1 : 0)} className="py-2 text-center text-gray-600">Sem marcações no mês</td></tr>
             : c.dias.map(d => (
               <tr key={d.data} className="border-b border-gray-200">
                 <td className="py-0.5 pr-2 whitespace-nowrap">{dataBr(d.data)} {SEMANA[new Date(d.data + 'T12:00:00').getDay()]}</td>
                 <td className="pr-2">{d.entrada ?? '—'}</td><td className="pr-2">{d.saida_almoco ?? '—'}</td>
                 <td className="pr-2">{d.volta_almoco ?? '—'}</td><td className="pr-2">{d.saida ?? '—'}</td>
                 <td className="pr-2">{novo ? hhOu(d.trabalhado_min) : minutosHm(d.trabalhado_min)}</td>
+                {duracao && <td className="pr-2">{hhOu(d.duracao_min ?? d.trabalhado_min)}</td>}
                 {novo ? <><td className="pr-2">{hhOu(d.he50_min)}</td><td className="pr-2">{hhOu(d.he100_min)}</td>
                           <td className="pr-2">{hhOu(d.noturno_min)}</td><td className="pr-2">{hhOu(d.debito_min)}</td></>
                       : <td className="pr-2">{d.he_min ? minutosHm(d.he_min) : '—'}</td>}
@@ -138,6 +148,7 @@ export default function EspelhoDocumento({ e, previa }: { e: EspelhoCompleto; pr
             ))}
         </tbody>
       </table>
+      {duracao && <p className="text-[10px] text-gray-600">* Duração da jornada com a hora noturna reduzida (52'30" entre 22 h e 5 h valem 1 hora).</p>}
 
       {c.resumo ? <Resumo r={c.resumo} /> : (
         <p>

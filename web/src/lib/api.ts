@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre, ValidacaoCarga, ModeloCarga, CargaHoraria, CargaAtribuicao, CargaFuncionario, TimeEquipe, AlvoCarga, ProgramacaoLimite, AceiteProgramacao, AceiteProgramacaoAssinado, CargaExcedida, ValidacaoFolha, FechamentoFolha, PreviaFolha, PontoHeAutorizacao } from './types'
+  Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre, ValidacaoCarga, ModeloCarga, CargaHoraria, CargaAtribuicao, CargaFuncionario, TimeEquipe, AlvoCarga, ProgramacaoLimite, AceiteProgramacao, AceiteProgramacaoAssinado, CargaExcedida, ValidacaoFolha, FechamentoFolha, PreviaFolha, PontoHeAutorizacao, EspelhoPdf } from './types'
 
 function traduzir(msg: string): string {
   if (/JWT expired|invalid JWT|not authenticated/i.test(msg)) return 'Sessão expirada. Entre novamente.'
@@ -21,6 +21,7 @@ export const ponto = {
   meusEspelhos: (token: string) =>
     rpc<{ id: string; competencia: string; registro: number; assinado_em: string | null }[]>('ponto_meus_espelhos', { p_token: token }),
   meuEspelho: (token: string, id: string) => rpc<EspelhoCompleto>('ponto_meu_espelho', { p_token: token, p_id: id }),
+  meuEspelhoPdf: (token: string, id: string) => rpc<EspelhoPdf>('ponto_meu_espelho_pdf', { p_token: token, p_id: id }),
   assinarEspelho: (token: string, id: string, sha256: string, assinatura: string) =>
     rpc<{ assinado_em: string }>('ponto_assinar_espelho', { p_token: token, p_id: id, p_sha256: sha256, p_assinatura: assinatura, p_ciente: true }),
   entrar: (cpf: string, codigo: string) =>
@@ -164,6 +165,7 @@ export const api = {
   pontoCofreFolhas: (competencia: string | null, tecnico: string | null) =>
     rpc<FolhaCofre[]>('app_ponto_cofre_folhas', { p_competencia: competencia, p_tecnico: tecnico }),
   pontoEspelhoProva: (id: string) => rpc<Record<string, unknown>>('app_ponto_espelho_prova', { p_id: id }),
+  pontoEspelhoPdf: (id: string) => rpc<EspelhoPdf>('app_ponto_espelho_pdf', { p_id: id }),
   // Escala / Carga Horária e Times (decisão 88)
   cargasModelos: () => rpc<ModeloCarga[]>('app_cargas_modelos'),
   cargaValidar: (p: Record<string, unknown>, instrumento: string | null) =>
