@@ -7,7 +7,8 @@
 -- 2. fn_ponto_justificativa_criar: pedido de saída ou volta do almoço que já existe no dia (marcada, incluída ou
 --    pedida) é recusado com a dica do tipo certo. Parte da definição atual da homologação.
 
-create or replace function ponto_meus_comprovantes(p_token text)
+-- p_nsr: só a marcação pedida (minimização, revisão do seguranca); sem ele, as das últimas 48 horas
+create or replace function ponto_meus_comprovantes(p_token text, p_nsr bigint default null)
 returns jsonb language plpgsql security definer set search_path = public, extensions as $function$
 declare
   v_tec uuid := fn_ponto_sessao(p_token);
@@ -30,7 +31,7 @@ begin
     join tecnicos t on t.id = m.tecnico_id
     join empresas e on e.id = m.empresa_id
     left join locais l on l.id = m.local_id
-   where m.tecnico_id = v_tec and m.momento > now() - interval '48 hours';
+   where m.tecnico_id = v_tec and m.momento > now() - interval '48 hours' and (p_nsr is null or m.nsr = p_nsr);
   return v;
 end $function$;
 

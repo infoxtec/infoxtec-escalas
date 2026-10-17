@@ -223,7 +223,7 @@ function Painel({ token, onSair }: { token: string; onSair: () => void }) {
 
 // comprovante em PDF (art. 79): só das últimas 48 horas, como o art. 80 exige; depois disso, vale o espelho do mês
 async function pdfDoComprovante(token: string, nsr: number) {
-  const c = (await ponto.meusComprovantes(token)).find(x => x.nsr === nsr)
+  const c = (await ponto.meusComprovantes(token, nsr)).find(x => x.nsr === nsr)
   if (!c) throw new Error('O comprovante em PDF fica disponível por 48 horas. Depois disso, confira no espelho do mês.')
   await baixarComprovante(c)
 }

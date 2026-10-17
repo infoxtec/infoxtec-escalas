@@ -22,7 +22,7 @@ export const ponto = {
     rpc<{ id: string; competencia: string; registro: number; assinado_em: string | null }[]>('ponto_meus_espelhos', { p_token: token }),
   meuEspelho: (token: string, id: string) => rpc<EspelhoCompleto>('ponto_meu_espelho', { p_token: token, p_id: id }),
   meuEspelhoPdf: (token: string, id: string) => rpc<EspelhoPdf>('ponto_meu_espelho_pdf', { p_token: token, p_id: id }),
-  meusComprovantes: (token: string) => rpc<ComprovanteRegistro[]>('ponto_meus_comprovantes', { p_token: token }),
+  meusComprovantes: (token: string, nsr?: number) => rpc<ComprovanteRegistro[]>('ponto_meus_comprovantes', { p_token: token, p_nsr: nsr ?? null }),
   assinarEspelho: (token: string, id: string, sha256: string, assinatura: string) =>
     rpc<{ assinado_em: string }>('ponto_assinar_espelho', { p_token: token, p_id: id, p_sha256: sha256, p_assinatura: assinatura, p_ciente: true }),
   entrar: (cpf: string, codigo: string) =>

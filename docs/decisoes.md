@@ -1511,5 +1511,8 @@ data e hora com segundos, nº do INPI (vazio até o registro, item 078) e SHA-25
 sendo aviso, com o CPF mascarado. **Falta para cumprir o art. 80, I:** a assinatura PAdES do desenvolvedor (arts. 86 e
 88), que pede o e-CNPJ e leva a montagem para o servidor (como a `espelho-pdf`). **Pedido com o tipo trocado:** saída ou
 volta do almoço que já existe no dia é recusada com a dica do tipo certo — o erro que travou setembro do Renato no
-teste de 17/10.
+teste de 17/10. **Revisão do `seguranca`:** o app busca só a marcação pedida; o PDF não fica no servidor e, baixado, fica
+sob controle do funcionário (CPF completo por obrigação legal, art. 79; LGPD art. 7º, II); `pdf-lib` 1.17.1 sem versão
+nova desde 2021, sem vulnerabilidade conhecida e carregada só sob demanda — revisar a dependência quando a assinatura
+PAdES for para o servidor.
 

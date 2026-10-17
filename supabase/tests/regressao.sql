@@ -2946,6 +2946,7 @@ begin
 
   r := ponto_meus_comprovantes(v_tok);
   perform pg_temp.ok(r @> '[{"nsr":951001}]' and not r @> '[{"nsr":951002}]', '[T51] só as últimas 48 horas: ' || r::text);
+  perform pg_temp.ok(jsonb_array_length(ponto_meus_comprovantes(v_tok, 951001)) = 1, '[T51] filtro por NSR');
   r := (select x from jsonb_array_elements(r) x where (x->>'nsr')::int = 951001);
   perform pg_temp.ok(r->>'titulo' = 'Comprovante de Registro de Ponto do Trabalhador' and r->>'cpf' = v_cpf
                      and r->>'sha256' = repeat('a', 64) and r->>'hora' ~ '^\d{2}:\d{2}:\d{2}$' and r->>'cnpj' is not null,
