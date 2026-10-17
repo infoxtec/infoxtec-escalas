@@ -1516,3 +1516,17 @@ sob controle do funcionário (CPF completo por obrigação legal, art. 79; LGPD 
 nova desde 2021, sem vulnerabilidade conhecida e carregada só sob demanda — revisar a dependência quando a assinatura
 PAdES for para o servidor.
 
+## 106. O mês fecha na assinatura ou 10 dias depois da emissão; a assinatura é ciência, não obrigação
+
+**Data:** 17/10/2026. **Proposta da reunião de 17/10 (PO e `juridico`), executada a pedido do responsável.** O art. 84
+da Portaria 671 (texto conferido) não exige a assinatura do empregado. Com a decisão 100.6 (abono até a assinatura),
+o mês de quem nunca assina ficaria aberto para sempre. **Regra (migration 111):** o mês fecha na assinatura ou
+`ponto_espelho_prazo_dias` (10) dias depois da emissão, o que vier primeiro; depois disso não cabe abono, estorno,
+desconsideração nem decisão de HE, e a assinatura continua possível como ciência. O WhatsApp do envio avisa o prazo.
+**Base legal da assinatura corrigida:** a decisão 84 citava obrigação legal (LGPD art. 7º, II), porque o registro
+"precisa ser assinado"; passa a exercício regular de direitos (art. 7º, VI), para provar a ciência em processo. O aviso
+de privacidade foi corrigido. A confirmação fica com o Gabriel (pergunta V4 da consulta, decisão 103). **Revisão do `seguranca`:** a mensagem traz a
+data exata do fechamento; valor inválido no prazo cai no padrão. **Limite assumido:** se o conteúdo do espelho mudar
+depois do prazo (escala ou feriado corrigidos), o gestor pode emitir nova versão, que reinicia o prazo — é a única forma
+de corrigir o documento, e fica registrada como nova versão.
+
