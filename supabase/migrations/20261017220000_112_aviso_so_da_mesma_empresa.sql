@@ -123,7 +123,7 @@ begin
     if exists (select 1 from escalas where id = a.escala_id and supervisor_avisado_em is not null) then continue; end if;
    begin
     v_texto := fn_msg_supervisor(a.escala_id, a.diagnostico, a.tentativa);
-    -- só os supervisores da empresa do técnico (supervisor sem empresa recebe de todas; decisão 69)
+    -- só os supervisores da empresa do técnico (decisão 107; funcionário sem empresa avisa todos)
     select t.empresa_id into v_emp from escalas e join tecnicos t on t.id = e.tecnico_id where e.id = a.escala_id;
     for s in select telefone_e164 from tecnicos
               where is_supervisor and ativo and (v_emp is null or empresa_id = v_emp) loop
@@ -373,6 +373,56 @@ begin
     end;
   end loop;
   return '⏳ Início de hora extra registrado e enviado ao gestor para aprovação; a resposta chega aqui. A marcação já vale.';
+end $function$;
+
+-- fn_ponto_he_resposta(jsonb): só supervisor da mesma empresa decide HE pelo botão, também sem empresa cadastrada
+-- (revisão do seguranca; parte da definição atual da homologação)
+CREATE OR REPLACE FUNCTION public.fn_ponto_he_resposta(p_data jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SET search_path TO 'public', 'extensions'
+AS $function$
+declare
+  v_key jsonb := p_data->'key';
+  v_msg jsonb := p_data->'message';
+  v_btn text;
+  v_jid text;
+  v_sup record;
+  v_id  uuid;
+  h     record;
+  r     jsonb;
+begin
+  if coalesce((v_key->>'fromMe')::boolean, false) then return null; end if;
+  v_btn := coalesce(v_msg->'buttonsResponseMessage'->>'selectedButtonId', v_msg->'templateButtonReplyMessage'->>'selectedId');
+  if v_btn is null and v_msg ? 'interactiveResponseMessage' then
+    begin
+      v_btn := ((v_msg->'interactiveResponseMessage'->'nativeFlowResponseMessage'->>'paramsJson')::jsonb)->>'id';
+    exception when others then v_btn := null;
+    end;
+  end if;
+  if v_btn is null or v_btn !~ '^he:(ok|nao):[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then return null; end if;
+  v_id := split_part(v_btn, ':', 3)::uuid;
+
+  select j into v_jid from unnest(array[v_key->>'remoteJid', v_key->>'remoteJidAlt', v_key->>'senderPn', p_data->>'sender']) as j
+   where j like '%@s.whatsapp.net' limit 1;
+  select t.id, t.nome, t.telefone_e164, t.empresa_id into v_sup from tecnicos t
+   where t.is_supervisor and t.ativo and t.opt_in and not t.perfil_teste and fn_tel_canonico(t.telefone_e164) = fn_tel_canonico(split_part(coalesce(v_jid, ''), '@', 1));
+  if v_sup.id is null then return jsonb_build_object('ignorado', 'hora extra: resposta de quem não é supervisor'); end if;
+  select * into h from ponto_he_autorizacoes where id = v_id;
+  if h.id is null or h.tecnico_id = v_sup.id or v_sup.empresa_id is distinct from h.empresa_id then
+    return jsonb_build_object('ignorado', 'hora extra: pedido de outra empresa ou inexistente');
+  end if;
+  begin
+    r := fn_ponto_he_decidir(v_id, split_part(v_btn, ':', 2) = 'ok', 'WhatsApp · ' || v_sup.nome, 'whatsapp');
+  exception when others then
+    perform fn_ponto_wa(v_sup.telefone_e164, 'Não foi possível registrar a decisão da hora extra: ' || sqlerrm);
+    return jsonb_build_object('acao', 'he_erro');
+  end;
+  perform fn_ponto_wa(v_sup.telefone_e164, case r->>'situacao'
+    when 'ja_decidida' then 'O pedido de hora extra nº ' || (r->>'numero') || ' já tinha sido decidido.'
+    when 'aprovada' then '✅ Hora extra nº ' || (r->>'numero') || ' de ' || (r->>'nome') || ' aprovada. O funcionário foi avisado.'
+    else '❌ Hora extra nº ' || (r->>'numero') || ' de ' || (r->>'nome') || ' não autorizada. O funcionário foi avisado.' end);
+  return jsonb_build_object('acao', 'he_' || (r->>'situacao'), 'numero', r->'numero');
 end $function$;
 
 do $$

@@ -2784,6 +2784,11 @@ begin
   perform pg_temp.ok(fn_ponto_he_resposta(pg_temp.msg('5579999994908', 'HE4', jsonb_build_object('buttonsResponseMessage',
                        jsonb_build_object('selectedButtonId', 'he:nao:' || v_h))))->>'ignorado' like '%outra empresa%',
                      '[T49] supervisor de outra empresa decidiu');
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, perfil_teste, is_supervisor)
+  values ('QA Supervisor Sem Empresa', '5579999994907', true, true, false, true);
+  perform pg_temp.ok(fn_ponto_he_resposta(pg_temp.msg('5579999994907', 'HE5', jsonb_build_object('buttonsResponseMessage',
+                       jsonb_build_object('selectedButtonId', 'he:nao:' || v_h))))->>'ignorado' like '%outra empresa%',
+                     '[T49] supervisor sem empresa decidiu (migration 112)');
   perform pg_temp.ok(fn_ponto_he_resposta(pg_temp.msg('5579999994909', 'HE5', jsonb_build_object('buttonsResponseMessage',
                        jsonb_build_object('selectedButtonId', 'he:ok:' || repeat('-', 36))))) is null, '[T49] botão fora do formato');
   v_ok := false;

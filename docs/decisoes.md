@@ -1538,5 +1538,6 @@ vaza nome de funcionário e escala entre empresas. **Regra (migration 112):** su
 própria empresa; sem empresa, não recebe aviso de funcionário de empresa (o Checklist aponta o cadastro). Funcionário
 sem empresa continua avisando todos os supervisores, para nenhum alerta se perder até o cadastro ser corrigido; alerta
 de sistema (motor parado) segue para todos. O responsável conferiu os supervisores da produção com empresa em 17/10.
+A decisão de HE pelo botão também exige a mesma empresa: supervisor sem empresa não decide (revisão do `seguranca`).
 **Também decidido:** o ponto não restringe o local à empresa — é eletrônico com geolocalização (item da ata descartado).
 
