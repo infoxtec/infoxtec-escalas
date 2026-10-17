@@ -254,6 +254,12 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 111 (17/10): o mês fecha sem a assinatura (decisão 106)
+
+- `fn_ponto_espelho_prazo_dias()` (`config.ponto_espelho_prazo_dias`, padrão 10) e `fn_ponto_mes_espelho`: espelho
+  emitido há mais do prazo sem assinatura fecha o mês (abono, estorno, desconsiderar e decisão de HE recusados, com a
+  data da emissão); a assinatura continua possível. `app_ponto_enviar_espelhos` avisa o prazo no WhatsApp.
+
 ### Migration 110 (17/10): comprovante do art. 79 e pedido com o tipo trocado (decisão 105)
 
 - `ponto_meus_comprovantes(token)`: marcações do próprio funcionário nas últimas 48 horas com os campos do art. 79

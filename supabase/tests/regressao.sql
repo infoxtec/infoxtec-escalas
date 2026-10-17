@@ -2964,7 +2964,44 @@ begin
   perform pg_temp.ok(v_ok, '[T51] volta repetida com pedido pendente aceita');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T51' as resultado,
+-- T52 o mês fecha 10 dias depois da emissão sem assinatura (migration 111, decisão 106) ---------------------------
+do $$
+declare
+  v_emp uuid := (select v::uuid from qa where k = 'emp');
+  v_mes date := date_trunc('month', current_date - interval '1 month')::date;
+  v_png text := 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  v_cpf text := pg_temp.cpf('525252501');
+  v_tec uuid; v_tok text; v_ok boolean; v_msg text;
+begin
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  update config set valor = '' where chave = 'espelho_pdf_url';
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, admissao)
+  values ('QA Prazo Espelho', '5579999995252', true, true, v_cpf, v_emp, false, v_mes - 60) returning id into v_tec;
+  alter table ponto_marcacoes disable trigger user;
+  insert into ponto_marcacoes (empresa_id, nsr, tecnico_id, cpf, momento, tipo, canal, hash_anterior, hash)
+  select v_emp, 952000 + k, v_tec, v_cpf, ((v_mes + 6) + h) at time zone 'America/Bahia', tp, 'ura', 'qa', md5(random()::text)
+    from (values (1, time '08:00', 'entrada'), (2, time '12:00', 'saida')) x(k, h, tp);
+  alter table ponto_marcacoes enable trigger user;
+  perform app_ponto_emitir_espelhos(v_mes, v_tec, true);
+  -- dentro do prazo o abono passa
+  perform app_ponto_abonar(v_tec, v_mes + 7, 'Abono dentro do prazo');
+  -- emitido há 11 dias, sem assinatura: o mês está fechado
+  alter table ponto_espelhos disable trigger user;
+  update ponto_espelhos set emitido_em = now() - interval '11 days' where tecnico_id = v_tec and substituido_em is null;
+  alter table ponto_espelhos enable trigger user;
+  v_ok := false;
+  begin perform app_ponto_abonar(v_tec, v_mes + 8, 'Abono fora do prazo');
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like '%está fechado%passaram 10 dias%'; end;
+  perform pg_temp.ok(v_ok, '[T52] abono depois do prazo: ' || coalesce(v_msg, 'aceito'));
+  -- a assinatura continua possível (ciência)
+  v_tok := ponto_entrar(v_cpf, app_ponto_gerar_codigo(v_tec)->>'codigo')->>'token';
+  perform ponto_assinar_espelho(v_tok, e.id, e.sha256, v_png, true) from ponto_espelhos e where e.tecnico_id = v_tec and e.substituido_em is null;
+  perform pg_temp.ok((select assinado_em from ponto_espelhos where tecnico_id = v_tec and substituido_em is null) is not null,
+                     '[T52] assinatura depois do prazo');
+  perform pg_temp.ok(fn_ponto_espelho_prazo_dias() = 10, '[T52] prazo padrão');
+end $$;
+
+select 'REGRESSÃO OK: T1 a T52' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

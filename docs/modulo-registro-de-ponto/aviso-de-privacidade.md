@@ -52,7 +52,8 @@ advogado (076) quando disponível.
 
 Quando o empregador envia o espelho de ponto do mês, o funcionário confere no app e, se concordar, assina
 desenhando com o dedo. Ficam guardados com o espelho: o desenho da assinatura, a data, a hora, o endereço de
-internet (IP) e o tipo de aparelho, para comprovar a ciência do funcionário. Base legal: cumprimento de
-obrigação legal (LGPD art. 7º, II), porque o registro de horas mensal precisa ser assinado pelo empregado
-(decisão do responsável, decisão 84), pelo mesmo prazo do ponto (5 anos). A folha assinada só é aberta no painel por quem faz o RH (permissão dada por nome), e cada abertura fica registrada (decisão 86). A cópia da folha e a prova da assinatura podem ser extraídas para a defesa em processo judicial ou administrativo (LGPD art. 7º, VI); cada extração também fica registrada. A conferência pública do QR do espelho não mostra o desenho, o nome nem o CPF. A
+internet (IP) e o tipo de aparelho, para comprovar a ciência do funcionário. A assinatura não é obrigatória
+(a Portaria MTP 671/2021, art. 84, não a exige): sem ela, o mês fecha 10 dias depois do envio do espelho. Base legal:
+exercício regular de direitos em processo judicial ou administrativo (LGPD art. 7º, VI), para provar a ciência do
+espelho, pelo mesmo prazo do ponto (5 anos). A folha assinada só é aberta no painel por quem faz o RH (permissão dada por nome), e cada abertura fica registrada (decisão 86). A cópia da folha e a prova da assinatura podem ser extraídas para a defesa em processo judicial ou administrativo (LGPD art. 7º, VI); cada extração também fica registrada. A conferência pública do QR do espelho não mostra o desenho, o nome nem o CPF. A
 informação é dada na própria tela de assinatura.
