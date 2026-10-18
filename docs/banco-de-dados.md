@@ -254,6 +254,12 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 112 (17/10): aviso só ao supervisor da mesma empresa (decisão 107)
+
+- `fn_avisar_supervisores`, `fn_dispatcher_whatsapp` (fase 3), `fn_ponto_avisar`, `fn_ponto_avisar_supervisores` e
+  `fn_ponto_he_inicio`: supervisor sem empresa deixa de receber aviso de funcionário de empresa; funcionário sem empresa
+  continua avisando todos (alerta operacional não se perde).
+
 ### Migration 111 (17/10): o mês fecha sem a assinatura (decisão 106)
 
 - `fn_ponto_espelho_prazo_dias()` (`config.ponto_espelho_prazo_dias`, padrão 10) e `fn_ponto_mes_espelho`: espelho

@@ -1271,7 +1271,7 @@ begin
 end $$;
 
 -- T25 avisos aos supervisores só da empresa do técnico (migration 79, decisão 69) ---------------------------
--- Supervisor da empresa do técnico e supervisor sem empresa recebem; supervisor de outra empresa, não.
+-- Só o supervisor da empresa do técnico recebe; de outra empresa ou sem empresa, não (migration 112, decisão 107).
 -- Vale para a função comum (recusa, detalhe, URA) e para a fase 3 do motor. Envio por stub, desfeito no fim.
 create or replace function fn_wa_texto(p_telefone text, p_texto text) returns bigint language sql as $$
   insert into qa values ('wa:' || p_telefone, '1') on conflict do nothing; select 0::bigint $$;
@@ -1293,7 +1293,7 @@ begin
 
   perform fn_avisar_supervisores('QA aviso', v_tec);
   perform pg_temp.ok(exists (select 1 from qa where k = 'wa:5579999990001'), '[T25] supervisor da empresa não recebeu');
-  perform pg_temp.ok(exists (select 1 from qa where k = 'wa:5579999990003'), '[T25] supervisor sem empresa não recebeu');
+  perform pg_temp.ok(not exists (select 1 from qa where k = 'wa:5579999990003'), '[T25] supervisor sem empresa recebeu aviso de outra empresa');
   perform pg_temp.ok(not exists (select 1 from qa where k = 'wa:5579999990002'), '[T25] supervisor de outra empresa recebeu');
   -- alerta de sistema (sem técnico nem empresa) continua para todos
   perform fn_avisar_supervisores('QA sistema');
@@ -1315,7 +1315,7 @@ begin
   perform pg_temp.ok(v_n = 1, '[T25] motor não avisou a escala');
   perform pg_temp.ok(exists (select 1 from qa where k = 'evo:5579999990001'), '[T25] motor: supervisor da empresa não recebeu');
   perform pg_temp.ok(not exists (select 1 from qa where k = 'evo:5579999990002'), '[T25] motor: supervisor de outra empresa recebeu');
-  perform pg_temp.ok(exists (select 1 from qa where k = 'evo:5579999990003'), '[T25] motor: supervisor sem empresa não recebeu');
+  perform pg_temp.ok(not exists (select 1 from qa where k = 'evo:5579999990003'), '[T25] motor: supervisor sem empresa recebeu');
 end $$;
 
 -- T25b alertas agrupados por empresa: escala de amanhã e documentos a vencer, sem nome de outra empresa
@@ -1370,7 +1370,8 @@ begin
   perform pg_temp.ok(v_txt like '%QA Tecnico Beta%', '[T25b] escala: supervisor B não recebeu o técnico dele');
   perform pg_temp.ok(v_txt not like '%QA Tecnico Alfa%', '[T25b] escala: supervisor B recebeu técnico de outra empresa');
   v_txt := (select v from qa where k = 'txt:5579999990003');
-  perform pg_temp.ok(v_txt like '%QA Tecnico Alfa%' and v_txt like '%QA Tecnico Beta%', '[T25b] escala: supervisor sem empresa não recebeu as duas');
+  perform pg_temp.ok(coalesce(v_txt, '') not like '%QA Tecnico Alfa%' and coalesce(v_txt, '') not like '%QA Tecnico Beta%',
+                     '[T25b] escala: supervisor sem empresa recebeu técnico de empresa (migration 112)');
 end $$;
 
 -- T26 Checklist aponta cadastro sem empresa; alerta de documentos aceita domingo (migration 80) ------------
@@ -2783,6 +2784,11 @@ begin
   perform pg_temp.ok(fn_ponto_he_resposta(pg_temp.msg('5579999994908', 'HE4', jsonb_build_object('buttonsResponseMessage',
                        jsonb_build_object('selectedButtonId', 'he:nao:' || v_h))))->>'ignorado' like '%outra empresa%',
                      '[T49] supervisor de outra empresa decidiu');
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, perfil_teste, is_supervisor)
+  values ('QA Supervisor Sem Empresa', '5579999994907', true, true, false, true);
+  perform pg_temp.ok(fn_ponto_he_resposta(pg_temp.msg('5579999994907', 'HE5', jsonb_build_object('buttonsResponseMessage',
+                       jsonb_build_object('selectedButtonId', 'he:nao:' || v_h))))->>'ignorado' like '%outra empresa%',
+                     '[T49] supervisor sem empresa decidiu (migration 112)');
   perform pg_temp.ok(fn_ponto_he_resposta(pg_temp.msg('5579999994909', 'HE5', jsonb_build_object('buttonsResponseMessage',
                        jsonb_build_object('selectedButtonId', 'he:ok:' || repeat('-', 36))))) is null, '[T49] botão fora do formato');
   v_ok := false;
