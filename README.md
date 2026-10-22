@@ -239,4 +239,5 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [ ] Próximas etapas: ver [docs/plano-de-trabalho.md](docs/plano-de-trabalho.md)
 - [x] Fluxo por pull request com CI (ver [docs/fluxo-de-desenvolvimento.md](docs/fluxo-de-desenvolvimento.md))
 - [x] Desligar o painel Retool e remover as funções da bancada de teste
+- [x] Painel da homologação também no Cloudflare (etapa 17, fase 1, 22/10); produção segue na Vercel
 - [ ] Backlog de 60 dias (ver [docs/backlog.md](docs/backlog.md))
