@@ -19,12 +19,14 @@ const TIMEOUT_MS = 15_000;
 // fechada: URL desconhecida não abre nada). A sessão (JWT) continua sendo a proteção real
 const ORIGEM_PAINEL = /^https:\/\/(infoxtec-escalas|web-[a-z0-9-]+-infoxtec-escalas)\.vercel\.app$/;
 const ORIGENS_HOMOLOGACAO = ["http://localhost:5173", "https://infoxtec-escalas-homologacao.vercel.app"];
+// painel da homologação no Cloudflare Pages (etapa 17): o projeto e as pré-visualizações dele (<hash>. ou <branch>.)
+const ORIGEM_HOMOLOGACAO_CF = /^https:\/\/([a-z0-9-]+\.)?trilha-homologacao\.pages\.dev$/;
 const HOMOLOGACAO = /oruwnlxyvznpigbpjjbx|\/\/(127\.0\.0\.1|localhost|kong)[:/]/.test(Deno.env.get("SUPABASE_URL") ?? "");
 
 function cabecalhosCors(req: Request): Record<string, string> {
   const origem = req.headers.get("Origin") ?? "";
   return {
-    ...(ORIGEM_PAINEL.test(origem) || (HOMOLOGACAO && ORIGENS_HOMOLOGACAO.includes(origem))
+    ...(ORIGEM_PAINEL.test(origem) || (HOMOLOGACAO && (ORIGENS_HOMOLOGACAO.includes(origem) || ORIGEM_HOMOLOGACAO_CF.test(origem)))
       ? { "Access-Control-Allow-Origin": origem } : {}),
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",

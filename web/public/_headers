@@ -1,0 +1,8 @@
+# Cabeçalhos do Cloudflare Pages (etapa 17), os mesmos do vercel.json mais os pedidos pelo seguranca.
+# Geolocalização liberada só para o próprio site (ponto eletrônico com geolocalização, decisão 107).
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(self), camera=(self), microphone=(), payment=(), usb=()
+  X-Robots-Tag: noindex
