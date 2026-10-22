@@ -8,6 +8,8 @@
     "dev:homologacao": "vite --mode homologacao --host",
     "dev:producao": "vite --mode producao --host",
     "build": "tsc --noEmit && vite build",
+    "build:homologacao": "tsc --noEmit && vite build --mode homologacao",
+    "build:producao": "tsc --noEmit && vite build --mode producao",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -1,0 +1,10 @@
+// Painel da homologação no Cloudflare (etapa 17): Worker só com arquivos estáticos, sem código no servidor.
+// O nome precisa ser o do projeto no Cloudflare. Build: npm run build:homologacao; deploy: npx wrangler deploy.
+{
+  "name": "infoxtec-escalas",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
