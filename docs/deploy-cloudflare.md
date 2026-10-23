@@ -28,12 +28,12 @@
 Cada branch e cada pull request ganham uma pré-visualização (`<branch>.trilha-homologacao.pages.dev`), sempre
 com o banco da homologação.
 
-## 1b. Se o projeto já foi criado como Worker (`infoxtec-escalas`)
+## 1b. Se o projeto foi criado como Worker (`trilha-homologacao`)
 
 Também funciona: `web/wrangler.jsonc` publica só os arquivos estáticos, com o mesmo `_headers` e a volta ao
 `index.html` em qualquer caminho (`/ponto`). No Worker → **Settings → Build**: Root directory `web`, Build command
 `npm run build:homologacao`, Deploy command `npx wrangler deploy`, nenhuma variável. O endereço fica
-`https://infoxtec-escalas.<sua-conta>.workers.dev`; o CORS da leitura de documento e o login do Supabase usam esse
+`https://trilha-homologacao.<sua-conta>.workers.dev` (o nome em `web/wrangler.jsonc` precisa ser o do Worker); o CORS da leitura de documento e o login do Supabase usam esse
 endereço exato.
 
 ## 2. Supabase da homologação: login
