@@ -1,5 +1,6 @@
 # Multiempresa (tenant `contas`): estimativa para a decisão 76
 
+**Situação:** aprovada pelo responsável em 24/10 (decisão 108).
 **Data:** 24/10/2026. **Autor:** engenheiro-saas, para o CTO decidir e o responsável aprovar (decisões 76 e 102).
 **Base:** ata de 17/10 (`docs/reunioes/2026-10-17-revisao-saas.md`), leitura do repositório e catálogo da homologação
 (somente leitura, 24/10). **Prontidão SaaS:** não está pronto para o 2º cliente na mesma instalação; o isolamento hoje
@@ -92,7 +93,7 @@ operação repetida por cliente.
 ## 5. Decisões do responsável (com recomendação)
 
 1. **Tenant:** a conta é quem contrata e pode ter várias empregadoras; a mesma pessoa pode estar em duas contas. **Sim.**
-2. **Canal:** número próprio ou API oficial da Meta, à escolha do cliente (decisão 74), sem compartilhar o da Infoxtec. **Sim.**
+2. **Canal:** número próprio ou API oficial da Meta, à escolha do cliente (decisão 74), sem compartilhar o da Infoxtec; Twilio também por cliente. **Sim.**
 3. **Ordem do 074.** Engenheiro-saas: junto com a F2, para não mexer nas funções duas vezes. **CTO: antes, como manda a
    decisão 76** — o 074 é mecânico (`set schema`, `search_path`, sem reescrever corpo) e juntá-lo aumenta o raio de erro do
    PR mais arriscado. **Recomendação final do time: o do CTO (074 antes).**

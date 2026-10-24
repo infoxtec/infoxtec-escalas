@@ -1541,3 +1541,26 @@ de sistema (motor parado) segue para todos. O responsável conferiu os superviso
 A decisão de HE pelo botão também exige a mesma empresa: supervisor sem empresa não decide (revisão do `seguranca`).
 **Também decidido:** o ponto não restringe o local à empresa — é eletrônico com geolocalização (item da ata descartado).
 
+
+## 108. Multiempresa: o cliente da plataforma é `contas`
+
+**Data:** 24/10/2026. **Decisão do responsável** ("aprovo tudo"), sobre a estimativa do engenheiro-saas revisada pelo CTO
+(`docs/multiempresa-estimativa.md`; cumpre a decisão 76). O cliente da plataforma é `contas`, acima de `empresas`; a conta
+pode ter várias empregadoras e a mesma pessoa pode estar em duas contas. Todo dado de cliente leva `conta_id` não nulo,
+com chave estrangeira composta `(conta_id, id)`. A conta vem de `fn_conta_atual()` (sessão do painel, sessão do ponto ou
+instância do WhatsApp) e é imposta em `app_exigir` — filtro nas funções, sem política de RLS; falta de escopo nega. O
+isolamento é provado por um teste de vazamento entre contas gerado do catálogo, critério de merge.
+**Aprovado também:** (1) canal próprio por cliente — **cada cliente terá a sua instância na Twilio e no WhatsApp**
+(Evolution ou API oficial da Meta, decisão 74), nunca o número da Infoxtec; (2) o 074 (esquema privado) vem antes da
+reescrita, na ordem da decisão 76; (3) até o núcleo ficar pronto, cliente externo só em instalação separada, com o
+Supabase Pro repassado no preço; (4) Supabase Pro antes do 2º cliente na mesma instalação (exceções à decisão 29);
+(5) o ponto fica fora do pacote externo até o parecer V1 (decisão 103) e o G6; (6) pausa de funcionalidade nova nas
+`app_*` durante a reescrita (~3 semanas); (7) estabelecimento = `locais`, salvo exigência do AFD.
+**Esforço:** núcleo de 9 a 13,5 semanas-pessoa (074, F0 a F6 e F8), a partir de 09/11.
+
+## 109. Assinatura da Twilio: segue em observação
+
+**Data:** 24/10/2026. **Decisão do responsável:** a URA continua como está — a `voz-escala` confere a assinatura da Twilio
+só em modo observação, sem bloquear, protegida pelo `VOZ_TOKEN` (decisão 54 mantida; o prazo de 27/10 sai da sprint). O
+risco aceito é o da decisão 54. **Revisão:** junto com a instância da Twilio por cliente (decisão 108), no rodízio do
+`VOZ_TOKEN` ou se aparecer `assinatura da Twilio invalida` no log com ligações legítimas.
