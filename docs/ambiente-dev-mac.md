@@ -126,7 +126,7 @@ o `git pull` trouxer alguma. O painel para ao desligar a máquina Linux, ao fech
 quando o Mac dorme por muito tempo: é só rodar `iniciar` de novo.
 
 O painel local é para teste. O painel sempre no ar, sem depender do Mac, é o da Vercel: a produção
-em https://infoxtec-escalas.vercel.app e a homologação em https://infoxtec-escalas-homologacao.vercel.app
+em https://infoxtec-escalas.vercel.app e a homologação em https://trilha-homologacao.david-cerqueira.workers.dev
 (decisão 92).
 
 ## Subir tudo com um comando

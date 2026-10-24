@@ -1564,3 +1564,11 @@ Supabase Pro repassado no preço; (4) Supabase Pro antes do 2º cliente na mesma
 só em modo observação, sem bloquear, protegida pelo `VOZ_TOKEN` (decisão 54 mantida; o prazo de 27/10 sai da sprint). O
 risco aceito é o da decisão 54. **Revisão:** junto com a instância da Twilio por cliente (decisão 108), no rodízio do
 `VOZ_TOKEN` ou se aparecer `assinatura da Twilio invalida` no log com ligações legítimas.
+## 110. Homologação no Cloudflare, produção na Vercel
+
+**Data:** 24/10/2026. **Decisão do responsável:** o painel e o app do ponto da **homologação** passam para o Cloudflare
+(Worker `trilha-homologacao`, https://trilha-homologacao.david-cerqueira.workers.dev, plano gratuito); a **produção fica
+na Vercel**. Revisa a fase 2 da etapa 17: a produção não migra agora, e o domínio próprio fica para depois. **Como:**
+build `build:homologacao` com trava do banco, `_headers`, CORS da `documento-ocr` só com o subdomínio da nossa conta,
+`app_url` da homologação no endereço novo e login do Supabase da homologação com as URLs do Worker. O projeto
+`infoxtec-escalas-homologacao` da Vercel é desligado depois de uma semana sem problema.
