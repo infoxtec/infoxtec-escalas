@@ -1476,6 +1476,12 @@ da marcação e número do INPI (arts. 79 e 80), o que a mensagem do WhatsApp n�
 a assinar o espelho, o que pede revisar a base citada na decisão 84 e no aviso de privacidade.
 **Consequência:** a avaliação de 30 dias (088) só ganha data com o parecer; `docs/modulo-registro-de-ponto/legal.md`
 §2 aponta para a consulta.
+**v4 (25/10), ainda não enviada:** atualizada com as decisões 104 a 108 e 111. No resumo, entram o espelho em PDF
+assinado, o comprovante em PDF a cada marcação, o fechamento do mês em 10 dias e a plataforma com vários clientes.
+V1 passa a perguntar se o mesmo registro e a mesma instalação servem a vários empregadores. V4 pergunta pelo
+fechamento automático e pela correção por nova versão do espelho. V6 inclui a conta com vários CNPJs e o canal próprio
+por cliente. A confirmação nova, C4, trata do aviso "CPF não encontrado" (decisão 111). Ficam 7 pareceres e 5
+confirmações.
 
 ## 104. Espelho com todas as exigências do art. 84 e PDF assinado entregue ao funcionário
 
