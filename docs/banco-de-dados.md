@@ -254,6 +254,18 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 121 (29/10): ponto por conta, multiempresa F2e
+
+As 34 funções do ponto no painel (`app_ponto_*`) leem e alteram só na conta da sessão e conferem na conta o funcionário,
+a empresa, o pedido, o abono, o espelho, o anexo e a hora extra recebidos; AFD e verificação da cadeia de NSR só de
+empresa da conta. Herança de conta (`tg_00_conta`) nas 22 tabelas do ponto: da empresa (marcações, NSR, ajustes, abonos,
+pedidos, espelhos e PDFs, fechamentos, hora extra, registros e sequências de documentos, AFD), do funcionário (sessões,
+códigos, acessos, ciências, conversas), do pedido (anexos, acessos e descartes de anexo) e do espelho (acessos);
+`ponto_documento_verificacoes` grava a conta da sessão. As seis funções que mascaram pelo papel usam
+`fn_papel_na_conta` (sem papel, máscara fechada). `fn_ponto_registrar` só toma como referência local da conta da empresa
+(o local entra no hash); `ponto_meus_comprovantes`, `ponto_minhas_marcacoes` e o acompanhamento só mostram local da mesma
+conta. Regressão: T57 sem nenhum vazamento, com argumentos válidos para o ponto; T61 (inclui a marcação da conta B).
+
 ### Migration 120 (28/10): documentos por conta, multiempresa F2d
 
 Documentos dos técnicos, validade por tipo, quadro por técnico e dossiê por local leem e alteram só na conta; técnico,

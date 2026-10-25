@@ -3218,6 +3218,28 @@ end $$;
 -- relatório: o admin da conta B chama toda app_* com argumentos da conta A (cada chamada desfeita). Vaza quem devolve
 -- identificador ou nome da conta A, ou muda dado dela. Vira exigência quando as famílias da F2 estiverem reescritas.
 -- Sequências (nextval) não voltam no rollback: na homologação a numeração pode pular, sem efeito.
+-- Retrato do dado da conta A: muda se alguma chamada da conta B escrever nela
+create function pg_temp.t57_estado(v_a uuid) returns text language sql as $f$
+  select md5(concat_ws('|',
+    (select string_agg(t::text, ',' order by t.id) from interno.tecnicos t where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.id) from interno.empresas t where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.id) from interno.locais t where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.id) from interno.escalas t where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.id) from interno.documentos t where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.email) from interno.painel_usuarios t where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.id) from interno.ponto_justificativas t where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.id) from interno.ponto_ajustes t where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.id) from interno.times t where conta_id = v_a),
+    (select count(*)::text from interno.ponto_marcacoes where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.id) from interno.ponto_abonos t where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.id) from interno.ponto_espelhos t where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.id) from interno.ponto_he_autorizacoes t where conta_id = v_a),
+    (select string_agg(t.id::text, ',' order by t.id) from interno.ponto_justificativa_anexos t where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.id) from interno.ponto_codigos t where conta_id = v_a),
+    (select count(*)::text from interno.ponto_folha_fechamentos where conta_id = v_a),
+    (select count(*)::text from interno.ponto_espelho_acessos where conta_id = v_a),
+    (select count(*)::text from interno.ponto_anexo_acessos where conta_id = v_a)))
+$f$;
 do $$
 declare
   v_a uuid := '00000000-0000-0000-0000-000000000001';
@@ -3231,18 +3253,13 @@ begin
   v_marcas := array(
     select id::text from tecnicos where conta_id = v_a union all select nome from tecnicos where conta_id = v_a and length(nome) > 5
     union all select id::text from empresas where conta_id = v_a union all select id::text from locais where conta_id = v_a
-    union all select nome from locais where conta_id = v_a and length(nome) > 5 union all select id::text from escalas where conta_id = v_a);
-  v_antes := md5(concat_ws('|',
-    (select string_agg(t::text, ',' order by t.id) from tecnicos t where conta_id = v_a),
-    (select string_agg(t::text, ',' order by t.id) from empresas t where conta_id = v_a),
-    (select string_agg(t::text, ',' order by t.id) from locais t where conta_id = v_a),
-    (select string_agg(t::text, ',' order by t.id) from escalas t where conta_id = v_a),
-    (select string_agg(t::text, ',' order by t.id) from documentos t where conta_id = v_a),
-    (select string_agg(t::text, ',' order by t.email) from painel_usuarios t where conta_id = v_a),
-    (select string_agg(t::text, ',' order by t.id) from ponto_justificativas t where conta_id = v_a),
-    (select string_agg(t::text, ',' order by t.id) from ponto_ajustes t where conta_id = v_a),
-    (select string_agg(t::text, ',' order by t.id) from times t where conta_id = v_a),
-    (select count(*)::text from ponto_marcacoes where conta_id = v_a)));
+    union all select nome from locais where conta_id = v_a and length(nome) > 5 union all select id::text from escalas where conta_id = v_a
+    union all select cpf from tecnicos where conta_id = v_a and cpf is not null
+    union all select cnpj from empresas where conta_id = v_a and cnpj is not null
+    union all select id::text from ponto_marcacoes where conta_id = v_a union all select id::text from ponto_espelhos where conta_id = v_a
+    union all select id::text from ponto_justificativas where conta_id = v_a union all select id::text from ponto_abonos where conta_id = v_a
+    union all select id::text from ponto_he_autorizacoes where conta_id = v_a);
+  v_antes := pg_temp.t57_estado(v_a);
   for f in select p.oid, p.proname, p.proargnames, p.proargtypes::oid[] as tipos
              from pg_proc p join pg_namespace n on n.oid = p.pronamespace
             where n.nspname = 'public' and p.proname like 'app\_%'
@@ -3258,8 +3275,11 @@ begin
         when a.nome = 'p_carga' then 'cargas_horarias' when a.nome = 'p_tipo' then 'tipos_atividade'
         when a.nome = 'p_marcacao' then 'ponto_marcacoes' when a.nome = 'p_justificativa' then 'ponto_justificativas'
         when a.nome = 'p_ajuste' then 'ponto_ajustes' when a.nome = 'p_abono' then 'ponto_abonos'
-        when a.nome = 'p_espelho' then 'ponto_espelhos'
+        when a.nome = 'p_espelho' then 'ponto_espelhos' when a.nome = 'p_anexo' then 'ponto_justificativa_anexos'
         when a.nome = 'p_id' then case
+          when f.proname = 'app_ponto_decidir' then 'ponto_justificativas'
+          when f.proname = 'app_ponto_he_decidir' then 'ponto_he_autorizacoes'
+          when f.proname ~ '^app_ponto_espelho' then 'ponto_espelhos'
           when f.proname ~ 'tecnico' then 'tecnicos' when f.proname ~ 'local' then 'locais'
           when f.proname ~ 'empresa' then 'empresas' when f.proname ~ 'escala' then 'escalas'
           when f.proname ~ 'documento' then 'documentos' when f.proname ~ 'time' then 'times'
@@ -3267,14 +3287,22 @@ begin
           when f.proname ~ 'tipo' then 'tipos_atividade' else 'tecnicos' end
         end;
       if v_tab is not null then
-        execute format('select id::text from interno.%I where conta_id = $1 order by id limit 1', v_tab) into v_val using v_a;
+        -- no ponto, o funcionário da conta A com mais marcações (o de menor id pode não ter ponto)
+        if v_tab = 'tecnicos' and f.proname ~ '^app_ponto_' then
+          select m.tecnico_id::text into v_val from ponto_marcacoes m where m.conta_id = v_a group by 1 order by count(*) desc limit 1;
+        else
+          execute format('select id::text from interno.%I where conta_id = $1 order by id limit 1', v_tab) into v_val using v_a;
+        end if;
         if a.tipo = 'uuid[]'::regtype and v_val is not null then v_val := '{' || v_val || '}'; end if;
       else
         v_val := case
           when a.tipo = 'date'::regtype then case
-            when a.nome in ('p_ate', 'p_fim') then (current_date + 30)::text
-            when a.nome in ('p_mes', 'p_competencia') then date_trunc('month', current_date)::date::text
-            when a.nome in ('p_de', 'p_inicio') then (current_date - 60)::text
+            -- período dentro dos tetos (62 dias no ponto) e competência fechada com espelho, para a recusa ser pela conta
+            when a.nome in ('p_ate', 'p_fim') then current_date::text
+            when a.nome in ('p_mes', 'p_competencia') then case when f.proname ~ '^app_ponto_'
+              then (select competencia::text from ponto_espelhos where conta_id = v_a order by competencia desc limit 1)
+              else date_trunc('month', current_date)::date::text end
+            when a.nome in ('p_de', 'p_inicio') then (current_date - 40)::text
             else current_date::text end
           when a.tipo = 'time'::regtype then case when a.nome = 'p_fim' then '17:00' else '08:00' end
           when a.tipo = 'boolean'::regtype then 'false'
@@ -3283,7 +3311,7 @@ begin
           when a.tipo = 'text[]'::regtype then '{}'
           when a.tipo = 'text'::regtype then case
             when a.nome = 'p_email' then 'qa-admin@teste.local' when a.nome = 'p_papel' then 'leitura'
-            else 'QA T57' end
+            else 'QA T57 texto de teste suficiente' end
           end;
       end if;
       v_args := v_args || format('%I => %s', a.nome,
@@ -3294,17 +3322,7 @@ begin
     begin
       execute format('select (%s(%s))::text', f.proname, array_to_string(v_args, ', ')) into v_res;
       v_feito := true;
-      v_hash := md5(concat_ws('|',
-        (select string_agg(t::text, ',' order by t.id) from tecnicos t where conta_id = v_a),
-        (select string_agg(t::text, ',' order by t.id) from empresas t where conta_id = v_a),
-        (select string_agg(t::text, ',' order by t.id) from locais t where conta_id = v_a),
-        (select string_agg(t::text, ',' order by t.id) from escalas t where conta_id = v_a),
-        (select string_agg(t::text, ',' order by t.id) from documentos t where conta_id = v_a),
-        (select string_agg(t::text, ',' order by t.email) from painel_usuarios t where conta_id = v_a),
-        (select string_agg(t::text, ',' order by t.id) from ponto_justificativas t where conta_id = v_a),
-        (select string_agg(t::text, ',' order by t.id) from ponto_ajustes t where conta_id = v_a),
-        (select string_agg(t::text, ',' order by t.id) from times t where conta_id = v_a),
-        (select count(*)::text from ponto_marcacoes where conta_id = v_a)));
+      v_hash := pg_temp.t57_estado(v_a);
       v_mudou := v_hash <> v_antes;
       raise exception 'qa_desfaz_t57';
     exception when others then
@@ -3323,11 +3341,9 @@ begin
   raise notice '[T57] vazamento por escrita (%): %', cardinality(v_escreve), array_to_string(v_escreve, ', ');
   raise notice '[T57] vazamento por leitura (%): %', cardinality(v_le), array_to_string(v_le, ', ');
   raise notice '[T57] recusaram: %, sem dado da conta A: % (relatório; vira exigência ao fim da F2)', v_recusa, v_limpa;
-  -- exigência (docs/multiempresa-f2.md): só a família ainda não reescrita pode aparecer; F2b, F2c e F2d já não vazam,
-  -- e função nova de qualquer família entra coberta. Resta: ponto (F2e)
-  perform pg_temp.ok(not exists (select 1 from unnest(v_escreve || v_le) x(nome_fn)
-                                  where nome_fn !~ '^app_ponto_'),
-    '[T57] vazamento fora das famílias pendentes: ' || array_to_string(v_escreve || v_le, ', '));
+  -- exigência (docs/multiempresa-f2.md): desde a F2e nenhuma app_* vaza, e função nova de qualquer família entra coberta
+  perform pg_temp.ok(cardinality(v_escreve || v_le) = 0,
+    '[T57] vazamento entre contas: ' || array_to_string(v_escreve || v_le, ', '));
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
   perform set_config('request.headers', '{}', true);
 end $$;
@@ -3444,7 +3460,59 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T60' as resultado,
+-- T61 multiempresa F2e: ponto do painel por conta (migration 121) --------------------------------------------------------
+do $$
+declare
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_tec_a uuid := (select v::uuid from qa where k = 'tec1');
+  v_emp_a uuid := (select v::uuid from qa where k = 'emp');
+  v_jus_a uuid := (select id from ponto_justificativas where conta_id <> (select v::uuid from qa where k = 'conta_b') limit 1);
+  v_tec uuid; v_ok boolean; v_msg text; v_loc_b uuid; v_emp_b uuid; r jsonb;
+begin
+  select id, empresa_id into v_tec, v_emp_b from tecnicos where conta_id = v_b and nome = 'QA Técnico B';
+  update tecnicos set cpf = pg_temp.cpf('580580581'), opt_in = false where id = v_tec;
+  -- marcação da conta B em cima da obra da conta A: o local de referência é o da B (o local entra no hash)
+  insert into locais (nome, ativo, latitude, longitude, raio_m, conta_id)
+  values ('QA Local B com área', true, -12.950000, -38.450000, 150, v_b) returning id into v_loc_b;
+  r := fn_ponto_registrar(v_tec, 'entrada', 'app', -12.900000, -38.400000, 10, '{}');
+  perform pg_temp.ok((select local_id = v_loc_b and not dentro_area and conta_id = v_b from ponto_marcacoes where id = (r->>'marcacao_id')::uuid)
+                     and r->>'local' = 'QA Local B com área', '[T61] marcação da B: local e conta da B, fora da área da obra da A');
+  perform pg_temp.ok((select conta_id from ponto_nsr where empresa_id = v_emp_b) = v_b, '[T61] NSR da empresa B herda a conta B');
+  perform set_config('request.headers', '{}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform app_ponto_gerar_codigo(v_tec);
+  perform pg_temp.ok((select bool_and(conta_id = v_b) from ponto_codigos where tecnico_id = v_tec), '[T61] código do ponto herda a conta B');
+  perform pg_temp.ok((select count(*) from app_ponto_hoje()) = 1
+                     and (select count(*) from app_ponto_acompanhamento(current_date - 5, current_date)) = 1
+                     and not exists (select 1 from app_ponto_espelho(current_date - 5, current_date) e where e.tecnico_id <> v_tec),
+                     '[T61] conta B vê só o próprio ponto');
+  v_ok := false;
+  begin perform app_ponto_ajustar(v_tec_a, 'desconsiderar', 'motivo suficiente aqui', p_marcacao => (select id from ponto_marcacoes where tecnico_id = v_tec_a limit 1));
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm = 'Funcionário não encontrado.'; end;
+  perform pg_temp.ok(v_ok, '[T61] ajuste em funcionário de outra conta: ' || coalesce(v_msg, 'aceito'));
+  v_ok := false;
+  begin perform app_ponto_verificar(v_emp_a); exception when others then v_ok := sqlerrm = 'Empresa não encontrada.'; end;
+  perform pg_temp.ok(v_ok, '[T61] cadeia de NSR de empresa de outra conta');
+  v_ok := false;
+  begin perform app_ponto_afd(v_emp_a, current_date - 5, current_date);
+  exception when others then v_ok := sqlerrm = 'Empresa empregadora não encontrada.'; end;
+  perform pg_temp.ok(v_ok, '[T61] AFD de empresa de outra conta');
+  perform pg_temp.ok((app_ponto_verificar(v_emp_b)->>'integra')::boolean, '[T61] cadeia de NSR da empresa B íntegra');
+  perform pg_temp.ok(v_jus_a is not null, '[T61] há pedido da conta A para o teste');
+  v_ok := false;
+  begin perform app_ponto_decidir(v_jus_a, false, 'Negativa de teste da conta B');
+  exception when others then v_ok := sqlerrm = 'Pedido não encontrado.'; end;
+  perform pg_temp.ok(v_ok, '[T61] pedido de outra conta');
+  -- a conta 1 não vê nem gera código para o funcionário da B
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform pg_temp.ok(not exists (select 1 from app_ponto_hoje() h where h.tecnico_id = v_tec), '[T61] conta 1 não vê o ponto da B');
+  v_ok := false;
+  begin perform app_ponto_gerar_codigo(v_tec); exception when others then v_ok := sqlerrm = 'Técnico não encontrado.'; end;
+  perform pg_temp.ok(v_ok, '[T61] conta 1 não gera código para funcionário da B');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T61' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
