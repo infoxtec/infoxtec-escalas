@@ -254,6 +254,15 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 120 (28/10): documentos por conta, multiempresa F2d
+
+Documentos dos técnicos, validade por tipo, quadro por técnico e dossiê por local leem e alteram só na conta; técnico,
+tipo, documento e local conferidos na conta; o caminho registrado precisa começar pela pasta do técnico. Herança de
+conta também em `documentos`, `tecnico_documentos` (do técnico) e `dossie_geracoes` (do local). Storage do bucket
+`documentos`: as políticas usam `app_pode_gerir_documento(name)` (papel admin ou gestor na conta, MFA quando
+obrigatório e primeira pasta = técnico da conta); `app_pode_gerir_documentos()` passa a usar o papel na conta.
+Regressão: T57 só aceita vazamento em `app_ponto_*`; T60.
+
 ### Migration 119 (28/10): programação por conta, multiempresa F2c
 
 Gatilho `tg_00_conta` (`fn_herdar_conta`, argumentos: tabela de origem e coluna) em `escalas` (do técnico, também na
