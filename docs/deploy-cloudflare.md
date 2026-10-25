@@ -16,7 +16,10 @@
 | Aba "Previews Base": Preview command | `npx wrangler versions upload` (botão "Builds for Preview branches" ligado) |
 | Variáveis | nenhuma |
 
-O nome em `web/wrangler.jsonc` precisa ser o do Worker (`trilha-homologacao`). Cada PR ganha uma versão de
+O nome em `web/wrangler.jsonc` precisa ser o do Worker (`trilha-homologacao`). **O Cloudflare ignora o Root directory
+neste Worker** (25/10: o build rodava na raiz mesmo com `web` nas duas abas): por isso a raiz do repositório tem um
+`package.json` que só delega para `web/` e um `wrangler.jsonc` igual ao de `web/`, apontando para `web/dist`. Mudança
+em um dos dois `wrangler.jsonc` vai também no outro. Cada PR ganha uma versão de
 pré-visualização (`<versão>-trilha-homologacao.david-cerqueira.workers.dev`), sempre com o banco da homologação.
 
 ## 2. Supabase da homologação: login
