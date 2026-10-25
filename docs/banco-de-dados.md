@@ -254,6 +254,17 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 115 (26/10): esquema privado `interno` (backlog 074, decisões 76 e 108)
+
+Tabelas, views, sequências e funções `fn_*` saem do `public` para `interno`; no `public` ficam só `app_*`, `ponto_*` e
+os tipos enum das assinaturas. `anon`, `authenticated` e `service_role` não têm USAGE em `interno`, e os objetos novos
+nascem fechados (default privileges). Caminho de busca: `interno, public, extensions, pg_temp` em todas as funções e no papel
+`postgres` (pg_cron, Edge Functions, scripts de backup e de setup) — `interno` primeiro, para um `create or replace`
+sem esquema nunca criar cópia no `public`. Migration nova escreve o esquema de tudo (CLAUDE.md). Scripts da âncora do
+ponto acham o esquema sozinhos (antes e depois da 115). Regressão T55: nada além de `app_*`/`ponto_*` no `public`,
+nenhum papel da API no `interno` nem com CREATE no `public`, caminho de busca em todas as funções. Os jobs do
+pg_cron passam a chamar `interno.fn_*`, e as Edge Functions fixam o caminho na conexão (valem antes e depois da 115).
+
 ### Migration 114 (25/10): o mesmo aviso no "Recebi o código do meu gestor" (decisão 111)
 
 `ponto_entrar` avisa "CPF inválido" (sempre) e "CPF não encontrado" (com o freio) quando não acha funcionário ativo

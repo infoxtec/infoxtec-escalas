@@ -10,7 +10,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import postgres from "npm:postgres@3.4.5";
 
-const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, {
+// search_path explícito: tabelas e fn_* no esquema interno (migration 115); não depende do parâmetro do papel
+const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { connection: { search_path: "interno, public, extensions" },
   prepare: false,
   max: 1,
   idle_timeout: 20,

@@ -18,7 +18,7 @@ create temp table ancora (empresa_id uuid, ultimo bigint, ultimo_hash text, gera
 
 -- Cópia fiel de fn_ponto_hash(ponto_marcacoes) da migration 54. Se a fórmula mudar numa migration
 -- nova, esta cópia muda junto (e as marcações antigas continuam conferindo pela fórmula delas).
-create function pg_temp.hash_ref(m public.ponto_marcacoes) returns text language sql immutable
+create function pg_temp.hash_ref(m :"esq".ponto_marcacoes) returns text language sql immutable
   set search_path = pg_catalog, pg_temp as $$
   select encode(sha256(convert_to(array_to_string(array[
            m.hash_anterior, m.empresa_id::text, m.nsr::text, m.tecnico_id::text, m.cpf,
@@ -34,28 +34,34 @@ do $$
 begin
   if (select pg_catalog.md5(p.prosrc) || '/' || l.lanname from pg_catalog.pg_proc p
         join pg_catalog.pg_language l on l.oid = p.prolang
-       where p.oid = 'public.fn_ponto_hash(public.ponto_marcacoes)'::pg_catalog.regprocedure)
+       where p.oid = pg_catalog.format('%1$s.fn_ponto_hash(%1$s.ponto_marcacoes)',
+                                       pg_catalog.current_setting('ancora.esq'))::pg_catalog.regprocedure)
      is distinct from '247462d5b4ddf075d63b9008ed50d28a/sql' then
     raise exception 'fn_ponto_hash do backup difere da fórmula da migration 54';
   end if;
 end $$;
 
 do $$
-declare a record; m public.ponto_marcacoes; v_ant text; v_esp bigint; v_total bigint := 0;
+declare a record; m record; v_ant text; v_esp bigint; v_total bigint := 0; v_ha boolean;
+  v_esq text := pg_catalog.current_setting('ancora.esq');
 begin
-  if not exists (select 1 from ancora) and exists (select 1 from public.ponto_marcacoes) then
+  execute pg_catalog.format('select exists (select 1 from %I.ponto_marcacoes)', v_esq) into v_ha;
+  if not exists (select 1 from ancora) and v_ha then
     raise exception 'âncora vazia num backup com marcações';
   end if;
   for a in select * from ancora where ultimo > 0 loop
-    if not exists (select 1 from public.ponto_marcacoes
-                    where empresa_id = a.empresa_id and nsr = a.ultimo and hash = a.ultimo_hash) then
+    execute pg_catalog.format('select exists (select 1 from %I.ponto_marcacoes where empresa_id = $1 and nsr = $2 and hash = $3)', v_esq)
+       into v_ha using a.empresa_id, a.ultimo, a.ultimo_hash;
+    if not v_ha then
       raise exception 'âncora de % não confere: empresa %, NSR %', a.gerada_em, a.empresa_id, a.ultimo;
     end if;
   end loop;
-  for a in select distinct empresa_id from public.ponto_marcacoes loop
+  for a in execute pg_catalog.format('select distinct empresa_id from %I.ponto_marcacoes', v_esq) loop
     v_ant := repeat('0', 64); v_esp := 1;
-    for m in select * from public.ponto_marcacoes where empresa_id = a.empresa_id order by nsr loop
-      if m.nsr <> v_esp or m.hash_anterior <> v_ant or m.hash <> pg_temp.hash_ref(m) then
+    for m in execute pg_catalog.format('select x.nsr, x.hash_anterior, x.hash, pg_temp.hash_ref(x) as calculado
+                                          from %I.ponto_marcacoes x where x.empresa_id = $1 order by x.nsr', v_esq)
+             using a.empresa_id loop
+      if m.nsr <> v_esp or m.hash_anterior <> v_ant or m.hash <> m.calculado then
         raise exception 'cadeia quebrada: empresa %, NSR %', a.empresa_id, m.nsr;
       end if;
       v_ant := m.hash; v_esp := v_esp + 1; v_total := v_total + 1;

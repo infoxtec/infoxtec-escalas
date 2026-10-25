@@ -11,14 +11,14 @@ set local search_path = pg_catalog, pg_temp;
 \ir tipos-ponto.sql
 
 do $$
-declare r record;
+declare r record; v_esq text := pg_catalog.current_setting('ancora.esq');
 begin
-  for r in
+  for r in execute pg_catalog.format($q$
     select coalesce(n.empresa_id, m.empresa_id) as empresa, n.ultimo, n.ultimo_hash, m.qtd, m.maior,
-           (select x.hash from public.ponto_marcacoes x where x.empresa_id = n.empresa_id and x.nsr = n.ultimo) as hash_ultima
-      from public.ponto_nsr n
-      full join (select empresa_id, count(*) as qtd, max(nsr) as maior from public.ponto_marcacoes group by 1) m
-        on m.empresa_id = n.empresa_id
+           (select x.hash from %1$I.ponto_marcacoes x where x.empresa_id = n.empresa_id and x.nsr = n.ultimo) as hash_ultima
+      from %1$I.ponto_nsr n
+      full join (select empresa_id, count(*) as qtd, max(nsr) as maior from %1$I.ponto_marcacoes group by 1) m
+        on m.empresa_id = n.empresa_id$q$, v_esq)
   loop
     if r.ultimo is null then
       raise exception 'âncora: empresa % tem marcações e não tem ponto_nsr', r.empresa;
@@ -32,6 +32,5 @@ begin
   end loop;
 end $$;
 
-\copy (select empresa_id, ultimo, ultimo_hash, to_char(now() at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') from public.ponto_nsr order by empresa_id) to 'copia/ancora-ponto.csv' with (format csv)
-
-commit;
+-- \copy não troca variáveis do psql: COPY ... TO STDOUT com \g grava no arquivo e aceita o :"esq" (psql 14+)
+copy (select empresa_id, ultimo, ultimo_hash, to_char(now() at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') from :"esq".ponto_nsr order by empresa_id) to stdout with (format csv) \g 'copia/ancora-ponto.csv'

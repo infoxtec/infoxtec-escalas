@@ -7,7 +7,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import postgres from "npm:postgres@3.4.5";
 
-const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { prepare: false, max: 2, idle_timeout: 20 });
+// search_path explícito: tabelas e fn_* no esquema interno (migration 115); não depende do parâmetro do papel
+const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { connection: { search_path: "interno, public, extensions" }, prepare: false, max: 2, idle_timeout: 20 });
 
 // base64 de um arquivo de até 8 MB (documento_tamanho_max_mb) ocupa cerca de 11 MB
 const CORPO_MAX_BYTES = 12 * 1024 * 1024;

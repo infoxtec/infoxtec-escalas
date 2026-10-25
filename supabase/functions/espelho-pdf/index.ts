@@ -12,8 +12,10 @@ import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "npm:pdf-lib@1
 import qrcode from "npm:qrcode-generator@2.0.4";
 
 // consultas com prazo: banco travado não prende a única conexão (revisão do seguranca)
+// search_path explícito: tabelas e fn_* no esquema interno (migration 115); não depende do parâmetro do papel
 const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, {
-  prepare: false, max: 1, idle_timeout: 20, connection: { statement_timeout: 15000 },
+  prepare: false, max: 1, idle_timeout: 20,
+  connection: { statement_timeout: 15000, search_path: "interno, public, extensions" },
 });
 
 // o corpo só leva o id do espelho
