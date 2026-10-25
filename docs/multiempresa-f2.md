@@ -40,8 +40,9 @@ o T60 prova documentos e Storage da conta B isolados. **Depois da F2e (29/10):**
 virou exigência total (qualquer vazamento derruba o CI). Para o ponto ele passou a montar argumentos que passam das
 validações genéricas: período dentro do teto, motivo com texto suficiente, o funcionário da A com mais marcações, a
 competência do último espelho da A, mais CPF, CNPJ e ids do ponto nas marcas e as tabelas do ponto no retrato de escrita.
-**Prova de mutação (revisão do `seguranca`):** com as 34 definições antigas, sem filtro, o T57 pega 7 (`abonar`,
-`estornar_abono`, `afd`, `espelho_ver`, `he_autorizacoes`, `previa_folha`, `validar_folha`) e o T61 também falha. O T57
+**Prova de mutação (revisão do `seguranca`):** com as 34 definições antigas, sem filtro, o T57 pega 6 a 7, conforme o espelho
+sorteado (`abonar`, `estornar_abono`, `afd`, `he_autorizacoes`, `previa_folha`, `validar_folha` e às vezes `espelho_ver`), e
+o T61 também falha. A cada etapa, repetir a prova: reaplicar os corpos antigos na transação e exigir falha. O T57
 **não cobre sozinho** as 34: o T61 prova os casos de leitura, ajuste, AFD, NSR, pedido e código, e a marcação da conta B
 (local, NSR e cadeia na B). **Recusa não prova isolamento:** parte recusa pelo argumento genérico; cada família melhora os
 argumentos das suas funções até a recusa ser pela conta.
