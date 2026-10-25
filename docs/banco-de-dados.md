@@ -254,6 +254,17 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 122 (30/10): motor por conta, multiempresa F2f-1
+
+`fn_avisar_supervisores(texto, exceto, empresa, conta)`: da empresa informada ou da do funcionário; sem empresa, só
+supervisores da mesma conta (do funcionário, da empresa ou a informada); sem nada, todos (alerta de sistema, decisão
+107). `fn_alerta_prazo_escala` e `fn_alerta_certificacoes` calculam, registram e avisam por conta ativa (pendências com
+`fn_pendencias_escala(data, conta)`; agrupam por empresa quando a conta tem mais de uma). `alertas_enviados`: chave
+`(conta_id, tipo, data_ref)`; gatilho `fn_alerta_conta` põe a conta do funcionário ou da empresa citada no tipo ou no
+detalhe. `fn_ponto_alerta_teto` avisa só supervisores da conta 1 (operadora). `fn_papel_na_conta_de(email, x-conta)`:
+papel na conta para Edge Functions, que não passam pelo PostgREST; a `documento-ocr` usa e aceita o cabeçalho `x-conta`.
+Regressão: T62.
+
 ### Migration 121 (29/10): ponto por conta, multiempresa F2e
 
 As 34 funções do ponto no painel (`app_ponto_*`) leem e alteram só na conta da sessão e conferem na conta o funcionário,

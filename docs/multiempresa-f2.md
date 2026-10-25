@@ -13,7 +13,8 @@ por família, regressão inteira verde em todos; nenhuma assinatura de função 
 | F2c | Programação | escalas, cargas, envio, ligações, pendências, linha do tempo, painel gerencial e indicadores; gatilho `fn_herdar_conta` nas 10 tabelas da família | Migration 119 |
 | F2d | Documentos | documentos, dossiê e Storage por conta (arquivo só de técnico da conta); OCR segue com o papel global até a F2f | Migration 120 |
 | F2e | Ponto | as 34 `app_ponto_*` (marcações, ajustes, abonos, pedidos, espelhos, folha, cofre, hora extra, AFD e conferência de documentos) só na conta; AFD e cadeia de NSR só de empresa da conta; herança de conta nas 22 tabelas do ponto. As `ponto_*` já ficam presas ao funcionário da sessão; o ponto não usa Storage (anexos no cofre do banco) | Migration 121 |
-| F2f | Motor e canais | `fn_*` do motor, webhook e cron por conta; `fn_papel` por conta; fim do default "conta 1" em `conta_id` | A fazer |
+| F2f-1 | Motor | avisos a supervisores só da mesma conta (funcionário sem empresa avisa a conta dele); programação de amanhã e documentos a vencer calculados e registrados por conta; `alertas_enviados` com a conta na chave e herdada do funcionário ou da empresa; teto do app do ponto só à operadora; OCR com o papel na conta (`fn_papel_na_conta_de`) | Migration 122 |
+| F2f-2 | Contrair | fim do default "conta 1" em `conta_id` e da trava da 117, junto da F3 (usuários por conta no painel): sem a F3, nenhuma conta de cliente tem quem a opere | A fazer, com a F3 |
 
 ## Régua (T57)
 

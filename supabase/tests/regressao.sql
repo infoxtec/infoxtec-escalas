@@ -3512,7 +3512,48 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T61' as resultado,
+-- T62 multiempresa F2f-1: motor por conta (migration 122) -------------------------------------------------------------------
+create or replace function fn_wa_texto(p_telefone text, p_texto text) returns bigint language sql as $$
+  insert into qa values ('w62:' || p_telefone, p_texto) on conflict (k) do update set v = qa.v || ' | ' || excluded.v;
+  select 0::bigint $$;
+do $$
+declare
+  v_a uuid := '00000000-0000-0000-0000-000000000001';
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_emp_b uuid := (select empresa_id from tecnicos where conta_id = (select v::uuid from qa where k = 'conta_b') and nome = 'QA Técnico B');
+  v_tec uuid; v_n int; v_ok boolean;
+begin
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, perfil_teste, is_supervisor, empresa_id, conta_id) values
+    ('QA Sup Conta B', '5571900006201', true, true, true, true, v_emp_b, v_b),
+    ('QA Sup Conta B sem empresa', '5571900006202', true, true, true, true, null, v_b);
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, perfil_teste, conta_id)
+  values ('QA Func B sem empresa', '5571900006203', true, true, true, v_b) returning id into v_tec;
+  -- funcionário sem empresa: só supervisores da mesma conta
+  v_n := fn_avisar_supervisores('QA T62 aviso', v_tec);
+  perform pg_temp.ok(v_n = 2 and exists (select 1 from qa where k = 'w62:5571900006201')
+                     and exists (select 1 from qa where k = 'w62:5571900006202')
+                     and not exists (select 1 from qa q join tecnicos t on 'w62:' || t.telefone_e164 = q.k where t.conta_id = v_a),
+                     '[T62] aviso de funcionário sem empresa só na conta dele: ' || v_n);
+  -- por conta, sem empresa nem funcionário: só a conta pedida
+  v_n := fn_avisar_supervisores('QA T62 conta', null, null, v_b);
+  perform pg_temp.ok(v_n = 2, '[T62] aviso por conta: ' || v_n);
+  -- registro de alertas: a conta vem do funcionário no tipo; o mesmo aviso do dia existe em cada conta
+  insert into alertas_enviados (tipo, data_ref, enviado) values ('ponto_almoco_' || v_tec, current_date, true);
+  perform pg_temp.ok((select conta_id from alertas_enviados where tipo = 'ponto_almoco_' || v_tec) = v_b, '[T62] alerta herda a conta do funcionário');
+  insert into alertas_enviados (conta_id, tipo, data_ref, enviado) values (v_b, 'qa_t62', current_date, true), (v_a, 'qa_t62', current_date, true);
+  perform pg_temp.ok((select count(*) from alertas_enviados where tipo = 'qa_t62') = 2, '[T62] aviso do dia por conta');
+  -- alerta da plataforma (teto do app do ponto) só à operadora
+  delete from qa where k like 'evo:%';
+  perform fn_ponto_alerta_teto('qa62');
+  perform pg_temp.ok(not exists (select 1 from qa where k in ('evo:5571900006201', 'evo:5571900006202')), '[T62] teto do ponto não vai a cliente');
+  -- papel na conta para Edge Functions
+  perform pg_temp.ok(fn_papel_na_conta_de('qa-b@teste.local') = 'admin' and fn_papel_na_conta_de('ninguem@teste.local') is null,
+                     '[T62] papel na conta pelo e-mail do token');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  perform set_config('request.headers', '{}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T62' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

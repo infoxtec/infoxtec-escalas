@@ -32,7 +32,7 @@ function cabecalhosCors(req: Request): Record<string, string> {
     ...(ORIGEM_PAINEL.test(origem) || (HOMOLOGACAO && (ORIGENS_HOMOLOGACAO.includes(origem) || ORIGEM_HOMOLOGACAO_CF.test(origem)))
       ? { "Access-Control-Allow-Origin": origem } : {}),
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-conta",
     "Vary": "Origin",
   };
 }
@@ -101,8 +101,10 @@ Deno.serve(async (req: Request) => {
   const email = await emailVerificado(req);
   if (!email) return json({ ok: false, erro: "sessao invalida" }, 401);
 
+  // papel na conta da sessão (multiempresa F2f): quem está em mais de uma conta escolhe pelo cabeçalho x-conta
+  const conta = req.headers.get("x-conta");
   const [acesso] = await sql<{ papel: string | null; mfa: boolean }[]>`
-    select fn_papel(${email}) as papel, coalesce(fn_config('mfa_obrigatorio'), 'false') = 'true' as mfa`;
+    select fn_papel_na_conta_de(${email}, ${conta}) as papel, coalesce(fn_config('mfa_obrigatorio'), 'false') = 'true' as mfa`;
   if (!acesso?.papel || !["admin", "gestor"].includes(acesso.papel)) {
     return json({ ok: false, erro: "sem permissao" }, 403);
   }
