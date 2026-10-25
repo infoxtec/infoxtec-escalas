@@ -196,6 +196,29 @@ begin
   perform pg_temp.ok(v is null, '[T55] função sem o caminho interno, public, extensions, pg_temp: ' || coalesce(v, ''));
 end $$;
 
+-- T56 régua do multiempresa (F0, docs/multiempresa-f0.md): o catálogo bate com a classificação; modo relatório --
+do $$
+declare
+  v_fn_plataforma text[] := array['app_email', 'app_exigir', 'app_meu_acesso', 'app_backlog', 'app_salvar_backlog_item',
+    'app_mover_backlog_item', 'app_checklist_saude', 'app_checklist_testar', 'app_estado_motor'];
+  v_tb_plataforma text[] := array['config', 'backlog_itens', 'motor_estado', 'saude_testes', 'ponto_geo', 'webhook_token_trocas'];
+  v text; n int;
+begin
+  -- a lista da plataforma precisa existir (função ou tabela renomeada/removida obriga a revisar a classificação)
+  select string_agg(f, ', ') into v from unnest(v_fn_plataforma) f
+   where not exists (select 1 from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public' and p.proname = f);
+  perform pg_temp.ok(v is null, '[T56] função da plataforma sumiu do catálogo: ' || coalesce(v, ''));
+  select string_agg(t, ', ') into v from unnest(v_tb_plataforma) t where to_regclass('interno.' || t) is null;
+  perform pg_temp.ok(v is null, '[T56] tabela da plataforma sumiu do catálogo: ' || coalesce(v, ''));
+  -- relatório: tabelas de cliente ainda sem conta_id (vira exigência ao fim da F1)
+  select count(*), string_agg(c.relname, ', ' order by c.relname) into n, v
+    from pg_class c join pg_namespace s on s.oid = c.relnamespace
+   where s.nspname = 'interno' and c.relkind in ('r', 'p') and c.relname <> all (v_tb_plataforma)
+     and c.relname not like 'qa\_%'
+     and not exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'conta_id' and not a.attisdropped);
+  raise notice '[T56] tabelas de cliente sem conta_id: % (F1 pendente)', n;
+end $$;
+
 -- T44 trava de envio da homologação (migration 99, decisão 94) ----------------------------------------------
 do $$
 declare v_ok boolean; v_msg text;
@@ -3091,7 +3114,7 @@ begin
   perform pg_temp.ok(v_r->>'erro' like 'Não foi possível entrar%', '[T54] cota compartilhada com o pedido de código: ' || v_r::text);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T55' as resultado,
+select 'REGRESSÃO OK: T1 a T56' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
