@@ -3323,15 +3323,14 @@ begin
   raise notice '[T57] vazamento por escrita (%): %', cardinality(v_escreve), array_to_string(v_escreve, ', ');
   raise notice '[T57] vazamento por leitura (%): %', cardinality(v_le), array_to_string(v_le, ', ');
   raise notice '[T57] recusaram: %, sem dado da conta A: % (relatório; vira exigência ao fim da F2)', v_recusa, v_limpa;
-  -- famílias já reescritas viram exigência (docs/multiempresa-f2.md): F2b cadastros
-  perform pg_temp.ok(not ((v_escreve || v_le) && array['app_aptidao', 'app_definir_habilidades', 'app_definir_rh_folhas',
-      'app_definir_ve_saude', 'app_empresas', 'app_excluir_habilidade', 'app_excluir_tecnico', 'app_excluir_tipo_documento',
-      'app_habilidades', 'app_locais', 'app_remover_tecnico_habilidade', 'app_rh_folhas_historico', 'app_salvar_empresa',
-      'app_salvar_habilidade', 'app_salvar_local', 'app_salvar_tecnico', 'app_salvar_time', 'app_salvar_tipo_atividade',
-      'app_salvar_tipo_documento', 'app_salvar_usuario', 'app_tecnico_cpf', 'app_tecnico_habilidades', 'app_tecnicos',
-      'app_time_definir_membros', 'app_times', 'app_tipos_atividade', 'app_tipos_documento', 'app_usuarios',
-      'app_usuarios_mfa', 'app_ve_saude_historico']),
-    '[T57] família de cadastros vazando: ' || array_to_string(v_escreve || v_le, ', '));
+  -- exigência (docs/multiempresa-f2.md): só as famílias ainda não reescritas podem aparecer; F2b e F2c já não vazam,
+  -- e função nova de qualquer família entra coberta. Restam: documentos (F2d) e ponto (F2e)
+  perform pg_temp.ok(not exists (select 1 from unnest(v_escreve || v_le) x(nome_fn)
+                                  where nome_fn !~ '^app_ponto_'
+                                    and nome_fn not in ('app_documentos', 'app_documentos_por_tecnico', 'app_dossie_local',
+                                                  'app_definir_documento', 'app_excluir_documento', 'app_registrar_documento',
+                                                  'app_remover_documento_tecnico', 'app_pode_gerir_documentos')),
+    '[T57] vazamento fora das famílias pendentes: ' || array_to_string(v_escreve || v_le, ', '));
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
   perform set_config('request.headers', '{}', true);
 end $$;
@@ -3383,7 +3382,45 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T58' as resultado,
+-- T59 multiempresa F2c: programação da conta B herda a conta e fica isolada (migration 119) ----------------------------
+do $$
+declare
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_tec_a uuid := (select v::uuid from qa where k = 'tec1');
+  v_tec uuid; v_loc uuid; v_esc uuid; v_ok boolean; v_msg text; v_dia date := current_date + 3;
+begin
+  perform set_config('request.headers', '{}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  select id into v_tec from tecnicos where conta_id = v_b and nome = 'QA Técnico B';
+  v_loc := app_salvar_local(jsonb_build_object('nome', 'QA Local B'));
+  select escala_id into v_esc from app_criar_escalas(array[v_tec], v_loc, v_dia, '09:00', 'QA tarefa B', 240, 'normal', false);
+  perform pg_temp.ok(v_esc is not null and (select conta_id from escalas where id = v_esc) = v_b, '[T59] escala nasce na conta B');
+  perform pg_temp.ok(not exists (select 1 from escala_eventos where escala_id = v_esc and conta_id <> v_b),
+                     '[T59] eventos da escala herdam a conta B');
+  perform pg_temp.ok((select count(*) from app_escalas(v_dia, v_dia)) = 1, '[T59] conta B vê só a própria programação');
+  perform pg_temp.ok((select jsonb_array_length(app_pendencias(v_dia)->'sem_escala')) = 0
+                     and (app_pendencias(v_dia)->>'total_tecnicos')::int = 1, '[T59] pendências só da conta B');
+  -- técnico da conta 1 numa programação da B: recusado
+  v_ok := false;
+  begin perform app_criar_escalas(array[v_tec_a], v_loc, v_dia, '10:00', 'QA invasão', 240, 'normal', false);
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm = 'Técnico não encontrado.'; end;
+  perform pg_temp.ok(v_ok, '[T59] técnico de outra conta: ' || coalesce(v_msg, 'aceito'));
+  -- termo da carga cita razão social e CNPJ: empresa de outra conta recusada
+  v_ok := false;
+  begin perform app_carga_validar(jsonb_build_object('empresa_id', (select v::uuid from qa where k = 'emp'), 'nome', 'QA',
+                                                     'tipo', 'semanal', 'minutos', jsonb_build_array(480,480,480,480,480,0,0)));
+  exception when others then v_ok := sqlerrm = 'Empresa não encontrada.'; end;
+  perform pg_temp.ok(v_ok, '[T59] termo de carga com empresa de outra conta');
+  -- a conta 1 não vê nem remove a programação da B
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform pg_temp.ok(not exists (select 1 from app_escalas(v_dia, v_dia) where id = v_esc), '[T59] conta 1 não vê a B');
+  v_ok := false;
+  begin perform app_remover_escala(v_esc); exception when others then v_ok := sqlerrm = 'Programação não encontrada.'; end;
+  perform pg_temp.ok(v_ok, '[T59] conta 1 não remove programação da B');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T59' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

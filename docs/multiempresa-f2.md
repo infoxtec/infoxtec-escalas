@@ -10,7 +10,7 @@ por família, regressão inteira verde em todos; nenhuma assinatura de função 
 |---|---|---|---|
 | F2a | Base | `fn_conta_atual` (sessão do painel; cabeçalho `x-conta` para quem está em mais de uma conta); `app_exigir` exige a conta e confere o papel nela; `app_meu_acesso` lista as contas; T57 | Migration 117 |
 | F2b | Cadastros | técnicos, empresas, locais, times, habilidades, tipos, usuários e permissões do RH: leitura e escrita só da conta; registro novo nasce com a conta da sessão; nome de habilidade e tipos único por conta | Migration 118 |
-| F2c | Programação | escalas, cargas, envio, ligações, pendências, linha do tempo, painel gerencial e indicadores | A fazer |
+| F2c | Programação | escalas, cargas, envio, ligações, pendências, linha do tempo, painel gerencial e indicadores; gatilho `fn_herdar_conta` nas 10 tabelas da família | Migration 119 |
 | F2d | Documentos | documentos, dossiê, OCR (Edge Function com o papel da conta) | A fazer |
 | F2e | Ponto | `app_ponto_*`, AFD sem empresa livre, `ponto_*` pela conta do funcionário, login do ponto com o identificador da conta, Storage com prefixo | A fazer |
 | F2f | Motor e canais | `fn_*` do motor, webhook e cron por conta; `fn_papel` por conta; fim do default "conta 1" em `conta_id` | A fazer |
@@ -32,7 +32,10 @@ recusam e 26 não devolvem dado da A. **Depois da F2b (27/10):** a família de c
 vazar). Restam 1 por escrita (`app_remover_escala`) e 8 por leitura (`app_carga_excedida`, `app_documentos_por_tecnico`,
 `app_dossie_local`, `app_escala_edicao`, `app_escalas`, `app_linha_do_tempo`, `app_painel_locais`, `app_pendencias`),
 todas de programação e documentos. O T58 prova o caminho positivo: a conta B cadastra e vê só o que é dela, a conta 1 não
-vê nem altera a B. **Recusa não prova isolamento:** parte recusa pelo argumento genérico; cada família melhora os
+vê nem altera a B. **Depois da F2c (28/10):** nenhuma função vaza por escrita; restam por leitura `app_documentos_por_tecnico` e
+`app_dossie_local` (F2d) e, conforme o teto de códigos, `app_ponto_gerar_codigo` (F2e). A exigência do T57 virou a
+lista inversa: **qualquer** vazamento fora das famílias de documentos e ponto derruba o CI, inclusive em função nova.
+O T59 prova a programação da conta B isolada e herdando a conta. **Recusa não prova isolamento:** parte recusa pelo argumento genérico; cada família melhora os
 argumentos das suas funções até a recusa ser pela conta.
 
 ## Pontos em aberto
@@ -50,6 +53,14 @@ argumentos das suas funções até a recusa ser pela conta.
   usuário em duas contas.
 - **Busca por nome de catálogo (P2, exigência da F2d e da F2f):** com nome único por conta, "ASO" ou "NR-10" pode existir em
   duas contas; toda busca por nome ou `palavras_chave` (OCR, motor) precisa filtrar a conta.
+- **Herança de conta (119):** escalas (do técnico), eventos, notificações, ligações, respostas, ocorrências e aceites (da
+  escala), cargas e atribuições (da empresa) e aceites de carga (da carga) recebem a conta do registro de origem num
+  gatilho, venha a linha de onde vier. O motor ainda vê todas as contas em pendências e alertas (F2f).
+- **Herança confere uma origem por tabela (P3, F2f):** `escalas.local_id` e `tipo_atividade_id` e `carga_*.carga_id` contra
+  `empresa_id` dependem das `app_*` (que conferem); a trava no dado (chave composta ou gatilho de coerência) entra na F2f.
+- **T57 aceita qualquer `app_ponto_*` até a F2e (P3):** a família inteira do ponto ainda não filtra a conta.
+- **Token da URA na URL (P3, pré-existente):** `app_ligar_escala` manda `VOZ_TOKEN` na query string, que fica na fila do
+  `pg_net`; passar para cabeçalho junto com a F5 (canais por conta).
 - **Gatilhos que inserem em tabela de cliente (F2f):** o `default` da conta 1 em `conta_id` só sai na F2f; até lá, cada
   gatilho que cria linha precisa gravar a conta (o de time da equipe foi corrigido na 118).
 - **Unicidade que avisa existência (P3, até a F6):** CPF, telefone e CNPJ continuam únicos no sistema inteiro; a mensagem
