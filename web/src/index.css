@@ -43,3 +43,16 @@ body { @apply bg-background text-foreground antialiased; }
   .area-impressao { position: absolute; left: 0; top: 0; width: 100%; padding: 12mm; }
   @page { size: A4; margin: 0; }
 }
+
+/* Marca animada do Trilha (components/MarcaAnimada.tsx): toca uma vez, quem pede menos movimento vê parada */
+.tl .tl-ponto, .tl .tl-check { transform-box: fill-box; transform-origin: center; }
+.tl.anima .tl-ponto { animation: tl-pop .5s cubic-bezier(.34,1.56,.64,1) both; animation-delay: calc(var(--i) * .14s); }
+.tl.anima .tl-letra { animation: tl-sobe .45s ease-out both; animation-delay: calc(.4s + var(--i) * .07s); }
+.tl.anima .tl-check { animation: tl-pop .45s cubic-bezier(.34,1.56,.64,1) both; animation-delay: .95s; }
+.tl.anima .tl-visto { stroke-dasharray: 30; stroke-dashoffset: 30; animation: tl-risca .35s ease-out 1.25s forwards; }
+.tl.anima .tl-tag { animation: tl-surge .6s ease-out 1.45s both; }
+@keyframes tl-pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes tl-sobe { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes tl-risca { to { stroke-dashoffset: 0; } }
+@keyframes tl-surge { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .tl.anima * { animation: none !important; stroke-dashoffset: 0 !important; } }

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Button, ErrorBox, Field, Input, SuccessBox } from '../components/ui'
 import { supabase } from '../lib/supabase'
+import MarcaAnimada from '../components/MarcaAnimada'
 import { REGRA_SENHA, problemaNaSenha, senhaVazada } from '../lib/senha'
 
 function Moldura({ titulo, children }: { titulo: string; children: React.ReactNode }) {
@@ -9,7 +10,7 @@ function Moldura({ titulo, children }: { titulo: string; children: React.ReactNo
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-sm overflow-hidden rounded-lg border bg-card shadow-sm">
         <div className="flex justify-center border-b px-6 py-5">
-          <img src="/trilha-logo.svg" alt="Trilha. Cada passo conta." className="h-16 w-auto" />
+          <MarcaAnimada completa className="h-16 w-auto" />
         </div>
         <div className="p-6">
           <div className="mb-5">

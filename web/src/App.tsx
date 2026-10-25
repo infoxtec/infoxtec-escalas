@@ -28,6 +28,7 @@ import EmpresasPage from './pages/EmpresasPage'
 import Verificacao from './components/Verificacao'
 import { MfaCadastrar, MfaDesativar, MfaVerificar, estadoMfa } from './components/Mfa'
 import type { EstadoMfa } from './components/Mfa'
+import MarcaAnimada from './components/MarcaAnimada'
 
 type Aba = 'inicio' | 'empresas' | 'agenda' | 'ponto' | 'cargas' | 'operacao' | 'gerencial' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios' | 'roadmap' | 'admin'
 
@@ -166,11 +167,8 @@ function Painel({ email }: { email: string }) {
       <header className="sticky top-0 z-40 border-b bg-card/90 backdrop-blur">
         <div className="mx-auto flex h-12 max-w-screen-2xl items-center gap-3 px-4">
           <button onClick={() => setAba('inicio')} title="Tela principal" className="flex shrink-0 items-center gap-2">
-            <img src="/trilha-icone.svg" alt="" className="h-6 w-6" />
-            <div className="hidden leading-tight sm:block">
-              <p className="flex items-center gap-1 text-sm"><span className="font-[Montserrat] font-bold text-[#2563eb]">Trilha</span><CheckVerde /> <span className="font-medium text-muted-foreground">Escala</span></p>
-              <p className="text-[10px] text-muted-foreground">Cada passo conta.</p>
-            </div>
+            <MarcaAnimada className="h-6 w-auto" />
+            <p className="hidden items-center gap-1 text-sm sm:flex"><CheckVerde /> <span className="font-medium text-muted-foreground">Escala</span></p>
             <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground" title={`Build de ${__APP_BUILD__}`}>
               v{__APP_VERSION__} · {__APP_BUILD__}
             </span>

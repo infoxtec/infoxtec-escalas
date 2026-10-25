@@ -6,6 +6,7 @@ import { formatCpf } from '../lib/types'
 import { prepararArquivo } from '../lib/arquivo'
 import EspelhosApp from './EspelhosApp'
 import { baixarComprovante } from './comprovantePdf'
+import MarcaAnimada from '../components/MarcaAnimada'
 import type { PontoComprovante, PontoEu, PontoMarcacao, PontoMeuPedido, PontoTipo } from '../lib/types'
 
 // App do funcionário (Módulo Registro de Ponto, docs/modulo-registro-de-ponto/). Abre em /ponto.
@@ -33,8 +34,7 @@ function gravarToken(t: string | null) { try { t ? localStorage.setItem(CHAVE_TO
 function Marca() {
   return (
     <div className="flex items-center justify-center gap-2 py-5">
-      <img src="/trilha-icone.svg" alt="" className="h-7 w-7" />
-      <span className="font-[Montserrat] text-2xl font-bold text-[#2563eb]">Trilha</span>
+      <MarcaAnimada className="h-8 w-auto" />
       <span className="text-lg font-medium text-muted-foreground">Ponto</span>
     </div>
   )
