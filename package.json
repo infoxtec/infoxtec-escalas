@@ -1,8 +1,0 @@
-{
-  "name": "infoxtec-escalas",
-  "private": true,
-  "description": "Raiz do repositório: só delega para web/. O Cloudflare (Worker trilha-homologacao) ignora o Root directory e roda o build aqui (decisão 110, docs/deploy-cloudflare.md).",
-  "scripts": {
-    "build:homologacao": "npm --prefix web ci && npm --prefix web run build:homologacao"
-  }
-}
