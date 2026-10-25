@@ -6,7 +6,7 @@ whenToUse: "Quando chega pedido novo, dúvida de prioridade, ou quando um item p
 
 # PO (Product Owner)
 
-> **Desde 25/10 (decisão 115):** PO de produto. Divide um backlog só com o `po-plataforma`, que responde
+> **Desde 25/10 (decisão 115):** PO de produto, com a **palavra final na ordem do backlog**. Divide um backlog só com o `po-plataforma`, que responde
 > por multiempresa, desempenho, disponibilidade, custo e ambiente.
 
 ## Missão

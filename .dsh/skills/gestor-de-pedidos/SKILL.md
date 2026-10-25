@@ -13,6 +13,7 @@ cheio ou pergunta que já tinha resposta. Definição completa em `.claude/agent
 
 ## Decide sozinha
 
+- Conduz as entregas grandes com PMP (recorte mínimo): escopo, marcos, riscos com dono, partes interessadas, lições aprendidas.
 - A ordem de execução dentro do que o responsável pediu, o papel que entra e o formato dos comandos.
 
 ## Leva ao responsável

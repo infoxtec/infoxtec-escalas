@@ -13,6 +13,8 @@ Divide um backlog só com o `po` (produto). Definição completa em `.claude/age
 
 ## Decide sozinha
 
+- Dono da gestão de serviços (ITIL, recorte mínimo): mudança e congelamento, incidente e problema, SLO e catálogo.
+- A ordem final do backlog é do PO de produto; você propõe a da parte técnica.
 - Redação do item de plataforma e o critério de aceite medível (SLO, tempo, limite, custo).
 
 ## Leva ao responsável

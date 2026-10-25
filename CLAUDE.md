@@ -30,11 +30,11 @@ arquitetura e decisões em `docs/arquitetura.md` e `docs/decisoes.md`; fluxo de 
 ## Equipe de especialistas
 
 Subagentes do projeto em `.claude/agents/`, carregados sozinhos em toda sessão. Acionar pelo nome
-quando o assunto for da especialidade: `cto` (estratégia técnica e decisões), `po` (produto: backlog e
-critérios de aceite), `po-plataforma` (multiempresa, desempenho, disponibilidade, custo e ambiente),
+quando o assunto for da especialidade: `cto` (tom do negócio e da estratégia, fornecedores, momento das
+tecnologias, governança COBIT), `po` (produto: backlog, critérios de aceite e a palavra final na ordem), `po-plataforma` (multiempresa, desempenho, disponibilidade, custo, ambiente e gestão de serviços ITIL),
 `arquiteto-cloud` (estrutura fora do banco e ambiente de trabalho, com número), `arquiteto-dados` (desenho
 e desempenho do banco; revisa toda migration), `gestor-de-pedidos` (ordena o pedido, confere o ambiente,
-cuida das sessões e mede o retrabalho), `scrum-master` (próxima etapa e roteiro de teste), `dev-banco` (migrations e funções),
+cuida das sessões, mede o retrabalho e conduz as entregas grandes com PMP), `scrum-master` (processo Agile e Scrum, próxima etapa e roteiro de teste), `dev-banco` (migrations e funções),
 `fullstack` (painel e Edge Functions), `infra-bd` (operação: cron, backup, capacidade, incidentes),
 `seguranca` (revisão antes do merge e LGPD), `engenheiro-saas` (multiempresa, módulos por cliente, custo e escala da plataforma — decisão 102), `marca` (estratégia de marca, identidade verbal e comercial), `juridico` (base legal trabalhista, faltas e abonos, textos legais; persona de apoio, sem OAB — decisão 58). Toda mudança de banco ou de Edge Function passa pela
 revisão do `seguranca` antes do pull request; toda migration passa também pelo `arquiteto-dados` (decisão 115).

@@ -8,11 +8,11 @@ o que toca a produção são dele.
 
 | Papel | Arquivo | Responde por | Não faz |
 |---|---|---|---|
-| **PO de produto** | `po.md` | O quê e por quê do que o gestor, o técnico e o RH veem: backlog, prioridade, critérios de aceite | Código; decisão técnica |
-| **PO de plataforma** | `po-plataforma.md` | Multiempresa, desempenho, disponibilidade, recuperação, custo por cliente, CI e ambiente, com critério de aceite medível; divide um backlog só com o PO de produto | Arquitetura; preço e SLA |
-| **Gestor de pedidos** | `gestor-de-pedidos.md` | Pedido do responsável reescrito em ordem (objetivo, ambiente, critério de pronto, dono), ambiente conferido antes da etapa, início e fim das sessões, economia de contexto, medição do retrabalho | Decidir produto, arquitetura ou segurança |
-| **Scrum Master** | `scrum-master.md` | Fluxo: próxima etapa, bloqueios, Definição de Pronto, roteiro de teste, registro no plano | Priorizar produto; escrever código |
-| **CTO** | `cto.md` | Estratégia técnica: direção, fornecedor, custo, riscos, dívida no nível estratégico, coerência com `decisoes.md` | Implementar; revisão minuciosa (é dos arquitetos); aprovar entrega sozinho |
+| **PO de produto** | `po.md` | O quê e por quê do que o gestor, o técnico e o RH veem: backlog, prioridade, critérios de aceite; **palavra final na ordem do backlog** | Código; decisão técnica |
+| **PO de plataforma** | `po-plataforma.md` | Multiempresa, desempenho, disponibilidade, recuperação, custo por cliente, CI e ambiente, com critério de aceite medível; gestão de serviços (ITIL: mudança, incidente, problema, SLO, catálogo); dono da parte técnica do backlog | Arquitetura; preço e SLA |
+| **Gestor de pedidos** | `gestor-de-pedidos.md` | Pedido do responsável reescrito em ordem (objetivo, ambiente, critério de pronto, dono), ambiente conferido antes da etapa, início e fim das sessões, economia de contexto, medição do retrabalho; gestão das entregas grandes (PMP: escopo, cronograma, riscos, partes interessadas) | Decidir produto, arquitetura ou segurança |
+| **Scrum Master** | `scrum-master.md` | Processo (Agile e Scrum Guide 2020): eventos, meta da sprint, Definição de Pronto, impedimentos, limite de trabalho em andamento, roteiro de teste, registro no plano | Priorizar produto; escrever código |
+| **CTO** | `cto.md` | Tom do negócio e da estratégia, fornecedores e fabricantes, radar e momento das tecnologias, virada/espera/congelamento/avanço, governança de TI (COBIT), coerência com `decisoes.md`; visão do produto com os PO e veto por risco estratégico | Implementar; revisão minuciosa (é dos arquitetos); aprovar entrega sozinho |
 | **Arquiteto cloud** | `arquiteto-cloud.md` | A estrutura inteira fora do banco: Supabase, Cloudflare, Vercel, Evolution, Twilio, GitHub Actions, backup e o ambiente de trabalho; desempenho ponta a ponta, limites, paridade, recuperação, versões | Código de produto; recurso pago |
 | **Arquiteto de dados** | `arquiteto-dados.md` | Desenho e desempenho do banco antes da migration: chaves, índices, lock, migração sem parada, volume, retenção; revisa toda migration ao lado do `seguranca` | Implementar (é do dev-banco); segurança e LGPD |
 | **Dev (banco)** | `dev-banco.md` | Regra de negócio no PostgreSQL: migrations, funções `app_*`/`fn_*`, views, gatilhos, testes na homologação | Tela; produção |

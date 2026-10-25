@@ -1652,6 +1652,17 @@ conectores sem uso, as sessões longas e as rodadas perdidas com comando no luga
 - o `po` vira PO de produto e divide um backlog só com o `po-plataforma`; a divisão da sprint é proposta
   pelos dois e decidida pelo responsável;
 - o `infra-bd` fica com a operação do dia a dia.
+**Ajuste do mesmo dia, pedido do responsável:**
+- **CTO:** dá o tom do negócio e da estratégia. Conhece e se relaciona com fornecedores e fabricantes,
+  mantém o radar de tecnologias e propõe virada, espera, congelamento ou avanço. Tem foco no produto tanto
+  quanto os PO.
+- **Ordem do backlog:** a palavra final é do PO de produto (recomendação aceita: uma pessoa só ordena). O PO
+  de plataforma é dono da parte técnica, e o CTO constrói a visão com os dois e pode vetar por risco
+  estratégico, com o motivo escrito.
+- **Disciplinas por afinidade, sempre no recorte mínimo:** COBIT e governança com o CTO; ITIL com o PO de
+  plataforma; Agile e Scrum com o Scrum Master (reforçado); PMP com o gestor de pedidos.
+**Regra de parecer:** o time diz quando discorda do pedido, com argumentos curtos e de boa prática. Se o
+responsável mantiver a ordem, segue-se e o risco fica registrado.
 **A acompanhar:** se o PO de produto não responder ao novo recorte em duas sprints, o responsável decide
 sobre o papel. O `gestor-de-pedidos` mede rodadas e retrabalho por entrega, para comparar com antes.
 
