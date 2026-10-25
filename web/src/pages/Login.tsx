@@ -10,7 +10,7 @@ function Moldura({ titulo, children }: { titulo: string; children: React.ReactNo
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-sm overflow-hidden rounded-lg border bg-card shadow-sm">
         <div className="flex justify-center border-b px-6 py-5">
-          <MarcaAnimada completa className="h-16 w-auto" />
+          <MarcaAnimada completa repetir={6000} className="h-16 w-auto" />
         </div>
         <div className="p-6">
           <div className="mb-5">
