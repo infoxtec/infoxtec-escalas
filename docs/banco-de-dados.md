@@ -254,6 +254,16 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 119 (28/10): programação por conta, multiempresa F2c
+
+Gatilho `tg_00_conta` (`fn_herdar_conta`, argumentos: tabela de origem e coluna) em `escalas` (do técnico, também na
+troca de técnico), `escala_eventos`, `notificacoes`, `ligacoes`, `respostas`, `ocorrencias`, `programacao_aceites` (da
+escala), `cargas_horarias`, `carga_atribuicoes` (da empresa) e `carga_aceites` (da carga): a linha nova recebe a conta
+da origem. `fn_pendencias_escala(data, conta)` e `fn_painel_locais(data, conta)`: com a conta, só ela; sem, todas (motor,
+até a F2f). As 27 funções de cargas, programação, envio, ligação, linha do tempo, pendências, painel e indicadores leem
+e alteram só na conta da sessão, conferem técnico, local, tipo, empresa, carga e escala na conta e mascaram pelo papel na
+conta. Regressão: T57 exige que só documentos e ponto ainda vazem; T59 prova a programação da conta B.
+
 ### Migration 118 (27/10): cadastros por conta, multiempresa F2b
 
 Técnicos, empresas, locais, times, habilidades, tipos de atividade e de documento, usuários do painel, MFA e permissões do
