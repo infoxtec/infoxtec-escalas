@@ -1571,7 +1571,10 @@ risco aceito é o da decisão 54. **Revisão:** junto com a instância da Twilio
 na Vercel**. Revisa a fase 2 da etapa 17: a produção não migra agora, e o domínio próprio fica para depois. **Como:**
 build `build:homologacao` com trava do banco, `_headers`, CORS da `documento-ocr` só com o subdomínio da nossa conta,
 `app_url` da homologação no endereço novo e login do Supabase da homologação com as URLs do Worker. O projeto
-`infoxtec-escalas-homologacao` da Vercel é desligado depois de uma semana sem problema.
+`infoxtec-escalas-homologacao` da Vercel é desligado depois de uma semana sem problema. **25/10:** pausado (não apagado,
+reserva para emergência) e fora das Redirect URLs do login da homologação; o CORS da `documento-ocr` aceita também as
+pré-visualizações por branch do Cloudflare. Se o projeto da Vercel for apagado, o endereço dele sai do CORS no mesmo dia
+(o nome fica livre para outra conta).
 
 ## 111. Pedido de código avisa CPF não encontrado, com freio por IP
 
