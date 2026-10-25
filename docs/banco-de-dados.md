@@ -254,6 +254,16 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 118 (27/10): cadastros por conta, multiempresa F2b
+
+Técnicos, empresas, locais, times, habilidades, tipos de atividade e de documento, usuários do painel, MFA e permissões do
+RH leem e gravam só na conta da sessão: leitura filtrada por `conta_id`, registro novo com `conta_id` explícito, alteração
+só de registro da conta, todo id recebido conferido na conta ("não encontrado" para id de outra). `fn_papel_na_conta()`
+decide a máscara do CPF e a exigência do intervalo. `fn_aptidao` só olha técnicos da conta do tipo; `fn_excluir_tecnico`
+conta o único supervisor na conta. Nome de habilidade, tipo de atividade e tipo de documento passa a ser único **por
+conta** (índices `*_conta_nome_uq`). `app_salvar_usuario` só grava na conta 1 até a F3. Regressão: T57 exige a família
+de cadastros sem vazamento; T58 prova a conta B isolada.
+
 ### Migration 117 (27/10): conta da sessão, multiempresa F2a (`docs/multiempresa-f2.md`)
 
 `interno.fn_conta_atual()` devolve a conta do usuário do painel: membro ativo de conta ativa em `conta_membros`; quem está

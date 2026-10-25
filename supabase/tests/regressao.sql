@@ -1503,6 +1503,9 @@ do $$
 declare v_user uuid := gen_random_uuid(); v_fator uuid := gen_random_uuid(); v_n int; r jsonb;
 begin
   insert into auth.users (id, email) values (v_user, 'qa-mfa@teste.local');
+  -- a tela lista só usuários da conta (F2b, migration 118): os dois entram no painel (o espelho põe na conta 1)
+  insert into painel_usuarios (email, nome, papel) values ('qa-mfa@teste.local', 'QA MFA', 'leitura'),
+                                                         ('qa-mfa2@teste.local', 'QA MFA 2', 'leitura');
   insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at)
   values (v_fator, v_user, 'QA', 'totp', 'unverified', now(), now());
   select count(*) into v_n from painel_mfa_log where email = 'qa-mfa@teste.local';
@@ -3320,11 +3323,67 @@ begin
   raise notice '[T57] vazamento por escrita (%): %', cardinality(v_escreve), array_to_string(v_escreve, ', ');
   raise notice '[T57] vazamento por leitura (%): %', cardinality(v_le), array_to_string(v_le, ', ');
   raise notice '[T57] recusaram: %, sem dado da conta A: % (relatório; vira exigência ao fim da F2)', v_recusa, v_limpa;
+  -- famílias já reescritas viram exigência (docs/multiempresa-f2.md): F2b cadastros
+  perform pg_temp.ok(not ((v_escreve || v_le) && array['app_aptidao', 'app_definir_habilidades', 'app_definir_rh_folhas',
+      'app_definir_ve_saude', 'app_empresas', 'app_excluir_habilidade', 'app_excluir_tecnico', 'app_excluir_tipo_documento',
+      'app_habilidades', 'app_locais', 'app_remover_tecnico_habilidade', 'app_rh_folhas_historico', 'app_salvar_empresa',
+      'app_salvar_habilidade', 'app_salvar_local', 'app_salvar_tecnico', 'app_salvar_time', 'app_salvar_tipo_atividade',
+      'app_salvar_tipo_documento', 'app_salvar_usuario', 'app_tecnico_cpf', 'app_tecnico_habilidades', 'app_tecnicos',
+      'app_time_definir_membros', 'app_times', 'app_tipos_atividade', 'app_tipos_documento', 'app_usuarios',
+      'app_usuarios_mfa', 'app_ve_saude_historico']),
+    '[T57] família de cadastros vazando: ' || array_to_string(v_escreve || v_le, ', '));
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
   perform set_config('request.headers', '{}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T57' as resultado,
+-- T58 multiempresa F2b: a conta B cadastra e vê só o que é dela; a conta 1 não vê a B (migration 118) ---------------
+do $$
+declare
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_emp_a uuid := (select v::uuid from qa where k = 'emp');
+  v_emp uuid; v_tec uuid; v_hab uuid; v_ok boolean; v_msg text; v_nome_hab text;
+begin
+  perform set_config('request.headers', '{}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  v_emp := app_salvar_empresa(jsonb_build_object('cnpj', '58058058000176', 'razao_social', 'QA Empresa B'));
+  perform pg_temp.ok((select conta_id from empresas where id = v_emp) = v_b, '[T58] empresa nasce na conta B');
+  v_tec := app_salvar_tecnico(jsonb_build_object('nome', 'QA Técnico B', 'funcao', 'Técnico', 'telefone_e164', '5571900005801',
+                                                 'empresa_id', v_emp));
+  perform pg_temp.ok((select conta_id from tecnicos where id = v_tec) = v_b, '[T58] técnico nasce na conta B');
+  -- equipe preenchida cria o time na conta da empresa (gatilho fn_tecnico_time)
+  perform app_salvar_tecnico(jsonb_build_object('id', v_tec, 'nome', 'QA Técnico B', 'funcao', 'Técnico',
+                                                'telefone_e164', '5571900005801', 'empresa_id', v_emp, 'equipe', 'QA Time B'));
+  perform pg_temp.ok((select x.conta_id from times x join tecnicos t on t.time_id = x.id where t.id = v_tec) = v_b
+                     and exists (select 1 from app_times() where nome = 'QA Time B'), '[T58] time da equipe nasce na conta B');
+  -- habilidade com o mesmo nome de uma da conta 1: unicidade por conta
+  insert into habilidades (nome) values ('QA Habilidade T58');
+  v_hab := app_salvar_habilidade(jsonb_build_object('nome', 'QA Habilidade T58'));
+  perform pg_temp.ok((select conta_id from habilidades where id = v_hab) = v_b, '[T58] mesmo nome em outra conta');
+  perform pg_temp.ok((select count(*) from app_tecnicos()) = 1 and (select count(*) from app_empresas()) = 1,
+                     '[T58] conta B vê só os próprios cadastros');
+  -- técnico da conta B numa empresa da conta 1: recusado
+  v_ok := false;
+  begin perform app_salvar_tecnico(jsonb_build_object('nome', 'QA X', 'funcao', 'Técnico', 'telefone_e164', '5571900005802',
+                                                      'empresa_id', v_emp_a));
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm = 'Empresa não encontrada.'; end;
+  perform pg_temp.ok(v_ok, '[T58] empresa de outra conta: ' || coalesce(v_msg, 'aceita'));
+  -- usuários por conta só na F3
+  v_ok := false;
+  begin perform app_salvar_usuario('qa-novo@teste.local', 'QA', 'leitura', true);
+  exception when others then v_ok := sqlerrm like 'Usuários por conta%'; end;
+  perform pg_temp.ok(v_ok, '[T58] usuário fora da conta 1 espera a F3');
+  -- a conta 1 não vê a B
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform pg_temp.ok(not exists (select 1 from app_tecnicos() where id = v_tec)
+                     and not exists (select 1 from app_empresas() where id = v_emp), '[T58] conta 1 não vê a conta B');
+  v_ok := false;
+  begin perform app_salvar_habilidade(jsonb_build_object('id', v_hab, 'nome', 'QA invadida'));
+  exception when others then v_ok := sqlerrm = 'Habilidade não encontrada.'; end;
+  perform pg_temp.ok(v_ok, '[T58] conta 1 não altera habilidade da B');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T58' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

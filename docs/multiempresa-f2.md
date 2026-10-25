@@ -9,7 +9,7 @@ por família, regressão inteira verde em todos; nenhuma assinatura de função 
 | Etapa | Família | O que muda | Situação |
 |---|---|---|---|
 | F2a | Base | `fn_conta_atual` (sessão do painel; cabeçalho `x-conta` para quem está em mais de uma conta); `app_exigir` exige a conta e confere o papel nela; `app_meu_acesso` lista as contas; T57 | Migration 117 |
-| F2b | Cadastros | técnicos, empresas, locais, times, habilidades, tipos, usuários e permissões do RH: leitura e escrita só da conta; registro novo nasce com a conta da sessão | A fazer |
+| F2b | Cadastros | técnicos, empresas, locais, times, habilidades, tipos, usuários e permissões do RH: leitura e escrita só da conta; registro novo nasce com a conta da sessão; nome de habilidade e tipos único por conta | Migration 118 |
 | F2c | Programação | escalas, cargas, envio, ligações, pendências, linha do tempo, painel gerencial e indicadores | A fazer |
 | F2d | Documentos | documentos, dossiê, OCR (Edge Function com o papel da conta) | A fazer |
 | F2e | Ponto | `app_ponto_*`, AFD sem empresa livre, `ponto_*` pela conta do funcionário, login do ponto com o identificador da conta, Storage com prefixo | A fazer |
@@ -28,7 +28,11 @@ então o resultado varia um pouco a cada rodada. **Escrita (3 a 4 por rodada):**
 `app_aptidao`, `app_carga_excedida`, `app_documentos_por_tecnico`, `app_dossie_local`, `app_empresas`,
 `app_escala_edicao`, `app_escalas`, `app_linha_do_tempo`, `app_locais`, `app_painel_locais`, `app_pendencias`,
 `app_tecnico_habilidades`, `app_tecnicos` e, conforme o teto de códigos por hora, `app_ponto_gerar_codigo`. Cerca de 64
-recusam e 26 não devolvem dado da A. **Recusa não prova isolamento:** parte recusa pelo argumento genérico; cada família melhora os
+recusam e 26 não devolvem dado da A. **Depois da F2b (27/10):** a família de cadastros saiu da lista e virou **exigência no CI** (o T57 falha se uma função dela
+vazar). Restam 1 por escrita (`app_remover_escala`) e 8 por leitura (`app_carga_excedida`, `app_documentos_por_tecnico`,
+`app_dossie_local`, `app_escala_edicao`, `app_escalas`, `app_linha_do_tempo`, `app_painel_locais`, `app_pendencias`),
+todas de programação e documentos. O T58 prova o caminho positivo: a conta B cadastra e vê só o que é dela, a conta 1 não
+vê nem altera a B. **Recusa não prova isolamento:** parte recusa pelo argumento genérico; cada família melhora os
 argumentos das suas funções até a recusa ser pela conta.
 
 ## Pontos em aberto
@@ -38,6 +42,18 @@ argumentos das suas funções até a recusa ser pela conta.
   removida, na F2f. Até lá, nenhuma conta além da 1 ganha membro.
 - **Papel por conta (P1, na mesma trava):** seis funções e a política do Storage decidem máscara e aprovação de hora
   extra por `fn_papel` (global); cada família troca por `fn_papel_na_conta` na sua etapa.
+- **Usuários do painel:** até a F3 só a conta 1 grava (`app_salvar_usuario` recusa nas outras); a lista, o MFA e as
+  permissões do RH já mostram só membros da conta. A tela de MFA deixou de listar contas de login que não são usuárias do
+  painel.
+- **Permissões do RH globais (P2, condição da F3):** `ve_saude` e `rh_folhas` ficam em `painel_usuarios`; quando alguém
+  for membro de duas contas, a permissão de uma vale na outra. Passam para `conta_membros` na F3, antes de qualquer
+  usuário em duas contas.
+- **Busca por nome de catálogo (P2, exigência da F2d e da F2f):** com nome único por conta, "ASO" ou "NR-10" pode existir em
+  duas contas; toda busca por nome ou `palavras_chave` (OCR, motor) precisa filtrar a conta.
+- **Gatilhos que inserem em tabela de cliente (F2f):** o `default` da conta 1 em `conta_id` só sai na F2f; até lá, cada
+  gatilho que cria linha precisa gravar a conta (o de time da equipe foi corrigido na 118).
+- **Unicidade que avisa existência (P3, até a F6):** CPF, telefone e CNPJ continuam únicos no sistema inteiro; a mensagem
+  "Já existe…" numa conta revela que o dado existe em outra.
 - **`app_meu_acesso` (P2):** o campo `papel` ainda vem de `painel_usuarios`; o papel por conta está em `contas`. O
   painel passa a usar o da conta na F3.
 
