@@ -1,0 +1,12 @@
+// Igual a web/wrangler.jsonc, para quando o Cloudflare roda o build na raiz do repositório (ignora o Root directory).
+// Os dois precisam ter o mesmo nome e as mesmas regras; o painel vem de web/dist.
+{
+  "name": "trilha-homologacao",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./web/dist",
+    "not_found_handling": "single-page-application"
+  },
+  // pré-visualização dos PRs (Worker Previews, npx wrangler preview): o bloco é obrigatório; vazio = mesmas regras
+  "previews": {}
+}
