@@ -107,8 +107,9 @@ Deno.serve(async (req: Request) => {
   try {
     [acesso] = await sql<{ papel: string | null; mfa: boolean }[]>`
       select fn_papel_na_conta_de(${email}, ${conta}) as papel, coalesce(fn_config('mfa_obrigatorio'), 'false') = 'true' as mfa`;
-  } catch {
-    // conta inválida, de que não é membro ou não escolhida: recusa sem detalhe
+  } catch (err) {
+    // conta inválida, de que não é membro ou não escolhida: recusa sem detalhe (o log só diz o tipo do erro)
+    console.error("documento-ocr: papel", err instanceof Error ? err.name : "erro");
     return json({ ok: false, erro: "sem permissao" }, 403);
   }
   if (!acesso?.papel || !["admin", "gestor"].includes(acesso.papel)) {
