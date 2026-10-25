@@ -1666,3 +1666,16 @@ responsável mantiver a ordem, segue-se e o risco fica registrado.
 **A acompanhar:** se o PO de produto não responder ao novo recorte em duas sprints, o responsável decide
 sobre o papel. O `gestor-de-pedidos` mede rodadas e retrabalho por entrega, para comparar com antes.
 
+## 116. Produção sai da Vercel; pacote de desastre fora das plataformas; backup do Storage e da Evolution
+
+**Data:** 25/10/2026. **Decisões do responsável** sobre a revisão de 25/10 (`docs/revisao-infra-dados-2026-10-25.md`).
+- **A. Produção no Cloudflare a partir de 06/11**, depois do fechamento de outubro. Motivo: a Vercel Hobby proíbe
+  uso comercial (decisões 29 e 110). A homologação já roda lá desde 24/10. A Vercel fica pausada como reserva até a
+  primeira semana estável, como foi feito na homologação.
+- **B. Pacote de desastre** no Google Drive e no OneDrive (mais de 4 TB livres), restaurável sem Supabase e sem
+  Cloudflare: `docs/recuperacao-desastre.md`. Plano principal é o Supabase de código aberto num servidor próprio;
+  contingência legal é o PostgreSQL em modo de consulta. Ensaio a cada três meses.
+- **C. Backup do Storage e do banco da Evolution** entram no pacote diário (Storage completo no mensal).
+**Antes da produção:** registrar a transferência internacional do pacote cifrado no aviso de privacidade, para a
+revisão do Gabriel. É o mesmo tratamento da decisão 70.
+
