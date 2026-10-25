@@ -1,7 +1,8 @@
 # Publicar o painel no Vercel
 
 > **Endereço de produção:** https://infoxtec-escalas.vercel.app
-> **Endereço da homologação:** https://infoxtec-escalas-homologacao.vercel.app (seção 6; decisão 92)
+> **Homologação:** desde 24/10 no Cloudflare, https://trilha-homologacao.david-cerqueira.workers.dev (decisão 110, `docs/deploy-cloudflare.md`); o projeto
+> `infoxtec-escalas-homologacao` da Vercel fica só até ser desligado.
 > Mudou o domínio (Cloudflare Pages, domínio próprio)? Atualizar `ORIGEM_PAINEL` em
 > `supabase/functions/documento-ocr/index.ts`, ou a leitura de documento passa a ser barrada pelo navegador.
 > O projeto no Vercel usa **Root Directory `web`**. O carimbo de versão no topo do painel

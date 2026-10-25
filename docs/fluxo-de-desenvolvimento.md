@@ -55,7 +55,7 @@ flowchart TD
 | | Local | Homologação | Produção |
 |---|---|---|---|
 | Banco | Supabase dev | Supabase dev | Supabase `zpckrxydqqmmcrphrkxz` |
-| Painel | `npm run dev` na máquina Linux | https://infoxtec-escalas-homologacao.vercel.app (decisão 92) | https://infoxtec-escalas.vercel.app |
+| Painel | `npm run dev` na máquina Linux | https://trilha-homologacao.david-cerqueira.workers.dev (Cloudflare, decisão 110) | https://infoxtec-escalas.vercel.app |
 | WhatsApp e ligações reais | Não | WhatsApp só com os números de teste, instância própria; sem ligação (decisão 94) | Sim |
 | Quem aplica migration | Você ou o Claude Code, com `db push` | Idem | Só depois do merge, por disparo manual |
 | Dados | Fictícios (`supabase/seed.sql`) | Fictícios | Reais (LGPD) |
