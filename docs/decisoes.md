@@ -1617,3 +1617,21 @@ Unicidades antigas continuam até a F6. Nenhuma tela, assinatura ou texto ao fun
 05/11). Antecipado: 115 e 116 vão juntas à produção **depois do teste na homologação e até 29/10**, com backup do dia
 conferido antes; de 30/10 a 05/11 a produção fica congelada (só correção de incidente). **Aplicado na produção em 25/10**, conferido pelo
 responsável.
+
+## 114. Multiempresa: a trava e o default "conta 1" saem juntos, com a F3
+
+**Data:** 30/10/2026. **Mudança de escopo da F2f (revisão do `seguranca` da migration 122), sobre as decisões 108 e 113.**
+A F2f virou duas partes. A **F2f-1** (migration 122) põe o motor por conta: avisos a supervisores, programação de
+amanhã, documentos a vencer e o registro de alertas separados por conta, o teto do app do ponto só para a operadora e o
+OCR com o papel na conta. A **F2f-2** tira o default "conta 1" em `conta_id` e a trava da 117 **na mesma migration**,
+junto da F3 (usuários por conta no painel): sem a F3, nenhuma conta de cliente tem quem a opere.
+**Por que juntos:** com a trava, o default não grava dado de cliente na conta errada. Se a trava sair antes do default,
+toda inserção esquecida numa sessão da conta B cai calada na conta 1, vazando para a operadora e sumindo para o cliente.
+**Antes da F2f-2:**
+- o T57 em exigência (feito na F2e);
+- `ve_saude` e `rh_folhas` em `conta_membros`;
+- o painel mandando `x-conta`;
+- as inserções que hoje dependem do default passando a informar a conta: o teto em `alertas_enviados` e `ponto_acessos`
+  com CPF desconhecido;
+- testes com duas contas da programação de amanhã, dos documentos a vencer e do motor de envio.
+

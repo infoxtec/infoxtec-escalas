@@ -3523,6 +3523,7 @@ declare
   v_emp_b uuid := (select empresa_id from tecnicos where conta_id = (select v::uuid from qa where k = 'conta_b') and nome = 'QA Técnico B');
   v_tec uuid; v_n int; v_ok boolean;
 begin
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
   insert into tecnicos (nome, telefone_e164, ativo, opt_in, perfil_teste, is_supervisor, empresa_id, conta_id) values
     ('QA Sup Conta B', '5571900006201', true, true, true, true, v_emp_b, v_b),
     ('QA Sup Conta B sem empresa', '5571900006202', true, true, true, true, null, v_b);
@@ -3542,13 +3543,24 @@ begin
   perform pg_temp.ok((select conta_id from alertas_enviados where tipo = 'ponto_almoco_' || v_tec) = v_b, '[T62] alerta herda a conta do funcionário');
   insert into alertas_enviados (conta_id, tipo, data_ref, enviado) values (v_b, 'qa_t62', current_date, true), (v_a, 'qa_t62', current_date, true);
   perform pg_temp.ok((select count(*) from alertas_enviados where tipo = 'qa_t62') = 2, '[T62] aviso do dia por conta');
-  -- alerta da plataforma (teto do app do ponto) só à operadora
+  -- empresa no tipo: a conta vem da empresa
+  insert into alertas_enviados (tipo, data_ref, enviado) values ('ponto_parados_' || v_emp_b, current_date, true);
+  perform pg_temp.ok((select conta_id from alertas_enviados where tipo = 'ponto_parados_' || v_emp_b) = v_b, '[T62] alerta herda a conta da empresa');
+  -- alerta da plataforma (teto do app do ponto) só à operadora: supervisor real (sem perfil de teste) da conta B não recebe
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, perfil_teste, is_supervisor, empresa_id, conta_id)
+  values ('QA Sup Conta B real', '5571900006204', true, true, false, true, v_emp_b, v_b);
   delete from qa where k like 'evo:%';
   perform fn_ponto_alerta_teto('qa62');
-  perform pg_temp.ok(not exists (select 1 from qa where k in ('evo:5571900006201', 'evo:5571900006202')), '[T62] teto do ponto não vai a cliente');
+  perform pg_temp.ok(not exists (select 1 from qa where k = 'evo:5571900006204'), '[T62] teto do ponto não vai a cliente');
   -- papel na conta para Edge Functions
-  perform pg_temp.ok(fn_papel_na_conta_de('qa-b@teste.local') = 'admin' and fn_papel_na_conta_de('ninguem@teste.local') is null,
+  perform pg_temp.ok(fn_papel_na_conta_de('qa-b@teste.local') = 'admin' and fn_papel_na_conta_de('ninguem@teste.local') is null
+                     and fn_papel_na_conta_de('qa-b@teste.local', v_b::text) = 'admin',
                      '[T62] papel na conta pelo e-mail do token');
+  v_ok := false;
+  begin perform fn_papel_na_conta_de('qa-b@teste.local', v_a::text); exception when others then v_ok := sqlerrm = 'Sem acesso a esta conta.'; end;
+  perform pg_temp.ok(v_ok, '[T62] papel em conta de que não é membro');
+  -- não mexe na sessão: quem chama continua com a própria identidade
+  perform pg_temp.ok(auth.jwt() ->> 'email' = 'qa-admin@teste.local', '[T62] papel por e-mail não troca a sessão: ' || coalesce(auth.jwt() ->> 'email', 'nula'));
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
   perform set_config('request.headers', '{}', true);
 end $$;

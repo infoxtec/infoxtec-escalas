@@ -103,8 +103,14 @@ Deno.serve(async (req: Request) => {
 
   // papel na conta da sessão (multiempresa F2f): quem está em mais de uma conta escolhe pelo cabeçalho x-conta
   const conta = req.headers.get("x-conta");
-  const [acesso] = await sql<{ papel: string | null; mfa: boolean }[]>`
-    select fn_papel_na_conta_de(${email}, ${conta}) as papel, coalesce(fn_config('mfa_obrigatorio'), 'false') = 'true' as mfa`;
+  let acesso: { papel: string | null; mfa: boolean } | undefined;
+  try {
+    [acesso] = await sql<{ papel: string | null; mfa: boolean }[]>`
+      select fn_papel_na_conta_de(${email}, ${conta}) as papel, coalesce(fn_config('mfa_obrigatorio'), 'false') = 'true' as mfa`;
+  } catch {
+    // conta inválida, de que não é membro ou não escolhida: recusa sem detalhe
+    return json({ ok: false, erro: "sem permissao" }, 403);
+  }
   if (!acesso?.papel || !["admin", "gestor"].includes(acesso.papel)) {
     return json({ ok: false, erro: "sem permissao" }, 403);
   }

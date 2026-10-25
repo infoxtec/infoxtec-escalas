@@ -9,6 +9,9 @@
 -- a chave passa a incluir a conta: o mesmo aviso do dia existe uma vez em cada conta
 alter table interno.alertas_enviados drop constraint alertas_enviados_pkey;
 alter table interno.alertas_enviados add primary key (conta_id, tipo, data_ref);
+-- a chave já começa pela conta; a busca sem conta (aviso do intervalo pendente) usa este
+drop index interno.alertas_enviados_conta_id_idx;
+create index alertas_enviados_tipo_data_idx on interno.alertas_enviados (tipo, data_ref);
 
 -- alerta por funcionário ou por empresa (o identificador vai no tipo ou no detalhe): a conta vem dele
 create or replace function interno.fn_alerta_conta()
@@ -27,7 +30,11 @@ begin
     if v_conta is null then
       select conta_id into v_conta from interno.empresas where id = v_id;
     end if;
-    if v_conta is not null then new.conta_id := v_conta; end if;
+    if v_conta is not null then
+      new.conta_id := v_conta;
+    else
+      raise warning 'alertas_enviados: % não é funcionário nem empresa; fica na conta informada', v_id;
+    end if;
   end if;
   return new;
 end $$;
@@ -82,6 +89,8 @@ begin
   if v_agora::time < v_hora or v_agora::time > v_hora + interval '2 hours' then return; end if;
 
   for c in select x.id from contas x where x.ativa order by x.criada_em loop
+   -- erro numa conta não derruba o aviso das outras
+   begin
     continue when exists (select 1 from alertas_enviados where conta_id = c.id and tipo = 'certificacoes' and data_ref = v_hoje);
     v_multi := (select count(*) from empresas where ativo and conta_id = c.id) > 1;
 
@@ -105,6 +114,9 @@ begin
       perform fn_avisar_supervisores('📋 *DOCUMENTOS A VENCER*' || E'\n\n' || g.linhas || E'\n\n'
         || 'Técnico com documento vencido não deve ser escalado para atividades que o exigem.', null, g.emp, c.id);
     end loop;
+   exception when others then
+    raise warning 'fn_alerta_certificacoes: conta % falhou (%)', c.id, sqlerrm;
+   end;
   end loop;
 end $function$;
 
@@ -142,6 +154,8 @@ begin
     continue when v_agora::time < v_hora;
 
     for c in select x.id from contas x where x.ativa order by x.criada_em loop
+     -- erro numa conta não derruba o aviso das outras
+     begin
       continue when exists (select 1 from alertas_enviados where conta_id = c.id and tipo = v_tipo and data_ref = v_amanha);
 
       -- passou da janela (ou o aviso ficou para depois do prazo): registra sem enviar
@@ -194,6 +208,9 @@ begin
 
         perform fn_avisar_supervisores(v_texto, null, g.emp, c.id);
       end loop;
+     exception when others then
+      raise warning 'fn_alerta_prazo_escala: conta % falhou (%)', c.id, sqlerrm;
+     end;
     end loop;
   end loop;
 end $function$;
@@ -230,17 +247,217 @@ begin
   end loop;
 end $function$;
 
--- papel na conta para quem chama de fora do PostgREST (Edge Functions): a sessão vem do token já conferido ---------------
-create or replace function interno.fn_papel_na_conta_de(p_email text, p_conta_cabecalho text default null)
- returns text
+-- conta e papel sem depender da sessão: a regra de fn_conta_atual numa função pura, que a sessão do painel e as
+-- Edge Functions (que não passam pelo PostgREST) usam igual. Não grava nada na sessão (revisão do seguranca).
+create or replace function interno.fn_conta_de(p_email text, p_pedida text)
+ returns uuid
  language plpgsql
+ stable
  set search_path to 'interno', 'public', 'extensions', 'pg_temp'
 as $function$
+declare
+  v_email  text := lower(nullif(p_email, ''));
+  v_pedida text := nullif(btrim(p_pedida), '');
+  v_conta  uuid;
+  v_n      int;
 begin
-  perform set_config('request.jwt.claims', jsonb_build_object('email', lower(p_email), 'role', 'authenticated')::text, true);
-  perform set_config('request.headers', case when p_conta_cabecalho is null then '{}'
-                                             else jsonb_build_object('x-conta', p_conta_cabecalho)::text end, true);
-  return fn_papel_na_conta();
+  if v_email is null then
+    return null;
+  end if;
+  if v_pedida is not null then
+    if v_pedida !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
+      raise exception 'Conta inválida.';
+    end if;
+    select m.conta_id into v_conta
+      from interno.conta_membros m join interno.contas c on c.id = m.conta_id
+     where m.email = v_email and m.ativo and c.ativa and m.conta_id = v_pedida::uuid;
+    if v_conta is null then
+      raise exception 'Sem acesso a esta conta.';
+    end if;
+    return v_conta;
+  end if;
+  select min(m.conta_id::text)::uuid, count(*) into v_conta, v_n
+    from interno.conta_membros m join interno.contas c on c.id = m.conta_id
+   where m.email = v_email and m.ativo and c.ativa;
+  if v_n > 1 then
+    raise exception 'Escolha a conta para continuar.';
+  end if;
+  return v_conta;
+end $function$;
+
+-- a sessão do painel: e-mail do token e cabeçalho x-conta do PostgREST (regra inalterada desde a 117)
+create or replace function interno.fn_conta_atual()
+ returns uuid
+ language plpgsql
+ stable
+ set search_path to 'interno', 'public', 'extensions', 'pg_temp'
+as $function$
+declare
+  v_pedida text;
+begin
+  -- cabeçalho do PostgREST; ausente fora de uma chamada pela API (cron, Edge Function, teste)
+  begin
+    v_pedida := nullif(current_setting('request.headers', true), '')::json ->> 'x-conta';
+  exception when others then
+    v_pedida := null;
+  end;
+  return interno.fn_conta_de(auth.jwt() ->> 'email', v_pedida);
+end $function$;
+
+-- papel na conta para Edge Functions: e-mail do token já conferido no servidor de autenticação e x-conta do pedido
+create or replace function interno.fn_papel_na_conta_de(p_email text, p_conta_cabecalho text default null)
+ returns text
+ language sql
+ stable
+ set search_path to 'interno', 'public', 'extensions', 'pg_temp'
+as $function$
+  select m.papel from interno.conta_membros m
+   where m.conta_id = interno.fn_conta_de(p_email, p_conta_cabecalho) and m.email = lower(p_email) and m.ativo
+$function$;
+
+-- motor: supervisor de funcionário sem empresa só da mesma conta (revisão do seguranca; base: homologação, md5 4fafe311…)
+CREATE OR REPLACE FUNCTION interno.fn_dispatcher_whatsapp()
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'interno', 'public', 'extensions', 'pg_temp'
+AS $function$
+declare
+  n record; r_resp record; a record; s record;
+  v_wa_id text; v_req bigint; v_tent int; v_texto text; v_payload jsonb; v_botoes boolean;
+  v_sent int := 0;
+  v_avisos int := 0;
+  v_emp uuid;
+  v_conta uuid;
+  v_limite int := coalesce(fn_config_int('envios_por_execucao'), 3);
+  v_limite_sup int := greatest(coalesce(fn_config_int('supervisor_avisos_por_execucao'), 5), 1);
+  v_webhook boolean := coalesce(fn_config('webhook_ativo'), 'false')::boolean;
+  v_usar_botoes boolean := coalesce(fn_config('usar_botoes'), 'false')::boolean;
+  v_inst text := fn_config('evolution_instancia');
+  v_ping text := nullif(fn_config('monitor_ping_url'), '');
+begin
+  -- uma execucao por vez: uma chamada manual junto com o cron nao envia a mesma escala duas vezes
+  if not pg_try_advisory_xact_lock(hashtext('fn_dispatcher_whatsapp')) then
+    return;
+  end if;
+  -- nunca preso mais que 20 s esperando lock: a proxima execucao tenta de novo
+  perform set_config('lock_timeout', '20s', true);
+  perform set_config('app.ator', 'dispatcher', true);
+
+  -- FASE 1: conferir o que a Evolution respondeu
+  for n in select id, escala_id, http_req_id, created_at from notificacoes
+           where status_envio = 'enfileirada' and http_req_id is not null loop
+   begin
+    select status_code, content, error_msg into r_resp from net._http_response where id = n.http_req_id;
+    if not found then
+      if n.created_at < now() - interval '5 minutes' then
+        update notificacoes set status_envio = 'falha', erro_codigo = 'timeout',
+               erro_mensagem = 'Sem resposta da Evolution em 5 minutos' where id = n.id;
+      end if;
+      continue;
+    end if;
+    if r_resp.status_code in (200, 201) then
+      begin v_wa_id := (r_resp.content::jsonb) -> 'key' ->> 'id'; exception when others then v_wa_id := null; end;
+      update notificacoes set status_envio = 'enviada', wa_message_id = v_wa_id where id = n.id;
+      update escalas set status = 'notificada' where id = n.escala_id and status = 'agendada';
+    else
+      update notificacoes set status_envio = 'falha',
+             erro_codigo = coalesce(r_resp.status_code::text, 'rede'),
+             erro_mensagem = left(coalesce(r_resp.content, r_resp.error_msg, 'erro desconhecido'), 500)
+       where id = n.id;
+    end if;
+   exception when others then
+    raise warning 'fase 1, notificacao %: %', n.id, sqlerrm;
+   end;
+  end loop;
+
+  -- FASE 2: enviar
+  for a in select * from vw_acoes_pendentes
+           where acao in ('enviar_primeira','reenviar_falha','reenviar','nao_recebeu')
+           order by enviada_em nulls first loop
+    exit when v_sent >= v_limite;
+    if not v_webhook and a.acao in ('reenviar','nao_recebeu') then continue; end if;
+    v_tent := coalesce(a.tentativa, 0) + 1;
+    v_botoes := v_usar_botoes and a.acao <> 'reenviar_falha';
+    begin
+      v_payload := fn_payload_escala(a.escala_id, a.telefone, a.acao = 'reenviar', v_botoes);
+      v_req := fn_evo_post(v_payload ->> 'path', v_payload -> 'body');
+      insert into notificacoes (escala_id, tipo, tentativa, template_nome, status_envio, payload_envio, enviada_em, http_req_id)
+      values (a.escala_id,
+        (case when v_tent = 1 then 'primeira' when a.acao = 'reenviar_falha' then 'reenvio_falha' else 'lembrete' end)::notificacao_tipo,
+        v_tent, case when v_botoes then 'botoes_evolution' else 'texto_evolution' end,
+        'enfileirada', v_payload, now(), v_req);
+    exception when others then
+      -- registra a falha na propria escala: o motor tenta de novo e, esgotadas as tentativas,
+      -- aciona o supervisor. As outras escalas seguem normalmente.
+      begin
+        insert into notificacoes (escala_id, tipo, tentativa, template_nome, status_envio, erro_codigo, erro_mensagem, enviada_em)
+        values (a.escala_id,
+          (case when v_tent = 1 then 'primeira' when a.acao = 'reenviar_falha' then 'reenvio_falha' else 'lembrete' end)::notificacao_tipo,
+          v_tent, 'erro_interno', 'falha', 'interno', left(sqlerrm, 500), now());
+      exception when others then
+        raise warning 'fase 2, escala %: %', a.escala_id, sqlerrm;
+      end;
+    end;
+    v_sent := v_sent + 1;
+  end loop;
+
+  -- FASE 3: supervisores, no maximo v_limite_sup escalas por execucao (as mais antigas primeiro);
+  -- o resto fica para a proxima execucao, porque so a escala avisada ganha supervisor_avisado_em
+  for a in select * from vw_acoes_pendentes
+           where acao = 'escalonar' or (v_webhook and avisar_supervisor)
+           order by enviada_em nulls first loop
+    exit when v_avisos >= v_limite_sup;
+    if exists (select 1 from escalas where id = a.escala_id and supervisor_avisado_em is not null) then continue; end if;
+   begin
+    v_texto := fn_msg_supervisor(a.escala_id, a.diagnostico, a.tentativa);
+    -- só os supervisores da empresa do técnico (decisão 107); funcionário sem empresa avisa os da conta dele (122)
+    select t.empresa_id, e.conta_id into v_emp, v_conta from escalas e join tecnicos t on t.id = e.tecnico_id where e.id = a.escala_id;
+    for s in select telefone_e164 from tecnicos
+              where is_supervisor and ativo and (v_emp is null or empresa_id = v_emp) and conta_id = v_conta loop
+      perform fn_evo_post('/message/sendText/' || v_inst,
+                          jsonb_build_object('number', s.telefone_e164, 'text', v_texto));
+    end loop;
+    update escalas set supervisor_avisado_em = now() where id = a.escala_id;
+    insert into escala_eventos (escala_id, evento, ator, detalhe)
+    values (a.escala_id, 'supervisor_acionado', 'dispatcher',
+            jsonb_build_object('diagnostico', a.diagnostico, 'tentativa', a.tentativa));
+    -- conta só o aviso que deu certo: escala que falha sempre não ocupa o teto das outras
+    v_avisos := v_avisos + 1;
+   exception when others then
+    raise warning 'fase 3, escala %: %', a.escala_id, sqlerrm;
+   end;
+  end loop;
+
+  -- FASE 4: prazo da escala de amanha
+  begin perform fn_alerta_prazo_escala();
+  exception when others then raise warning 'alerta de prazo falhou: %', sqlerrm; end;
+
+  -- FASE 5: documentos vencidos
+  begin perform fn_alerta_certificacoes();
+  exception when others then raise warning 'alerta de certificacoes falhou: %', sqlerrm; end;
+
+  -- FASE 6: ligacoes da URA
+  begin perform fn_disparar_ligacoes();
+  exception when others then raise warning 'ligacoes falharam: %', sqlerrm; end;
+
+  -- FASE 7: escalas encerradas viram concluidas (decisao 30)
+  begin perform fn_concluir_escalas();
+  exception when others then raise warning 'conclusao automatica falhou: %', sqlerrm; end;
+  perform set_config('app.ator', 'dispatcher', true);
+
+  -- Execucao concluida: registro lido pelo vigia (fn_vigiar_motor). Se algo acima falhar sem
+  -- tratamento, a transacao inteira e desfeita e este registro tambem.
+  update motor_estado set ultima_execucao_ok = now(), atualizado_em = now() where id;
+
+  -- Monitor externo: sinal a cada execucao. Sem sinal (motor parado, Supabase fora ou pausado),
+  -- o healthchecks.io avisa por e-mail/Telegram. Evolution falhando: sinal de falha (/fail).
+  if v_ping is not null then
+    begin
+      perform net.http_get(v_ping || case when fn_evolution_falhando() then '/fail' else '' end,
+                           timeout_milliseconds => 5000);
+    exception when others then raise warning 'ping do monitor falhou: %', sqlerrm; end;
+  end if;
 end $function$;
 
 do $$
