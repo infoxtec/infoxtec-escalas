@@ -3323,13 +3323,10 @@ begin
   raise notice '[T57] vazamento por escrita (%): %', cardinality(v_escreve), array_to_string(v_escreve, ', ');
   raise notice '[T57] vazamento por leitura (%): %', cardinality(v_le), array_to_string(v_le, ', ');
   raise notice '[T57] recusaram: %, sem dado da conta A: % (relatório; vira exigência ao fim da F2)', v_recusa, v_limpa;
-  -- exigência (docs/multiempresa-f2.md): só as famílias ainda não reescritas podem aparecer; F2b e F2c já não vazam,
-  -- e função nova de qualquer família entra coberta. Restam: documentos (F2d) e ponto (F2e)
+  -- exigência (docs/multiempresa-f2.md): só a família ainda não reescrita pode aparecer; F2b, F2c e F2d já não vazam,
+  -- e função nova de qualquer família entra coberta. Resta: ponto (F2e)
   perform pg_temp.ok(not exists (select 1 from unnest(v_escreve || v_le) x(nome_fn)
-                                  where nome_fn !~ '^app_ponto_'
-                                    and nome_fn not in ('app_documentos', 'app_documentos_por_tecnico', 'app_dossie_local',
-                                                  'app_definir_documento', 'app_excluir_documento', 'app_registrar_documento',
-                                                  'app_remover_documento_tecnico', 'app_pode_gerir_documentos')),
+                                  where nome_fn !~ '^app_ponto_'),
     '[T57] vazamento fora das famílias pendentes: ' || array_to_string(v_escreve || v_le, ', '));
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
   perform set_config('request.headers', '{}', true);
@@ -3420,7 +3417,34 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T59' as resultado,
+-- T60 multiempresa F2d: documentos e Storage por conta (migration 120) ---------------------------------------------------
+do $$
+declare
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_tec_a uuid := (select v::uuid from qa where k = 'tec1');
+  v_tec uuid; v_doc uuid; v_ok boolean; v_msg text;
+begin
+  perform set_config('request.headers', '{}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  select id into v_tec from tecnicos where conta_id = v_b and nome = 'QA Técnico B';
+  v_doc := app_registrar_documento(jsonb_build_object('tecnico_id', v_tec, 'caminho', v_tec || '/qa.pdf', 'nome_arquivo', 'qa.pdf'));
+  perform pg_temp.ok((select conta_id from documentos where id = v_doc) = v_b, '[T60] documento nasce na conta B');
+  perform pg_temp.ok(app_pode_gerir_documento(v_tec || '/qa.pdf') and not app_pode_gerir_documento(v_tec_a || '/x.pdf'),
+                     '[T60] Storage: só arquivo de técnico da conta');
+  v_ok := false;
+  begin perform app_registrar_documento(jsonb_build_object('tecnico_id', v_tec, 'caminho', v_tec_a || '/x.pdf'));
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm = 'Caminho do arquivo inválido.'; end;
+  perform pg_temp.ok(v_ok, '[T60] registro apontando para pasta de outro técnico: ' || coalesce(v_msg, 'aceito'));
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform pg_temp.ok(not app_pode_gerir_documento(v_tec || '/qa.pdf')
+                     and app_documentos(v_tec) = '[]'::jsonb, '[T60] conta 1 não vê documento nem arquivo da B');
+  v_ok := false;
+  begin perform app_excluir_documento(v_doc); exception when others then v_ok := sqlerrm = 'Documento não encontrado.'; end;
+  perform pg_temp.ok(v_ok, '[T60] conta 1 não apaga documento da B');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T60' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
