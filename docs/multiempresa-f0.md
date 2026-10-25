@@ -1,7 +1,7 @@
 # Multiempresa — F0: matriz de acesso e régua de isolamento
 
-**Data:** 26/10/2026. **Base:** decisões 108 e 112, `docs/multiempresa-estimativa.md`. **Situação:** F0 entregue
-(documento + T56 em modo relatório); F1 antecipada a pedido do responsável (26/10), produção só a partir de 06/11.
+**Data:** 26/10/2026. **Base:** decisões 108 e 112, `docs/multiempresa-estimativa.md`. **Situação:** F0 entregue;
+F1 feita na migration 116 (decisão 113: respostas abaixo, produção junto com a 115 até 29/10). T56 virou exigência.
 
 ## 1. Quem é quem
 
@@ -41,9 +41,9 @@ contratado (F2). Ponto fica desligado para conta externa até o parecer V1 (deci
   `saude_testes`, `ponto_geo` (cache de endereço, sem dado pessoal), `webhook_token_trocas`. As outras 55 recebem
   `conta_id` na F1.
 - **T56 (regressão):** confere que a lista acima existe no catálogo e informa quantas tabelas de cliente ainda estão
-  sem `conta_id`. Em modo relatório agora; vira exigência (CI vermelho) quando a F1 terminar.
+  sem `conta_id`. Exigência (CI vermelho) desde a F1: toda tabela de cliente com `conta_id` não nulo e chave para `contas`.
 
-## 4. Para antecipar a F1 (o que preciso do responsável)
+## 4. Para antecipar a F1 — respondido em 26/10 (decisão 113): 1 "Infoxtec"; 2 david.cerqueira e sergio.dorea; 3 sim; 4 antecipar; 5 sim
 
 1. **Nome da conta 1** (a Infoxtec) como aparece no painel — proposta: "Infoxtec".
 2. **Admins da plataforma**: os e-mails que entram em `plataforma_admins` (proposta: só o responsável).
@@ -56,3 +56,11 @@ contratado (F2). Ponto fica desligado para conta externa até o parecer V1 (deci
 
 O que a F1 **não** muda: nenhuma tela, nenhuma assinatura de função, nenhum texto ao funcionário. É só estrutura e
 preenchimento (expandir → preencher → `not null`), com a regressão inteira verde.
+
+## 5. Admins da plataforma e LGPD
+
+`plataforma_admins` guarda só o e-mail corporativo de quem dá suporte pela Infoxtec (base: execução do contrato e
+legítimo interesse). Quem vê: só as funções do banco; nenhuma tela lista a tabela. Descarte: o e-mail sai no mesmo dia em
+que a pessoa deixa a função. Incluir ou tirar é feito por migration (fica no histórico do Git, com autor) até a F2 trazer
+a tela com registro de quem incluiu. Até a F2, `conta_membros` espelha `painel_usuarios` por gatilho (revisão do
+`seguranca`).

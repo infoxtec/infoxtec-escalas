@@ -1594,3 +1594,16 @@ antes, na ordem da decisão 76): tabelas, views, sequências e `fn_*` vão para 
 busca** `interno, public, extensions` nas funções e no papel `postgres`, com `interno` primeiro: um `create or replace`
 sem esquema substitui a função interna em vez de criar uma cópia exposta. **Produção só depois do fechamento de
 outubro** (a partir de 06/11): a homologação recebe antes, pelo script, a partir da branch.
+
+## 113. Multiempresa F1 antecipada, produção antes do fechamento
+
+**Data:** 26/10/2026. **Decisão do responsável** (respostas da F0, `docs/multiempresa-f0.md`): a F1 não espera 09/11.
+Nasce `contas` (conta 1 "Infoxtec", id fixo `00000000-0000-0000-0000-000000000001`), com `conta_membros` (cada usuário do
+painel entra na conta 1 com o papel que já tem), `conta_modulos` (escala e ponto ligados) e `plataforma_admins`
+(david.cerqueira@infoxtec.com.br e sergio.dorea@infoxtec.com.br). Toda tabela de cliente ganha `conta_id` não nulo com
+chave para `contas` e default da conta 1 (até a F2 trazer a conta da sessão); as 6 tabelas da plataforma ficam sem.
+Unicidades antigas continuam até a F6. Nenhuma tela, assinatura ou texto ao funcionário muda. Migration 116; a
+`fn_ponto_registrar` foi recriada só para pôr a conta da empresa na marcação (monta a linha por posição; hash igual).
+**Calendário revisto:** a regra do 06/11 vinha só de não mexer na produção durante o fechamento de outubro (31/10 a
+05/11). Antecipado: 115 e 116 vão juntas à produção **depois do teste na homologação e até 29/10**, com backup do dia
+conferido antes; de 30/10 a 05/11 a produção fica congelada (só correção de incidente).
