@@ -17,7 +17,7 @@ async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
 
 // API do funcionário (funções ponto_*, decisão 49): sem login do Supabase, validada pelo token da sessão
 export const ponto = {
-  pedirCodigo: (cpf: string) => rpc<{ mensagem: string }>('ponto_pedir_codigo', { p_cpf: cpf }),
+  pedirCodigo: (cpf: string) => rpc<{ ok?: boolean; mensagem: string }>('ponto_pedir_codigo', { p_cpf: cpf }),
   meusEspelhos: (token: string) =>
     rpc<{ id: string; competencia: string; registro: number; assinado_em: string | null }[]>('ponto_meus_espelhos', { p_token: token }),
   meuEspelho: (token: string, id: string) => rpc<EspelhoCompleto>('ponto_meu_espelho', { p_token: token, p_id: id }),

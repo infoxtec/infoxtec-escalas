@@ -193,6 +193,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Migration 91 e painel 3.31.0: **Folga compensatória e assinatura com HMAC** — o gestor lança a folga de um domingo ou feriado trabalhado, que deixa de sair a 100%; a assinatura do espelho passa a ser conferida com chave no Vault (13/10)
 - [x] **Homologação com painel publicado próprio** em https://infoxtec-escalas-homologacao.vercel.app (decisão 92, 14/10)
 - [x] **Homologação no Cloudflare** em https://trilha-homologacao.david-cerqueira.workers.dev (decisão 110, 24/10); produção segue na Vercel
+- [x] **App do ponto avisa CPF não encontrado** (com freio por IP) e o formulário de ajuste diz o que falta (decisão 111, painel 3.47.0)
 - [x] **WhatsApp na homologação** com instância própria (`trilha-homologacao`), agendador próprio e envio só para os números de teste (decisão 94, 14/10)
 - [ ] Migration 112: **aviso só ao supervisor da mesma empresa** (decisão 107)
 - [x] Migration 111: **o mês fecha na assinatura ou 10 dias após a emissão** (decisão 106)

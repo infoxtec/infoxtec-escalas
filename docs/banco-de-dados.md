@@ -254,6 +254,15 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 113 (25/10): pedido de código avisa CPF não encontrado (decisão 111)
+
+`ponto_pedir_codigo` devolve `ok` e a `mensagem`. CPF inválido: "CPF inválido…" (sempre). CPF sem funcionário ativo:
+"CPF não encontrado…"; funcionário sem opt-in: "Seu WhatsApp ainda não foi autorizado…". Esses dois avisos valem só
+para as 3 primeiras respostas desse tipo por IP na última hora (IPv6 pelo /64), no máximo 30 por hora no total
+(`ponto_max_avisos_hora`, com alerta aos supervisores), (registradas em `ponto_acessos` com o tipo novo
+`cpf_aviso`); depois, ou sem IP, volta a resposta única — o freio contra quem testa CPFs. O app do ponto fica na tela do
+CPF quando `ok` é falso. Regressão T53.
+
 ### Migration 112 (17/10): aviso só ao supervisor da mesma empresa (decisão 107)
 
 - `fn_avisar_supervisores`, `fn_dispatcher_whatsapp` (fase 3), `fn_ponto_avisar`, `fn_ponto_avisar_supervisores` e

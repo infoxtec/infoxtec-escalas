@@ -1572,3 +1572,15 @@ na Vercel**. Revisa a fase 2 da etapa 17: a produção não migra agora, e o dom
 build `build:homologacao` com trava do banco, `_headers`, CORS da `documento-ocr` só com o subdomínio da nossa conta,
 `app_url` da homologação no endereço novo e login do Supabase da homologação com as URLs do Worker. O projeto
 `infoxtec-escalas-homologacao` da Vercel é desligado depois de uma semana sem problema.
+
+## 111. Pedido de código avisa CPF não encontrado, com freio por IP
+
+**Data:** 25/10/2026. **Decisão do responsável** (teste da homologação no Cloudflare): o app do ponto avisa quando o
+CPF não está na base ("CPF não encontrado. Confira os números ou fale com o seu gestor.") e quando o WhatsApp do
+funcionário não foi autorizado. Revisa a resposta única da migration 55, que escondia isso para ninguém descobrir quem é
+funcionário testando CPFs. **Freio:** o aviso específico vale para 3 respostas por IP por hora (IPv6 pelo bloco /64) e no máximo
+30 por hora no total (`ponto_max_avisos_hora`, com alerta aos supervisores); depois, e sem IP, volta a resposta única;
+o teto de 10 pedidos por IP por hora continua. **Risco aceito pelo responsável:** quem já tem um CPF pode confirmar,
+dentro desse freio, se a pessoa é funcionária (vínculo de emprego, LGPD). O aviso não traz nome, empresa nem telefone.
+**Também:** o formulário de ajuste diz o que falta para liberar o envio (atestado sem o último dia deixava o botão
+desligado sem explicação). Migration 113, painel 3.47.0.

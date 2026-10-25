@@ -3007,7 +3007,36 @@ begin
   perform pg_temp.ok(fn_ponto_espelho_prazo_dias() = 10, '[T52] prazo padrão');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T52' as resultado,
+-- T53 pedido de código avisa CPF não encontrado e WhatsApp não autorizado, até 3 vezes por IP (migration 113) -------
+do $$
+declare
+  v_r jsonb; v_cpf text := pg_temp.cpf('535353501');
+begin
+  perform set_config('request.headers', '{"cf-connecting-ip":"203.0.113.53"}', true);
+  v_r := ponto_pedir_codigo('123');
+  perform pg_temp.ok(v_r->>'ok' = 'false' and v_r->>'mensagem' like 'CPF inválido%', '[T53] CPF inválido avisado: ' || v_r::text);
+  v_r := ponto_pedir_codigo(v_cpf);
+  perform pg_temp.ok(v_r->>'ok' = 'false' and v_r->>'mensagem' like 'CPF não encontrado%', '[T53] CPF não encontrado: ' || v_r::text);
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf) values ('QA Sem Opt-in', '5579999995353', true, false, v_cpf);
+  v_r := ponto_pedir_codigo(v_cpf);
+  perform pg_temp.ok(v_r->>'mensagem' like '%ainda não foi autorizado%', '[T53] WhatsApp não autorizado: ' || v_r::text);
+  perform ponto_pedir_codigo(pg_temp.cpf('535353502'));
+  -- 4º aviso do mesmo IP na hora: volta a resposta única
+  v_r := ponto_pedir_codigo(pg_temp.cpf('535353503'));
+  perform pg_temp.ok(v_r->>'ok' = 'true' and v_r->>'mensagem' like 'Se o CPF estiver cadastrado%', '[T53] teto de avisos por IP: ' || v_r::text);
+  -- teto geral de avisos na hora: volta a resposta única para qualquer IP
+  perform set_config('request.headers', '{"cf-connecting-ip":"2001:db8:53::1"}', true);
+  insert into config (chave, valor) values ('ponto_max_avisos_hora', '3')
+    on conflict (chave) do update set valor = excluded.valor;
+  v_r := ponto_pedir_codigo(pg_temp.cpf('535353505'));
+  perform pg_temp.ok(v_r->>'ok' = 'true', '[T53] teto geral de avisos: ' || v_r::text);
+  -- sem IP: resposta única
+  perform set_config('request.headers', '{}', true);
+  v_r := ponto_pedir_codigo(pg_temp.cpf('535353504'));
+  perform pg_temp.ok(v_r->>'ok' = 'true', '[T53] sem IP, resposta única');
+end $$;
+
+select 'REGRESSÃO OK: T1 a T53' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
