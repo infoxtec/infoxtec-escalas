@@ -254,6 +254,14 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 123 (25/10, versão 20261030180000): chave composta por conta, multiempresa F2f-2a
+
+Chave única `(conta_id, id)` nas 16 tabelas de origem. As 70 chaves estrangeiras entre tabelas de conta passam a ser
+compostas, `(conta_id, coluna) → (conta_id, id)`, com a mesma regra de exclusão (`set null` só da coluna). São criadas
+sem conferir e conferidas em seguida. Fica de fora `ponto_justificativas.motivo`, porque `ponto_motivos` é catálogo da
+plataforma. `app_ponto_acompanhamento` ganha a faixa em `momento`, que usa o índice. Regressão: T63, em que o banco
+recusa uma escala da conta B com local da conta A, mais a varredura do catálogo.
+
 ### Migration 122 (30/10): motor por conta, multiempresa F2f-1
 
 `fn_avisar_supervisores(texto, exceto, empresa, conta)`: da empresa informada ou da do funcionário; sem empresa, só
