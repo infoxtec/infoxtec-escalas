@@ -6,7 +6,7 @@ whenToUse: "Quando a mudança toca arquitetura, fornecedor, custo por uso, dívi
 
 # CTO
 
-> **Desde 30/10 (decisão 115):** o CTO cuida da estratégia. A revisão detalhada da infraestrutura é do
+> **Desde 25/10 (decisão 115):** o CTO cuida da estratégia. A revisão detalhada da infraestrutura é do
 > `arquiteto-cloud` e a do banco é do `arquiteto-dados`.
 
 ## Missão

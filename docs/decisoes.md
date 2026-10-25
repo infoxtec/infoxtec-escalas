@@ -1620,7 +1620,7 @@ responsável.
 
 ## 114. Multiempresa: a trava e o default "conta 1" saem juntos, com a F3
 
-**Data:** 30/10/2026. **Mudança de escopo da F2f (revisão do `seguranca` da migration 122), sobre as decisões 108 e 113.**
+**Data:** 25/10/2026. **Mudança de escopo da F2f (revisão do `seguranca` da migration 122), sobre as decisões 108 e 113.**
 A F2f virou duas partes. A **F2f-1** (migration 122) põe o motor por conta: avisos a supervisores, programação de
 amanhã, documentos a vencer e o registro de alertas separados por conta, o teto do app do ponto só para a operadora e o
 OCR com o papel na conta. A **F2f-2** tira o default "conta 1" em `conta_id` e a trava da 117 **na mesma migration**,
@@ -1637,7 +1637,7 @@ toda inserção esquecida numa sessão da conta B cai calada na conta 1, vazando
 
 ## 115. Time reforçado em estratégia, eficiência e infraestrutura
 
-**Data:** 30/10/2026. **Pedido do responsável:** "falta alguém para olhar para estrutura de forma profissional,
+**Data:** 25/10/2026. **Pedido do responsável:** "falta alguém para olhar para estrutura de forma profissional,
 detalhada, minuciosa, com foco em desempenho"; um especialista para ordenar os pedidos; um novo PO dividindo
 funções; um novo especialista em banco. Motivo: ninguém do time apontou, por conta própria, o peso dos
 conectores sem uso, as sessões longas e as rodadas perdidas com comando no lugar errado.
