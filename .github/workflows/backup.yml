@@ -106,7 +106,7 @@ jobs:
           mkdir -p copia
           supabase db dump --db-url "$URL" -f copia/roles.sql --role-only
           supabase db dump --db-url "$URL" -f copia/schema.sql
-          supabase db dump --db-url "$URL" -f copia/data.sql --use-copy --data-only -x public.webhook_eventos
+          supabase db dump --db-url "$URL" -f copia/data.sql --use-copy --data-only -x public.webhook_eventos -x interno.webhook_eventos
           ls -la copia
       - name: Compactar e criptografar
         env:

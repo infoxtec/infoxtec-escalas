@@ -12,7 +12,8 @@
 | Root directory | `web` |
 | Build command | `npm run build:homologacao` |
 | Deploy command | `npx wrangler deploy` |
-| Non-production branch deploy command | `npx wrangler versions upload` |
+| Aba "Previews Base": Root directory | `web` |
+| Aba "Previews Base": Preview command | `npx wrangler versions upload` (botão "Builds for Preview branches" ligado) |
 | Variáveis | nenhuma |
 
 O nome em `web/wrangler.jsonc` precisa ser o do Worker (`trilha-homologacao`). Cada PR ganha uma versão de

@@ -15,7 +15,7 @@ e o painel é vitrine: ele só chama funções `app_*`.
 
 - **Migration nova**, arquivo novo. Nunca editar migration existente. O nome do arquivo precisa
   coincidir com a versão gravada no banco.
-- Toda função `app_*`: `security definer`, `set search_path = public, extensions`, e a autorização
+- Toda função `app_*`: `security definer`, `set search_path = interno, public, extensions` (tabelas e `fn_*` em `interno`, migration 115), e a autorização
   vem de `app_exigir(array[...papéis...])` — com `admin`, `gestor` ou `leitura`.
 - Tabela nova: RLS ligado e **sem políticas**. O acesso passa pelas funções.
 - Fechar toda migration que cria ou altera função com o bloco de permissões por laço sobre o prefixo

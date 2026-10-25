@@ -63,7 +63,10 @@ Edge Functions, todas as migrations num banco vazio e `plpgsql_check`. Precisa e
 - Toda regra de negócio fica no banco. O painel só chama funções `app_*` (`web/src/lib/api.ts`).
 - **Nunca editar uma migration já existente.** Mudança nova é sempre um arquivo novo. O nome do
   arquivo precisa coincidir com a versão gravada no banco.
-- Toda função `app_*`: `security definer`, `set search_path = public, extensions`, e a primeira
+- **Esquemas (migration 115, backlog 074):** no `public` (exposto pela API) ficam só `app_*` e `ponto_*`; tabelas,
+  views, sequências e funções `fn_*` ficam em `interno`, que a API não vê. Migration nova escreve sempre o esquema:
+  `public.app_x`, `public.ponto_x`, `interno.fn_x`, `interno.tabela` (o CI recusa outra coisa no `public`).
+- Toda função `app_*`: `security definer`, `set search_path = interno, public, extensions`, e a primeira
   linha é `perform app_exigir(array[...papéis...]);` (`admin`, `gestor`, `leitura`).
 - Toda função `ponto_*` (API do funcionário no app do ponto, decisão 49): `security definer`, o mesmo
   `search_path`, e a primeira linha valida a sessão — `v_tec uuid := fn_ponto_sessao(p_token);`. O
@@ -76,6 +79,7 @@ do $$
 declare f record;
 begin
   execute 'revoke execute on all functions in schema public from public, anon, authenticated, service_role';
+  execute 'revoke execute on all functions in schema interno from public, anon, authenticated, service_role';
   for f in select p.oid::regprocedure as a from pg_proc p join pg_namespace n on n.oid = p.pronamespace
            where n.nspname = 'public' and p.proname like 'app\_%' loop
     execute format('grant execute on function %s to authenticated', f.a);
@@ -90,7 +94,7 @@ end $$;
 - Função nova já nasce sem execute para ninguém (default privileges, migration 62, decisão 51); o
   `service_role` não executa nenhuma função nossa. `supabase/tests/regressao.sql` roda no CI e pode
   rodar na homologação (transação desfeita); teste novo de regra entra nele.
-- Tabela nova: RLS ligado e sem políticas. O acesso passa pelas funções. Tabela e sequência novas já
+- Tabela nova (em `interno`): RLS ligado e sem políticas. O acesso passa pelas funções. Tabela e sequência novas já
   nascem sem privilégio para `anon`, `authenticated` e `service_role` (migration 63).
 - Migration precisa rodar num banco vazio: não depender de dado que só existe na produção.
 - Depois de aplicar uma migration na homologação, rodar o `plpgsql_check` em todas as funções

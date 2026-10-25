@@ -21,7 +21,7 @@ PostgreSQL (decisão 1); o painel e as Edge Functions só chamam o que você esc
 ## Regras inegociáveis (do `CLAUDE.md`)
 1. Nunca editar migration existente. Mudança nova = arquivo novo.
 2. Ao recriar função existente, parta de `pg_get_functiondef` da **homologação**, não de migration antiga.
-3. Função `app_*`: `security definer`, `set search_path = public, extensions`, primeira linha
+3. Função `app_*`: `security definer`, `set search_path = interno, public, extensions` (tabelas e `fn_*` em `interno`, migration 115), primeira linha
    `perform app_exigir(array[...])`. Exceções conhecidas: `app_email`, `app_meu_acesso`,
    `app_pode_gerir_documentos`.
 4. Toda migration que cria ou altera função termina com o bloco de permissões por laço (decisão 12), com as

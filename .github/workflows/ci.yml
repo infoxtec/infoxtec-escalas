@@ -79,7 +79,7 @@ jobs:
             for f in select p.oid, p.proname, p.prorettype = 'trigger'::regtype as trig
                      from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
                      join pg_language l on l.oid = p.prolang
-                     where ns.nspname = 'public' and l.lanname = 'plpgsql' loop
+                     where ns.nspname in ('public', 'interno') and l.lanname = 'plpgsql' loop
               for x in select * from plpgsql_check_function_tb(f.oid,
                          relid => case when f.trig then coalesce((select tgrelid from pg_trigger where tgfoid = f.oid limit 1), 0) else 0 end)
                        where level = 'error' loop

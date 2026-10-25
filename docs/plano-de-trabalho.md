@@ -323,3 +323,5 @@ avaliação.
 | 25/10 | Marca do login repete a cada 6 s; cabeçalho e app do ponto tocam uma vez; parada para quem pede menos movimento (painel 3.48.1) | `npm run build:homologacao` | Homologação e teste |
 | 25/10 | Produção: migration 113 (PR #142), conferida pelo responsável | Versão 20261025120000 e freio ativo em `ponto_pedir_codigo` | Concluído |
 | 25/10 | Aviso de CPF também no "Recebi o código do meu gestor" (migration 114, decisão 111 ampliada) | Banco vazio local: regressão T1 a T54 e `plpgsql_check` zero erros | Homologação e teste |
+| 25/10 | Produção e homologação: migration 114 (PR #145), conferida pelo responsável | Versão 20261025180000 e `fn_ponto_cpf_aviso_liberado` nos dois ambientes | Concluído |
+| 26/10 | Esquema privado `interno` (backlog 074, decisão 112; migration 115): tabelas, views e `fn_*` fora da API | Banco vazio local: regressão T1 a T55, `plpgsql_check` zero erros em `public` e `interno`; âncoras do ponto (gerar, conferir e anterior) com marcações reais | Homologação e teste; produção a partir de 06/11 |

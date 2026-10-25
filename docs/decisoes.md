@@ -1585,3 +1585,12 @@ dentro desse freio, se a pessoa é funcionária (vínculo de emprego, LGPD). O a
 **Também:** o formulário de ajuste diz o que falta para liberar o envio (atestado sem o último dia deixava o botão
 desligado sem explicação). Migration 113, painel 3.47.0.
 **Ampliada em 25/10 (migration 114):** o caminho "Recebi o código do meu gestor" dá os mesmos avisos, com o mesmo freio.
+
+## 112. Esquema privado `interno` antes do multiempresa
+
+**Data:** 26/10/2026. **Decisão do responsável** ("vamos executar"), primeira etapa do núcleo da decisão 108 (o 074 vem
+antes, na ordem da decisão 76): tabelas, views, sequências e `fn_*` vão para o esquema `interno`, fora da API; no
+`public` ficam só `app_*` e `ponto_*`. Mudança mecânica (nenhum corpo de função muda), migration 115. **Caminho de
+busca** `interno, public, extensions` nas funções e no papel `postgres`, com `interno` primeiro: um `create or replace`
+sem esquema substitui a função interna em vez de criar uma cópia exposta. **Produção só depois do fechamento de
+outubro** (a partir de 06/11): a homologação recebe antes, pelo script, a partir da branch.

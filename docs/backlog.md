@@ -511,7 +511,7 @@ Parte F: desconectar o aparelho da vluma no celular da empresa. Depois de alguns
 parar a 2.3.7 (`evolution`), transformar a `evolution24` no serviço único do `docker-compose.yml` e
 atualizar `infra/evolution/` (imagem 2.4, sem o `Caddyfile.teste`).
 
-## 074. Esquema privado: só as funções `app_*` expostas na API — planejado (P1)
+## 074. Esquema privado: só as funções `app_*` expostas na API — EM HOMOLOGAÇÃO (migration 115, 26/10)
 
 **Problema:** hoje tabelas e funções internas ficam no `public`, o esquema que a API do Supabase
 expõe. Estão protegidas (RLS ligado e sem política, permissões revogadas, `app_exigir` em toda
