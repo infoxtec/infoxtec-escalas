@@ -1606,4 +1606,5 @@ Unicidades antigas continuam até a F6. Nenhuma tela, assinatura ou texto ao fun
 `fn_ponto_registrar` foi recriada só para pôr a conta da empresa na marcação (monta a linha por posição; hash igual).
 **Calendário revisto:** a regra do 06/11 vinha só de não mexer na produção durante o fechamento de outubro (31/10 a
 05/11). Antecipado: 115 e 116 vão juntas à produção **depois do teste na homologação e até 29/10**, com backup do dia
-conferido antes; de 30/10 a 05/11 a produção fica congelada (só correção de incidente).
+conferido antes; de 30/10 a 05/11 a produção fica congelada (só correção de incidente). **Aplicado na produção em 25/10**, conferido pelo
+responsável.

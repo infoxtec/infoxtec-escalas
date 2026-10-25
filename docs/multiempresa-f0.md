@@ -1,7 +1,7 @@
 # Multiempresa — F0: matriz de acesso e régua de isolamento
 
 **Data:** 26/10/2026. **Base:** decisões 108 e 112, `docs/multiempresa-estimativa.md`. **Situação:** F0 entregue;
-F1 feita na migration 116 (decisão 113: respostas abaixo, produção junto com a 115 até 29/10). T56 virou exigência.
+F1 feita na migration 116 (decisão 113: respostas abaixo), na produção desde 25/10 junto com a 115. T56 virou exigência.
 
 ## 1. Quem é quem
 
