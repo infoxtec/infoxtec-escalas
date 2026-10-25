@@ -1,6 +1,6 @@
 # Equipe do projeto (subagentes do Claude Code)
 
-Catorze papéis, definidos em `.claude/agents/` (quatro novos em 30/10, decisão 115). Cada um é um especialista que o Claude Code aciona
+Catorze papéis, definidos em `.claude/agents/` (quatro novos em 25/10, decisão 115). Cada um é um especialista que o Claude Code aciona
 pelo nome. Nenhum deles substitui o responsável: decisões de negócio, aprovação de entrega e tudo
 o que toca a produção são dele.
 
