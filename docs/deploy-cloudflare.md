@@ -13,7 +13,7 @@
 | Build command | `npm run build:homologacao` |
 | Deploy command | `npx wrangler deploy` |
 | Aba "Previews Base": Root directory | `web` |
-| Aba "Previews Base": Preview command | `npx wrangler versions upload` (botão "Builds for Preview branches" ligado) |
+| Aba "Previews Base": Preview command | o build roda `npx wrangler preview` (Worker Previews), que exige o bloco `previews` no `wrangler.jsonc` (já está, vazio) |
 | Variáveis | nenhuma |
 
 O nome em `web/wrangler.jsonc` precisa ser o do Worker (`trilha-homologacao`). **O Cloudflare ignora o Root directory

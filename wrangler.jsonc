@@ -6,5 +6,7 @@
   "assets": {
     "directory": "./web/dist",
     "not_found_handling": "single-page-application"
-  }
+  },
+  // pré-visualização dos PRs (Worker Previews, npx wrangler preview): o bloco é obrigatório; vazio = mesmas regras
+  "previews": {}
 }
