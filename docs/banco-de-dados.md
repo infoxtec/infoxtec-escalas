@@ -258,11 +258,12 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
 
 Tabelas, views, sequências e funções `fn_*` saem do `public` para `interno`; no `public` ficam só `app_*`, `ponto_*` e
 os tipos enum das assinaturas. `anon`, `authenticated` e `service_role` não têm USAGE em `interno`, e os objetos novos
-nascem fechados (default privileges). Caminho de busca: `interno, public, extensions` em todas as funções e no papel
+nascem fechados (default privileges). Caminho de busca: `interno, public, extensions, pg_temp` em todas as funções e no papel
 `postgres` (pg_cron, Edge Functions, scripts de backup e de setup) — `interno` primeiro, para um `create or replace`
 sem esquema nunca criar cópia no `public`. Migration nova escreve o esquema de tudo (CLAUDE.md). Scripts da âncora do
 ponto acham o esquema sozinhos (antes e depois da 115). Regressão T55: nada além de `app_*`/`ponto_*` no `public`,
-nenhum papel da API no `interno`, caminho de busca em todas as funções.
+nenhum papel da API no `interno` nem com CREATE no `public`, caminho de busca em todas as funções. Os jobs do
+pg_cron passam a chamar `interno.fn_*`, e as Edge Functions fixam o caminho na conexão (valem antes e depois da 115).
 
 ### Migration 114 (25/10): o mesmo aviso no "Recebi o código do meu gestor" (decisão 111)
 

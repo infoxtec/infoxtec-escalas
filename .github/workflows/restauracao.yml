@@ -61,6 +61,8 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: |
+          # PGOPTIONS: tabelas em interno desde a migration 115 (backups antigos ainda trazem public)
+          export PGOPTIONS="-c search_path=interno,public"
           psql "postgresql://postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -c "
             select 'tecnicos' tabela, count(*) from tecnicos union all
             select 'locais', count(*) from locais union all

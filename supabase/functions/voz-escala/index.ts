@@ -16,7 +16,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import postgres from "npm:postgres@3.4.5";
 
-const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { prepare: false, max: 2, idle_timeout: 20 });
+// search_path explícito: tabelas e fn_* no esquema interno (migration 115); não depende do parâmetro do papel
+const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { connection: { search_path: "interno, public, extensions" }, prepare: false, max: 2, idle_timeout: 20 });
 
 const TIMEOUT_MS = 10_000;
 const ASSINATURA_OBRIGATORIA = Deno.env.get("TWILIO_ASSINATURA") === "obrigatoria";

@@ -13,16 +13,20 @@ do $$
 declare r record;
 begin
   -- views antes das tabelas (dependências não importam para set schema, mas a ordem deixa o log legível)
-  for r in select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
-           where n.nspname = 'public' and c.relkind in ('v', 'm') loop
-    execute format('alter view public.%I set schema interno', r.relname);
+  for r in select c.relname, c.relkind from pg_class c join pg_namespace n on n.oid = c.relnamespace
+           where n.nspname = 'public' and c.relkind in ('v', 'm')
+             and not exists (select 1 from pg_depend d where d.objid = c.oid and d.deptype = 'e') loop
+    execute format('alter %s public.%I set schema interno',
+                   case r.relkind when 'm' then 'materialized view' else 'view' end, r.relname);
   end loop;
   for r in select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
-           where n.nspname = 'public' and c.relkind in ('r', 'p') loop
+           where n.nspname = 'public' and c.relkind in ('r', 'p')
+             and not exists (select 1 from pg_depend d where d.objid = c.oid and d.deptype = 'e') loop
     execute format('alter table public.%I set schema interno', r.relname);  -- leva índices, gatilhos e sequências próprias
   end loop;
   for r in select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
-           where n.nspname = 'public' and c.relkind = 'S' loop
+           where n.nspname = 'public' and c.relkind = 'S'
+             and not exists (select 1 from pg_depend d where d.objid = c.oid and d.deptype = 'e') loop
     execute format('alter sequence public.%I set schema interno', r.relname);
   end loop;
   for r in select p.oid::regprocedure as f from pg_proc p join pg_namespace n on n.oid = p.pronamespace
@@ -34,7 +38,7 @@ begin
   for r in select p.oid::regprocedure as f from pg_proc p join pg_namespace n on n.oid = p.pronamespace
            where n.nspname in ('public', 'interno')
              and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e') loop
-    execute format('alter function %s set search_path = interno, public, extensions', r.f);
+    execute format('alter function %s set search_path = interno, public, extensions, pg_temp', r.f);
   end loop;
 end $$;
 
@@ -43,6 +47,22 @@ end $$;
 -- criar uma cópia no public (que a API veria e que ganharia da interna). Migration nova escreve sempre o esquema:
 -- public.app_*, public.ponto_*, interno.fn_*, interno.<tabela> (CLAUDE.md); o CI (T55) recusa o resto no public.
 alter role postgres set search_path = "$user", interno, public, extensions;
+
+-- os jobs do pg_cron chamam as fn_* com o esquema escrito (não dependem do parâmetro do papel; revisão do seguranca).
+-- cron.alter_job, porque o postgres não altera a tabela cron.job direto; sem permissão, fica o parâmetro do papel.
+do $$
+declare j record;
+begin
+  if to_regclass('cron.job') is null then return; end if;
+  for j in select jobid, command from cron.job where command ~ '(^|[^.\w])fn_\w+\(' loop
+    perform cron.alter_job(j.jobid, command := regexp_replace(j.command, '(^|[^.\w])(fn_\w+\()', '\1interno.\2', 'g'));
+  end loop;
+exception when insufficient_privilege or undefined_function then
+  raise notice 'pg_cron: jobs não atualizados (%); valem pelo search_path do papel postgres', sqlerrm;
+end $$;
+
+-- ninguém além do dono cria objeto no public: uma sobrecarga plantada lá não ganha da interna
+revoke create on schema public from public, anon, authenticated, service_role;
 
 -- objetos novos criados em `interno` nascem sem privilégio para os papéis da API (como no public, migrations 62 e 63)
 alter default privileges in schema interno revoke all on tables from public, anon, authenticated, service_role;

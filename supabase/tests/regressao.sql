@@ -183,14 +183,17 @@ begin
   select string_agg(r, ', ') into v from unnest(array['anon', 'authenticated', 'service_role']) r
    where has_schema_privilege(r, 'interno', 'usage');
   perform pg_temp.ok(v is null, '[T55] papel da API com acesso ao esquema interno: ' || coalesce(v, ''));
+  select string_agg(r, ', ') into v from unnest(array['anon', 'authenticated', 'service_role']) r
+   where has_schema_privilege(r, 'public', 'create');
+  perform pg_temp.ok(v is null, '[T55] papel da API cria objeto no public: ' || coalesce(v, ''));
   select string_agg(p.proname, ', ') into v from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'interno' and p.proname ~ '^(app|ponto)_';
   perform pg_temp.ok(v is null, '[T55] app_* ou ponto_* no esquema interno (a API não alcança): ' || coalesce(v, ''));
   select string_agg(p.proname, ', ') into v from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname in ('public', 'interno') and p.proname not like 'fn\_qa%'
      and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
-     and not coalesce(array_to_string(p.proconfig, ',') like '%search_path=interno, public, extensions%', false);
-  perform pg_temp.ok(v is null, '[T55] função sem o caminho interno, public, extensions: ' || coalesce(v, ''));
+     and not coalesce(array_to_string(p.proconfig, ',') like '%search_path=interno, public, extensions, pg_temp%', false);
+  perform pg_temp.ok(v is null, '[T55] função sem o caminho interno, public, extensions, pg_temp: ' || coalesce(v, ''));
 end $$;
 
 -- T44 trava de envio da homologação (migration 99, decisão 94) ----------------------------------------------

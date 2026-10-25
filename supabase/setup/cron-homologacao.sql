@@ -13,12 +13,12 @@ begin
   if coalesce(fn_config('ligacao_ativa'), 'false') <> 'false' then
     raise exception 'A ligação automática precisa ficar desligada na homologação (config ligacao_ativa = false).';
   end if;
-  perform cron.schedule('dispatcher-whatsapp', '* * * * *', 'select fn_dispatcher_whatsapp()');
-  perform cron.schedule('limpeza-logs', '17 6 * * *', 'select fn_limpeza_logs()');
-  perform cron.schedule('vigia-motor', '*/5 * * * *', 'select fn_vigiar_motor()');
-  perform cron.schedule('ponto-lembrete-almoco', '*/15 * * * *', 'select fn_ponto_lembrete_almoco()');
-  perform cron.schedule('ponto-geo', '* * * * *', 'select fn_ponto_geo_processar()');
-  perform cron.schedule('espelho-pdf', '*/5 * * * *', 'select fn_ponto_espelho_pdf_varrer()');
+  perform cron.schedule('dispatcher-whatsapp', '* * * * *', 'select interno.fn_dispatcher_whatsapp()');
+  perform cron.schedule('limpeza-logs', '17 6 * * *', 'select interno.fn_limpeza_logs()');
+  perform cron.schedule('vigia-motor', '*/5 * * * *', 'select interno.fn_vigiar_motor()');
+  perform cron.schedule('ponto-lembrete-almoco', '*/15 * * * *', 'select interno.fn_ponto_lembrete_almoco()');
+  perform cron.schedule('ponto-geo', '* * * * *', 'select interno.fn_ponto_geo_processar()');
+  perform cron.schedule('espelho-pdf', '*/5 * * * *', 'select interno.fn_ponto_espelho_pdf_varrer()');
   raise notice 'Agendador da homologação ligado: % tarefas ativas.', (select count(*) from cron.job where active);
 end $$;
 
