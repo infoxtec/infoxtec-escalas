@@ -1,6 +1,6 @@
 # Equipe do projeto (subagentes do Claude Code)
 
-Dez papéis, definidos em `.claude/agents/`. Cada um é um especialista que o Claude Code aciona
+Catorze papéis, definidos em `.claude/agents/` (quatro novos em 30/10, decisão 115). Cada um é um especialista que o Claude Code aciona
 pelo nome. Nenhum deles substitui o responsável: decisões de negócio, aprovação de entrega e tudo
 o que toca a produção são dele.
 
@@ -8,12 +8,16 @@ o que toca a produção são dele.
 
 | Papel | Arquivo | Responde por | Não faz |
 |---|---|---|---|
-| **PO** | `po.md` | O quê e por quê: backlog, prioridade, critérios de aceite, valor para gestor e técnico | Código; decisão técnica |
+| **PO de produto** | `po.md` | O quê e por quê do que o gestor, o técnico e o RH veem: backlog, prioridade, critérios de aceite | Código; decisão técnica |
+| **PO de plataforma** | `po-plataforma.md` | Multiempresa, desempenho, disponibilidade, recuperação, custo por cliente, CI e ambiente, com critério de aceite medível; divide um backlog só com o PO de produto | Arquitetura; preço e SLA |
+| **Gestor de pedidos** | `gestor-de-pedidos.md` | Pedido do responsável reescrito em ordem (objetivo, ambiente, critério de pronto, dono), ambiente conferido antes da etapa, início e fim das sessões, economia de contexto, medição do retrabalho | Decidir produto, arquitetura ou segurança |
 | **Scrum Master** | `scrum-master.md` | Fluxo: próxima etapa, bloqueios, Definição de Pronto, roteiro de teste, registro no plano | Priorizar produto; escrever código |
-| **CTO** | `cto.md` | Como, no nível da arquitetura: decisões, custo, riscos, dívida técnica, coerência com `decisoes.md` | Implementar; aprovar entrega sozinho |
+| **CTO** | `cto.md` | Estratégia técnica: direção, fornecedor, custo, riscos, dívida no nível estratégico, coerência com `decisoes.md` | Implementar; revisão minuciosa (é dos arquitetos); aprovar entrega sozinho |
+| **Arquiteto cloud** | `arquiteto-cloud.md` | A estrutura inteira fora do banco: Supabase, Cloudflare, Vercel, Evolution, Twilio, GitHub Actions, backup e o ambiente de trabalho; desempenho ponta a ponta, limites, paridade, recuperação, versões | Código de produto; recurso pago |
+| **Arquiteto de dados** | `arquiteto-dados.md` | Desenho e desempenho do banco antes da migration: chaves, índices, lock, migração sem parada, volume, retenção; revisa toda migration ao lado do `seguranca` | Implementar (é do dev-banco); segurança e LGPD |
 | **Dev (banco)** | `dev-banco.md` | Regra de negócio no PostgreSQL: migrations, funções `app_*`/`fn_*`, views, gatilhos, testes na homologação | Tela; produção |
 | **Fullstack** | `fullstack.md` | Painel React, `api.ts`, Edge Functions, experiência do usuário | Regra de negócio no navegador; produção |
-| **Infra/BD** | `infra-bd.md` | Desempenho, capacidade, cron, backup, CI, hospedagem, scripts, observabilidade | Mudar regra de negócio |
+| **Infra/BD** | `infra-bd.md` | Operação do dia a dia: capacidade, cron, backup, CI, scripts, observabilidade e incidentes | Mudar regra de negócio; o desenho (é dos arquitetos) |
 | **Segurança** | `seguranca.md` | Revisão antes do merge, LGPD, segredos, permissões, dependências | Aprovar o próprio código; relaxar regra para caber no prazo |
 | **Jurídico** | `juridico.md` | Base legal trabalhista e cível, prazos de falta e abono, convenções coletivas, textos legais ao funcionário; classifica a fonte e o risco, rotula pendências (decisão 99) | Assinar parecer ou se apresentar como advogado (é persona de apoio, sem OAB — decisão 58); decidir escopo, arquitetura ou prioridade; tratar de folha de pagamento e eSocial (fora do produto) |
 | **Engenheiro SaaS** | `engenheiro-saas.md` | Plataforma para muitos clientes: multiempresa com teste de vazamento, módulos e planos por cliente, configuração por empresa, entrada e saída de cliente, cotas, custo por cliente, mudança sem parada, SLO e recuperação (decisão 102) | Implementar; decidir arquitetura sozinho (leva ao CTO); custo, plano pago, SLA |
@@ -34,15 +38,18 @@ flowchart LR
     R2 --> PROD[Produção pelo roteiro]
 ```
 
-1. **Pedido novo** → PO transforma em item (problema, escopo, critérios de aceite, esforço,
+0. **Pedido chega** → o gestor de pedidos o põe em ordem, confere o ambiente e diz quem entra.
+1. **Pedido novo** → PO de produto, ou PO de plataforma quando é infraestrutura, transforma em item (problema, escopo, critérios de aceite, esforço,
    decisões pendentes). Se for backlog, o registro vai direto para `backlog_itens` na produção.
-2. **Tem impacto de arquitetura, custo ou decisão registrada?** → CTO opina antes de começar.
+2. **Tem impacto de arquitetura, custo ou decisão registrada?** → CTO opina antes de começar, com a medição
+   do arquiteto cloud (fora do banco) e do arquiteto de dados (banco).
 3. **Entra na fila** → Scrum Master encaixa no plano (`docs/plano-de-trabalho.md`) e diz o que
    bloqueia.
 4. **Implementação** → Dev banco (SQL) e/ou Fullstack (tela, Edge Function), sempre na
    homologação, com teste que desfaz tudo.
-5. **Antes do PR** → Segurança revisa toda mudança de banco ou Edge Function (regra do
-   `CLAUDE.md`); Infra revisa quando mexe em desempenho, cron, CI ou hospedagem.
+5. **Antes do PR** → o arquiteto de dados revisa o desenho e o desempenho de toda migration; Segurança
+   revisa toda mudança de banco ou Edge Function (regra do `CLAUDE.md`); o arquiteto cloud revisa quando
+   mexe em hospedagem, CI, deploy ou ambiente.
 6. **Teste conjunto** → Scrum Master monta o roteiro; o responsável testa.
 7. **Produção** → só com a ordem do responsável, pelo roteiro (`docs/roteiro-producao.md`).
 

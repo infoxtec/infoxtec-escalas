@@ -1635,3 +1635,23 @@ toda inserção esquecida numa sessão da conta B cai calada na conta 1, vazando
   com CPF desconhecido;
 - testes com duas contas da programação de amanhã, dos documentos a vencer e do motor de envio.
 
+## 115. Time reforçado em estratégia, eficiência e infraestrutura
+
+**Data:** 30/10/2026. **Pedido do responsável:** "falta alguém para olhar para estrutura de forma profissional,
+detalhada, minuciosa, com foco em desempenho"; um especialista para ordenar os pedidos; um novo PO dividindo
+funções; um novo especialista em banco. Motivo: ninguém do time apontou, por conta própria, o peso dos
+conectores sem uso, as sessões longas e as rodadas perdidas com comando no lugar errado.
+**Quatro papéis novos**, em `.claude/agents/` e `.dsh/skills/`:
+- `arquiteto-cloud`: a estrutura fora do banco e o ambiente de trabalho, com número.
+- `arquiteto-dados`: desenho e desempenho do banco; revisa toda migration ao lado do `seguranca`.
+- `gestor-de-pedidos`: põe o pedido em ordem, confere o ambiente antes da etapa, cuida das sessões e mede o
+  retrabalho.
+- `po-plataforma`: multiempresa, desempenho, disponibilidade, custo e ambiente, com critério medível.
+**Papéis ajustados:**
+- o CTO passa a cuidar só da estratégia;
+- o `po` vira PO de produto e divide um backlog só com o `po-plataforma`; a divisão da sprint é proposta
+  pelos dois e decidida pelo responsável;
+- o `infra-bd` fica com a operação do dia a dia.
+**A acompanhar:** se o PO de produto não responder ao novo recorte em duas sprints, o responsável decide
+sobre o papel. O `gestor-de-pedidos` mede rodadas e retrabalho por entrega, para comparar com antes.
+

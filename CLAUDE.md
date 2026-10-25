@@ -30,11 +30,14 @@ arquitetura e decisões em `docs/arquitetura.md` e `docs/decisoes.md`; fluxo de 
 ## Equipe de especialistas
 
 Subagentes do projeto em `.claude/agents/`, carregados sozinhos em toda sessão. Acionar pelo nome
-quando o assunto for da especialidade: `cto` (arquitetura e decisões), `po` (backlog e critérios de
-aceite), `scrum-master` (próxima etapa e roteiro de teste), `dev-banco` (migrations e funções),
-`fullstack` (painel e Edge Functions), `infra-bd` (desempenho, cron, hospedagem, backup),
+quando o assunto for da especialidade: `cto` (estratégia técnica e decisões), `po` (produto: backlog e
+critérios de aceite), `po-plataforma` (multiempresa, desempenho, disponibilidade, custo e ambiente),
+`arquiteto-cloud` (estrutura fora do banco e ambiente de trabalho, com número), `arquiteto-dados` (desenho
+e desempenho do banco; revisa toda migration), `gestor-de-pedidos` (ordena o pedido, confere o ambiente,
+cuida das sessões e mede o retrabalho), `scrum-master` (próxima etapa e roteiro de teste), `dev-banco` (migrations e funções),
+`fullstack` (painel e Edge Functions), `infra-bd` (operação: cron, backup, capacidade, incidentes),
 `seguranca` (revisão antes do merge e LGPD), `engenheiro-saas` (multiempresa, módulos por cliente, custo e escala da plataforma — decisão 102), `marca` (estratégia de marca, identidade verbal e comercial), `juridico` (base legal trabalhista, faltas e abonos, textos legais; persona de apoio, sem OAB — decisão 58). Toda mudança de banco ou de Edge Function passa pela
-revisão do `seguranca` antes do pull request.
+revisão do `seguranca` antes do pull request; toda migration passa também pelo `arquiteto-dados` (decisão 115).
 Papéis, fluxo entre eles e regras comuns: `docs/equipe.md`.
 
 O mesmo time existe para o DeepSeek Harness, em `.dsh/skills/`, com as regras do time e o fluxo de
