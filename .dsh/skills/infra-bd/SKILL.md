@@ -6,6 +6,9 @@ whenToUse: "Quando a mudança mexe em índice, retenção, cron, backup, CI, hos
 
 # Infraestrutura e Banco de Dados
 
+> **Desde 25/10 (decisão 115):** operação do dia a dia. O desenho da infraestrutura é do
+> `arquiteto-cloud`; o do banco, do `arquiteto-dados`.
+
 ## Missão
 
 Manter banco e infraestrutura saudáveis, observáveis e recuperáveis — no plano gratuito, com número

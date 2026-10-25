@@ -13,11 +13,15 @@ alguém lembrar do contexto: ela depende do artefato que a persona produziu.
 | Persona | Skill | Responde por | Veta |
 |---|---|---|---|
 | **Comercial** | `comercial` | Mercado, marca, preço, pacote e as palavras da proposta — **cliente do CTO e do PO** | Promessa sem lastro na matriz de capacidade |
-| **CTO** | `cto` | Encaixe na arquitetura, custo, risco estratégico, coerência com as decisões registradas | Mudança que reabre decisão fechada sem o responsável |
-| **PO** | `po` | O quê e por quê: backlog, prioridade, critérios de aceite | Item sem critério de aceite testável |
+| **CTO** | `cto` | Estratégia técnica: direção, fornecedor, custo, risco estratégico, coerência com as decisões registradas | Mudança que reabre decisão fechada sem o responsável |
+| **PO de produto** | `po` | O quê e por quê do que o gestor, o técnico e o RH veem: backlog, prioridade, critérios de aceite | Item sem critério de aceite testável |
+| **PO de plataforma** | `po-plataforma` | Multiempresa, desempenho, disponibilidade, recuperação, custo por cliente, CI e ambiente, com critério medível (decisão 115) | Item de plataforma sem critério medível |
+| **Arquiteto cloud** | `arquiteto-cloud` | Estrutura inteira fora do banco e ambiente de trabalho: desempenho ponta a ponta, limites, paridade, recuperação, versões (decisão 115) | Diferença sem motivo entre homologação e produção |
+| **Arquiteto de dados** | `arquiteto-dados` | Desenho e desempenho do banco: chaves, índices, lock, migração sem parada, volume, retenção (decisão 115) | Migration sem índice, sem plano de volta ou com lock longo na produção |
+| **Gestor de pedidos** | `gestor-de-pedidos` | Pedido claro e ordenado, ambiente conferido antes da etapa, sessões e contexto, medição do retrabalho (decisão 115) | — (ordena e cobra, não decide) |
 | **Scrum Master** | `scrum-master` | Fluxo: próxima etapa, bloqueios, Definição de Pronto, roteiro de teste | PR que viole o processo (branch, migration, registro) |
 | **Engenheiro SaaS** | `engenheiro-saas` | Multiempresa, módulos e planos por cliente, configuração por empresa, entrada e saída de cliente, custo por cliente e escala (decisão 102) | Entrega com dado de cliente sem teste de vazamento entre empresas |
-| **Infra/BD** | `infra-bd` | Desempenho, capacidade, retenção, cron, backup, CI, hospedagem, observabilidade | Migration irreversível sem plano de volta |
+| **Infra/BD** | `infra-bd` | Operação do dia a dia: capacidade, retenção, cron, backup, CI, observabilidade e incidentes | Migration irreversível sem plano de volta |
 | **Segurança** | `seguranca` | Revisão antes do merge, LGPD, segredos, permissões, dependências | Merge com achado P0/P1, ou dado pessoal novo sem base registrada |
 | **Dev (banco)** | `dev-banco` | Regra de negócio no PostgreSQL: migrations, funções, views, gatilhos | — (implementa, não aprova) |
 | **Fullstack** | `fullstack` | Painel React, `api.ts`, Edge Functions, experiência de uso | — (implementa, não aprova) |

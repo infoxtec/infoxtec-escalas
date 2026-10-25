@@ -1620,7 +1620,7 @@ responsável.
 
 ## 114. Multiempresa: a trava e o default "conta 1" saem juntos, com a F3
 
-**Data:** 30/10/2026. **Mudança de escopo da F2f (revisão do `seguranca` da migration 122), sobre as decisões 108 e 113.**
+**Data:** 25/10/2026. **Mudança de escopo da F2f (revisão do `seguranca` da migration 122), sobre as decisões 108 e 113.**
 A F2f virou duas partes. A **F2f-1** (migration 122) põe o motor por conta: avisos a supervisores, programação de
 amanhã, documentos a vencer e o registro de alertas separados por conta, o teto do app do ponto só para a operadora e o
 OCR com o papel na conta. A **F2f-2** tira o default "conta 1" em `conta_id` e a trava da 117 **na mesma migration**,
@@ -1634,4 +1634,35 @@ toda inserção esquecida numa sessão da conta B cai calada na conta 1, vazando
 - as inserções que hoje dependem do default passando a informar a conta: o teto em `alertas_enviados` e `ponto_acessos`
   com CPF desconhecido;
 - testes com duas contas da programação de amanhã, dos documentos a vencer e do motor de envio.
+
+## 115. Time reforçado em estratégia, eficiência e infraestrutura
+
+**Data:** 25/10/2026. **Pedido do responsável:** "falta alguém para olhar para estrutura de forma profissional,
+detalhada, minuciosa, com foco em desempenho"; um especialista para ordenar os pedidos; um novo PO dividindo
+funções; um novo especialista em banco. Motivo: ninguém do time apontou, por conta própria, o peso dos
+conectores sem uso, as sessões longas e as rodadas perdidas com comando no lugar errado.
+**Quatro papéis novos**, em `.claude/agents/` e `.dsh/skills/`:
+- `arquiteto-cloud`: a estrutura fora do banco e o ambiente de trabalho, com número.
+- `arquiteto-dados`: desenho e desempenho do banco; revisa toda migration ao lado do `seguranca`.
+- `gestor-de-pedidos`: põe o pedido em ordem, confere o ambiente antes da etapa, cuida das sessões e mede o
+  retrabalho.
+- `po-plataforma`: multiempresa, desempenho, disponibilidade, custo e ambiente, com critério medível.
+**Papéis ajustados:**
+- o CTO passa a cuidar só da estratégia;
+- o `po` vira PO de produto e divide um backlog só com o `po-plataforma`; a divisão da sprint é proposta
+  pelos dois e decidida pelo responsável;
+- o `infra-bd` fica com a operação do dia a dia.
+**Ajuste do mesmo dia, pedido do responsável:**
+- **CTO:** dá o tom do negócio e da estratégia. Conhece e se relaciona com fornecedores e fabricantes,
+  mantém o radar de tecnologias e propõe virada, espera, congelamento ou avanço. Tem foco no produto tanto
+  quanto os PO.
+- **Ordem do backlog:** a palavra final é do PO de produto (recomendação aceita: uma pessoa só ordena). O PO
+  de plataforma é dono da parte técnica, e o CTO constrói a visão com os dois e pode vetar por risco
+  estratégico, com o motivo escrito.
+- **Disciplinas por afinidade, sempre no recorte mínimo:** COBIT e governança com o CTO; ITIL com o PO de
+  plataforma; Agile e Scrum com o Scrum Master (reforçado); PMP com o gestor de pedidos.
+**Regra de parecer:** o time diz quando discorda do pedido, com argumentos curtos e de boa prática. Se o
+responsável mantiver a ordem, segue-se e o risco fica registrado.
+**A acompanhar:** se o PO de produto não responder ao novo recorte em duas sprints, o responsável decide
+sobre o papel. O `gestor-de-pedidos` mede rodadas e retrabalho por entrega, para comparar com antes.
 

@@ -6,6 +6,9 @@ whenToUse: "Quando é preciso saber o que fazer agora, em que ordem, o que está
 
 # Scrum Master
 
+> **Desde 25/10 (decisão 115):** dono do processo Agile e Scrum (Scrum Guide 2020): eventos com propósito, meta da
+> sprint, Definição de Pronto, limite de trabalho em andamento; protege o processo, não a agenda.
+
 ## Missão
 
 Manter a entrega previsível. O ciclo do projeto está definido e funciona: branch → homologação →
