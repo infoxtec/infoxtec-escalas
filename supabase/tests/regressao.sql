@@ -3036,7 +3036,33 @@ begin
   perform pg_temp.ok(v_r->>'ok' = 'true', '[T53] sem IP, resposta única');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T53' as resultado,
+-- T54 "Recebi o código do meu gestor" avisa CPF inválido e não encontrado, com o mesmo freio (migration 114) --------
+do $$
+declare v_r jsonb;
+begin
+  perform set_config('request.headers', '{"cf-connecting-ip":"203.0.113.54"}', true);
+  delete from config where chave = 'ponto_max_avisos_hora';
+  v_r := ponto_entrar('123', '123456');
+  perform pg_temp.ok(v_r->>'erro' like 'CPF inválido%', '[T54] CPF inválido: ' || v_r::text);
+  v_r := ponto_entrar(pg_temp.cpf('545454501'), '123456');
+  perform pg_temp.ok(v_r->>'erro' like 'CPF não encontrado%', '[T54] CPF não encontrado: ' || v_r::text);
+  perform ponto_entrar(pg_temp.cpf('545454502'), '123456');
+  perform ponto_entrar(pg_temp.cpf('545454503'), '123456');
+  v_r := ponto_entrar(pg_temp.cpf('545454504'), '123456');
+  perform pg_temp.ok(v_r->>'erro' like 'Não foi possível entrar%', '[T54] teto de avisos por IP: ' || v_r::text);
+  -- CPF ativo com código errado: resposta genérica (não revela nada); e a cota é a mesma do pedido de código
+  perform set_config('request.headers', '{"cf-connecting-ip":"203.0.113.55"}', true);
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf) values ('QA Entrar', '5579999995454', true, true, pg_temp.cpf('545454505'));
+  v_r := ponto_entrar(pg_temp.cpf('545454505'), '000000');
+  perform pg_temp.ok(v_r->>'erro' like 'Não foi possível entrar%', '[T54] CPF ativo, código errado: ' || v_r::text);
+  perform ponto_pedir_codigo(pg_temp.cpf('545454506'));
+  perform ponto_pedir_codigo(pg_temp.cpf('545454507'));
+  perform ponto_pedir_codigo(pg_temp.cpf('545454508'));
+  v_r := ponto_entrar(pg_temp.cpf('545454509'), '123456');
+  perform pg_temp.ok(v_r->>'erro' like 'Não foi possível entrar%', '[T54] cota compartilhada com o pedido de código: ' || v_r::text);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T54' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

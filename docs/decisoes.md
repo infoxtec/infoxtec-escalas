@@ -1584,3 +1584,4 @@ o teto de 10 pedidos por IP por hora continua. **Risco aceito pelo responsável:
 dentro desse freio, se a pessoa é funcionária (vínculo de emprego, LGPD). O aviso não traz nome, empresa nem telefone.
 **Também:** o formulário de ajuste diz o que falta para liberar o envio (atestado sem o último dia deixava o botão
 desligado sem explicação). Migration 113, painel 3.47.0.
+**Ampliada em 25/10 (migration 114):** o caminho "Recebi o código do meu gestor" dá os mesmos avisos, com o mesmo freio.
