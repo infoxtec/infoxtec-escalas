@@ -261,7 +261,10 @@ a empresa, o pedido, o abono, o espelho, o anexo e a hora extra recebidos; AFD e
 empresa da conta. Herança de conta (`tg_00_conta`) nas 22 tabelas do ponto: da empresa (marcações, NSR, ajustes, abonos,
 pedidos, espelhos e PDFs, fechamentos, hora extra, registros e sequências de documentos, AFD), do funcionário (sessões,
 códigos, acessos, ciências, conversas), do pedido (anexos, acessos e descartes de anexo) e do espelho (acessos);
-`ponto_documento_verificacoes` grava a conta da sessão. As `ponto_*` não mudam. Regressão: T57 sem nenhum vazamento; T61.
+`ponto_documento_verificacoes` grava a conta da sessão. As seis funções que mascaram pelo papel usam
+`fn_papel_na_conta` (sem papel, máscara fechada). `fn_ponto_registrar` só toma como referência local da conta da empresa
+(o local entra no hash); `ponto_meus_comprovantes`, `ponto_minhas_marcacoes` e o acompanhamento só mostram local da mesma
+conta. Regressão: T57 sem nenhum vazamento, com argumentos válidos para o ponto; T61 (inclui a marcação da conta B).
 
 ### Migration 120 (28/10): documentos por conta, multiempresa F2d
 

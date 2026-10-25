@@ -83,7 +83,8 @@ CREATE OR REPLACE FUNCTION public.app_ponto_abonos(p_de date, p_ate date, p_tecn
 AS $function$
 declare v_leitura boolean; v_conta uuid;
 begin
-  v_leitura := fn_papel(app_exigir(array['admin','gestor','leitura'])) = 'leitura';
+  perform app_exigir(array['admin','gestor','leitura']);
+  v_leitura := coalesce(fn_papel_na_conta(), 'leitura') = 'leitura';   -- sem papel na conta, máscara fechada
   v_conta := fn_conta_atual();
   if p_ate < p_de or p_ate - p_de > 62 then raise exception 'Período de até 62 dias.'; end if;
   return query
@@ -110,7 +111,8 @@ declare
   v_leitura boolean;
   v_conta   uuid;
 begin
-  v_leitura := fn_papel(app_exigir(array['admin','gestor','leitura'])) = 'leitura';
+  perform app_exigir(array['admin','gestor','leitura']);
+  v_leitura := coalesce(fn_papel_na_conta(), 'leitura') = 'leitura';   -- sem papel na conta, máscara fechada
   v_conta := fn_conta_atual();
   if p_ate < p_de or p_ate - p_de > 62 then raise exception 'Período de até 62 dias.'; end if;
   return query
@@ -126,7 +128,7 @@ begin
       from ponto_marcacoes m
       join tecnicos t on t.id = m.tecnico_id
       join empresas e on e.id = m.empresa_id
-      left join locais l on l.id = m.local_id
+      left join locais l on l.id = m.local_id and l.conta_id = m.conta_id
      where (m.momento at time zone e.fuso)::date between p_de and p_ate
        and (p_tecnico is null or m.tecnico_id = p_tecnico)
        and m.conta_id = v_conta
@@ -335,7 +337,8 @@ CREATE OR REPLACE FUNCTION public.app_ponto_ajustes(p_de date, p_ate date, p_tec
 AS $function$
 declare v_leitura boolean; v_conta uuid;
 begin
-  v_leitura := fn_papel(app_exigir(array['admin','gestor','leitura'])) = 'leitura';
+  perform app_exigir(array['admin','gestor','leitura']);
+  v_leitura := coalesce(fn_papel_na_conta(), 'leitura') = 'leitura';   -- sem papel na conta, máscara fechada
   v_conta := fn_conta_atual();
   if p_ate < p_de or p_ate - p_de > 62 then raise exception 'Período de até 62 dias.'; end if;
   return query
@@ -1071,7 +1074,8 @@ CREATE OR REPLACE FUNCTION public.app_ponto_he_autorizacoes(p_de date, p_ate dat
 AS $function$
 declare
   v_email text := app_exigir(array['admin','gestor','leitura']);
-  v_ger   boolean := fn_papel(v_email) in ('admin', 'gestor');
+  v_ger   boolean := coalesce(fn_papel_na_conta(), 'leitura') in ('admin', 'gestor');
+  v_conta uuid := fn_conta_atual();
 begin
   if p_de is null or p_ate is null or p_ate < p_de or p_ate - p_de > 62 then raise exception 'Período inválido (até 62 dias).'; end if;
   return coalesce((select jsonb_agg(jsonb_build_object(
@@ -1081,7 +1085,7 @@ begin
       -- o papel leitura não vê quem decidiu (e-mail)
       'decidido_por', case when v_ger then h.decidido_por end) order by h.status <> 'pendente', h.data desc, h.numero desc)
     from ponto_he_autorizacoes h join tecnicos t on t.id = h.tecnico_id left join empresas e on e.id = h.empresa_id
-   where h.data between p_de and p_ate and h.conta_id = fn_conta_atual()), '[]'::jsonb);
+   where h.data between p_de and p_ate and h.conta_id = v_conta), '[]'::jsonb);
 end $function$
 
 ;
@@ -1158,7 +1162,7 @@ CREATE OR REPLACE FUNCTION public.app_ponto_justificativas(p_de date, p_ate date
 AS $function$
 declare
   v_email   text := app_exigir(array['admin','gestor','leitura']);
-  v_leitura boolean := fn_papel(v_email) = 'leitura';
+  v_leitura boolean := coalesce(fn_papel_na_conta(), 'leitura') = 'leitura';
   v_saude   boolean := fn_ve_saude(v_email);
   v_conta   uuid := fn_conta_atual();
 begin
@@ -1293,7 +1297,8 @@ CREATE OR REPLACE FUNCTION public.app_ponto_validar_folha(p_competencia date)
  SET search_path TO 'interno', 'public', 'extensions', 'pg_temp'
 AS $function$
 declare
-  v_leitura boolean := fn_papel(app_exigir(array['admin','gestor','leitura'])) = 'leitura';
+  v_email   text := app_exigir(array['admin','gestor','leitura']);
+  v_leitura boolean := coalesce(fn_papel_na_conta(), 'leitura') = 'leitura';
   v_mes date := date_trunc('month', p_competencia)::date;
   v_fim date := (date_trunc('month', p_competencia) + interval '1 month')::date - 1;
   v_res jsonb;
@@ -1416,6 +1421,157 @@ begin
     'sha256', r.sha256, 'integro', v_integro,
     'descartado', v_desc_em is not null,
     'descartado_em', to_char(v_desc_em at time zone r.fuso, 'DD/MM/YYYY HH24:MI'));
+end $function$
+
+;
+
+-- local de referência da marcação só da conta da empresa (revisão do seguranca: o local entra no hash, imutável);
+-- recriadas a partir da homologação (md5 conferido com o local em 29/10)
+CREATE OR REPLACE FUNCTION interno.fn_ponto_registrar(p_tecnico uuid, p_tipo text, p_canal text, p_lat numeric DEFAULT NULL::numeric, p_lng numeric DEFAULT NULL::numeric, p_precisao integer DEFAULT NULL::integer, p_origem jsonb DEFAULT '{}'::jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'interno', 'public', 'extensions', 'pg_temp'
+AS $function$
+declare
+  v_tec          record;
+  v_emp          record;
+  v_nsr          bigint;
+  v_ant          text;
+  v_hash         text;
+  v_agora        timestamptz := now();   -- para achar a escala; a hora da marcação é tomada depois da trava
+  v_origem       jsonb;
+  v_m            ponto_marcacoes;
+  v_escala       uuid;
+  v_escala_local uuid;
+  v_local_id     uuid;
+  v_local_nome   text;
+  v_raio         int;
+  v_dist         int;
+  v_dentro       boolean;
+  v_id           uuid;
+  v_lat          numeric(9,6) := p_lat;
+  v_lng          numeric(9,6) := p_lng;
+begin
+  if p_tipo not in ('entrada','saida_almoco','volta_almoco','saida','inicio_he','fim_he') then
+    raise exception 'Tipo de marcação inválido: %', p_tipo;
+  end if;
+  if p_canal not in ('app','whatsapp','ura') then raise exception 'Canal inválido: %', p_canal; end if;
+  if p_canal <> 'ura' and (v_lat is null or v_lng is null) then
+    raise exception 'A localização é obrigatória para bater o ponto pelo %.', p_canal;
+  end if;
+
+  select t.id, t.nome, t.cpf, t.ativo, t.empresa_id into v_tec from tecnicos t where t.id = p_tecnico;
+  if not found then raise exception 'Funcionário não encontrado.'; end if;
+  if not v_tec.ativo then raise exception 'Funcionário inativo: procure o seu gestor.'; end if;
+  if v_tec.cpf is null or v_tec.empresa_id is null then
+    raise exception 'Cadastro incompleto para o ponto (CPF e empresa): procure o seu gestor.';
+  end if;
+  select e.id, e.cnpj, e.razao_social, e.fuso, e.conta_id into v_emp from empresas e where e.id = v_tec.empresa_id;
+
+  -- Escala de hoje mais próxima do horário (no fuso da empresa)
+  select e.id, e.local_id into v_escala, v_escala_local from escalas e
+   where e.tecnico_id = p_tecnico and e.data_servico = (v_agora at time zone v_emp.fuso)::date
+     and e.status <> 'cancelada'
+   order by abs(extract(epoch from (e.hora_inicio - (v_agora at time zone v_emp.fuso)::time)))
+   limit 1;
+
+  -- Local de referência: o da escala, se tiver área; senão, o local ativo com área mais perto
+  if v_lat is not null then
+    select l.id, l.nome, l.raio_m into v_local_id, v_local_nome, v_raio
+      from locais l where l.id = v_escala_local and l.latitude is not null and l.conta_id = v_emp.conta_id;
+    if v_local_id is null then
+      select l.id, l.nome, l.raio_m into v_local_id, v_local_nome, v_raio
+        from locais l where l.latitude is not null and l.ativo and l.conta_id = v_emp.conta_id
+       order by fn_distancia_m(v_lat, v_lng, l.latitude, l.longitude) limit 1;
+    end if;
+    if v_local_id is not null then
+      select fn_distancia_m(v_lat, v_lng, l.latitude, l.longitude) into v_dist from locais l where l.id = v_local_id;
+      -- tolerância: a precisão informada pelo aparelho, até 100 m
+      v_dentro := v_dist <= v_raio + least(coalesce(p_precisao, 0), 100);
+    end if;
+  end if;
+
+  -- NSR: a linha da empresa fica travada até o fim da transação; rollback não deixa lacuna.
+  insert into ponto_nsr (empresa_id) values (v_emp.id) on conflict (empresa_id) do nothing;
+  select ultimo + 1, ultimo_hash into v_nsr, v_ant from ponto_nsr where empresa_id = v_emp.id for update;
+  -- hora tomada com a trava na mão: NSR maior nunca tem hora menor
+  v_agora := clock_timestamp();
+  -- origem: só identificadores técnicos do canal, nunca conteúdo
+  select coalesce(jsonb_object_agg(k, left(v #>> '{}', 120)), '{}'::jsonb) into v_origem
+    from jsonb_each(coalesce(p_origem, '{}'::jsonb)) e(k, v)
+   where k in ('msg_id', 'call_sid', 'app_versao', 'login_origem', 'gestor') and jsonb_typeof(v) <> 'null';
+
+  v_m := row(gen_random_uuid(), v_emp.id, v_nsr, p_tecnico, v_tec.cpf, v_agora, p_tipo, p_canal, v_lat, v_lng,
+             p_precisao, v_local_id, v_dist, v_dentro, v_escala, v_origem, v_ant, null, v_emp.conta_id)::ponto_marcacoes;
+  v_hash := fn_ponto_hash(v_m);
+  v_m.hash := v_hash;
+  insert into ponto_marcacoes select v_m.* returning id into v_id;
+  update ponto_nsr set ultimo = v_nsr, ultimo_hash = v_hash where empresa_id = v_emp.id;
+
+  -- Comprovante ao trabalhador (o dado é dele: CPF inteiro)
+  return jsonb_build_object(
+    'marcacao_id', v_id, 'nsr', v_nsr,
+    'empresa', v_emp.razao_social, 'cnpj', v_emp.cnpj,
+    'trabalhador', v_tec.nome, 'cpf', v_tec.cpf,
+    'data', to_char(v_agora at time zone v_emp.fuso, 'DD/MM/YYYY'),
+    'hora', to_char(v_agora at time zone v_emp.fuso, 'HH24:MI:SS'),
+    'tipo', p_tipo, 'canal', p_canal,
+    'local', v_local_nome, 'dentro_area', v_dentro, 'distancia_m', v_dist,
+    'login_origem', v_origem ->> 'login_origem',
+    'autenticacao', left(v_hash, 16));
+end $function$
+
+;
+
+CREATE OR REPLACE FUNCTION public.ponto_meus_comprovantes(p_token text, p_nsr bigint DEFAULT NULL::bigint)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'interno', 'public', 'extensions', 'pg_temp'
+AS $function$
+declare
+  v_tec uuid := fn_ponto_sessao(p_token);
+  v     jsonb;
+begin
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'titulo', 'Comprovante de Registro de Ponto do Trabalhador',
+           'nsr', m.nsr, 'tipo', m.tipo, 'canal', m.canal,
+           'empregador', e.razao_social, 'cnpj', e.cnpj, 'cei_caepf_cno', e.cei_caepf_cno,
+           'local', coalesce(l.nome || coalesce(' - ' || nullif(l.endereco, ''), '') || coalesce(', ' || nullif(l.cidade, ''), ''),
+                             nullif(concat_ws(' - ', e.endereco, concat_ws('/', e.cidade, e.uf)), '')),
+           'trabalhador', t.nome, 'cpf', m.cpf,
+           'data', to_char(m.momento at time zone coalesce(e.fuso, 'America/Bahia'), 'DD/MM/YYYY'),
+           'hora', to_char(m.momento at time zone coalesce(e.fuso, 'America/Bahia'), 'HH24:MI:SS'),
+           'fuso', coalesce(e.fuso, 'America/Bahia'),
+           'inpi', nullif(trim(coalesce(fn_config('rep_p_inpi'), '')), ''),
+           'sha256', m.hash) order by m.momento desc), '[]'::jsonb)
+    into v
+    from ponto_marcacoes m
+    join tecnicos t on t.id = m.tecnico_id
+    join empresas e on e.id = m.empresa_id
+    left join locais l on l.id = m.local_id and l.conta_id = m.conta_id
+   where m.tecnico_id = v_tec and m.momento > now() - interval '48 hours' and (p_nsr is null or m.nsr = p_nsr);
+  return v;
+end $function$
+
+;
+
+CREATE OR REPLACE FUNCTION public.ponto_minhas_marcacoes(p_token text, p_dias integer DEFAULT 7)
+ RETURNS TABLE(nsr bigint, data text, hora text, tipo text, canal text, local text, dentro_area boolean, autenticacao text)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'interno', 'public', 'extensions', 'pg_temp'
+AS $function$
+declare
+  v_tec uuid := fn_ponto_sessao(p_token);
+begin
+  return query
+    select m.nsr, to_char(m.momento at time zone e.fuso, 'DD/MM/YYYY'), to_char(m.momento at time zone e.fuso, 'HH24:MI:SS'),
+           m.tipo, m.canal, l.nome, m.dentro_area, left(m.hash, 16)
+      from ponto_marcacoes m join empresas e on e.id = m.empresa_id left join locais l on l.id = m.local_id and l.conta_id = m.conta_id
+     where m.tecnico_id = v_tec and m.momento > now() - make_interval(days => least(greatest(coalesce(p_dias, 7), 1), 62))
+     order by m.momento desc;
 end $function$
 
 ;

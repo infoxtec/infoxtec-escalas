@@ -36,9 +36,14 @@ vê nem altera a B. **Depois da F2c (28/10):** nenhuma função vaza por escrita
 `app_dossie_local` (F2d) e, conforme o teto de códigos, `app_ponto_gerar_codigo` (F2e). A exigência do T57 virou a
 lista inversa: **qualquer** vazamento fora das famílias de documentos e ponto derruba o CI, inclusive em função nova.
 O T59 prova a programação da conta B isolada e herdando a conta. **Depois da F2d (28/10):** só `app_ponto_gerar_codigo` aparece (F2e). O T57 aceita vazamento apenas em `app_ponto_*`;
-o T60 prova documentos e Storage da conta B isolados. **Depois da F2e (29/10):** nenhuma `app_*` vaza; o T57 virou exigência
-total (qualquer vazamento derruba o CI) e passou a montar com a conta A o pedido, o espelho, o anexo e a hora extra; o T61
-prova o ponto da conta B isolado e herdando a conta. **Recusa não prova isolamento:** parte recusa pelo argumento genérico; cada família melhora os
+o T60 prova documentos e Storage da conta B isolados. **Depois da F2e (29/10):** o T57 não acha vazamento em nenhuma `app_*` e
+virou exigência total (qualquer vazamento derruba o CI). Para o ponto ele passou a montar argumentos que passam das
+validações genéricas: período dentro do teto, motivo com texto suficiente, o funcionário da A com mais marcações, a
+competência do último espelho da A, mais CPF, CNPJ e ids do ponto nas marcas e as tabelas do ponto no retrato de escrita.
+**Prova de mutação (revisão do `seguranca`):** com as 34 definições antigas, sem filtro, o T57 pega 7 (`abonar`,
+`estornar_abono`, `afd`, `espelho_ver`, `he_autorizacoes`, `previa_folha`, `validar_folha`) e o T61 também falha. O T57
+**não cobre sozinho** as 34: o T61 prova os casos de leitura, ajuste, AFD, NSR, pedido e código, e a marcação da conta B
+(local, NSR e cadeia na B). **Recusa não prova isolamento:** parte recusa pelo argumento genérico; cada família melhora os
 argumentos das suas funções até a recusa ser pela conta.
 
 ## Pontos em aberto
@@ -46,8 +51,9 @@ argumentos das suas funções até a recusa ser pela conta.
 - **Trava (revisão do `seguranca`, P1):** gatilho `tg_trava_conta_unica` recusa membro fora da conta 1 enquanto as
   famílias não filtram pela conta. **Condição para criar a primeira conta de cliente:** T57 em exigência e a trava
   removida, na F2f. Até lá, nenhuma conta além da 1 ganha membro.
-- **Papel por conta (P1, na mesma trava):** seis funções e a política do Storage decidem máscara e aprovação de hora
-  extra por `fn_papel` (global); cada família troca por `fn_papel_na_conta` na sua etapa.
+- **Papel por conta (P1, na mesma trava):** as seis funções do ponto que mascaram pelo papel (`abonos`,
+  `acompanhamento`, `ajustes`, `he_autorizacoes`, `justificativas`, `validar_folha`) usam `fn_papel_na_conta` desde a
+  121, com máscara fechada quando o papel não é achado; o Storage desde a 120. Resta o OCR (F2f).
 - **Usuários do painel:** até a F3 só a conta 1 grava (`app_salvar_usuario` recusa nas outras); a lista, o MFA e as
   permissões do RH já mostram só membros da conta. A tela de MFA deixou de listar contas de login que não são usuárias do
   painel.
@@ -73,6 +79,15 @@ argumentos das suas funções até a recusa ser pela conta.
 - **Motor do ponto (F2f):** lembretes, alertas de pedido parado, teto de códigos, PDF do espelho e o webhook
   (`fn_ponto_wh`) ainda percorrem todas as contas; a herança já grava a conta certa em toda linha que eles criam.
 - **Catálogo de motivos do ponto (F3):** `ponto_motivos` segue global (mesmos motivos para todas as contas).
+- **Local da marcação (121):** a referência da marcação (local da escala ou o mais perto) é só da conta da empresa; o
+  local entra no hash, então nunca pode ser de outra conta. Comprovante, histórico do funcionário e acompanhamento só
+  mostram local da mesma conta.
+- **Pendências do ponto para a F2f (revisão do `seguranca`, P3):** feriados são um calendário único (a data é a chave),
+  então feriado municipal de um cliente vale para todos; `ponto_acessos` grava tentativa com CPF desconhecido sem
+  funcionário (cai na conta 1, e falha quando o default sair); `alertas_enviados` sem conta em `app_ponto_ajustar` e nos
+  alertas de pedido parado; instância da Evolution e `app_url` globais no envio do espelho e no aviso de código (F5).
+- **Numeração única no sistema (P3, F6):** número de pedido e código de documento do ponto são sequências globais; quem vê
+  o número deduz o volume das outras contas.
 - **Token da URA na URL (P3, pré-existente):** `app_ligar_escala` manda `VOZ_TOKEN` na query string, que fica na fila do
   `pg_net`; passar para cabeçalho junto com a F5 (canais por conta).
 - **Gatilhos que inserem em tabela de cliente (F2f):** o `default` da conta 1 em `conta_id` só sai na F2f; até lá, cada
