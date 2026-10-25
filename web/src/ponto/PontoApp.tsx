@@ -61,7 +61,7 @@ function Entrar({ onEntrou }: { onEntrou: (t: string) => void }) {
 
   const pedir = async () => {
     setErro(null); setOcupado(true)
-    try { const r = await ponto.pedirCodigo(cpf); setMsg(r.mensagem); setEtapa('codigo') }
+    try { const r = await ponto.pedirCodigo(cpf); if (r.ok === false) setErro(r.mensagem); else { setMsg(r.mensagem); setEtapa('codigo') } }
     catch (e) { setErro(erroMsg(e)) } finally { setOcupado(false) }
   }
   const entrar = async () => {
@@ -358,6 +358,16 @@ function Ajuste({ token, onSair, onMudou }: { token: string; onSair: () => void;
   const pronto = !!motivo && !!data && (atraso ? !!ini && !!fim && ini < fim
     : falta ? (ehAtestado ? !!dataFim && dataFim >= data : ehAlta || !dataFim || dataFim >= data) : !!hora)
     && (!falta || !!arquivo)
+  // o que falta para liberar o envio, dito na tela (o botão desligado sozinho não explicava nada)
+  const faltando = !motivo ? [] : [
+    !data && 'a data',
+    atraso && (!ini || !fim) && 'o horário de início e de fim',
+    atraso && !!ini && !!fim && ini >= fim && 'um fim depois do início',
+    !atraso && !falta && !hora && 'a hora',
+    !atraso && falta && ehAtestado && !dataFim && 'o último dia do atestado',
+    !atraso && falta && !!dataFim && dataFim < data && 'um último dia igual ou depois do primeiro',
+    falta && !arquivo && 'o documento',
+  ].filter(Boolean) as string[]
   const escolherArquivo = async (f: File | undefined) => {
     setErro(null); setArquivo(null)
     if (!f) return
@@ -453,6 +463,7 @@ function Ajuste({ token, onSair, onMudou }: { token: string; onSair: () => void;
               <Textarea rows={2} maxLength={500} value={obs} onChange={e => setObs(e.target.value)} />
             </Field>
             {erro && <ErrorBox>{erro}</ErrorBox>}
+            {!pronto && faltando.length > 0 && <p className="text-xs text-amber-700">Para enviar, falta: {faltando.join(', ')}.</p>}
             <Button className="w-full" disabled={!pronto || enviando} onClick={() => void enviar()}>
               {enviando && <Loader2 className="h-4 w-4 animate-spin" />} Enviar para o gestor
             </Button>
@@ -490,6 +501,7 @@ function Ajuste({ token, onSair, onMudou }: { token: string; onSair: () => void;
                 placeholder="Ex.: o app não abriu na obra; avisei o supervisor às 7h40." />
             </Field>
             {erro && <ErrorBox>{erro}</ErrorBox>}
+            {!pronto && faltando.length > 0 && <p className="text-xs text-amber-700">Para enviar, falta: {faltando.join(', ')}.</p>}
             <Button className="w-full" disabled={!pronto || enviando} onClick={() => void enviar()}>
               {enviando && <Loader2 className="h-4 w-4 animate-spin" />} Enviar para o gestor
             </Button>
