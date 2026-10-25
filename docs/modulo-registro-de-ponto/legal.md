@@ -24,8 +24,8 @@ Monteiro** (contadora). Este documento organiza as perguntas; não substitui o p
 
 ## 2. Perguntas do parecer jurídico (backlog 076 — Gabriel)
 
-As perguntas abaixo foram substituídas pela consulta de 17/10/2026 (`Consulta-REP-P-Trilha-Ponto-v3.docx`, decisão
-103): 7 pareceres e 4 confirmações de sim ou não, conferidos no texto oficial (§8); o resto foi respondido pelo `juridico`.
+As perguntas abaixo foram substituídas pela consulta de 17/10/2026, hoje na v4 de 25/10 (`Consulta-REP-P-Trilha-Ponto-v4.docx`,
+decisão 103): 7 pareceres e 5 confirmações de sim ou não, conferidos no texto oficial (§8); o resto foi respondido pelo `juridico`.
 
 1. O enquadramento é **REP-P** (programa registrado no INPI, Atestado Técnico emitido pelo
    desenvolvedor)? Nossa leitura: sim — o REP-A dependeria de acordo coletivo em cada cliente, o que

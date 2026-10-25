@@ -254,6 +254,20 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 122 (30/10): motor por conta, multiempresa F2f-1
+
+`fn_avisar_supervisores(texto, exceto, empresa, conta)`: da empresa informada ou da do funcionário; sem empresa, só
+supervisores da mesma conta (do funcionário, da empresa ou a informada); sem nada, todos (alerta de sistema, decisão
+107). `fn_alerta_prazo_escala` e `fn_alerta_certificacoes` calculam, registram e avisam por conta ativa (pendências com
+`fn_pendencias_escala(data, conta)`; agrupam por empresa quando a conta tem mais de uma). `alertas_enviados`: chave
+`(conta_id, tipo, data_ref)`; gatilho `fn_alerta_conta` põe a conta do funcionário ou da empresa citada no tipo ou no
+detalhe (aviso quando o identificador não é funcionário nem empresa); chave com índice também em `(tipo, data_ref)`.
+O motor de envio (`fn_dispatcher_whatsapp`, fase 3) só avisa supervisores da conta da escala. Os avisos do dia rodam
+conta a conta, com erro de uma sem derrubar as outras. `fn_ponto_alerta_teto` avisa só supervisores da conta 1
+(operadora). `fn_conta_de(email, conta pedida)`: a regra de `fn_conta_atual` numa função pura, que `fn_conta_atual`
+passa a chamar. `fn_papel_na_conta_de(email, x-conta)`: papel na conta para Edge Functions, sem mexer na sessão; a
+`documento-ocr` usa, aceita o cabeçalho `x-conta` e responde 403 quando a conta é recusada. Regressão: T62.
+
 ### Migration 121 (29/10): ponto por conta, multiempresa F2e
 
 As 34 funções do ponto no painel (`app_ponto_*`) leem e alteram só na conta da sessão e conferem na conta o funcionário,
