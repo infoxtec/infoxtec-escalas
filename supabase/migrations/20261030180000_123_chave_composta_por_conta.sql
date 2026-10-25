@@ -28,7 +28,8 @@ alter table interno.tipos_atividade add constraint tipos_atividade_conta_id_uk u
 alter table interno.tipos_documento add constraint tipos_documento_conta_id_uk unique (conta_id, id);
 
 -- 2. chave composta no lugar da simples: o filho só aponta para registro da mesma conta.
---    Entra sem conferir (not valid) e é conferida no passo 3, sem travar leitura nem escrita.
+--    Entra sem conferir (not valid) e é conferida no passo 3. Como a migration roda numa transação só, a trava
+--    das chaves únicas (passo 1) vale até o fim: aplicar na produção fora do horário de batida de ponto.
 alter table interno.carga_aceites drop constraint carga_aceites_carga_id_fkey,
   add constraint carga_aceites_carga_id_conta_fkey foreign key (conta_id, carga_id) references interno.cargas_horarias (conta_id, id) not valid;
 alter table interno.carga_atribuicoes drop constraint carga_atribuicoes_carga_id_fkey,
@@ -170,7 +171,7 @@ alter table interno.tecnico_documentos drop constraint tecnico_documentos_tipo_d
 alter table interno.tipo_atividade_documentos drop constraint tipo_atividade_documentos_tipo_documento_id_fkey,
   add constraint tipo_atividade_documentos_tipo_documento_id_conta_fkey foreign key (conta_id, tipo_documento_id) references interno.tipos_documento (conta_id, id) on delete cascade not valid;
 
--- 3. conferência das chaves (share update exclusive: leitura e escrita continuam)
+-- 3. conferência das chaves
 alter table interno.carga_aceites validate constraint carga_aceites_carga_id_conta_fkey;
 alter table interno.carga_atribuicoes validate constraint carga_atribuicoes_carga_id_conta_fkey;
 alter table interno.tecnico_documentos validate constraint tecnico_documentos_documento_id_conta_fkey;

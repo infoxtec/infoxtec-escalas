@@ -1676,6 +1676,10 @@ sobre o papel. O `gestor-de-pedidos` mede rodadas e retrabalho por entrega, para
   Cloudflare: `docs/recuperacao-desastre.md`. Plano principal é o Supabase de código aberto num servidor próprio;
   contingência legal é o PostgreSQL em modo de consulta. Ensaio a cada três meses.
 - **C. Backup do Storage e do banco da Evolution** entram no pacote diário (Storage completo no mensal).
-**Antes da produção:** registrar a transferência internacional do pacote cifrado no aviso de privacidade, para a
-revisão do Gabriel. É o mesmo tratamento da decisão 70.
+**Revisão do `seguranca`: quatro P1 a decidir antes do workflow**
+1. Conta dedicada só ao backup em cada nuvem (o token do OneDrive vale para o drive inteiro).
+2. Banco da Evolution sem as tabelas de sessão (recomendado; a sessão é credencial do número).
+3. Restauração e ensaio com o agendador desligado e em ambiente controlado.
+4. Base legal da transferência de dado sensível (arts. 11 e 33): conta empresarial com contrato, nuvem com região no
+   Brasil ou risco aceito no aviso, com o Gabriel, **antes do primeiro envio**.
 
