@@ -50,6 +50,10 @@ argumentos das suas funções até a recusa ser pela conta.
 
 ## Pontos em aberto
 
+- **Revisão de 25/10 (`docs/revisao-infra-dados-2026-10-25.md`):** a chave composta `(conta_id, id)` da
+  decisão 108 **ainda não existe**; a F1 criou só a chave para `contas`. Entra na F2f-2a. **Regra até 31/10:**
+  versão de migration à mão, maior que `20261030120000`.
+
 - **Trava (revisão do `seguranca`, P1):** gatilho `tg_trava_conta_unica` recusa membro fora da conta 1 enquanto as
   famílias não filtram pela conta. **Condição para criar a primeira conta de cliente:** a trava e o default "conta 1"
   saem juntos, na F2f-2, com a F3 (decisão 114). Até lá, nenhuma conta além da 1 ganha membro.
