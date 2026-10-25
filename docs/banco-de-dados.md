@@ -254,6 +254,12 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 114 (25/10): o mesmo aviso no "Recebi o código do meu gestor" (decisão 111)
+
+`ponto_entrar` avisa "CPF inválido" (sempre) e "CPF não encontrado" (com o freio) quando não acha funcionário ativo
+com o CPF. O freio sai de `ponto_pedir_codigo` para `fn_ponto_cpf_aviso_liberado(ip)`, usada pelas duas: 3 avisos por
+rede por hora e no máximo `ponto_max_avisos_hora` no total. Regressão T54.
+
 ### Migration 113 (25/10): pedido de código avisa CPF não encontrado (decisão 111)
 
 `ponto_pedir_codigo` devolve `ok` e a `mensagem`. CPF inválido: "CPF inválido…" (sempre). CPF sem funcionário ativo:

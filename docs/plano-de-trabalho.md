@@ -321,3 +321,5 @@ avaliação.
 | 25/10 | Aviso de CPF não encontrado com freio por IP e "o que falta" no formulário de ajuste (decisão 111; migration 113, painel 3.47.0) | Banco vazio local: regressão T1 a T53 e `plpgsql_check` zero erros | Homologação e teste |
 | 25/10 | Marca animada (prévia aprovada pelo responsável): login completo; cabeçalho do painel e app do ponto só com os 3 pontos e as letras, sem o texto secundário (painel 3.48.0) | `npm run build:homologacao` e captura local do login e do ponto | Homologação e teste |
 | 25/10 | Marca do login repete a cada 6 s; cabeçalho e app do ponto tocam uma vez; parada para quem pede menos movimento (painel 3.48.1) | `npm run build:homologacao` | Homologação e teste |
+| 25/10 | Produção: migration 113 (PR #142), conferida pelo responsável | Versão 20261025120000 e freio ativo em `ponto_pedir_codigo` | Concluído |
+| 25/10 | Aviso de CPF também no "Recebi o código do meu gestor" (migration 114, decisão 111 ampliada) | Banco vazio local: regressão T1 a T54 e `plpgsql_check` zero erros | Homologação e teste |
