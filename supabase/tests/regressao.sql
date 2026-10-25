@@ -3150,7 +3150,181 @@ begin
   perform pg_temp.ok(v_r->>'erro' like 'Não foi possível entrar%', '[T54] cota compartilhada com o pedido de código: ' || v_r::text);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T56' as resultado,
+-- T57 multiempresa F2a: conta da sessão (asserções) e vazamento A × B gerado do catálogo (relatório) ----------------
+do $$
+declare
+  v_a uuid := '00000000-0000-0000-0000-000000000001';
+  v_b uuid := gen_random_uuid();
+  v_c uuid := gen_random_uuid();
+  v_ok boolean; v_msg text; v_r jsonb;
+begin
+  insert into contas (id, nome) values (v_b, 'QA Conta B'), (v_c, 'QA Conta C');
+  -- a trava da F2 recusa membro fora da conta 1; o teste a desliga dentro da transação desfeita
+  v_ok := false;
+  begin insert into conta_membros (conta_id, email, papel) values (v_b, 'qa-trava@teste.local', 'admin');
+  exception when others then v_ok := sqlerrm like 'Multiempresa em construção%'; end;
+  perform pg_temp.ok(v_ok, '[T57] trava: membro fora da conta 1 recusado');
+  alter table conta_membros disable trigger tg_trava_conta_unica;
+  -- usuário só da conta B (o espelho da 116 põe todo usuário do painel na conta 1: tira e põe na B)
+  insert into painel_usuarios (email, nome, papel) values ('qa-b@teste.local', 'QA B', 'admin');
+  delete from conta_membros where email = 'qa-b@teste.local';
+  insert into conta_membros (conta_id, email, papel) values (v_b, 'qa-b@teste.local', 'admin');
+  -- usuário nas contas 1 e B
+  insert into painel_usuarios (email, nome, papel) values ('qa-ab@teste.local', 'QA AB', 'gestor');
+  insert into conta_membros (conta_id, email, papel) values (v_b, 'qa-ab@teste.local', 'leitura');
+  perform set_config('request.headers', '{}', true);
+
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform pg_temp.ok(fn_conta_atual() = v_a, '[T57] usuário da conta 1 cai na conta 1');
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform pg_temp.ok(fn_conta_atual() = v_b, '[T57] usuário da conta B cai na conta B');
+  perform pg_temp.ok(app_exigir(array['admin']) = 'qa-b@teste.local', '[T57] admin da conta B passa no app_exigir');
+  v_r := app_meu_acesso();
+  perform pg_temp.ok(jsonb_array_length(v_r->'contas') = 1 and v_r->'contas'->0->>'id' = v_b::text, '[T57] contas do usuário: ' || v_r::text);
+  -- conta desativada: sem conta, sem acesso
+  update contas set ativa = false where id = v_b;
+  v_ok := false;
+  begin perform app_exigir(array['admin']); exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
+  perform pg_temp.ok(v_ok and fn_conta_atual() is null, '[T57] conta desativada nega');
+  update contas set ativa = true where id = v_b;
+  -- pedir conta de que não é membro
+  perform set_config('request.headers', json_build_object('x-conta', v_c)::text, true);
+  v_ok := false;
+  begin perform fn_conta_atual(); exception when others then v_msg := sqlerrm; v_ok := sqlerrm = 'Sem acesso a esta conta.'; end;
+  perform pg_temp.ok(v_ok, '[T57] conta de que não é membro: ' || coalesce(v_msg, 'aceita'));
+  perform set_config('request.headers', '{"x-conta":"nao-e-uuid"}', true);
+  v_ok := false;
+  begin perform fn_conta_atual(); exception when others then v_ok := sqlerrm = 'Conta inválida.'; end;
+  perform pg_temp.ok(v_ok, '[T57] cabeçalho inválido');
+  -- usuário de duas contas: sem cabeçalho pede escolha; com cabeçalho, o papel é o daquela conta
+  perform set_config('request.jwt.claims', '{"email":"qa-ab@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform set_config('request.headers', '{}', true);
+  v_ok := false;
+  begin perform fn_conta_atual(); exception when others then v_ok := sqlerrm = 'Escolha a conta para continuar.'; end;
+  perform pg_temp.ok(v_ok, '[T57] duas contas sem escolha');
+  perform set_config('request.headers', json_build_object('x-conta', v_a)::text, true);
+  perform pg_temp.ok(app_exigir(array['gestor']) is not null, '[T57] gestor na conta 1');
+  perform set_config('request.headers', json_build_object('x-conta', v_b)::text, true);
+  v_ok := false;
+  begin perform app_exigir(array['admin', 'gestor']); exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
+  perform pg_temp.ok(v_ok, '[T57] só leitura na conta B');
+  insert into qa values ('conta_b', v_b::text);
+  perform set_config('request.headers', '{}', true);
+end $$;
+
+-- relatório: o admin da conta B chama toda app_* com argumentos da conta A (cada chamada desfeita). Vaza quem devolve
+-- identificador ou nome da conta A, ou muda dado dela. Vira exigência quando as famílias da F2 estiverem reescritas.
+-- Sequências (nextval) não voltam no rollback: na homologação a numeração pode pular, sem efeito.
+do $$
+declare
+  v_a uuid := '00000000-0000-0000-0000-000000000001';
+  f record; a record;
+  v_args text[]; v_val text; v_tab text; v_res text; v_hash text; v_antes text; v_feito boolean; v_mudou boolean;
+  v_marcas text[];
+  v_le text[] := '{}'; v_escreve text[] := '{}'; v_recusa int := 0; v_limpa int := 0;
+begin
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform set_config('request.headers', '{}', true);
+  v_marcas := array(
+    select id::text from tecnicos where conta_id = v_a union all select nome from tecnicos where conta_id = v_a and length(nome) > 5
+    union all select id::text from empresas where conta_id = v_a union all select id::text from locais where conta_id = v_a
+    union all select nome from locais where conta_id = v_a and length(nome) > 5 union all select id::text from escalas where conta_id = v_a);
+  v_antes := md5(concat_ws('|',
+    (select string_agg(t::text, ',' order by t.id) from tecnicos t where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.id) from empresas t where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.id) from locais t where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.id) from escalas t where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.id) from documentos t where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.email) from painel_usuarios t where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.id) from ponto_justificativas t where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.id) from ponto_ajustes t where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.id) from times t where conta_id = v_a),
+    (select count(*)::text from ponto_marcacoes where conta_id = v_a)));
+  for f in select p.oid, p.proname, p.proargnames, p.proargtypes::oid[] as tipos
+             from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+            where n.nspname = 'public' and p.proname like 'app\_%'
+              and p.proname not in ('app_exigir', 'app_email', 'app_meu_acesso')
+            order by p.proname loop
+    v_args := '{}';
+    for a in select x.nome, x.tipo from unnest(f.proargnames, f.tipos) as x(nome, tipo) loop
+      v_tab := case
+        when a.nome in ('p_tecnico', 'p_alvo_id') or a.nome = 'p_tecnicos' then 'tecnicos'
+        when a.nome = 'p_local' then 'locais'   when a.nome = 'p_empresa' then 'empresas'
+        when a.nome = 'p_escala' then 'escalas' when a.nome = 'p_documento' then 'documentos'
+        when a.nome = 'p_time' then 'times'     when a.nome = 'p_habilidade' then 'habilidades'
+        when a.nome = 'p_carga' then 'cargas_horarias' when a.nome = 'p_tipo' then 'tipos_atividade'
+        when a.nome = 'p_marcacao' then 'ponto_marcacoes' when a.nome = 'p_justificativa' then 'ponto_justificativas'
+        when a.nome = 'p_ajuste' then 'ponto_ajustes' when a.nome = 'p_abono' then 'ponto_abonos'
+        when a.nome = 'p_espelho' then 'ponto_espelhos'
+        when a.nome = 'p_id' then case
+          when f.proname ~ 'tecnico' then 'tecnicos' when f.proname ~ 'local' then 'locais'
+          when f.proname ~ 'empresa' then 'empresas' when f.proname ~ 'escala' then 'escalas'
+          when f.proname ~ 'documento' then 'documentos' when f.proname ~ 'time' then 'times'
+          when f.proname ~ 'habilidade' then 'habilidades' when f.proname ~ 'carga' then 'cargas_horarias'
+          when f.proname ~ 'tipo' then 'tipos_atividade' else 'tecnicos' end
+        end;
+      if v_tab is not null then
+        execute format('select id::text from interno.%I where conta_id = $1 order by id limit 1', v_tab) into v_val using v_a;
+        if a.tipo = 'uuid[]'::regtype and v_val is not null then v_val := '{' || v_val || '}'; end if;
+      else
+        v_val := case
+          when a.tipo = 'date'::regtype then case
+            when a.nome in ('p_ate', 'p_fim') then (current_date + 30)::text
+            when a.nome in ('p_mes', 'p_competencia') then date_trunc('month', current_date)::date::text
+            when a.nome in ('p_de', 'p_inicio') then (current_date - 60)::text
+            else current_date::text end
+          when a.tipo = 'time'::regtype then case when a.nome = 'p_fim' then '17:00' else '08:00' end
+          when a.tipo = 'boolean'::regtype then 'false'
+          when a.tipo in ('integer'::regtype, 'bigint'::regtype, 'numeric'::regtype) then '1'
+          when a.tipo = 'jsonb'::regtype then '{}'
+          when a.tipo = 'text[]'::regtype then '{}'
+          when a.tipo = 'text'::regtype then case
+            when a.nome = 'p_email' then 'qa-admin@teste.local' when a.nome = 'p_papel' then 'leitura'
+            else 'QA T57' end
+          end;
+      end if;
+      v_args := v_args || format('%I => %s', a.nome,
+        case when v_val is null then format('null::%s', format_type(a.tipo, null))
+             else format('%L::%s', v_val, format_type(a.tipo, null)) end);
+    end loop;
+    v_res := null; v_feito := false; v_mudou := false;
+    begin
+      execute format('select (%s(%s))::text', f.proname, array_to_string(v_args, ', ')) into v_res;
+      v_feito := true;
+      v_hash := md5(concat_ws('|',
+        (select string_agg(t::text, ',' order by t.id) from tecnicos t where conta_id = v_a),
+        (select string_agg(t::text, ',' order by t.id) from empresas t where conta_id = v_a),
+        (select string_agg(t::text, ',' order by t.id) from locais t where conta_id = v_a),
+        (select string_agg(t::text, ',' order by t.id) from escalas t where conta_id = v_a),
+        (select string_agg(t::text, ',' order by t.id) from documentos t where conta_id = v_a),
+        (select string_agg(t::text, ',' order by t.email) from painel_usuarios t where conta_id = v_a),
+        (select string_agg(t::text, ',' order by t.id) from ponto_justificativas t where conta_id = v_a),
+        (select string_agg(t::text, ',' order by t.id) from ponto_ajustes t where conta_id = v_a),
+        (select string_agg(t::text, ',' order by t.id) from times t where conta_id = v_a),
+        (select count(*)::text from ponto_marcacoes where conta_id = v_a)));
+      v_mudou := v_hash <> v_antes;
+      raise exception 'qa_desfaz_t57';
+    exception when others then
+      if sqlerrm <> 'qa_desfaz_t57' then v_feito := false; end if;
+    end;
+    if not v_feito then
+      v_recusa := v_recusa + 1;
+    elsif v_mudou then
+      v_escreve := v_escreve || f.proname::text;
+    elsif v_res is not null and exists (select 1 from unnest(v_marcas) m where strpos(v_res, m) > 0) then
+      v_le := v_le || f.proname::text;
+    else
+      v_limpa := v_limpa + 1;
+    end if;
+  end loop;
+  raise notice '[T57] vazamento por escrita (%): %', cardinality(v_escreve), array_to_string(v_escreve, ', ');
+  raise notice '[T57] vazamento por leitura (%): %', cardinality(v_le), array_to_string(v_le, ', ');
+  raise notice '[T57] recusaram: %, sem dado da conta A: % (relatório; vira exigência ao fim da F2)', v_recusa, v_limpa;
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  perform set_config('request.headers', '{}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T57' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

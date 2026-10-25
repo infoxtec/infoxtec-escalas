@@ -254,6 +254,15 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 117 (27/10): conta da sessão, multiempresa F2a (`docs/multiempresa-f2.md`)
+
+`interno.fn_conta_atual()` devolve a conta do usuário do painel: membro ativo de conta ativa em `conta_membros`; quem está
+em mais de uma conta escolhe pelo cabeçalho `x-conta` (uuid conferido contra os membros: "Sem acesso a esta conta.");
+sem escolha, "Escolha a conta para continuar."; sem sessão, nulo. `app_exigir` passa a exigir a conta e a conferir o
+papel **naquela conta** (falta de escopo nega); na conta 1 o resultado é o de antes (espelho da 116). `app_meu_acesso`
+devolve também `contas` (id, nome, papel). `fn_papel` continua global até a F2f. **Trava:** `tg_trava_conta_unica` recusa membro fora da conta 1 até a F2f. Regressão T57: asserções da conta da
+sessão e relatório de vazamento A × B gerado do catálogo.
+
 ### Migration 116 (26/10): contas, multiempresa F1 (decisões 108 e 113)
 
 Tabelas novas em `interno` (RLS ligado, sem política, sem privilégio para a API): `contas` (conta 1 "Infoxtec", id
