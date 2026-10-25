@@ -254,6 +254,18 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 116 (26/10): contas, multiempresa F1 (decisões 108 e 113)
+
+Tabelas novas em `interno` (RLS ligado, sem política, sem privilégio para a API): `contas` (conta 1 "Infoxtec", id
+`00000000-0000-0000-0000-000000000001`), `conta_membros` (conta, e-mail, papel admin/gestor/leitura, ativo; preenchida
+com `painel_usuarios` e mantida igual a ela pelo gatilho `tg_espelhar_conta_membro` até a F2), `conta_modulos` (conta, módulo escala/ponto, ativo) e `plataforma_admins` (e-mail). Toda tabela
+de cliente ganha `conta_id uuid not null default` conta 1 `references contas`, com índice; ficam sem as da plataforma
+(`config`, `backlog_itens`, `motor_estado`, `saude_testes`, `ponto_geo`, `webhook_token_trocas`). Default constante: a
+coluna entra sem reescrever a tabela nem disparar gatilho. `fn_ponto_registrar` grava a conta da empresa na marcação
+(o hash da cadeia não inclui a conta e não muda). Nenhuma função lê `conta_id` ainda: o filtro por conta é a F2.
+Regressão T56 passa a exigir: nenhuma tabela de cliente sem `conta_id` com chave, nenhuma da plataforma com, conta 1,
+admins, módulos, espelho de `conta_membros` e as tabelas novas fechadas. A migration usa `lock_timeout` de 5 s.
+
 ### Migration 115 (26/10): esquema privado `interno` (backlog 074, decisões 76 e 108)
 
 Tabelas, views, sequências e funções `fn_*` saem do `public` para `interno`; no `public` ficam só `app_*`, `ponto_*` e

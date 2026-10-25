@@ -196,6 +196,65 @@ begin
   perform pg_temp.ok(v is null, '[T55] função sem o caminho interno, public, extensions, pg_temp: ' || coalesce(v, ''));
 end $$;
 
+-- T56 régua do multiempresa (F0, docs/multiempresa-f0.md): o catálogo bate com a classificação; exigência desde a F1 --
+do $$
+declare
+  v_fn_plataforma text[] := array['app_email', 'app_exigir', 'app_meu_acesso', 'app_backlog', 'app_salvar_backlog_item',
+    'app_mover_backlog_item', 'app_checklist_saude', 'app_checklist_testar', 'app_estado_motor'];
+  v_tb_plataforma text[] := array['config', 'backlog_itens', 'motor_estado', 'saude_testes', 'ponto_geo', 'webhook_token_trocas'];
+  v text; n int;
+begin
+  -- a lista da plataforma precisa existir (função ou tabela renomeada/removida obriga a revisar a classificação)
+  select string_agg(f, ', ') into v from unnest(v_fn_plataforma) f
+   where not exists (select 1 from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public' and p.proname = f);
+  perform pg_temp.ok(v is null, '[T56] função da plataforma sumiu do catálogo: ' || coalesce(v, ''));
+  select string_agg(t, ', ') into v from unnest(v_tb_plataforma) t where to_regclass('interno.' || t) is null;
+  perform pg_temp.ok(v is null, '[T56] tabela da plataforma sumiu do catálogo: ' || coalesce(v, ''));
+  -- F1 (migration 116): toda tabela de cliente tem conta_id não nulo com chave para contas; a plataforma não tem
+  select count(*), string_agg(c.relname, ', ' order by c.relname) into n, v
+    from pg_class c join pg_namespace s on s.oid = c.relnamespace
+   where s.nspname = 'interno' and c.relkind in ('r', 'p') and not c.relispartition
+     and c.relname <> all (v_tb_plataforma || array['contas', 'conta_membros', 'plataforma_admins', 'conta_modulos'])
+     and c.relname not like 'qa\_%'
+     and not exists (select 1 from pg_attribute a join pg_constraint k on k.conrelid = a.attrelid and k.contype = 'f'
+                      and k.confrelid = 'interno.contas'::regclass and k.conkey = array[a.attnum]
+                     where a.attrelid = c.oid and a.attname = 'conta_id' and a.attnotnull and not a.attisdropped);
+  perform pg_temp.ok(n = 0, '[T56] tabela de cliente sem conta_id (não nulo, chave para contas): ' || coalesce(v, ''));
+  select string_agg(t, ', ') into v from unnest(v_tb_plataforma) t
+   where exists (select 1 from pg_attribute a where a.attrelid = to_regclass('interno.' || t) and a.attname = 'conta_id');
+  perform pg_temp.ok(v is null, '[T56] tabela da plataforma com conta_id: ' || coalesce(v, ''));
+  perform pg_temp.ok(exists (select 1 from contas where id = '00000000-0000-0000-0000-000000000001' and ativa),
+                     '[T56] conta 1 ausente');
+  perform pg_temp.ok((select count(*) from plataforma_admins
+                       where email in ('david.cerqueira@infoxtec.com.br', 'sergio.dorea@infoxtec.com.br')) = 2,
+                     '[T56] admins da plataforma');
+  perform pg_temp.ok((select count(*) from conta_modulos where conta_id = '00000000-0000-0000-0000-000000000001' and ativo) = 2,
+                     '[T56] módulos da conta 1');
+  -- linha nova sem conta explícita cai na conta 1 (até a F2 trazer a conta da sessão)
+  perform pg_temp.ok((select bool_and(conta_id = '00000000-0000-0000-0000-000000000001') from tecnicos), '[T56] técnico fora da conta 1');
+  -- as tabelas novas seguem a regra: RLS ligado, sem política e sem privilégio para os papéis da API
+  select string_agg(c.relname, ', ') into v from pg_class c
+   where c.oid in ('interno.contas'::regclass, 'interno.conta_membros'::regclass, 'interno.plataforma_admins'::regclass,
+                   'interno.conta_modulos'::regclass)
+     and (not c.relrowsecurity or exists (select 1 from pg_policy p where p.polrelid = c.oid)
+          or exists (select 1 from unnest(array['anon', 'authenticated', 'service_role']) r
+                      where has_table_privilege(r, c.oid, 'select, insert, update, delete')));
+  perform pg_temp.ok(v is null, '[T56] tabela de conta exposta: ' || coalesce(v, ''));
+  -- conta_membros espelha painel_usuarios até a F2 (gatilho da 116): incluir, mudar papel e apagar
+  insert into painel_usuarios (email, nome, papel) values ('qa-t56@exemplo.com', 'QA', 'leitura');
+  update painel_usuarios set papel = 'gestor', ativo = false where email = 'qa-t56@exemplo.com';
+  perform pg_temp.ok(exists (select 1 from conta_membros where email = 'qa-t56@exemplo.com' and papel = 'gestor' and not ativo),
+                     '[T56] espelho de conta_membros na alteração');
+  delete from painel_usuarios where email = 'qa-t56@exemplo.com';
+  select count(*) into n from (
+    (select email, papel, ativo from painel_usuarios except
+     select email, papel, ativo from conta_membros where conta_id = '00000000-0000-0000-0000-000000000001')
+    union all
+    (select email, papel, ativo from conta_membros where conta_id = '00000000-0000-0000-0000-000000000001' except
+     select email, papel, ativo from painel_usuarios)) d;
+  perform pg_temp.ok(n = 0, '[T56] conta_membros diferente de painel_usuarios: ' || n);
+end $$;
+
 -- T44 trava de envio da homologação (migration 99, decisão 94) ----------------------------------------------
 do $$
 declare v_ok boolean; v_msg text;
@@ -3091,7 +3150,7 @@ begin
   perform pg_temp.ok(v_r->>'erro' like 'Não foi possível entrar%', '[T54] cota compartilhada com o pedido de código: ' || v_r::text);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T55' as resultado,
+select 'REGRESSÃO OK: T1 a T56' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
