@@ -3258,8 +3258,11 @@ begin
         when a.nome = 'p_carga' then 'cargas_horarias' when a.nome = 'p_tipo' then 'tipos_atividade'
         when a.nome = 'p_marcacao' then 'ponto_marcacoes' when a.nome = 'p_justificativa' then 'ponto_justificativas'
         when a.nome = 'p_ajuste' then 'ponto_ajustes' when a.nome = 'p_abono' then 'ponto_abonos'
-        when a.nome = 'p_espelho' then 'ponto_espelhos'
+        when a.nome = 'p_espelho' then 'ponto_espelhos' when a.nome = 'p_anexo' then 'ponto_justificativa_anexos'
         when a.nome = 'p_id' then case
+          when f.proname = 'app_ponto_decidir' then 'ponto_justificativas'
+          when f.proname = 'app_ponto_he_decidir' then 'ponto_he_autorizacoes'
+          when f.proname ~ '^app_ponto_espelho' then 'ponto_espelhos'
           when f.proname ~ 'tecnico' then 'tecnicos' when f.proname ~ 'local' then 'locais'
           when f.proname ~ 'empresa' then 'empresas' when f.proname ~ 'escala' then 'escalas'
           when f.proname ~ 'documento' then 'documentos' when f.proname ~ 'time' then 'times'
@@ -3323,11 +3326,9 @@ begin
   raise notice '[T57] vazamento por escrita (%): %', cardinality(v_escreve), array_to_string(v_escreve, ', ');
   raise notice '[T57] vazamento por leitura (%): %', cardinality(v_le), array_to_string(v_le, ', ');
   raise notice '[T57] recusaram: %, sem dado da conta A: % (relatório; vira exigência ao fim da F2)', v_recusa, v_limpa;
-  -- exigência (docs/multiempresa-f2.md): só a família ainda não reescrita pode aparecer; F2b, F2c e F2d já não vazam,
-  -- e função nova de qualquer família entra coberta. Resta: ponto (F2e)
-  perform pg_temp.ok(not exists (select 1 from unnest(v_escreve || v_le) x(nome_fn)
-                                  where nome_fn !~ '^app_ponto_'),
-    '[T57] vazamento fora das famílias pendentes: ' || array_to_string(v_escreve || v_le, ', '));
+  -- exigência (docs/multiempresa-f2.md): desde a F2e nenhuma app_* vaza, e função nova de qualquer família entra coberta
+  perform pg_temp.ok(cardinality(v_escreve || v_le) = 0,
+    '[T57] vazamento entre contas: ' || array_to_string(v_escreve || v_le, ', '));
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
   perform set_config('request.headers', '{}', true);
 end $$;
@@ -3444,7 +3445,52 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T60' as resultado,
+-- T61 multiempresa F2e: ponto do painel por conta (migration 121) --------------------------------------------------------
+do $$
+declare
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_tec_a uuid := (select v::uuid from qa where k = 'tec1');
+  v_emp_a uuid := (select v::uuid from qa where k = 'emp');
+  v_jus_a uuid := (select id from ponto_justificativas where conta_id <> (select v::uuid from qa where k = 'conta_b') limit 1);
+  v_tec uuid; v_ok boolean; v_msg text;
+begin
+  select id into v_tec from tecnicos where conta_id = v_b and nome = 'QA Técnico B';
+  update tecnicos set cpf = pg_temp.cpf('580580581'), opt_in = false where id = v_tec;
+  perform set_config('request.headers', '{}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform app_ponto_gerar_codigo(v_tec);
+  perform pg_temp.ok((select bool_and(conta_id = v_b) from ponto_codigos where tecnico_id = v_tec), '[T61] código do ponto herda a conta B');
+  perform pg_temp.ok((select count(*) from app_ponto_hoje()) = 1
+                     and (select count(*) from app_ponto_acompanhamento(current_date - 5, current_date)) = 0
+                     and (select count(*) from app_ponto_espelho(current_date - 5, current_date)) = 0,
+                     '[T61] conta B vê só o próprio ponto');
+  v_ok := false;
+  begin perform app_ponto_ajustar(v_tec_a, 'desconsiderar', 'motivo suficiente aqui', p_marcacao => (select id from ponto_marcacoes where tecnico_id = v_tec_a limit 1));
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm = 'Funcionário não encontrado.'; end;
+  perform pg_temp.ok(v_ok, '[T61] ajuste em funcionário de outra conta: ' || coalesce(v_msg, 'aceito'));
+  v_ok := false;
+  begin perform app_ponto_verificar(v_emp_a); exception when others then v_ok := sqlerrm = 'Empresa não encontrada.'; end;
+  perform pg_temp.ok(v_ok, '[T61] cadeia de NSR de empresa de outra conta');
+  v_ok := false;
+  begin perform app_ponto_afd(v_emp_a, current_date - 5, current_date);
+  exception when others then v_ok := sqlerrm = 'Empresa empregadora não encontrada.'; end;
+  perform pg_temp.ok(v_ok, '[T61] AFD de empresa de outra conta');
+  if v_jus_a is not null then
+    v_ok := false;
+    begin perform app_ponto_decidir(v_jus_a, false, 'Negativa de teste da conta B');
+    exception when others then v_ok := sqlerrm = 'Pedido não encontrado.'; end;
+    perform pg_temp.ok(v_ok, '[T61] pedido de outra conta');
+  end if;
+  -- a conta 1 não vê nem gera código para o funcionário da B
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform pg_temp.ok(not exists (select 1 from app_ponto_hoje() h where h.tecnico_id = v_tec), '[T61] conta 1 não vê o ponto da B');
+  v_ok := false;
+  begin perform app_ponto_gerar_codigo(v_tec); exception when others then v_ok := sqlerrm = 'Técnico não encontrado.'; end;
+  perform pg_temp.ok(v_ok, '[T61] conta 1 não gera código para funcionário da B');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T61' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

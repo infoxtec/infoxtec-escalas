@@ -12,7 +12,7 @@ por família, regressão inteira verde em todos; nenhuma assinatura de função 
 | F2b | Cadastros | técnicos, empresas, locais, times, habilidades, tipos, usuários e permissões do RH: leitura e escrita só da conta; registro novo nasce com a conta da sessão; nome de habilidade e tipos único por conta | Migration 118 |
 | F2c | Programação | escalas, cargas, envio, ligações, pendências, linha do tempo, painel gerencial e indicadores; gatilho `fn_herdar_conta` nas 10 tabelas da família | Migration 119 |
 | F2d | Documentos | documentos, dossiê e Storage por conta (arquivo só de técnico da conta); OCR segue com o papel global até a F2f | Migration 120 |
-| F2e | Ponto | `app_ponto_*`, AFD sem empresa livre, `ponto_*` pela conta do funcionário, login do ponto com o identificador da conta, Storage com prefixo | A fazer |
+| F2e | Ponto | as 34 `app_ponto_*` (marcações, ajustes, abonos, pedidos, espelhos, folha, cofre, hora extra, AFD e conferência de documentos) só na conta; AFD e cadeia de NSR só de empresa da conta; herança de conta nas 22 tabelas do ponto. As `ponto_*` já ficam presas ao funcionário da sessão; o ponto não usa Storage (anexos no cofre do banco) | Migration 121 |
 | F2f | Motor e canais | `fn_*` do motor, webhook e cron por conta; `fn_papel` por conta; fim do default "conta 1" em `conta_id` | A fazer |
 
 ## Régua (T57)
@@ -36,7 +36,9 @@ vê nem altera a B. **Depois da F2c (28/10):** nenhuma função vaza por escrita
 `app_dossie_local` (F2d) e, conforme o teto de códigos, `app_ponto_gerar_codigo` (F2e). A exigência do T57 virou a
 lista inversa: **qualquer** vazamento fora das famílias de documentos e ponto derruba o CI, inclusive em função nova.
 O T59 prova a programação da conta B isolada e herdando a conta. **Depois da F2d (28/10):** só `app_ponto_gerar_codigo` aparece (F2e). O T57 aceita vazamento apenas em `app_ponto_*`;
-o T60 prova documentos e Storage da conta B isolados. **Recusa não prova isolamento:** parte recusa pelo argumento genérico; cada família melhora os
+o T60 prova documentos e Storage da conta B isolados. **Depois da F2e (29/10):** nenhuma `app_*` vaza; o T57 virou exigência
+total (qualquer vazamento derruba o CI) e passou a montar com a conta A o pedido, o espelho, o anexo e a hora extra; o T61
+prova o ponto da conta B isolado e herdando a conta. **Recusa não prova isolamento:** parte recusa pelo argumento genérico; cada família melhora os
 argumentos das suas funções até a recusa ser pela conta.
 
 ## Pontos em aberto
@@ -65,7 +67,12 @@ argumentos das suas funções até a recusa ser pela conta.
 - **OCR (`documento-ocr`, P3):** não lê dado de cliente; o papel ainda vem de `fn_papel` (global). Risco: alguém de outra
   conta gastar a chave do Google Vision; coberto pela trava, trocar pelo papel na conta antes da F2f.
 - **Cabeçalho `x-conta` no Storage (P3, F3):** provar que o Storage repassa o cabeçalho para quem está em duas contas.
-- **T57 aceita qualquer `app_ponto_*` até a F2e (P3):** a família inteira do ponto ainda não filtra a conta.
+- **Login do ponto (F6):** o CPF é único no sistema inteiro, então `ponto_entrar` acha um só funcionário e a conta vem
+  dele. O identificador da conta no login só é preciso quando o CPF passar a ser único por conta (mesma pessoa em dois
+  clientes), junto com a unicidade da F6.
+- **Motor do ponto (F2f):** lembretes, alertas de pedido parado, teto de códigos, PDF do espelho e o webhook
+  (`fn_ponto_wh`) ainda percorrem todas as contas; a herança já grava a conta certa em toda linha que eles criam.
+- **Catálogo de motivos do ponto (F3):** `ponto_motivos` segue global (mesmos motivos para todas as contas).
 - **Token da URA na URL (P3, pré-existente):** `app_ligar_escala` manda `VOZ_TOKEN` na query string, que fica na fila do
   `pg_net`; passar para cabeçalho junto com a F5 (canais por conta).
 - **Gatilhos que inserem em tabela de cliente (F2f):** o `default` da conta 1 em `conta_id` só sai na F2f; até lá, cada
