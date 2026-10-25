@@ -9,10 +9,10 @@
 
 | Campo | Valor |
 |---|---|
-| Root directory | `web` |
+| Root directory | `web` (sem barra: com `/web` o build roda na raiz do repositório e falha, inclusive o das pré-visualizações) |
 | Build command | `npm run build:homologacao` |
 | Deploy command | `npx wrangler deploy` |
-| Aba "Previews Base": Root directory | `/web` (a aba é separada: sem ela o build de PR roda na raiz e falha) |
+| Aba "Previews Base": Root directory | `web` |
 | Aba "Previews Base": Preview command | `npx wrangler versions upload` (botão "Builds for Preview branches" ligado) |
 | Variáveis | nenhuma |
 
@@ -44,7 +44,7 @@ receber links de convite e de troca de senha (revisão do `seguranca`).
 ## 4. Se o build falhar
 
 Deployments → o build → View logs: copiar as últimas 30 linhas para o Claude. Causas já vistas: Root directory vazio
-(`Could not read package.json`; em 25/10 foi o da aba Previews Base, que não herda o da aba Production), nome do Worker diferente do `web/wrangler.jsonc`, Worker apagado com a ligação ao
+(`Could not read package.json`; em 25/10 foi `/web` com barra na aba Production), nome do Worker diferente do `web/wrangler.jsonc`, Worker apagado com a ligação ao
 GitHub ainda ativa (`This Worker does not exist on your account`).
 
 ## Pendências
