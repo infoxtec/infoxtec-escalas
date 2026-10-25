@@ -54,7 +54,9 @@ GitHub ainda ativa (`This Worker does not exist on your account`).
 
 ## Pendências
 
-- Desligar o projeto `infoxtec-escalas-homologacao` da Vercel depois de uma semana sem problema (até 31/10).
+- ~~Desligar o projeto `infoxtec-escalas-homologacao` da Vercel~~ *(pausado em 25/10, não apagado: fica de reserva para
+  emergência; o endereço dele segue liberado no CORS da `documento-ocr` e saiu das Redirect URLs do login)*. **Se for apagado, tirar o endereço do CORS da
+  `documento-ocr` no mesmo dia** (o nome fica livre para outra conta registrar).
 - Fechar as pré-visualizações com Cloudflare Access e CSP em modo Report-Only.
 - Produção continua na Vercel (decisão 110). Domínio próprio e migração da produção ficam para depois; o projeto da
   Vercel da produção nunca é apagado (QR dos espelhos assinados).
