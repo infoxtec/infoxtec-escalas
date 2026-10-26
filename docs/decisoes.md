@@ -1683,3 +1683,14 @@ sobre o papel. O `gestor-de-pedidos` mede rodadas e retrabalho por entrega, para
 4. Base legal da transferência de dado sensível (arts. 11 e 33): conta empresarial com contrato, nuvem com região no
    Brasil ou risco aceito no aviso, com o Gabriel, **antes do primeiro envio**.
 
+## 117. F3 em quatro partes; conta de cliente criada só pela plataforma
+
+**Data:** 26/10/2026. **Decisão do responsável, sobre a recomendação do time.**
+- **Quem cria a conta de um cliente:** só a plataforma (os `plataforma_admins`), numa tela própria do painel, com o
+  primeiro administrador da conta. O administrador de um cliente nunca vê nem cria outra conta. Alternativa recusada:
+  script SQL a cada cliente, que deixaria cada entrada dependente de quem roda o script.
+- **Partes da F3:** F3a, usuário por conta no banco (migration 124); F3b, seletor de conta no painel com `x-conta` em
+  toda chamada e prova no Storage; F3c, tela Contas da plataforma; F3d, fim do default "conta 1" e da trava (a F2f-2b,
+  decisão 114). Só depois da F3d uma conta de cliente ganha usuário.
+- **`painel_usuarios` sai já na F3a** (expandir e contrair no mesmo passo): o painel nunca leu a tabela direto, e manter
+  duas fontes de papel deixaria a permissão de uma conta valer na outra.

@@ -254,6 +254,17 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 124 (26/10, versão 20261031120000): usuário do painel por conta, multiempresa F3a
+
+Papel, ativo, nome e as permissões do RH (`ve_saude`, `rh_folhas`) passam a ser da conta, em `conta_membros`, com
+`criado_por` e `atualizado_em`; uma restrição só deixa admin ou gestor com permissão do RH. `painel_usuarios` e o gatilho
+que a espelhava na conta 1 (116) saem. `fn_papel`, `fn_ve_saude` e `fn_rh_folhas` leem a conta da sessão.
+`app_usuarios`, `app_salvar_usuario` (sem a restrição à conta 1; último admin conferido por conta; e-mail validado),
+`app_definir_ve_saude` e `app_definir_rh_folhas` gravam e listam só a conta da sessão. Mudar alguém para leitura tira as
+permissões do RH. `app_meu_acesso` devolve `conta` e o papel e as permissões daquela conta; quem está em duas contas e
+não escolheu recebe a lista de contas sem papel. Os termos de aceite (programação e carga) tiram nome e papel de quem
+assina da conta da sessão. A trava da 117 continua até a F3d. Regressão: T64.
+
 ### Migration 123 (25/10, versão 20261030180000): chave composta por conta, multiempresa F2f-2a
 
 Chave única `(conta_id, id)` nas 16 tabelas de origem. As 70 chaves estrangeiras entre tabelas de conta passam a ser

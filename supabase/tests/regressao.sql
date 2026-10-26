@@ -115,7 +115,7 @@ begin
     insert into qa values ('tec' || i, v_id::text);
   end loop;
 
-  insert into painel_usuarios (email, nome, papel, ativo) values ('qa-admin@teste.local', 'QA', 'admin', true);
+  insert into conta_membros (conta_id, email, nome, papel, ativo) values ('00000000-0000-0000-0000-000000000001', 'qa-admin@teste.local', 'QA', 'admin', true);
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
 
@@ -202,7 +202,7 @@ declare
   v_fn_plataforma text[] := array['app_email', 'app_exigir', 'app_meu_acesso', 'app_backlog', 'app_salvar_backlog_item',
     'app_mover_backlog_item', 'app_checklist_saude', 'app_checklist_testar', 'app_estado_motor'];
   v_tb_plataforma text[] := array['config', 'backlog_itens', 'motor_estado', 'saude_testes', 'ponto_geo', 'webhook_token_trocas'];
-  v text; n int;
+  v text; n int; v_ok boolean;
 begin
   -- a lista da plataforma precisa existir (função ou tabela renomeada/removida obriga a revisar a classificação)
   select string_agg(f, ', ') into v from unnest(v_fn_plataforma) f
@@ -240,19 +240,12 @@ begin
           or exists (select 1 from unnest(array['anon', 'authenticated', 'service_role']) r
                       where has_table_privilege(r, c.oid, 'select, insert, update, delete')));
   perform pg_temp.ok(v is null, '[T56] tabela de conta exposta: ' || coalesce(v, ''));
-  -- conta_membros espelha painel_usuarios até a F2 (gatilho da 116): incluir, mudar papel e apagar
-  insert into painel_usuarios (email, nome, papel) values ('qa-t56@exemplo.com', 'QA', 'leitura');
-  update painel_usuarios set papel = 'gestor', ativo = false where email = 'qa-t56@exemplo.com';
-  perform pg_temp.ok(exists (select 1 from conta_membros where email = 'qa-t56@exemplo.com' and papel = 'gestor' and not ativo),
-                     '[T56] espelho de conta_membros na alteração');
-  delete from painel_usuarios where email = 'qa-t56@exemplo.com';
-  select count(*) into n from (
-    (select email, papel, ativo from painel_usuarios except
-     select email, papel, ativo from conta_membros where conta_id = '00000000-0000-0000-0000-000000000001')
-    union all
-    (select email, papel, ativo from conta_membros where conta_id = '00000000-0000-0000-0000-000000000001' except
-     select email, papel, ativo from painel_usuarios)) d;
-  perform pg_temp.ok(n = 0, '[T56] conta_membros diferente de painel_usuarios: ' || n);
+  -- F3a (124): o cadastro único do painel saiu; papel e permissões do RH são da conta
+  perform pg_temp.ok(to_regclass('interno.painel_usuarios') is null, '[T56] painel_usuarios ainda existe');
+  v_ok := false;
+  begin insert into conta_membros (conta_id, email, papel, ve_saude) values ('00000000-0000-0000-0000-000000000001', 'qa-t56@exemplo.com', 'leitura', true);
+  exception when check_violation then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T56] leitura com permissão do RH aceita');
 end $$;
 
 -- T44 trava de envio da homologação (migration 99, decisão 94) ----------------------------------------------
@@ -632,7 +625,7 @@ begin
   perform pg_temp.ok(v_n = 2, '[T11] inclusão desfeita na lista: ' || v_n);
 
   -- papel leitura: não lança, vê a lista sem motivo nem autor (decisão 52 A)
-  insert into painel_usuarios (email, nome, papel, ativo) values ('qa-leitura@teste.local', 'QA Leitura', 'leitura', true);
+  insert into conta_membros (conta_id, email, nome, papel, ativo) values ('00000000-0000-0000-0000-000000000001', 'qa-leitura@teste.local', 'QA Leitura', 'leitura', true);
   perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
   v_ok := false;
   begin perform app_ponto_ajustar(v_tec, 'desconsiderar', 'motivo suficiente aqui', p_marcacao => v_dup);
@@ -1504,8 +1497,8 @@ declare v_user uuid := gen_random_uuid(); v_fator uuid := gen_random_uuid(); v_n
 begin
   insert into auth.users (id, email) values (v_user, 'qa-mfa@teste.local');
   -- a tela lista só usuários da conta (F2b, migration 118): os dois entram no painel (o espelho põe na conta 1)
-  insert into painel_usuarios (email, nome, papel) values ('qa-mfa@teste.local', 'QA MFA', 'leitura'),
-                                                         ('qa-mfa2@teste.local', 'QA MFA 2', 'leitura');
+  insert into conta_membros (conta_id, email, nome, papel) values ('00000000-0000-0000-0000-000000000001', 'qa-mfa@teste.local', 'QA MFA', 'leitura'),
+                                                         ('00000000-0000-0000-0000-000000000001', 'qa-mfa2@teste.local', 'QA MFA 2', 'leitura');
   insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at)
   values (v_fator, v_user, 'QA', 'totp', 'unverified', now(), now());
   select count(*) into v_n from painel_mfa_log where email = 'qa-mfa@teste.local';
@@ -1650,7 +1643,7 @@ begin
   perform pg_temp.ok((r->'ponto'->>'semanas_abaixo_esperado')::int = 1, '[T31] sábado não abonado não contou: ' || (r->'ponto')::text);
   update config set valor = 'true' where chave = 'ponto_sabado_sem_expediente_abona';
   -- o papel leitura vê o mesmo painel; período acima de 62 dias é recusado
-  insert into painel_usuarios (email, nome, papel, ativo) values ('qa-leitura@teste.local', 'QA leitura', 'leitura', true) on conflict do nothing;
+  insert into conta_membros (conta_id, email, nome, papel, ativo) values ('00000000-0000-0000-0000-000000000001', 'qa-leitura@teste.local', 'QA leitura', 'leitura', true) on conflict do nothing;
   perform set_config('request.jwt.claims', '{"email":"qa-leitura@teste.local","role":"authenticated"}', true);
   perform pg_temp.ok(app_painel_gerencial(v_seg, v_seg + 13) is not null, '[T31] leitura barrado');
   v_ok := false;
@@ -1806,7 +1799,7 @@ begin
   v_ok := false;
   begin perform app_ponto_afd(v_emp, current_date, current_date + 1); exception when others then v_ok := sqlerrm like '%Período inválido%'; end;
   perform pg_temp.ok(v_ok, '[T34] período futuro aceito');
-  insert into painel_usuarios (email, nome, papel, ativo) values ('qa-gestor-afd@teste.local', 'QA gestor', 'gestor', true) on conflict do nothing;
+  insert into conta_membros (conta_id, email, nome, papel, ativo) values ('00000000-0000-0000-0000-000000000001', 'qa-gestor-afd@teste.local', 'QA gestor', 'gestor', true) on conflict do nothing;
   perform set_config('request.jwt.claims', '{"email":"qa-gestor-afd@teste.local","role":"authenticated"}', true);
   v_ok := false;
   begin perform app_ponto_afd(v_emp, current_date - 1, current_date - 1); exception when others then v_ok := true; end;
@@ -2775,8 +2768,8 @@ begin
   end if;
 
   -- só o administrador muda a exigência
-  insert into painel_usuarios (email, nome, papel, ativo) values ('qa-gestor@teste.local', 'QA Gestor', 'gestor', true)
-  on conflict (email) do update set papel = 'gestor', ativo = true;
+  insert into conta_membros (conta_id, email, nome, papel, ativo) values ('00000000-0000-0000-0000-000000000001', 'qa-gestor@teste.local', 'QA Gestor', 'gestor', true)
+  on conflict (conta_id, email) do update set papel = 'gestor', ativo = true;
   perform set_config('request.jwt.claims', '{"email":"qa-gestor@teste.local","role":"authenticated"}', true);
   v_ok := false;
   begin
@@ -3007,11 +3000,11 @@ begin
   v_ok := false;
   begin perform ponto_meu_espelho_pdf(v_tok2, v_id); exception when others then v_ok := sqlerrm like '%não encontrado%'; end;
   perform pg_temp.ok(v_ok, '[T50] PDF de outro funcionário');
-  update painel_usuarios set rh_folhas = false where email = 'qa-admin@teste.local';
+  update conta_membros set rh_folhas = false where email = 'qa-admin@teste.local';
   v_ok := false;
   begin perform app_ponto_espelho_pdf(v_id); exception when others then v_ok := sqlerrm like '%cofre de folhas%'; end;
   perform pg_temp.ok(v_ok, '[T50] PDF sem a permissão do RH');
-  update painel_usuarios set rh_folhas = true where email = 'qa-admin@teste.local';
+  update conta_membros set rh_folhas = true where email = 'qa-admin@teste.local';
   r := app_ponto_espelho_pdf(v_id);
   perform pg_temp.ok((r->>'pronto')::boolean and exists (select 1 from ponto_espelho_acessos where espelho_id = v_id and acao = 'pdf'),
                      '[T50] PDF no cofre do RH');
@@ -3168,12 +3161,10 @@ begin
   exception when others then v_ok := sqlerrm like 'Multiempresa em construção%'; end;
   perform pg_temp.ok(v_ok, '[T57] trava: membro fora da conta 1 recusado');
   alter table conta_membros disable trigger tg_trava_conta_unica;
-  -- usuário só da conta B (o espelho da 116 põe todo usuário do painel na conta 1: tira e põe na B)
-  insert into painel_usuarios (email, nome, papel) values ('qa-b@teste.local', 'QA B', 'admin');
-  delete from conta_membros where email = 'qa-b@teste.local';
-  insert into conta_membros (conta_id, email, papel) values (v_b, 'qa-b@teste.local', 'admin');
+  -- usuário só da conta B
+  insert into conta_membros (conta_id, email, nome, papel) values (v_b, 'qa-b@teste.local', 'QA B', 'admin');
   -- usuário nas contas 1 e B
-  insert into painel_usuarios (email, nome, papel) values ('qa-ab@teste.local', 'QA AB', 'gestor');
+  insert into conta_membros (conta_id, email, nome, papel) values (v_a, 'qa-ab@teste.local', 'QA AB', 'gestor');
   insert into conta_membros (conta_id, email, papel) values (v_b, 'qa-ab@teste.local', 'leitura');
   perform set_config('request.headers', '{}', true);
 
@@ -3226,7 +3217,7 @@ create function pg_temp.t57_estado(v_a uuid) returns text language sql as $f$
     (select string_agg(t::text, ',' order by t.id) from interno.locais t where conta_id = v_a),
     (select string_agg(t::text, ',' order by t.id) from interno.escalas t where conta_id = v_a),
     (select string_agg(t::text, ',' order by t.id) from interno.documentos t where conta_id = v_a),
-    (select string_agg(t::text, ',' order by t.email) from interno.painel_usuarios t where conta_id = v_a),
+    (select string_agg(t::text, ',' order by t.email) from interno.conta_membros t where conta_id = v_a),
     (select string_agg(t::text, ',' order by t.id) from interno.ponto_justificativas t where conta_id = v_a),
     (select string_agg(t::text, ',' order by t.id) from interno.ponto_ajustes t where conta_id = v_a),
     (select string_agg(t::text, ',' order by t.id) from interno.times t where conta_id = v_a),
@@ -3379,11 +3370,7 @@ begin
                                                       'empresa_id', v_emp_a));
   exception when others then v_msg := sqlerrm; v_ok := sqlerrm = 'Empresa não encontrada.'; end;
   perform pg_temp.ok(v_ok, '[T58] empresa de outra conta: ' || coalesce(v_msg, 'aceita'));
-  -- usuários por conta só na F3
-  v_ok := false;
-  begin perform app_salvar_usuario('qa-novo@teste.local', 'QA', 'leitura', true);
-  exception when others then v_ok := sqlerrm like 'Usuários por conta%'; end;
-  perform pg_temp.ok(v_ok, '[T58] usuário fora da conta 1 espera a F3');
+  -- usuário por conta: T64 (migration 124)
   -- a conta 1 não vê a B
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
   perform pg_temp.ok(not exists (select 1 from app_tecnicos() where id = v_tec)
@@ -3598,7 +3585,60 @@ begin
                      '[T63] acompanhamento sem plan_cache_mode');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T63' as resultado,
+-- T64 multiempresa F3a: usuário do painel por conta (migration 124) ---------------------------------------------------
+do $$
+declare
+  v_a uuid := '00000000-0000-0000-0000-000000000001';
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_r jsonb; v_ok boolean; v_msg text;
+begin
+  update conta_membros set ve_saude = true, rh_folhas = true where conta_id = v_a and email = 'qa-ab@teste.local';
+  perform set_config('request.jwt.claims', '{"email":"qa-ab@teste.local","role":"authenticated","aal":"aal2"}', true);
+  -- sem escolha: lista para escolher, sem papel e sem permissão
+  perform set_config('request.headers', '{}', true);
+  v_r := app_meu_acesso();
+  perform pg_temp.ok(v_r->>'papel' is null and v_r->>'conta' is null and jsonb_array_length(v_r->'contas') = 2
+                     and not (v_r->>'ve_saude')::boolean, '[T64] duas contas sem escolha: ' || v_r::text);
+  perform set_config('request.headers', json_build_object('x-conta', v_a)::text, true);
+  v_r := app_meu_acesso();
+  perform pg_temp.ok(v_r->>'papel' = 'gestor' and v_r->>'conta' = v_a::text and (v_r->>'ve_saude')::boolean
+                     and (v_r->>'rh_folhas')::boolean and v_r->>'nome' = 'QA AB', '[T64] acesso na conta 1: ' || v_r::text);
+  perform set_config('request.headers', json_build_object('x-conta', v_b)::text, true);
+  v_r := app_meu_acesso();
+  perform pg_temp.ok(v_r->>'papel' = 'leitura' and not (v_r->>'ve_saude')::boolean and not (v_r->>'rh_folhas')::boolean
+                     and not fn_ve_saude('qa-ab@teste.local') and fn_papel('qa-ab@teste.local') = 'leitura',
+                     '[T64] a permissão do RH da conta 1 não vale na B: ' || v_r::text);
+
+  -- o admin da conta B cadastra e lista só na B
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform set_config('request.headers', '{}', true);
+  perform app_salvar_usuario('QA-Novo@Teste.local ', 'QA Novo', 'gestor', true);
+  perform pg_temp.ok(exists (select 1 from conta_membros where conta_id = v_b and email = 'qa-novo@teste.local'
+                               and papel = 'gestor' and criado_por = 'qa-b@teste.local')
+                     and not exists (select 1 from conta_membros where conta_id = v_a and email = 'qa-novo@teste.local'),
+                     '[T64] usuário novo só na conta B');
+  perform pg_temp.ok((select array_agg(email order by email) from app_usuarios())
+                     = array['qa-ab@teste.local', 'qa-b@teste.local', 'qa-novo@teste.local'], '[T64] lista só da conta B');
+  -- mudar o papel na B não mexe na conta 1; leitura perde as permissões do RH
+  perform app_salvar_usuario('qa-ab@teste.local', 'QA AB', 'gestor', true);
+  perform app_definir_ve_saude('qa-ab@teste.local', true);
+  perform app_salvar_usuario('qa-ab@teste.local', 'QA AB', 'leitura', true);
+  perform pg_temp.ok((select not ve_saude from conta_membros where conta_id = v_b and email = 'qa-ab@teste.local')
+                     and (select papel = 'gestor' and ve_saude and rh_folhas from conta_membros
+                           where conta_id = v_a and email = 'qa-ab@teste.local'), '[T64] papel e RH separados por conta');
+  -- último administrador da conta
+  v_ok := false;
+  begin perform app_salvar_usuario('qa-b@teste.local', 'QA B', 'gestor', true);
+  exception when others then v_msg := sqlerrm; v_ok := sqlerrm like 'Este é o único administrador%'; end;
+  perform pg_temp.ok(v_ok, '[T64] último admin da conta B: ' || coalesce(v_msg, 'aceito'));
+  v_ok := false;
+  begin perform app_salvar_usuario('sem-arroba', 'X', 'leitura', true);
+  exception when others then v_ok := sqlerrm = 'Informe um e-mail válido.'; end;
+  perform pg_temp.ok(v_ok, '[T64] e-mail inválido');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T64' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

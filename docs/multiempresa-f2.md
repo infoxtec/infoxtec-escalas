@@ -63,12 +63,8 @@ argumentos das suas funções até a recusa ser pela conta.
 - **Papel por conta (P1, na mesma trava):** as seis funções do ponto que mascaram pelo papel (`abonos`,
   `acompanhamento`, `ajustes`, `he_autorizacoes`, `justificativas`, `validar_folha`) usam `fn_papel_na_conta` desde a
   121, com máscara fechada quando o papel não é achado; o Storage desde a 120; o OCR desde a 122.
-- **Usuários do painel:** até a F3 só a conta 1 grava (`app_salvar_usuario` recusa nas outras); a lista, o MFA e as
-  permissões do RH já mostram só membros da conta. A tela de MFA deixou de listar contas de login que não são usuárias do
-  painel.
-- **Permissões do RH globais (P2, condição da F3):** `ve_saude` e `rh_folhas` ficam em `painel_usuarios`; quando alguém
-  for membro de duas contas, a permissão de uma vale na outra. Passam para `conta_membros` na F3, antes de qualquer
-  usuário em duas contas.
+- **Usuários do painel (F3a, 124):** papel, ativo, nome e permissões do RH são da conta, em `conta_membros`;
+  `painel_usuarios` saiu. `app_salvar_usuario` grava na conta da sessão (a trava da 117 ainda segura as outras contas).
 - **Busca por nome de catálogo (P2, exigência da F2d e da F2f-2):** com nome único por conta, "ASO" ou "NR-10" pode existir em
   duas contas; toda busca por nome ou `palavras_chave` (OCR, motor) precisa filtrar a conta.
 - **Herança de conta (119):** escalas (do técnico), eventos, notificações, ligações, respostas, ocorrências e aceites (da
@@ -107,10 +103,8 @@ argumentos das suas funções até a recusa ser pela conta.
   gatilho que cria linha precisa gravar a conta (o de time da equipe foi corrigido na 118).
 - **Unicidade que avisa existência (P3, até a F6):** CPF, telefone e CNPJ continuam únicos no sistema inteiro; a mensagem
   "Já existe…" numa conta revela que o dado existe em outra.
-- **`app_meu_acesso` (P2):** o campo `papel` ainda vem de `painel_usuarios`; o papel por conta está em `contas`. O
-  painel passa a usar o da conta na F3.
+- **`app_meu_acesso` (F3a, 124):** papel e permissões da conta da sessão, com a conta escolhida em `conta`.
 
 - **Várias contas por usuário no Supabase Auth (P1 da estimativa):** resolvido pelo cabeçalho `x-conta`, conferido no
   banco. Falta provar no painel (F3) que o gateway da API deixa o cabeçalho passar (CORS).
-- `fn_papel` segue global em `fn_exigir_papel` e nas máscaras que ainda o usam; para a conta 1 é o mesmo papel
-  (espelho). Sai junto com `painel_usuarios` na F3/F6.
+- `fn_papel` (usado por `fn_exigir_papel`) lê o papel na conta da sessão desde a 124.

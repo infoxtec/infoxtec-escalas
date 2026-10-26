@@ -69,7 +69,7 @@ jobs:
             select 'escalas', count(*) from escalas union all
             select 'notificacoes', count(*) from notificacoes union all
             select 'documentos', count(*) from documentos union all
-            select 'painel_usuarios', count(*) from painel_usuarios union all
+            select 'conta_membros', count(*) from conta_membros union all
             select 'backlog_itens', count(*) from backlog_itens"
           n=$(psql "postgresql://postgres@127.0.0.1:54322/postgres" -At -c "select count(*) from escalas")
           if [ "$n" -eq 0 ]; then echo "::error::Backup restaurado sem nenhuma escala"; exit 1; fi

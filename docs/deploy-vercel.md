@@ -45,7 +45,7 @@ No projeto `infoxtec-escalas` do Vercel:
 
 1. Supabase → **Authentication → Users → Invite user** → seu e-mail.
 2. Abra o e-mail, clique no link: o painel abre pedindo para criar a senha.
-3. Seu e-mail ja esta como **admin** em `painel_usuarios`, entao o painel abre completo.
+3. Seu e-mail ja esta como **admin** em `conta_membros` (conta 1), entao o painel abre completo.
 
 ## 5. Liberar mais alguem
 
