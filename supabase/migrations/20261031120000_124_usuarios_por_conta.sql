@@ -65,7 +65,7 @@ declare
 begin
   begin
     v_conta := interno.fn_conta_atual();
-  exception when others then
+  exception when raise_exception then   -- só as recusas de fn_conta_de (sem escolha, sem acesso, inválida)
     v_conta := null;
   end;
   select * into m from interno.conta_membros where conta_id = v_conta and email = v_email and ativo;
@@ -116,7 +116,11 @@ begin
   if v_email is null or v_email !~ '^[^@\s]+@[^@\s]+$' then
     raise exception 'Informe um e-mail válido.';
   end if;
-  -- o último administrador ativo da conta não perde o papel nem o acesso
+  if p_papel is null or p_papel not in ('admin', 'gestor', 'leitura') then
+    raise exception 'Papel inválido.';
+  end if;
+  -- o último administrador ativo da conta não perde o papel nem o acesso (linhas travadas: dois admins ao mesmo tempo)
+  perform 1 from conta_membros where conta_id = v_conta and papel = 'admin' and ativo for update;
   if (p_papel <> 'admin' or not v_ativo)
      and exists (select 1 from conta_membros where conta_id = v_conta and email = v_email and papel = 'admin' and ativo)
      and (select count(*) from conta_membros where conta_id = v_conta and papel = 'admin' and ativo) = 1 then
@@ -321,6 +325,13 @@ end $function$
 ;
 
 -- 5. Contrair: painel_usuarios sai (o espelho da 116 vai junto) --------------------------------------------------
+do $$
+begin
+  if exists (select 1 from interno.painel_usuarios u
+              where not exists (select 1 from interno.conta_membros m where m.email = u.email and m.conta_id = u.conta_id)) then
+    raise exception 'painel_usuarios com linha sem conta_membros: conferir antes de apagar';
+  end if;
+end $$;
 drop table interno.painel_usuarios;
 drop function interno.fn_espelhar_conta_membro();
 
