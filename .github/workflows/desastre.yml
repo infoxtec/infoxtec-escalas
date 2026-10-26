@@ -1,0 +1,139 @@
+# Pacote de desastre da produção (decisão 116, docs/recuperacao-desastre.md), sem custo.
+# Banco inteiro em formato aberto, arquivos do Storage, repositório com histórico e painel compilado, cifrados
+# (AES-256) ANTES de sair do runner e enviados ao Google Drive e ao OneDrive de contas dedicadas só ao backup.
+# Segredos do ambiente "producao-desastre" (Settings > Environments), restrito à branch main:
+#   PRODUCAO_DB_URL  conexão do banco de produção (Session pooler), com a senha
+#   DESASTRE_SENHA   senha da cifra (aleatória, 32+ caracteres), diferente da BACKUP_SENHA; cópia no cofre pessoal
+#   RCLONE_CONFIG    configuração do rclone com os remotos gdrive, onedrive e storage (S3 do Supabase, só leitura de uso)
+# O repositório é público: o log e o resumo levam só tamanhos, sha256 e versões; nunca nome de arquivo do Storage.
+name: Pacote de desastre
+
+on:
+  schedule:
+    - cron: '17 7 * * *'   # 04:17 em Salvador, depois do backup diário
+  workflow_dispatch:
+
+concurrency:
+  group: desastre
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  RCLONE_VERSAO: v1.75.2
+  RCLONE_SHA256: 349ac8fba6ff65d6247043f1750cdcb518ec5d500ef91463a10d37c0ccdf3702
+
+jobs:
+  pacote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: producao-desastre
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0   # o bundle leva o histórico inteiro
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Conferir segredos
+        env:
+          URL: ${{ secrets.PRODUCAO_DB_URL }}
+          SENHA: ${{ secrets.DESASTRE_SENHA }}
+          RCLONE: ${{ secrets.RCLONE_CONFIG }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$SENHA" ] || [ -z "$RCLONE" ]; then
+            echo "::error::Cadastre PRODUCAO_DB_URL, DESASTRE_SENHA e RCLONE_CONFIG no ambiente producao-desastre"
+            exit 1
+          fi
+          if [ "${#SENHA}" -lt 32 ]; then echo "::error::DESASTRE_SENHA precisa de 32 caracteres ou mais"; exit 1; fi
+      - name: Ferramentas (pg_dump 17 e rclone com sha256 conferido)
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get -qq update && sudo apt-get -qq install -y postgresql-client-17 zstd >/dev/null
+          curl -fsSL -o rclone.zip "https://github.com/rclone/rclone/releases/download/${RCLONE_VERSAO}/rclone-${RCLONE_VERSAO}-linux-amd64.zip"
+          echo "${RCLONE_SHA256}  rclone.zip" | sha256sum -c -
+          unzip -qj rclone.zip '*/rclone' -d "$RUNNER_TEMP/bin" && rm rclone.zip
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: Configuração do rclone (fora do repositório, só para este job)
+        env:
+          RCLONE: ${{ secrets.RCLONE_CONFIG }}
+        run: |
+          umask 077
+          printf '%s\n' "$RCLONE" > "$RUNNER_TEMP/rclone.conf"
+          echo "RCLONE_CONFIG=$RUNNER_TEMP/rclone.conf" >> "$GITHUB_ENV"
+      - name: Banco (formato aberto, sem sessões nem logs que se refazem)
+        env:
+          URL: ${{ secrets.PRODUCAO_DB_URL }}
+        run: |
+          mkdir -p pacote
+          excl=(--exclude-table-data=auth.sessions --exclude-table-data=auth.refresh_tokens
+                --exclude-table-data=auth.one_time_tokens --exclude-table-data=auth.flow_state
+                --exclude-table-data=auth.mfa_challenges --exclude-table-data=interno.webhook_eventos
+                --exclude-table-data=interno.ponto_sessoes --exclude-table-data=interno.ponto_codigos)
+          pg_dump "$URL" --format=custom --no-owner --no-privileges "${excl[@]}" -f pacote/banco.dump
+          pg_dump "$URL" --format=plain --no-owner --no-privileges "${excl[@]}" | zstd -q -19 -o pacote/banco.sql.zst
+          psql "$URL" -XAtc "select 'migration ' || max(version) from supabase_migrations.schema_migrations" > pacote/versao.txt
+          psql "$URL" -XAtc "select 'postgres ' || current_setting('server_version')" >> pacote/versao.txt
+      - name: Arquivos do Storage
+        run: |
+          mkdir -p storage
+          # sem log de arquivo: o nome pode trazer o nome do técnico
+          if ! rclone copy storage:documentos storage/documentos --log-level ERROR >/dev/null 2>&1; then
+            echo "::error::Falha ao copiar o Storage (remoto 'storage' do RCLONE_CONFIG)"; exit 1
+          fi
+          tar -C storage -cf - . | zstd -q -19 -o pacote/storage.tar.zst
+          rm -rf storage
+      - name: Repositório com histórico e painel compilado
+        run: |
+          git bundle create pacote/codigo.bundle --all
+          (cd web && npm ci --silent && npm run build:producao >/dev/null)
+          tar -C web/dist -cf - . | zstd -q -19 -o pacote/painel-producao.tar.zst
+      - name: Manifesto e roteiro de restauração
+        run: |
+          {
+            echo "Pacote de desastre do Trilha — $(date -u +%Y-%m-%dT%H:%MZ)"
+            cat pacote/versao.txt
+            echo "commit $(git rev-parse HEAD)"
+            echo
+            echo "Arquivos (sha256):"
+            (cd pacote && sha256sum banco.dump banco.sql.zst storage.tar.zst codigo.bundle painel-producao.tar.zst)
+            echo
+            cat docs/recuperacao-desastre.md
+          } > pacote/MANIFESTO.txt
+          rm pacote/versao.txt
+      - name: Cifrar (AES-256) antes de enviar
+        env:
+          SENHA: ${{ secrets.DESASTRE_SENHA }}
+        run: |
+          nome="trilha-$(date -u +%Y%m%d-%H%M)"
+          tar -C pacote -cf - . | gpg --batch --yes --pinentry-mode loopback --symmetric --cipher-algo AES256 \
+              --passphrase-fd 3 --output "$nome.tar.gpg" 3<<<"$SENHA"
+          rm -rf pacote
+          sha=$(sha256sum "$nome.tar.gpg" | cut -d' ' -f1)
+          echo "ARQUIVO=$nome.tar.gpg" >> "$GITHUB_ENV"
+          {
+            echo "### Pacote de desastre"
+            echo "arquivo: \`$nome.tar.gpg\`  tamanho: $(du -h "$nome.tar.gpg" | cut -f1)"
+            echo "sha256 do arquivo cifrado: \`$sha\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Enviar ao Google Drive e ao OneDrive, com retenção
+        run: |
+          mensal=""
+          if [ "$(date -u +%d)" = "01" ]; then mensal=1; fi
+          for destino in gdrive onedrive; do
+            rclone copy "$ARQUIVO" "$destino:Trilha-Backup/diario" --log-level ERROR
+            if [ -n "$mensal" ]; then rclone copy "$ARQUIVO" "$destino:Trilha-Backup/mensal" --log-level ERROR; fi
+            # retenção: 30 diários e 12 mensais, sem passar pela lixeira
+            rclone delete "$destino:Trilha-Backup/diario" --min-age 31d --drive-use-trash=false --onedrive-hard-delete --log-level ERROR
+            rclone delete "$destino:Trilha-Backup/mensal" --min-age 366d --drive-use-trash=false --onedrive-hard-delete --log-level ERROR
+            echo "enviado: $destino"
+          done
+      - name: Limpar
+        if: always()
+        run: rm -f "$RUNNER_TEMP/rclone.conf" trilha-*.tar.gpg

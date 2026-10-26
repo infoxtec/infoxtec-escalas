@@ -70,10 +70,37 @@ restaurado e o QR lido de novo se a sessão não voltar.
 
 ## O que o responsável precisa fazer (uma vez)
 
-1. **Criar uma conta dedicada** em cada nuvem, só para o backup. A pasta é criada pelo próprio `rclone`.
-2. **Gerar a configuração do `rclone`** na máquina `ubuntu`, com acesso às duas contas dedicadas. O roteiro vem com o pull request do
-   workflow.
-3. **Cadastrar os segredos** num ambiente próprio do GitHub, `producao-desastre`, restrito à `main`:
-   - `RCLONE_CONFIG`, a configuração gerada no passo 2;
-   - `DESASTRE_SENHA`, a senha da cifra, diferente da `BACKUP_SENHA`.
-4. **Guardar a senha** no cofre pessoal, fora do Google e da Microsoft.
+O workflow é `.github/workflows/desastre.yml` (diário, 04:17 em Salvador). O script do banco da Evolution é
+`infra/evolution/backup-desastre.sh`, que roda no servidor da Oracle.
+
+1. **[navegador]** Criar uma conta dedicada só ao backup no Google e outra na Microsoft (OneDrive).
+2. **[Supabase da produção]** Em Storage → Settings → **S3 Access Keys**, gerar uma chave para o backup e anotar o
+   endpoint e a região mostrados na tela.
+3. **[ubuntu]** Instalar o `rclone` na mesma versão do workflow e criar os três remotos:
+   ```bash
+   curl -fsSL -o /tmp/rclone.zip https://github.com/rclone/rclone/releases/download/v1.75.2/rclone-v1.75.2-linux-amd64.zip      && echo "349ac8fba6ff65d6247043f1750cdcb518ec5d500ef91463a10d37c0ccdf3702  /tmp/rclone.zip" | sha256sum -c -      && unzip -qj /tmp/rclone.zip '*/rclone' -d ~/.local/bin && rclone version | head -1
+   rclone config
+   ```
+   - `gdrive`: tipo `drive`, **scope `drive.file`**. Ao autorizar, entre com a conta dedicada do Google.
+   - `onedrive`: tipo `onedrive`, conta pessoal. Ao autorizar, entre com a conta dedicada da Microsoft.
+   - `storage`: tipo `s3`, provider `Other`, com a chave, o endpoint e a região do passo 2.
+
+   Para testar: `rclone mkdir gdrive:Trilha-Backup && rclone mkdir onedrive:Trilha-Backup && rclone lsd storage:`.
+   O esperado é ver o bucket `documentos`.
+4. **[GitHub]** Em Settings → Environments, criar o ambiente **`producao-desastre`** e restringir à branch `main`. Nele,
+   cadastrar:
+   - `PRODUCAO_DB_URL`, a mesma do backup;
+   - `DESASTRE_SENHA`, gerada com `openssl rand -base64 36`;
+   - `RCLONE_CONFIG`, o conteúdo de `cat ~/.config/rclone/rclone.conf`.
+5. **[cofre pessoal]** Guardar a `DESASTRE_SENHA` e a `COFRE_PONTO`, que não vão no pacote. Sem a primeira, o pacote
+   não abre; sem a segunda, os atestados não abrem. Depois, apagar o `rclone.conf` da `ubuntu`, ou mantê-lo só se for
+   usar para restaurar.
+6. **[GitHub]** Em Actions → **Pacote de desastre** → Run workflow, rodar à mão uma vez. O esperado é o resumo com o
+   sha256 e o arquivo aparecendo nas duas pastas.
+7. **[servidor da Oracle]** Para o banco da Evolution, gerar um `rclone.conf` próprio, só com `gdrive` e `onedrive`,
+   autorizado de novo para ter um token separado. Copiar para `/etc/trilha/rclone.conf` com permissão 600, gravar a
+   senha em `/etc/trilha/desastre.senha` com permissão 600, copiar o script para `/opt/trilha/` e agendar com a linha
+   de cron que está no cabeçalho do script. Antes, conferir o nome da tabela de sessão da Evolution:
+   `docker exec <postgres> psql -U evolution -d evolution24 -c '\dt'`.
+8. **A cada 90 dias:** o token do OneDrive pode expirar. Se o workflow falhar na autenticação, refazer o passo 3 só
+   para o `onedrive` e atualizar o `RCLONE_CONFIG`.
