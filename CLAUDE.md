@@ -8,9 +8,10 @@ arquitetura e decisões em `docs/arquitetura.md` e `docs/decisoes.md`; fluxo de 
 ## Ambientes
 
 - **Produção:** projeto Supabase `zpckrxydqqmmcrphrkxz`. Nunca aplicar migration, rodar SQL,
-  publicar Edge Function nem ler dados de técnicos na produção. Isso é feito por uma pessoa,
-  depois do merge, com `scripts/aplicar-producao.sh` (mantém o histórico de versões igual ao
-  repositório; migration aplicada por outro caminho ganha outra versão e quebra o `db push`).
+  publicar Edge Function nem ler dados de técnicos na produção. Isso é feito pelo workflow
+  `Aplicar` (`.github/workflows/aplicar.yml`, decisão 118), disparado com o destino `producao` e liberado só pela
+  aprovação do responsável no ambiente `producao` do GitHub (mantém o histórico de versões igual ao repositório;
+  migration aplicada por outro caminho ganha outra versão e quebra o `db push`).
 - **Exceção, combinada em 26/09: backlog.** Quando o responsável pedir para registrar algo no
   backlog, o registro vai **direto para a produção**, na tabela `backlog_itens` e só nela (inserir
   ou atualizar itens; nada de estrutura). O número é atribuído pelo banco, em sequência única,
@@ -22,8 +23,10 @@ arquitetura e decisões em `docs/arquitetura.md` e `docs/decisoes.md`; fluxo de 
   os números de `telefones_homologacao` (trava da decisão 44, migration 99). Nunca cadastrar nele o token da
   instância da produção (`infoxtec`) nem os segredos da Twilio, nem rodar o `supabase/setup/cron.sql` da produção.
   A chave global da Evolution não vai para nenhum Vault: fica só no servidor da Oracle.
-- Antes de qualquer `npx supabase db push`, conferir `supabase/.temp/project-ref`. O caminho normal
-  é `scripts/aplicar-homologacao.sh` e `scripts/aplicar-producao.sh`.
+- **Aplicação (decisão 118):** o merge na `main` aplica sozinho as migrations na homologação (com `plpgsql_check`), pelo
+  workflow `Aplicar`; as Edge Functions alteradas o Claude publica na homologação pelo conector do Supabase. O responsável valida e manda aplicar na produção; o Claude dispara o
+  workflow com o destino `producao` e o responsável aprova no GitHub. Ninguém roda comando. Os scripts
+  `scripts/aplicar-*.sh` ficam só como contingência (antes de um `db push` à mão, conferir `supabase/.temp/project-ref`).
 - A lista de trabalho pendente, em ordem, está em `docs/plano-de-trabalho.md`. Ao concluir uma
   etapa, marcar `[x]` e registrar na tabela do fim do arquivo.
 

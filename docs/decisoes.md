@@ -1694,3 +1694,19 @@ sobre o papel. O `gestor-de-pedidos` mede rodadas e retrabalho por entrega, para
   decisão 114). Só depois da F3d uma conta de cliente ganha usuário.
 - **`painel_usuarios` sai já na F3a** (expandir e contrair no mesmo passo): o painel nunca leu a tabela direto, e manter
   duas fontes de papel deixaria a permissão de uma conta valer na outra.
+
+## 118. Aplicação pelo GitHub Actions, sem comando do responsável
+
+**Data:** 26/10/2026. **Pedido do responsável:** os scripts `aplicar-*.sh` falhavam com frequência (máquina errada,
+login do CLI, 502 do Supabase) e exigiam comando dele.
+- **Homologação:** o merge na `main` que mexe em migrations dispara o workflow `Aplicar`: `db push` com até 3
+  tentativas e `plpgsql_check` em transação desfeita. As Edge Functions da homologação são publicadas pelo Claude, pelo
+  conector do Supabase, logo depois do merge.
+- **Produção:** o mesmo workflow, pelo botão (destino `producao`, com `ate` e `funcoes` opcionais). Só roda depois da
+  aprovação do responsável no ambiente `producao` (revisor obrigatório). A variável `CONGELADA_ATE` recusa aplicar no
+  congelamento. A ordem continua do responsável: ele valida na homologação e manda; o Claude dispara; ele aprova.
+- **Travas:** só da `main`; o `DB_URL` de cada ambiente é conferido contra o projeto esperado (segredo trocado não
+  aplica nada).
+- **Token da conta só na produção (P1 do `seguranca`):** o `SUPABASE_ACCESS_TOKEN` vale para a conta inteira, inclusive
+  a produção. Num ambiente sem aprovação, um merge que mudasse o workflow publicaria na produção sem passar pelo
+  responsável. Por isso ele fica só no ambiente `producao`; a homologação recebe apenas o `DB_URL` dela.
