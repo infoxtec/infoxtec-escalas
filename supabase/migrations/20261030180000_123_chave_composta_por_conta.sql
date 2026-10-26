@@ -5,7 +5,9 @@
 -- Fica de fora a chave de `ponto_justificativas.motivo`: `ponto_motivos` é catálogo da plataforma.
 -- Também: o acompanhamento do ponto passa a usar o índice de `momento` (115 ms → 15 ms com um ano simulado).
 -- Versão dada à mão, maior que a 122 (regra de numeração até 31/10, CLAUDE.md).
--- Função recriada a partir da definição da homologação de 25/10 (md5 34795c71…).
+-- Função recriada a partir da definição da homologação de 25/10 (md5 do corpo, prosrc: 34795c71…; texto igual ao da 121).
+-- Trava: tudo numa transação; cerca de 40 tabelas ficam fechadas por menos de 1 s. Se esbarrar no registro de ponto
+-- (lock_timeout ou deadlock), a migration é desfeita inteira e basta rodar de novo.
 
 set local lock_timeout = '5s';
 
@@ -249,6 +251,7 @@ CREATE OR REPLACE FUNCTION public.app_ponto_acompanhamento(p_de date, p_ate date
  LANGUAGE plpgsql
  STABLE SECURITY DEFINER
  SET search_path TO 'interno', 'public', 'extensions', 'pg_temp'
+ SET plan_cache_mode TO 'force_custom_plan'
 AS $function$
 declare
   v_leitura boolean;
@@ -274,7 +277,8 @@ begin
       left join locais l on l.id = m.local_id and l.conta_id = m.conta_id
      where (m.momento at time zone e.fuso)::date between p_de and p_ate
        -- faixa larga em momento (um dia a mais de cada lado cobre qualquer fuso) para usar o índice
-       and m.momento >= (p_de - 1)::timestamptz and m.momento < (p_ate + 2)::timestamptz
+       -- plano novo a cada chamada (plan_cache_mode): o genérico estima 1 linha e fica mais lento (revisão do arquiteto-dados)
+       and m.momento >= (p_de - 1)::timestamp at time zone 'UTC' and m.momento < (p_ate + 2)::timestamp at time zone 'UTC'
        and (p_tecnico is null or m.tecnico_id = p_tecnico)
        and m.conta_id = v_conta
      order by m.momento desc;

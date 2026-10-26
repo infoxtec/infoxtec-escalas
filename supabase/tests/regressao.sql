@@ -3587,6 +3587,15 @@ begin
      and exists (select 1 from pg_attribute a where a.attrelid = c.confrelid and a.attname = 'conta_id')
      and not exists (select 1 from pg_attribute a where a.attrelid = c.conrelid and a.attnum = any(c.conkey) and a.attname = 'conta_id');
   perform pg_temp.ok(v_n = 0, '[T63] chave entre tabelas de conta sem a conta: ' || v_n);
+  -- exclusão com set null zera só a coluna, nunca a conta
+  select count(*) into v_n from pg_constraint c
+   where c.contype = 'f' and c.connamespace = 'interno'::regnamespace and c.confdeltype = 'n'
+     and c.conname like '%\_conta\_fkey' and (c.confdelsetcols is null or array_length(c.confdelsetcols, 1) <> 1);
+  perform pg_temp.ok(v_n = 0, '[T63] set null que zeraria a conta: ' || v_n);
+  -- acompanhamento do ponto com plano novo a cada chamada
+  perform pg_temp.ok(exists (select 1 from pg_proc where proname = 'app_ponto_acompanhamento'
+                                    and 'plan_cache_mode=force_custom_plan' = any(proconfig)),
+                     '[T63] acompanhamento sem plan_cache_mode');
 end $$;
 
 select 'REGRESSÃO OK: T1 a T63' as resultado,
