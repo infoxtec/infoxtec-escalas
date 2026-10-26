@@ -139,7 +139,14 @@ jobs:
           } > pacote/MANIFESTO.txt
           rm pacote/versao.txt
       - name: Cifrar com a chave pública antes de enviar
+        env:
+          FPR: ${{ vars.DESASTRE_FPR }}
         run: |
+          # a chave do repositório precisa ser a do responsável: impressão digital conferida contra a variável
+          atual=$(gpg --show-keys --with-colons infra/backup/desastre-publica.asc | awk -F: '$1=="fpr"{print $10; exit}')
+          if [ -z "$FPR" ] || [ "$atual" != "$FPR" ]; then
+            echo "::error::A impressão digital da chave pública não confere com a variável DESASTRE_FPR"; exit 1
+          fi
           nome="trilha-$(date -u +%Y%m%d-%H%M)"
           tar -C pacote -cf - . | gpg --batch --yes --trust-model always --cipher-algo AES256 \
               --recipient-file infra/backup/desastre-publica.asc --encrypt --output "$nome.tar.gpg"
@@ -156,7 +163,7 @@ jobs:
           for destino in gdrive onedrive; do
             rclone copy "$ARQUIVO" "$destino:Trilha-Backup/diario" --log-level ERROR
             # mensal: a primeira execução com sucesso do mês (se o dia 1 falhar, o dia 2 grava)
-            if [ -z "$(rclone lsf "$destino:Trilha-Backup/mensal" --max-age "$(date -u +%d)d" --log-level ERROR 2>/dev/null)" ]; then
+            if [ -z "$(rclone lsf "$destino:Trilha-Backup/mensal" --max-age "$(date -u +%Y-%m-01)" --log-level ERROR 2>/dev/null)" ]; then
               rclone copy "$ARQUIVO" "$destino:Trilha-Backup/mensal" --log-level ERROR
             fi
             # retenção: 30 diários e 12 mensais, sem passar pela lixeira

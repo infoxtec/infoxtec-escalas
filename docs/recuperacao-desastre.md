@@ -81,10 +81,11 @@ O workflow é `.github/workflows/desastre.yml` (diário, 04:17 em Salvador). O s
 2. **[ubuntu] Par de chaves da cifra.** A privada vai para o cofre e sai da máquina. A pública é enviada ao Claude, que
    a grava em `infra/backup/desastre-publica.asc` (não é segredo):
    ```bash
-   gpg --batch --passphrase '' --quick-generate-key "Trilha Backup Desastre" rsa4096 encrypt never
+   gpg --quick-generate-key "Trilha Backup Desastre" rsa4096 encrypt never   # pede uma frase-senha: guardar à parte
    gpg --armor --export "Trilha Backup Desastre" > ~/desastre-publica.asc
    gpg --armor --export-secret-keys "Trilha Backup Desastre" > ~/desastre-PRIVADA.asc
    cat ~/desastre-publica.asc
+   gpg --show-keys --with-colons ~/desastre-publica.asc | awk -F: '$1=="fpr"{print $10; exit}'   # impressão digital
    ```
    Guardar o `desastre-PRIVADA.asc` no cofre pessoal (e na segunda guarda, se houver). Depois:
    `gpg --batch --yes --delete-secret-keys "Trilha Backup Desastre"; shred -u ~/desastre-PRIVADA.asc`.
@@ -108,17 +109,18 @@ O workflow é `.github/workflows/desastre.yml` (diário, 04:17 em Salvador). O s
      `cat ~/.config/rclone/rclone.conf`.
    - Depois, **sempre** apagar o arquivo da `ubuntu`: `shred -u ~/.config/rclone/rclone.conf`. Para restaurar, gera-se
      um novo.
-   - Variável (aba Variables), só depois do passo 0: `DESASTRE_LGPD_DECIDIDO` = `sim`.
-6. **[GitHub]** Em Actions → **Pacote de desastre** → Run workflow, rodar à mão uma vez. O esperado é o resumo com o
-   sha256 e o arquivo nas duas pastas.
-7. **[servidor da Oracle]** Para o banco da Evolution:
+   - Variáveis (aba Variables): `DESASTRE_FPR` = a impressão digital do passo 2; e, só depois do passo 0,
+     `DESASTRE_LGPD_DECIDIDO` = `sim`.
+6. **[servidor da Oracle]** Para o banco da Evolution:
    - gerar um `rclone.conf` próprio, só com `gdrive` e `onedrive`, e copiar para `/etc/trilha/rclone.conf` com
      permissão 600;
    - copiar a chave **pública** para `/etc/trilha/desastre-publica.asc`;
    - copiar o script para `/opt/trilha/` e agendar com a linha de cron do cabeçalho, pondo o nome do contêiner do
      PostgreSQL (`docker ps`).
 
-   O workflow falha se não houver cópia da Evolution nas últimas 48 h. **Risco aceito:** o token do servidor enxerga
-   também a pasta dos pacotes do GitHub. Quem invadir o servidor pode apagá-los, mas não abri-los.
+   O workflow falha se não houver cópia da Evolution nas últimas 48 h. **Risco a aceitar pelo responsável:** o token do
+   servidor enxerga também a pasta dos pacotes do GitHub; quem invadir o servidor pode apagá-los, mas não abri-los.
+7. **[GitHub]** Depois do passo 6, em Actions → **Pacote de desastre** → Run workflow, rodar à mão uma vez. O esperado é
+   o resumo com o sha256 e o arquivo nas duas pastas.
 8. **A cada 90 dias:** trocar a chave S3 do Storage e o token do OneDrive (refazendo o passo 4 só para esses dois
    remotos) e atualizar o `RCLONE_CONFIG`.

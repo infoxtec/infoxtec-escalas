@@ -29,7 +29,8 @@ docker exec "$pg" pg_dump -U evolution -d "$BANCO" --format=custom --no-owner \
   --exclude-table-data='public."Session"' --exclude-table-data='public."Message"' \
   --exclude-table-data='public."MessageUpdate"' --exclude-table-data='public."Chat"' \
   --exclude-table-data='public."Contact"' --exclude-table-data='public."Media"' > "$DIR/$nome.dump"
-if docker exec -i "$pg" pg_restore -l < "$DIR/$nome.dump" | grep -q 'TABLE DATA public Session'; then
+toc=$(docker exec -i "$pg" pg_restore -l < "$DIR/$nome.dump")   # falha do pg_restore interrompe (set -e)
+if grep -q 'TABLE DATA public Session' <<<"$toc"; then
   echo "a sessão entrou no dump; abortado" >&2; exit 1
 fi
 gpg --batch --yes --trust-model always --cipher-algo AES256 --recipient-file "$CHAVE" --encrypt \
