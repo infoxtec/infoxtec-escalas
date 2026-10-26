@@ -13,22 +13,23 @@ Formato aberto, que restaura em qualquer servidor, sem depender de fornecedor:
 | `banco.dump` | Banco inteiro (`pg_dump --format=custom`): esquemas `interno`, `public`, `auth` (usuários e senhas com hash; sem sessões, tokens e desafios de MFA), `storage` (metadados), agendamentos; sem `webhook_eventos`, `ponto_sessoes` e `ponto_codigos`, que se refazem | `pg_restore` em qualquer PostgreSQL 17 |
 | `banco.sql.zst` | O mesmo banco em SQL puro, compactado | `psql`, para ler sem ferramenta especial |
 | `storage.tar.zst` | Arquivos do bucket `documentos` (atestados, documentos dos técnicos) | `tar` |
-| `evolution.dump` | Banco da Evolution **sem as tabelas de sessão**: a sessão é uma credencial do número da empresa; na volta, lê-se o QR de novo (recomendação do `seguranca`, decisão pendente) | `pg_restore` no servidor novo |
+| `evolution.dump` | Banco da Evolution **sem a sessão nem o histórico de conversas**: a sessão é credencial do número da empresa; na volta, lê-se o QR de novo e trocam-se os tokens da instância e do webhook | `pg_restore` no servidor novo |
 | `codigo.bundle` | Repositório inteiro com todo o histórico (`git bundle --all`) | `git clone codigo.bundle` |
 | `painel-producao.tar.zst` | Painel e app do ponto já compilados | Qualquer servidor estático (nginx) |
 | `MANIFESTO.txt` | Data, versões (migration, PostgreSQL, Node), sha256 de cada arquivo e o roteiro de restauração | Leitura |
 
-- **Criptografia:** o pacote é cifrado (AES-256) **antes** de sair do servidor, com uma senha aleatória de 32 caracteres
-  ou mais, guardada no ambiente do GitHub e no cofre pessoal do responsável (como a decisão 70). Uma segunda guarda
-  selada (sócio ou advogado) é decisão do responsável; sem ela, só uma pessoa restaura.
+- **Criptografia com chave pública:** o pacote é cifrado **antes** de sair, com a chave pública
+  `infra/backup/desastre-publica.asc`. A chave privada, que abre o pacote, fica só no cofre do responsável. Nem o GitHub
+  nem o servidor da Oracle guardam o que abre o backup. Uma segunda guarda selada da chave privada (sócio ou advogado) é
+  decisão do responsável; sem ela, só uma pessoa restaura.
 - **Segredos não entram no pacote:** chaves da Evolution, da Twilio, do Google Vision, do banco e a `COFRE_PONTO`. Vai
   só a lista do que cadastrar e onde. Os valores ficam no cofre de senhas do responsável. **Sem a `COFRE_PONTO`, os
   atestados restaurados não abrem.**
 - **Destino:** **uma conta dedicada só ao backup** em cada nuvem, sem outro conteúdo. No Google, o `rclone` usa o escopo
   `drive.file` (só os arquivos que ele mesmo criou, inclusive a pasta). No OneDrive pessoal não existe escopo por
   pasta: o token vale para o drive inteiro, por isso a conta dedicada é obrigatória. O token do OneDrive pode expirar
-  em 90 dias; o workflow falha alto e o roteiro prevê a troca. Retenção: 30 cópias diárias e 12 mensais, mais a
-  lixeira de cada nuvem (30 dias no Google, até 93 no OneDrive). A cópia mensal leva o Storage completo.
+  em 90 dias; o workflow falha alto e o roteiro prevê a troca. Retenção: 30 cópias diárias e 12 mensais, apagadas sem passar pela lixeira.
+  O Storage vai em todas as cópias.
 - **Onde roda:** banco, Storage, código e painel no GitHub Actions, junto do backup atual. O banco da Evolution roda num
   agendamento no próprio servidor da Oracle.
 - **LGPD (P1 do `seguranca`):** o pacote tem dado pessoal e sensível (CPF, ponto, atestados) e vai para fora do Brasil.
@@ -70,10 +71,56 @@ restaurado e o QR lido de novo se a sessão não voltar.
 
 ## O que o responsável precisa fazer (uma vez)
 
-1. **Criar uma conta dedicada** em cada nuvem, só para o backup. A pasta é criada pelo próprio `rclone`.
-2. **Gerar a configuração do `rclone`** na máquina `ubuntu`, com acesso às duas contas dedicadas. O roteiro vem com o pull request do
-   workflow.
-3. **Cadastrar os segredos** num ambiente próprio do GitHub, `producao-desastre`, restrito à `main`:
-   - `RCLONE_CONFIG`, a configuração gerada no passo 2;
-   - `DESASTRE_SENHA`, a senha da cifra, diferente da `BACKUP_SENHA`.
-4. **Guardar a senha** no cofre pessoal, fora do Google e da Microsoft.
+O workflow é `.github/workflows/desastre.yml` (diário, 04:17 em Salvador). O script do banco da Evolution é
+`infra/evolution/backup-desastre.sh`, que roda no servidor da Oracle. **O envio fica travado** até existir a variável
+`DESASTRE_LGPD_DECIDIDO=sim`.
+
+0. **[Gabriel]** Decidir a base legal da transferência (seção LGPD acima) e registrar em `docs/decisoes.md`. Só
+   depois criar a variável do passo 4.
+1. **[navegador]** Criar uma conta dedicada só ao backup no Google e outra na Microsoft (OneDrive).
+2. **[ubuntu] Par de chaves da cifra.** A privada vai para o cofre e sai da máquina. A pública é enviada ao Claude, que
+   a grava em `infra/backup/desastre-publica.asc` (não é segredo):
+   ```bash
+   gpg --quick-generate-key "Trilha Backup Desastre" rsa4096 encrypt never   # pede uma frase-senha: guardar à parte
+   gpg --armor --export "Trilha Backup Desastre" > ~/desastre-publica.asc
+   gpg --armor --export-secret-keys "Trilha Backup Desastre" > ~/desastre-PRIVADA.asc
+   cat ~/desastre-publica.asc
+   gpg --show-keys --with-colons ~/desastre-publica.asc | awk -F: '$1=="fpr"{print $10; exit}'   # impressão digital
+   ```
+   Guardar o `desastre-PRIVADA.asc` no cofre pessoal (e na segunda guarda, se houver). Depois:
+   `gpg --batch --yes --delete-secret-keys "Trilha Backup Desastre"; shred -u ~/desastre-PRIVADA.asc`.
+3. **[Supabase da produção]** Em Storage → Settings → **S3 Access Keys**, gerar uma chave para o backup. Ela vale para
+   todos os buckets, com leitura, escrita e apagamento: trocar a cada 90 dias e revogar ali mesmo se houver suspeita.
+4. **[ubuntu]** Instalar o `rclone` na versão do workflow e criar os três remotos:
+   ```bash
+   curl -fsSL -o /tmp/rclone.zip https://github.com/rclone/rclone/releases/download/v1.75.2/rclone-v1.75.2-linux-amd64.zip \
+     && echo "349ac8fba6ff65d6247043f1750cdcb518ec5d500ef91463a10d37c0ccdf3702  /tmp/rclone.zip" | sha256sum -c - \
+     && unzip -qj /tmp/rclone.zip '*/rclone' -d ~/.local/bin && rclone version | head -1
+   rclone config
+   ```
+   - `gdrive`: tipo `drive`, **scope `drive.file`**, autorizado com a conta dedicada do Google.
+   - `onedrive`: tipo `onedrive`, conta pessoal, autorizado com a conta dedicada da Microsoft.
+   - `storage`: tipo `s3`, provider `Other`, com a chave, o endpoint e a região do passo 3.
+
+   Para testar: `rclone mkdir gdrive:Trilha-Backup && rclone mkdir onedrive:Trilha-Backup && rclone lsd storage:`. O
+   esperado é ver o bucket `documentos`.
+5. **[GitHub]** Em Settings → Environments, criar o ambiente **`producao-desastre`** e restringir à branch `main`.
+   - Segredos: `PRODUCAO_DB_URL`, a mesma do backup, e `RCLONE_CONFIG`, o conteúdo de
+     `cat ~/.config/rclone/rclone.conf`.
+   - Depois, **sempre** apagar o arquivo da `ubuntu`: `shred -u ~/.config/rclone/rclone.conf`. Para restaurar, gera-se
+     um novo.
+   - Variáveis (aba Variables): `DESASTRE_FPR` = a impressão digital do passo 2; e, só depois do passo 0,
+     `DESASTRE_LGPD_DECIDIDO` = `sim`.
+6. **[servidor da Oracle]** Para o banco da Evolution:
+   - gerar um `rclone.conf` próprio, só com `gdrive` e `onedrive`, e copiar para `/etc/trilha/rclone.conf` com
+     permissão 600;
+   - copiar a chave **pública** para `/etc/trilha/desastre-publica.asc`;
+   - copiar o script para `/opt/trilha/` e agendar com a linha de cron do cabeçalho, pondo o nome do contêiner do
+     PostgreSQL (`docker ps`).
+
+   O workflow falha se não houver cópia da Evolution nas últimas 48 h. **Risco a aceitar pelo responsável:** o token do
+   servidor enxerga também a pasta dos pacotes do GitHub; quem invadir o servidor pode apagá-los, mas não abri-los.
+7. **[GitHub]** Depois do passo 6, em Actions → **Pacote de desastre** → Run workflow, rodar à mão uma vez. O esperado é
+   o resumo com o sha256 e o arquivo nas duas pastas.
+8. **A cada 90 dias:** trocar a chave S3 do Storage e o token do OneDrive (refazendo o passo 4 só para esses dois
+   remotos) e atualizar o `RCLONE_CONFIG`.

@@ -1,0 +1,182 @@
+# Pacote de desastre da produção (decisão 116, docs/recuperacao-desastre.md), sem custo.
+# Banco inteiro em formato aberto, arquivos do Storage, repositório com histórico e painel compilado, cifrados com a
+# CHAVE PÚBLICA infra/backup/desastre-publica.asc ANTES de sair do runner (a chave privada fica só no cofre do
+# responsável: nenhuma máquina que gera backup guarda o que o abre) e enviados ao Google Drive e ao OneDrive de contas
+# dedicadas só ao backup.
+# Ambiente "producao-desastre" (Settings > Environments), restrito à branch main:
+#   PRODUCAO_DB_URL         (segredo) conexão do banco de produção (Session pooler), com a senha
+#   RCLONE_CONFIG           (segredo) remotos gdrive, onedrive e storage. A chave S3 do Storage vale para todos os
+#                           buckets, com escrita e apagamento: trocar a cada 90 dias e revogar em caso de suspeita
+#   DESASTRE_LGPD_DECIDIDO  (variável) "sim" só depois da decisão de LGPD registrada (decisão 116, com o Gabriel)
+# O repositório é público: o log e o resumo levam só tamanhos, sha256 e versões; nunca nome de arquivo do Storage.
+name: Pacote de desastre
+
+on:
+  schedule:
+    - cron: '17 7 * * *'   # 04:17 em Salvador, depois do backup diário
+  workflow_dispatch:
+
+concurrency:
+  group: desastre
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash   # com pipefail: pipe que falha no meio não gera arquivo truncado e verde
+
+env:
+  RCLONE_VERSAO: v1.75.2
+  RCLONE_SHA256: 349ac8fba6ff65d6247043f1750cdcb518ec5d500ef91463a10d37c0ccdf3702
+
+jobs:
+  # o painel é público: compila num job sem segredo, para nenhum script do npm conviver com o banco em claro
+  painel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        with:
+          node-version: 22
+      - run: cd web && npm ci --silent && npm run build:producao >/dev/null
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: painel-producao
+          path: web/dist
+          retention-days: 1
+          if-no-files-found: error
+
+  pacote:
+    needs: painel
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: producao-desastre
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0   # o bundle leva o histórico inteiro
+      - name: Trava da LGPD e conferência
+        env:
+          LGPD: ${{ vars.DESASTRE_LGPD_DECIDIDO }}
+          URL: ${{ secrets.PRODUCAO_DB_URL }}
+          RCLONE: ${{ secrets.RCLONE_CONFIG }}
+        run: |
+          if [ "$LGPD" != "sim" ]; then
+            echo "::error::Envio travado: falta a decisão de LGPD (decisão 116). Depois de registrada, criar a variável DESASTRE_LGPD_DECIDIDO=sim no ambiente producao-desastre"
+            exit 1
+          fi
+          if [ -z "$URL" ] || [ -z "$RCLONE" ]; then
+            echo "::error::Cadastre PRODUCAO_DB_URL e RCLONE_CONFIG no ambiente producao-desastre"; exit 1
+          fi
+          if ! grep -q "BEGIN PGP PUBLIC KEY BLOCK" infra/backup/desastre-publica.asc 2>/dev/null; then
+            echo "::error::Falta a chave pública infra/backup/desastre-publica.asc (roteiro em docs/recuperacao-desastre.md)"; exit 1
+          fi
+      - name: Ferramentas (pg_dump 17 e rclone com sha256 conferido)
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get -qq update && sudo apt-get -qq install -y postgresql-client-17 zstd >/dev/null
+          curl -fsSL -o rclone.zip "https://github.com/rclone/rclone/releases/download/${RCLONE_VERSAO}/rclone-${RCLONE_VERSAO}-linux-amd64.zip"
+          echo "${RCLONE_SHA256}  rclone.zip" | sha256sum -c -
+          unzip -qj rclone.zip '*/rclone' -d "$RUNNER_TEMP/bin" && rm rclone.zip
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: Configuração do rclone (fora do repositório, só para este job)
+        env:
+          RCLONE: ${{ secrets.RCLONE_CONFIG }}
+        run: |
+          umask 077
+          printf '%s\n' "$RCLONE" > "$RUNNER_TEMP/rclone.conf"
+          echo "RCLONE_CONFIG=$RUNNER_TEMP/rclone.conf" >> "$GITHUB_ENV"
+      - name: Banco (formato aberto, sem sessões nem logs que se refazem)
+        env:
+          URL: ${{ secrets.PRODUCAO_DB_URL }}
+        run: |
+          mkdir -p pacote
+          excl=(--exclude-table-data=auth.sessions --exclude-table-data=auth.refresh_tokens
+                --exclude-table-data=auth.one_time_tokens --exclude-table-data=auth.flow_state
+                --exclude-table-data=auth.mfa_challenges --exclude-table-data=interno.webhook_eventos
+                --exclude-table-data=interno.ponto_sessoes --exclude-table-data=interno.ponto_codigos)
+          pg_dump "$URL" --format=custom --no-owner --no-privileges "${excl[@]}" -f pacote/banco.dump
+          pg_dump "$URL" --format=plain --no-owner --no-privileges "${excl[@]}" | zstd -q -19 -o pacote/banco.sql.zst
+          psql "$URL" -XAtc "select 'migration ' || max(version) from supabase_migrations.schema_migrations" > pacote/versao.txt
+          psql "$URL" -XAtc "select 'postgres ' || current_setting('server_version')" >> pacote/versao.txt
+      - name: Arquivos do Storage
+        run: |
+          mkdir -p storage
+          # sem log de arquivo: o nome pode trazer o nome do técnico
+          if ! rclone copy storage:documentos storage/documentos --log-level ERROR >/dev/null 2>&1; then
+            echo "::error::Falha ao copiar o Storage (remoto 'storage' do RCLONE_CONFIG)"; exit 1
+          fi
+          tar -C storage -cf - . | zstd -q -19 -o pacote/storage.tar.zst
+          rm -rf storage
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: painel-producao
+          path: painel
+      - name: Repositório com histórico e painel compilado
+        run: |
+          git bundle create pacote/codigo.bundle --all
+          tar -C painel -cf - . | zstd -q -19 -o pacote/painel-producao.tar.zst
+          rm -rf painel
+      - name: Manifesto e roteiro de restauração
+        run: |
+          {
+            echo "Pacote de desastre do Trilha — $(date -u +%Y-%m-%dT%H:%MZ)"
+            cat pacote/versao.txt
+            echo "commit $(git rev-parse HEAD)"
+            echo
+            echo "Arquivos (sha256):"
+            (cd pacote && sha256sum banco.dump banco.sql.zst storage.tar.zst codigo.bundle painel-producao.tar.zst)
+            echo
+            cat docs/recuperacao-desastre.md
+          } > pacote/MANIFESTO.txt
+          rm pacote/versao.txt
+      - name: Cifrar com a chave pública antes de enviar
+        env:
+          FPR: ${{ vars.DESASTRE_FPR }}
+        run: |
+          # a chave do repositório precisa ser a do responsável: impressão digital conferida contra a variável
+          atual=$(gpg --show-keys --with-colons infra/backup/desastre-publica.asc | awk -F: '$1=="fpr"{print $10; exit}')
+          if [ -z "$FPR" ] || [ "$atual" != "$FPR" ]; then
+            echo "::error::A impressão digital da chave pública não confere com a variável DESASTRE_FPR"; exit 1
+          fi
+          nome="trilha-$(date -u +%Y%m%d-%H%M)"
+          tar -C pacote -cf - . | gpg --batch --yes --trust-model always --cipher-algo AES256 \
+              --recipient-file infra/backup/desastre-publica.asc --encrypt --output "$nome.tar.gpg"
+          rm -rf pacote
+          sha=$(sha256sum "$nome.tar.gpg" | cut -d' ' -f1)
+          echo "ARQUIVO=$nome.tar.gpg" >> "$GITHUB_ENV"
+          {
+            echo "### Pacote de desastre"
+            echo "arquivo: \`$nome.tar.gpg\`  tamanho: $(du -h "$nome.tar.gpg" | cut -f1)"
+            echo "sha256 do arquivo cifrado: \`$sha\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Enviar ao Google Drive e ao OneDrive, com retenção
+        run: |
+          for destino in gdrive onedrive; do
+            rclone copy "$ARQUIVO" "$destino:Trilha-Backup/diario" --log-level ERROR
+            # mensal: a primeira execução com sucesso do mês (se o dia 1 falhar, o dia 2 grava)
+            if [ -z "$(rclone lsf "$destino:Trilha-Backup/mensal" --max-age "$(date -u +%Y-%m-01)" --log-level ERROR 2>/dev/null)" ]; then
+              rclone copy "$ARQUIVO" "$destino:Trilha-Backup/mensal" --log-level ERROR
+            fi
+            # retenção: 30 diários e 12 mensais, sem passar pela lixeira
+            rclone delete "$destino:Trilha-Backup/diario" --min-age 31d --drive-use-trash=false --onedrive-hard-delete --log-level ERROR
+            rclone delete "$destino:Trilha-Backup/mensal" --min-age 366d --drive-use-trash=false --onedrive-hard-delete --log-level ERROR
+            echo "enviado: $destino"
+          done
+      - name: Cópia recente do banco da Evolution (servidor da Oracle)
+        run: |
+          if [ -z "$(rclone lsf onedrive:Trilha-Backup/evolution --max-age 48h --log-level ERROR 2>/dev/null)" ]; then
+            echo "::error::Sem cópia do banco da Evolution nas últimas 48 h: conferir o cron do servidor (infra/evolution/backup-desastre.sh)"
+            exit 1
+          fi
+      - name: Limpar
+        if: always()
+        run: rm -f "$RUNNER_TEMP/rclone.conf" trilha-*.tar.gpg
