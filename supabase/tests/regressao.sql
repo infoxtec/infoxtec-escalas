@@ -3565,7 +3565,40 @@ begin
   perform set_config('request.headers', '{}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T62' as resultado,
+-- T63 multiempresa F2f-2a: o banco recusa referência entre contas, mesmo sem passar pelas funções (migration 123) ----
+do $$
+declare
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_loc_a uuid := (select v::uuid from qa where k = 'loc');
+  v_tec_b uuid := (select id from tecnicos where conta_id = (select v::uuid from qa where k = 'conta_b') and nome = 'QA Técnico B');
+  v_ok boolean := false; v_n int;
+begin
+  -- escala da conta B (herda do técnico) com local da conta A: a chave composta recusa
+  begin
+    insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+    values (v_tec_b, v_loc_a, current_date + 5, time '09:00', 'QA T63', 'rascunho', 'qa');
+  exception when foreign_key_violation then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T63] escala da conta B com local da conta A recusada pelo banco');
+  -- catálogo: toda chave entre tabelas de conta inclui a conta (exceto o catálogo de motivos do ponto)
+  select count(*) into v_n
+    from pg_constraint c join pg_class cl on cl.oid = c.conrelid join pg_class pc on pc.oid = c.confrelid
+   where c.contype = 'f' and cl.relnamespace = 'interno'::regnamespace and pc.relname not in ('contas', 'ponto_motivos')
+     and exists (select 1 from pg_attribute a where a.attrelid = c.conrelid and a.attname = 'conta_id')
+     and exists (select 1 from pg_attribute a where a.attrelid = c.confrelid and a.attname = 'conta_id')
+     and not exists (select 1 from pg_attribute a where a.attrelid = c.conrelid and a.attnum = any(c.conkey) and a.attname = 'conta_id');
+  perform pg_temp.ok(v_n = 0, '[T63] chave entre tabelas de conta sem a conta: ' || v_n);
+  -- exclusão com set null zera só a coluna, nunca a conta
+  select count(*) into v_n from pg_constraint c
+   where c.contype = 'f' and c.connamespace = 'interno'::regnamespace and c.confdeltype = 'n'
+     and c.conname like '%\_conta\_fkey' and (c.confdelsetcols is null or array_length(c.confdelsetcols, 1) <> 1);
+  perform pg_temp.ok(v_n = 0, '[T63] set null que zeraria a conta: ' || v_n);
+  -- acompanhamento do ponto com plano novo a cada chamada
+  perform pg_temp.ok(exists (select 1 from pg_proc where proname = 'app_ponto_acompanhamento'
+                                    and 'plan_cache_mode=force_custom_plan' = any(proconfig)),
+                     '[T63] acompanhamento sem plan_cache_mode');
+end $$;
+
+select 'REGRESSÃO OK: T1 a T63' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

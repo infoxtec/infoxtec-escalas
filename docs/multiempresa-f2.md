@@ -51,7 +51,10 @@ argumentos das suas funções até a recusa ser pela conta.
 ## Pontos em aberto
 
 - **Revisão de 25/10 (`docs/revisao-infra-dados-2026-10-25.md`):** a chave composta `(conta_id, id)` da
-  decisão 108 **ainda não existe**; a F1 criou só a chave para `contas`. Entra na F2f-2a. **Regra até 31/10:**
+  decisão 108 não tinha entrado na F1. Entrou na **migration 123 (F2f-2a)**: 70 chaves compostas e o T63. **Pendente antes da F2f-2 (revisão do `seguranca`):**
+  14 colunas de referência sem chave nenhuma (ex.: `ponto_marcacoes.escala_id`, `programacao_aceites`, anexos do cofre):
+  chave composta ou exceção registrada, e o T63 cobrindo colunas `*_id` sem chave. Índices só de `conta_id` redundantes
+  (16) ficam para a F8. **Regra até 31/10:**
   versão de migration à mão, maior que `20261030120000`.
 
 - **Trava (revisão do `seguranca`, P1):** gatilho `tg_trava_conta_unica` recusa membro fora da conta 1 enquanto as

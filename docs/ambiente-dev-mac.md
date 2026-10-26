@@ -41,7 +41,7 @@ sudo apt install -y git curl build-essential unzip gh
 
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 source ~/.bashrc
-nvm install 20 && nvm alias default 20
+nvm install 22 && nvm alias default 22   # a mesma do CI e do .node-version
 
 git config --global user.name  "Seu Nome"
 git config --global user.email "seu.email@infoxtec.com.br"
