@@ -261,7 +261,9 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
 clientes, e o aviso de duplicidade não revela dado de outra conta. O telefone continua único no sistema até a F5 (o
 webhook acha o funcionário por ele); a mensagem não diz em qual conta. Login do app do ponto: `ponto_pedir_codigo` manda
 um código para cada cadastro ativo com o CPF e WhatsApp autorizado, com o nome da empresa na mensagem; `ponto_entrar`
-deixa o código digitado escolher o cadastro, conta o erro em cada cadastro do CPF e mantém os mesmos freios. Regressão: T69.
+deixa o código digitado escolher o cadastro, conta o erro em cada cadastro do CPF e mantém os mesmos freios. Aceito até a
+F5: o telefone repetido revela que o número existe no sistema (sem a conta), e um palpite errado gasta as tentativas dos
+códigos de WhatsApp de todos os cadastros do mesmo CPF (o código do gestor segue livre). Regressão: T69.
 
 ### Migration 128 (27/10, versão 20261102120000): desempenho do espelho do ponto
 

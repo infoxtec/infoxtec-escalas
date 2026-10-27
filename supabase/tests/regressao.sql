@@ -3861,6 +3861,12 @@ begin
   r := ponto_entrar(v_cpf, v_cod);
   perform pg_temp.ok(r ? 'token' and (select tecnico_id from ponto_sessoes where token_hash = fn_sha256(r->>'token')) = v_tec_b,
                      '[T69] login com o código da conta B entrou na B: ' || (r - 'token')::text);
+  -- código de WhatsApp do cadastro da conta 1 entra no cadastro da conta 1 (o caminho do funcionário)
+  insert into ponto_codigos (id, tecnico_id, codigo_hash, origem, expira_em)
+  values ('69690000-0000-0000-0000-000000000001', v_tec_a, fn_sha256('69690000-0000-0000-0000-000000000001:246813'), 'whatsapp', now() + interval '5 minutes');
+  r := ponto_entrar(v_cpf, '246813');
+  perform pg_temp.ok(r ? 'token' and (select tecnico_id from ponto_sessoes where token_hash = fn_sha256(r->>'token')) = v_tec_a,
+                     '[T69] código do WhatsApp da conta 1 entrou na conta 1: ' || (r - 'token')::text);
   -- código errado conta erro nos dois cadastros
   select count(*) into v_n from ponto_acessos where tipo = 'entrar_erro' and tecnico_id in (v_tec_a, v_tec_b);
   r := ponto_entrar(v_cpf, '000000');
