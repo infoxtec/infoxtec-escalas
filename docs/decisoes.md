@@ -1741,5 +1741,9 @@ no Supabase.
   senha. Ela é chamada ao criar uma conta (o administrador da conta nova) e ao adicionar um usuário. A tela Usuários
   também tem o botão para enviar de novo. O banco decide quem pode convidar e registra tudo (migration 127). A chave de
   serviço fica só dentro da função. Quem já tem login não recebe convite: entra com a senha atual.
+- **Limites do merge pelo Claude (revisão do `seguranca`):** PR que mexe em `.github/workflows` continua com merge do
+  responsável. A `main` deve ter proteção de branch com o CI obrigatório e sem atalho de administrador.
+- **Convite seguro:** o link volta só para o painel oficial na produção; o admin de um cliente recebe a mesma resposta
+  tenha a pessoa login ou não; o registro do convite vale 90 dias.
 - **Condição:** o e-mail sai pelo SMTP configurado no Auth de cada projeto. O SMTP padrão do Supabase tem limite baixo
   e pode só entregar para quem é da equipe do projeto; para clientes, um SMTP próprio (Authentication → SMTP Settings).

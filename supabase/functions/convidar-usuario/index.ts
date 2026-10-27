@@ -25,6 +25,15 @@ function origemDoPainel(req: Request): string | null {
     ? origem : null;
 }
 
+// para onde o link do e-mail volta: na produção, só o painel oficial (pré-visualização é domínio que terceiros podem
+// criar na Vercel); na homologação, os painéis da lista. Painel da produção no Cloudflare (decisão 116): incluir aqui
+const PAINEL_PRODUCAO = "https://infoxtec-escalas.vercel.app";
+function destinoDoLink(req: Request): string | null {
+  const origem = origemDoPainel(req);
+  if (!origem) return null;
+  return HOMOLOGACAO || origem === PAINEL_PRODUCAO ? origem : null;
+}
+
 function cabecalhosCors(req: Request): Record<string, string> {
   const origem = origemDoPainel(req);
   return {
@@ -95,13 +104,18 @@ Deno.serve(async (req: Request) => {
 
   // quem pode, limites e registro: tudo no banco; a mensagem de recusa é a do banco (texto nosso, sem dado de outros)
   let id: string;
+  let plataforma: boolean;
   try {
-    const [linha] = await sql<{ id: string }[]>`select fn_convite_autorizar(${autor}, ${nivelDaSessao(req)}, ${conta}::uuid, ${email})::text as id`;
+    const [linha] = await sql<{ id: string; plataforma: boolean }[]>`
+      select fn_convite_autorizar(${autor}, ${nivelDaSessao(req)}, ${conta}::uuid, ${email})::text as id,
+             exists (select 1 from plataforma_admins where email = ${autor}) as plataforma`;
     id = linha.id;
+    plataforma = linha.plataforma;
   } catch (err) {
-    const msg = (err as { message?: string })?.message ?? "";
-    console.error("convidar-usuario: recusado", err instanceof Error ? err.name : "erro");
-    return json({ ok: false, erro: msg.length > 0 && msg.length < 120 ? msg : "Sem permissão para esta ação." }, 403);
+    // só as recusas nossas (raise, P0001) voltam ao painel; outro erro do banco vira a mensagem genérica
+    const e = err as { code?: string; message?: string };
+    console.error("convidar-usuario: recusado", e?.code ?? "erro");
+    return json({ ok: false, erro: e?.code === "P0001" && e.message ? e.message : "Sem permissão para esta ação." }, 403);
   }
 
   const admin = cabecalhosAdmin();
@@ -110,7 +124,7 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, erro: "Convite indisponível: falta a chave de serviço na função." }, 500);
   }
   // o link do e-mail volta para o painel de onde o convite saiu (se for um painel conhecido); senão, o Site URL do Auth
-  const origem = origemDoPainel(req);
+  const origem = destinoDoLink(req);
   const destino = `${Deno.env.get("SUPABASE_URL")}/auth/v1/invite${origem ? `?redirect_to=${encodeURIComponent(origem)}` : ""}`;
   try {
     const resp = await fetch(destino, {
@@ -127,7 +141,8 @@ Deno.serve(async (req: Request) => {
     const codigo = String(erro?.error_code ?? erro?.code ?? "");
     if (resp.status === 422 && /exists|registered/i.test(`${codigo} ${erro?.msg ?? ""}`)) {
       await sql`select fn_convite_resultado(${id}::bigint, 'ja_tinha_login')`;
-      return json({ ok: true, enviado: false, ja_tinha_login: true });
+      // só a plataforma sabe que a pessoa já tinha login (o admin de um cliente não descobre quem usa outras contas)
+      return json(plataforma ? { ok: true, enviado: false, ja_tinha_login: true } : { ok: true, enviado: true });
     }
     console.error("convidar-usuario: auth respondeu", resp.status, codigo);
     await sql`select fn_convite_resultado(${id}::bigint, 'falhou')`;

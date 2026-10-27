@@ -134,7 +134,7 @@ end $$;
 - Afirmação comercial — proposta, site, conversa de venda — só com lastro na matriz de
   `docs/plano-comercial.md`; nome, mote e posicionamento em `docs/marca.md`. Preço, SLA, garantia e
   aceitar risco são decisão do responsável, não do material de venda.
-- Trabalhar sempre em branch e abrir pull request. Nada vai direto para `main`: o merge é do Claude, só com o CI verde e as revisões obrigatórias liberadas (decisão 120).
+- Trabalhar sempre em branch e abrir pull request. Nada vai direto para `main`: o merge é do Claude, só com o CI verde e as revisões obrigatórias liberadas (decisão 120); PR que mexe em `.github/workflows` tem merge do responsável.
 - **O pacote já leva o próprio registro** (decisão 71): plano, README, backlog, sprint e documentação são
   atualizados no mesmo PR da entrega, antes do merge. Nunca abrir PR depois da produção só para registrar;
   a conferência da produção entra no próximo PR que já for abrir.

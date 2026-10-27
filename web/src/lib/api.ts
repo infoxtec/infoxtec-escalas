@@ -302,7 +302,7 @@ export async function convidarUsuario(email: string, conta: string): Promise<Res
 
 export function mensagemConvite(email: string, r: ResultadoConvite): string {
   if (!r.ok) return `Convite não enviado: ${r.erro}`
-  return r.ja_tinha_login ? `${email} já tem login: entra com a senha atual.` : `Convite enviado para ${email}.`
+  return r.ja_tinha_login ? `${email} já tem login: entra com a senha atual.` : `Convite enviado para ${email} (se já tiver login, entra com a senha atual).`
 }
 
 export async function lerValidadePorOCR(arquivo: File): Promise<{ sugestao: string | null; erro?: string }> {

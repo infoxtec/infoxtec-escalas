@@ -10,7 +10,9 @@ create table interno.convites (
   email text not null,
   autor text not null,
   em timestamptz not null default now(),
-  resultado text not null default 'pendente' check (resultado in ('pendente', 'enviado', 'ja_tinha_login', 'falhou'))
+  resultado text not null default 'pendente' check (resultado in ('pendente', 'enviado', 'ja_tinha_login', 'falhou')),
+  -- só se convida quem é membro da conta (garantido no dado; membros são desativados, não apagados)
+  foreign key (conta_id, email) references interno.conta_membros (conta_id, email)
 );
 alter table interno.convites enable row level security;
 create index convites_autor_idx on interno.convites (autor, em desc);
@@ -45,6 +47,11 @@ begin
   elsif coalesce(fn_config('mfa_obrigatorio'), 'false') = 'true' and coalesce(p_aal, 'aal1') <> 'aal2' then
     raise exception 'Confirme o código do aplicativo autenticador para continuar.';
   end if;
+  -- pedidos simultâneos do mesmo autor ou para o mesmo e-mail esperam um ao outro (limites sem corrida)
+  perform pg_advisory_xact_lock(hashtext('convite:' || v_autor));
+  perform pg_advisory_xact_lock(hashtext('convite:' || p_conta || ':' || v_email));
+  -- retenção (LGPD): o registro do convite vale 90 dias
+  delete from convites where em < now() - interval '90 days';
   if (select count(*) from convites where autor = v_autor and em > now() - interval '1 hour') >= 20 then
     raise exception 'Muitos convites na última hora. Tente mais tarde.';
   end if;
