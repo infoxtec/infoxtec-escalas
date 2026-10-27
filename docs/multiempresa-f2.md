@@ -81,9 +81,8 @@ argumentos das suas funções até a recusa ser pela conta.
   API, ao Storage e às Edge Functions (não no login). Quem tem uma conta só também manda, para o caminho ser o mesmo.
   Quem está em duas contas escolhe numa tela ao entrar e troca no topo; a troca recarrega o painel. Conta guardada que
   deixou de valer é esquecida. A prova com duas contas de verdade espera a F3d (a trava ainda impede membro fora da conta 1).
-- **Login do ponto (F6):** o CPF é único no sistema inteiro, então `ponto_entrar` acha um só funcionário e a conta vem
-  dele. O identificador da conta no login só é preciso quando o CPF passar a ser único por conta (mesma pessoa em dois
-  clientes), junto com a unicidade da F6.
+- **Login do ponto (F6, 129):** o CPF é único por conta; o código vai para cada cadastro ativo do CPF e o código digitado
+  escolhe o cadastro, sem pedir a conta na tela.
 - **Motor (122):** avisos a supervisores só da mesma conta, inclusive no motor de envio (funcionário sem empresa avisa
   os supervisores da conta dele); programação de amanhã e documentos a vencer por conta, com erro de uma conta sem
   derrubar as outras; teto do app do ponto só à operadora. Lembretes, pedidos parados e PDF do espelho já avisavam só o
