@@ -4,7 +4,7 @@ import type { Session } from '@supabase/supabase-js'
 import { ArrowLeft, Award, BarChart3, Building2, CalendarClock, CalendarDays, KeyRound, LayoutGrid, Settings, Loader2, LogOut, MapPin, Rocket, ShieldCheck, Timer, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button, ErrorBox } from './components/ui'
-import { configurado, supabase, tipoDoLink } from './lib/supabase'
+import { configurado, contaAtual, escolherConta, supabase, tipoDoLink } from './lib/supabase'
 
 // Definido só nos modos locais (npm run dev:homologacao / dev:producao); vazio no painel publicado
 const AMBIENTE_LOCAL = import.meta.env.VITE_AMBIENTE as 'homologacao' | 'producao' | undefined
@@ -89,7 +89,9 @@ function Painel({ email }: { email: string }) {
   const [verificar, setVerificar] = useState<string | null>(() => new URLSearchParams(window.location.search).get('verificar'))
 
   // local: sai só deste navegador, sem derrubar o painel aberto no celular ou em outro computador
-  const sair = () => { void supabase.auth.signOut({ scope: 'local' }) }
+  const sair = () => { escolherConta(null); void supabase.auth.signOut({ scope: 'local' }) }
+  // trocar de conta recarrega o painel inteiro: nenhuma tela fica com dado da conta anterior
+  const trocarConta = (id: string) => { escolherConta(id); window.location.reload() }
 
   const recarregarCadastros = useCallback(async () => {
     try {
@@ -110,12 +112,37 @@ function Painel({ email }: { email: string }) {
 
   useEffect(() => {
     api.meuAcesso()
-      .then(a => { setAcesso(a); return conferirMfa(a) })
+      .then(a => {
+        // conta guardada que não vale mais (saiu da conta ou outro usuário neste navegador): esquece e pergunta de novo
+        if (contaAtual() && !a.conta) { escolherConta(null); window.location.reload(); return }
+        // com uma conta só, ela também vai no cabeçalho: o mesmo caminho de quem tem várias
+        if (a.conta && a.conta !== contaAtual()) escolherConta(a.conta)
+        setAcesso(a); return conferirMfa(a)
+      })
       .catch(e => setErro(erroMsg(e)))
   }, [conferirMfa])
 
   if (erro && !acesso) return <Centro><div className="max-w-md space-y-3"><ErrorBox>{erro}</ErrorBox><Button variant="outline" onClick={sair}>Sair</Button></div></Centro>
   if (!acesso) return <Centro><Loader2 className="h-5 w-5 animate-spin" /></Centro>
+  if (!acesso.papel && (acesso.contas?.length ?? 0) > 1) {
+    return (
+      <Centro>
+        <div className="w-full max-w-sm space-y-4 rounded-lg border bg-card p-6">
+          <p className="text-center text-base font-semibold text-foreground">Escolha a conta</p>
+          <div className="space-y-2">
+            {acesso.contas!.map(c => (
+              <button key={c.id} onClick={() => trocarConta(c.id)}
+                className="flex w-full items-center justify-between rounded-md border px-3 py-2 text-left hover:border-primary hover:bg-primary/5">
+                <span className="text-sm font-medium text-foreground">{c.nome}</span>
+                <span className="text-xs text-muted-foreground">{PAPEL_LABEL[c.papel]}</span>
+              </button>
+            ))}
+          </div>
+          <Button variant="outline" className="w-full" onClick={sair}><LogOut className="h-4 w-4" /> Sair</Button>
+        </div>
+      </Centro>
+    )
+  }
   if (!acesso.papel) {
     return (
       <Centro>
@@ -137,6 +164,8 @@ function Painel({ email }: { email: string }) {
   if (cadastrandoMfa) return <MfaCadastrar obrigatorio={false} onOk={mfaPronto} onCancelar={() => setCadastrandoMfa(false)} />
 
   const papel = acesso.papel
+  const contas = acesso.contas ?? []
+  const contaNome = contas.find(c => c.id === acesso.conta)?.nome
   const podeEditar = papel === 'admin' || papel === 'gestor'
   const abas: { id: Aba; label: string; Icone: LucideIcon }[] = [
     { id: 'agenda', label: 'Agenda', Icone: CalendarDays },
@@ -174,9 +203,15 @@ function Painel({ email }: { email: string }) {
             </span>
           </button>
           <div className="flex-1" />
+          {contas.length > 1 && (
+            <select value={acesso.conta ?? ''} onChange={e => trocarConta(e.target.value)} aria-label="Conta"
+              title="Trocar de conta" className="h-8 max-w-[10rem] rounded-md border bg-background px-2 text-xs sm:max-w-[14rem]">
+              {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>
+          )}
           <div className="hidden text-right leading-tight sm:block">
             <p className="text-xs font-medium">{acesso.nome ?? email}</p>
-            <p className="text-[11px] text-muted-foreground">{PAPEL_LABEL[papel]}</p>
+            <p className="text-[11px] text-muted-foreground">{PAPEL_LABEL[papel]}{contas.length === 1 && contaNome ? ` · ${contaNome}` : ''}</p>
           </div>
           {!mfa.temFator && (
             <Button variant="ghost" size="sm" onClick={() => setCadastrandoMfa(true)} title="Ativar a verificação em duas etapas (código do celular)">

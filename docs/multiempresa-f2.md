@@ -77,7 +77,10 @@ argumentos das suas funções até a recusa ser pela conta.
   (consulta no roteiro da produção); arquivo fora dele fica invisível no painel, não é apagado.
 - **OCR (`documento-ocr`, 122):** papel na conta por `fn_papel_na_conta_de` (e-mail do token conferido e `x-conta`), sem
   mexer na sessão; conta recusada responde 403. Cota da chave do Google Vision por conta entra na F7.
-- **Cabeçalho `x-conta` no Storage (P3, F3):** provar que o Storage repassa o cabeçalho para quem está em duas contas.
+- **Cabeçalho `x-conta` (F3b, painel 3.49.0):** o painel guarda a conta escolhida e manda `x-conta` em toda chamada à
+  API, ao Storage e às Edge Functions (não no login). Quem tem uma conta só também manda, para o caminho ser o mesmo.
+  Quem está em duas contas escolhe numa tela ao entrar e troca no topo; a troca recarrega o painel. Conta guardada que
+  deixou de valer é esquecida. A prova com duas contas de verdade espera a F3d (a trava ainda impede membro fora da conta 1).
 - **Login do ponto (F6):** o CPF é único no sistema inteiro, então `ponto_entrar` acha um só funcionário e a conta vem
   dele. O identificador da conta no login só é preciso quando o CPF passar a ser único por conta (mesma pessoa em dois
   clientes), junto com a unicidade da F6.

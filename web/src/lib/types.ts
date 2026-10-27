@@ -5,7 +5,11 @@ export type StatusEscala =
   | 'rascunho' | 'agendada' | 'notificada' | 'confirmada' | 'recusada'
   | 'reagendada' | 'em_execucao' | 'concluida' | 'cancelada'
 
-export interface Acesso { email: string | null; papel: Papel | null; nome: string | null; ve_saude?: boolean; rh_folhas?: boolean; mfa_obrigatorio?: boolean }
+export interface ContaDoUsuario { id: string; nome: string; papel: Papel }
+export interface Acesso {
+  email: string | null; papel: Papel | null; nome: string | null; ve_saude?: boolean; rh_folhas?: boolean; mfa_obrigatorio?: boolean
+  conta?: string | null; contas?: ContaDoUsuario[]
+}
 
 export interface EscalaPainel {
   id: string
