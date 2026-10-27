@@ -254,6 +254,15 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 128 (27/10, versão 20261102120000): desempenho do espelho do ponto
+
+As CTEs que chamam `fn_ponto_jornada_dia` em `app_ponto_espelho`, `fn_ponto_espelho_conteudo` e `app_carga_excedida`
+passam a `materialized`: o PostgreSQL desdobrava a CTE e recalculava a jornada a cada coluna lida (até 21 vezes por
+dia). `fn_ponto_marcacoes_efetivas` perde o `set search_path` (tabelas com o esquema escrito) para ser incorporada na
+consulta; é a única exceção do T55, que exige ser `sql` e sem `security definer`. Medido com 50 funcionários × 1 mês:
+espelho 14,3 s → 0,22 s; conteúdo do espelho 738 → 32 ms por funcionário; prévia da folha 642 → 63 ms; carga excedida
+5,0 → 0,26 s; indicadores 1,3 → 0,34 s. Regressão: T68 (estrutura) e a regressão inteira (mesmos resultados).
+
 ### Migration 127 (27/10, versão 20261101180000): convite por e-mail
 
 `convites` (por conta): quem convidou, quem, quando e o resultado (`pendente`, `enviado`, `ja_tinha_login`, `falhou`).

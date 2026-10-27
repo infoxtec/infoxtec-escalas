@@ -193,8 +193,12 @@ begin
   select string_agg(p.proname, ', ') into v from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname in ('public', 'interno') and p.proname not like 'fn\_qa%'
      and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
+     and p.proname <> all (array['fn_ponto_marcacoes_efetivas'])   -- incorporável (128): sql, sem definer, esquema escrito
      and not coalesce(array_to_string(p.proconfig, ',') like '%search_path=interno, public, extensions, pg_temp%', false);
   perform pg_temp.ok(v is null, '[T55] função sem o caminho interno, public, extensions, pg_temp: ' || coalesce(v, ''));
+  select string_agg(p.proname, ', ') into v from pg_proc p join pg_language l on l.oid = p.prolang
+   where p.proname = any (array['fn_ponto_marcacoes_efetivas']) and (p.prosecdef or l.lanname <> 'sql' or p.proconfig is not null);
+  perform pg_temp.ok(v is null, '[T55] exceção do caminho que não é sql simples sem definer: ' || coalesce(v, ''));
 end $$;
 
 -- T56 régua do multiempresa (F0, docs/multiempresa-f0.md): o catálogo bate com a classificação; exigência desde a F1 --
@@ -3804,7 +3808,22 @@ begin
   perform pg_temp.ok(not exists (select 1 from app_convites() where email = 'qa-convidado@teste.local'), '[T67] conta 1 não vê convites da B');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T67' as resultado,
+-- T68 desempenho do espelho: a jornada é calculada uma vez por dia (CTE materializada), não uma por coluna (128) --
+do $$
+declare v text; v_linhas int;
+begin
+  -- toda CTE que chama a jornada do dia precisa ser materializada (sem isso: até 21 chamadas por dia, 14 s por mês)
+  select string_agg(p.proname, ', ') into v from pg_proc p
+   where p.proname in ('app_ponto_espelho', 'fn_ponto_espelho_conteudo', 'app_carga_excedida')
+     and p.prosrc !~ 'as materialized \(';
+  perform pg_temp.ok(v is null, '[T68] CTE da jornada sem materialized: ' || coalesce(v, ''));
+  -- a função das marcações é incorporável: sql, sem caminho fixo
+  perform pg_temp.ok((select proconfig is null from pg_proc where proname = 'fn_ponto_marcacoes_efetivas'), '[T68] marcações efetivas com search_path');
+  select count(*) into v_linhas from app_ponto_espelho(current_date - 20, current_date, (select q.v::uuid from qa q where q.k = 'tec2'));
+  perform pg_temp.ok(v_linhas > 0, '[T68] espelho vazio');
+end $$;
+
+select 'REGRESSÃO OK: T1 a T68' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
