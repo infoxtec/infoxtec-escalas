@@ -8,8 +8,9 @@ export type StatusEscala =
 export interface ContaDoUsuario { id: string; nome: string; papel: Papel }
 export interface Acesso {
   email: string | null; papel: Papel | null; nome: string | null; ve_saude?: boolean; rh_folhas?: boolean; mfa_obrigatorio?: boolean
-  conta?: string | null; contas?: ContaDoUsuario[]
+  conta?: string | null; contas?: ContaDoUsuario[]; plataforma?: boolean
 }
+export interface ContaPlataforma { id: string; nome: string; ativa: boolean; criada_em: string; membros: number; admins: string[]; modulos: string[] }
 
 export interface EscalaPainel {
   id: string

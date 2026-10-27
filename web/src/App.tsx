@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { ArrowLeft, Award, BarChart3, Building2, CalendarClock, CalendarDays, KeyRound, LayoutGrid, Settings, Loader2, LogOut, MapPin, Rocket, ShieldCheck, Timer, Users } from 'lucide-react'
+import { ArrowLeft, Award, Briefcase, BarChart3, Building2, CalendarClock, CalendarDays, KeyRound, LayoutGrid, Settings, Loader2, LogOut, MapPin, Rocket, ShieldCheck, Timer, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Button, ErrorBox } from './components/ui'
 import { configurado, contaAtual, escolherConta, supabase, tipoDoLink } from './lib/supabase'
@@ -25,12 +25,13 @@ import HabilidadesPage from './pages/HabilidadesPage'
 import RoadmapPage from './pages/RoadmapPage'
 import AdminPage from './pages/AdminPage'
 import EmpresasPage from './pages/EmpresasPage'
+import ContasPage from './pages/ContasPage'
 import Verificacao from './components/Verificacao'
 import { MfaCadastrar, MfaDesativar, MfaVerificar, estadoMfa } from './components/Mfa'
 import type { EstadoMfa } from './components/Mfa'
 import MarcaAnimada from './components/MarcaAnimada'
 
-type Aba = 'inicio' | 'empresas' | 'agenda' | 'ponto' | 'cargas' | 'operacao' | 'gerencial' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios' | 'roadmap' | 'admin'
+type Aba = 'inicio' | 'empresas' | 'agenda' | 'ponto' | 'cargas' | 'operacao' | 'gerencial' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios' | 'roadmap' | 'admin' | 'contas'
 
 // Check verde da marca, que vem logo depois do nome (docs/marca.md)
 function CheckVerde() {
@@ -182,6 +183,7 @@ function Painel({ email }: { email: string }) {
       { id: 'roadmap' as Aba, label: 'Roadmap', Icone: Rocket },
       { id: 'admin' as Aba, label: 'Checklist Sistema', Icone: Settings },
     ] : []),
+    ...(acesso.plataforma ? [{ id: 'contas' as Aba, label: 'Contas', Icone: Briefcase }] : []),
   ]
 
   return (
@@ -257,6 +259,7 @@ function Painel({ email }: { email: string }) {
         {aba === 'locais' && <LocaisPage locais={locais} recarregar={recarregarCadastros} podeEditar={podeEditar} />}
         {aba === 'usuarios' && papel === 'admin' && <UsuariosPage />}
         {aba === 'roadmap' && papel === 'admin' && <RoadmapPage podeEditar />}
+        {aba === 'contas' && acesso.plataforma && <ContasPage />}
         {aba === 'admin' && papel === 'admin' && <AdminPage />}
       </main>
     </div>
