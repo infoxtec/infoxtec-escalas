@@ -1,0 +1,152 @@
+# Aplica as migrations e publica as Edge Functions (decisão 118). Substitui os scripts aplicar-*.sh, que ficam só
+# como contingência.
+#   Homologação: sozinho, a cada merge na main que mexa em supabase/migrations. As Edge Functions da homologação são
+#             publicadas pelo Claude (conector do Supabase): o token da conta vale para a produção também e não pode
+#             ficar num ambiente sem aprovação (revisão do seguranca, P1).
+#   Produção: só pelo botão (Actions → Aplicar → Run workflow, destino "producao"), e só roda depois da aprovação
+#             do responsável no ambiente "producao" (Settings → Environments → Required reviewers).
+# Ambientes "homologacao" e "producao", ambos restritos à branch main:
+#   DB_URL                  (segredo, nos dois) conexão do banco (Session pooler, porta 5432), com a senha
+#   SUPABASE_ACCESS_TOKEN   (segredo, SÓ na produção) token da conta do Supabase, para publicar Edge Functions
+#   CONGELADA_ATE           (variável, só na produção, opcional) AAAA-MM-DD: recusa aplicar até essa data
+# O repositório é público: nada de dado do banco no log, só versões e nomes de função.
+name: Aplicar
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - '.github/workflows/aplicar.yml'
+  workflow_dispatch:
+    inputs:
+      destino:
+        description: 'homologacao ou producao'
+        required: true
+        type: choice
+        options: [homologacao, producao]
+      ate:
+        description: 'Aplicar só até esta versão (14 dígitos, inclusive). Vazio = todas as pendentes'
+        required: false
+        default: ''
+      funcoes:
+        description: 'Só na produção: Edge Functions a publicar, separadas por espaço (ex.: documento-ocr espelho-pdf). Vazio = nenhuma'
+        required: false
+        default: ''
+
+concurrency:
+  group: aplicar-${{ github.event.inputs.destino || 'homologacao' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  SUPABASE_CLI: 2.118.0
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ github.event.inputs.destino || 'homologacao' }}
+    env:
+      DESTINO: ${{ github.event.inputs.destino || 'homologacao' }}
+      ATE: ${{ github.event.inputs.ate }}
+      FUNCOES: ${{ github.event.inputs.funcoes }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb  # v1.7.3
+        with:
+          version: ${{ env.SUPABASE_CLI }}
+
+      - name: Conferências antes de aplicar
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+          CONGELADA_ATE: ${{ vars.CONGELADA_ATE }}
+        run: |
+          [ "$GITHUB_REF" = "refs/heads/main" ] || { echo "::error::Só a partir da main"; exit 1; }
+          [ -n "$DB_URL" ] || { echo "::error::Cadastre o segredo DB_URL no ambiente $DESTINO"; exit 1; }
+          # o segredo precisa ser do projeto do destino (segredo trocado entre ambientes não aplica nada)
+          esperado=$([ "$DESTINO" = producao ] && echo zpckrxydqqmmcrphrkxz || echo oruwnlxyvznpigbpjjbx)
+          echo "::add-mask::$(echo "$DB_URL" | sed -nE 's#^[^:]+://[^:]+:([^@]+)@.*#\1#p')"
+          ref=$(echo "$DB_URL" | sed -nE 's#^postgres(ql)?://postgres\.([a-z0-9]{20}):[^@]+@[a-z0-9-]+\.pooler\.supabase\.com:5432/.*#\2#p')
+          [ "$ref" = "$esperado" ] || { echo "::error::DB_URL do ambiente $DESTINO não é do projeto $esperado (use o Session pooler)"; exit 1; }
+          echo "REF=$ref" >> "$GITHUB_ENV"
+          if [ "$DESTINO" = producao ] && [ -n "$CONGELADA_ATE" ] && [ "$(date -u +%F)" \< "$(date -u -d "$CONGELADA_ATE + 1 day" +%F)" ]; then
+            echo "::error::Produção congelada até $CONGELADA_ATE (variável CONGELADA_ATE)"; exit 1
+          fi
+          if [ -n "$ATE" ]; then
+            [[ "$ATE" =~ ^[0-9]{14}$ ]] || { echo "::error::'ate' precisa ter 14 dígitos"; exit 1; }
+            ls supabase/migrations/"${ATE}"_*.sql >/dev/null 2>&1 || { echo "::error::Não existe migration $ATE"; exit 1; }
+            for f in supabase/migrations/*.sql; do
+              v=$(basename "$f" | cut -d_ -f1)
+              if [ "$v" \> "$ATE" ]; then echo "fica para depois: $(basename "$f")"; rm "$f"; fi
+            done
+          fi
+
+      - name: Migrations pendentes
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+        run: supabase migration list --db-url "$DB_URL"
+
+      - name: 'Aplicar migrations (até 3 tentativas; o Supabase às vezes responde 502)'
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+        run: |
+          for i in 1 2 3; do
+            if supabase db push --db-url "$DB_URL" --yes; then exit 0; fi
+            echo "tentativa $i falhou"; sleep $((i * 15))
+          done
+          exit 1
+
+      - name: plpgsql_check em todas as funções (transação desfeita, exige zero erros)
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+        run: |
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -q <<'SQL'
+          begin;
+          create extension if not exists plpgsql_check;
+          do $$
+          declare r text := ''; n int := 0; f record; x record;
+          begin
+            for f in select p.oid, p.proname, p.prorettype = 'trigger'::regtype as trig
+                     from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+                     join pg_language l on l.oid = p.prolang
+                     where ns.nspname in ('public', 'interno') and l.lanname = 'plpgsql' loop
+              for x in select * from plpgsql_check_function_tb(f.oid,
+                         relid => case when f.trig then coalesce((select tgrelid from pg_trigger where tgfoid = f.oid limit 1), 0) else 0 end)
+                       where level = 'error' loop
+                n := n + 1; r := r || f.proname || ': ' || x.message || E'\n';
+              end loop;
+            end loop;
+            if n > 0 then raise exception E'plpgsql_check: % erro(s)\n%', n, r; end if;
+            raise notice 'plpgsql_check: zero erros';
+          end $$;
+          rollback;
+          SQL
+
+      - name: Edge Functions (só na produção; na homologação o Claude publica)
+        if: env.DESTINO == 'producao' && env.FUNCOES != ''
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          [[ "$FUNCOES" =~ ^[a-z0-9-]+( [a-z0-9-]+)*$ ]] || { echo "::error::'funcoes': nomes separados por espaço"; exit 1; }
+          [ -n "$SUPABASE_ACCESS_TOKEN" ] || { echo "::error::Cadastre o segredo SUPABASE_ACCESS_TOKEN no ambiente producao"; exit 1; }
+          for f in $FUNCOES; do
+            [ -d "supabase/functions/$f" ] || { echo "::error::Edge Function $f não existe"; exit 1; }
+            supabase functions deploy "$f" --project-ref "$REF"
+            echo "publicada: $f" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Resumo
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+        run: |
+          v=$(psql "$DB_URL" -X -At -c "select max(version) from supabase_migrations.schema_migrations")
+          echo "### $DESTINO: migration $v aplicada, plpgsql_check zero" >> "$GITHUB_STEP_SUMMARY"
