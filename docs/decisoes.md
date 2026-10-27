@@ -1710,3 +1710,20 @@ login do CLI, 502 do Supabase) e exigiam comando dele.
 - **Token da conta só na produção (P1 do `seguranca`):** o `SUPABASE_ACCESS_TOKEN` vale para a conta inteira, inclusive
   a produção. Num ambiente sem aprovação, um merge que mudasse o workflow publicaria na produção sem passar pelo
   responsável. Por isso ele fica só no ambiente `producao`; a homologação recebe apenas o `DB_URL` dela.
+
+## 119. Sem "conta 1" automática: a linha nova recebe a conta da sessão
+
+**Data:** 27/10/2026. **Ajuste da decisão 114 na F3d (migration 126).** A 114 previa tirar o default de `conta_id` das
+tabelas de cliente. O default passou a ser `fn_conta_atual()`, a conta da sessão, em vez de nenhum.
+- **Por quê:** o objetivo da 114 era que nada caísse calado na conta 1. Com o default da sessão, a linha gravada pelo
+  painel nasce na conta de quem grava, sem reescrever cada função que insere. Sem sessão (cron, webhook, app do
+  ponto), o default é nulo e o banco recusa.
+- **Exceções explícitas:** o webhook e as tentativas do app do ponto sem funcionário vão para a operadora, que é dona
+  do canal até a F5. O teto do app do ponto também vai para a operadora (122).
+- **O que segura uma conta errada:** os gatilhos de herança põem a conta da origem e, com sessão, recusam origem de
+  outra conta ("Origem de outra conta."); sem sessão, as chaves compostas da 123 recusam referência entre contas.
+- **Default que não lança:** `fn_conta_padrao()` devolve nulo para quem está em duas contas sem escolher; em tabela
+  filha a conta vem da origem, nas outras o `not null` recusa.
+- **Custo:** o default com sessão custa cerca de 14 µs por linha (2,4 µs sem sessão). Inserção em lote pelo painel
+  deve gravar a conta explícita, calculada uma vez (pendência de desempenho, `arquiteto-dados`).
+- **Feriados e motivos do ponto** viram catálogo da plataforma. O feriado por local entra na F4.

@@ -35,6 +35,11 @@ begin
   if exists (select 1 from empresas where cnpj = '99999999000191') then
     raise exception 'A demonstração já existe. Para recriar, rode antes: ./scripts/demo-homologacao.sh apagar';
   end if;
+  -- a demonstração é da conta 1: sem sessão não há conta padrão (migration 126), então usa a de um admin dela
+  perform set_config('request.jwt.claims', coalesce((
+    select json_build_object('email', email, 'role', 'authenticated')::text from conta_membros
+     where conta_id = '00000000-0000-0000-0000-000000000001' and papel = 'admin' and ativo order by email limit 1),
+    current_setting('request.jwt.claims', true)), true);
 
   insert into empresas (cnpj, razao_social, nome_fantasia, cidade, uf, empregadora, ativo)
   values ('99999999000191', 'Demonstração Serviços Técnicos Ltda (fictícia)', 'Demo Serviços Técnicos', 'Salvador', 'BA', true, true)

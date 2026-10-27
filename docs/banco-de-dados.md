@@ -254,6 +254,21 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 126 (27/10, versão 20261101120000): fim da conta padrão e da trava, multiempresa F3d
+
+O default de `conta_id` deixa de ser a conta 1 e passa a ser `fn_conta_padrao()`, a conta da sessão sem lançar erro
+(decisão 119). `fn_herdar_conta` recusa, com sessão, origem de outra conta. Sem
+sessão (cron, webhook, app do ponto), o default é nulo e o banco recusa a linha, a não ser que a conta venha da origem
+(gatilhos de herança da 119) ou do caminho:
+- `webhook_eventos`: gatilho `fn_conta_operadora` (canal da operadora até a F5);
+- `ponto_acessos` sem funcionário (CPF desconhecido): operadora; com funcionário, a conta dele;
+- `alertas_enviados`: o teto do app do ponto vai para a operadora; alerta sem funcionário nem empresa é recusado;
+- `painel_mfa_log`: um registro por conta de que o usuário é membro.
+
+`feriados` e `ponto_motivos` perdem `conta_id` e viram catálogo da plataforma (feriado por local: F4). A trava
+`tg_trava_conta_unica` sai: conta de cliente aceita membro. Regressão: T66; T56 exige o default da sessão em toda
+tabela de cliente e a ausência da trava.
+
 ### Migration 125 (27/10, versão 20261031180000): contas da plataforma, multiempresa F3c
 
 `fn_exigir_plataforma()`: sessão, e-mail em `plataforma_admins` e verificação em duas etapas (`aal2`) sempre, mesmo
