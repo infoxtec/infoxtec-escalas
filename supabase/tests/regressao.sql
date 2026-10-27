@@ -2880,7 +2880,7 @@ begin
   perform pg_temp.ok(fn_ponto_he_resposta(pg_temp.msg('5579999994909', 'HE3', '{"conversation":"ok"}')) is null, '[T49] texto comum interceptado');
   -- supervisor de outra empresa e botão montado fora do formato não decidem
   insert into empresas (cnpj, razao_social, empregadora, ativo) values ('11222333000181', 'QA Outra Empresa', true, true)
-  on conflict (cnpj) do nothing;
+  on conflict (conta_id, cnpj) do nothing;
   insert into tecnicos (nome, telefone_e164, ativo, opt_in, empresa_id, perfil_teste, is_supervisor)
   values ('QA Supervisor Outra', '5579999994908', true, true, (select id from empresas where cnpj = '11222333000181'), false, true);
   perform fn_ponto_he_inicio(v_a);   -- sem marcação nova: nada muda
@@ -3825,7 +3825,51 @@ begin
   perform pg_temp.ok(v_linhas > 0, '[T68] espelho vazio');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T68' as resultado,
+-- T69 multiempresa F6: CPF e CNPJ únicos por conta; o código escolhe o cadastro no login (migration 129) ------------
+do $$
+declare
+  v_a uuid := '00000000-0000-0000-0000-000000000001';
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_tec_a uuid := (select id from tecnicos where conta_id = '00000000-0000-0000-0000-000000000001' and ativo
+                     and cpf is not null and empresa_id is not null order by created_at limit 1);
+  v_cpf text; v_cnpj text; v_emp_b uuid; v_tec_b uuid; v_cod text; r jsonb; v_ok boolean; v_n int;
+begin
+  select cpf into v_cpf from tecnicos where id = v_tec_a;
+  select e.cnpj into v_cnpj from empresas e join tecnicos t on t.empresa_id = e.id where t.id = v_tec_a;
+  perform set_config('request.headers', '{}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  -- a conta B cadastra a mesma empresa e o mesmo funcionário da conta 1 (outro telefone)
+  v_emp_b := app_salvar_empresa(jsonb_build_object('cnpj', v_cnpj, 'razao_social', 'QA Empresa repetida na B', 'empregadora', true));
+  v_tec_b := app_salvar_tecnico(jsonb_build_object('nome', 'QA Mesmo CPF na B', 'funcao', 'Técnico',
+                                                   'telefone_e164', '5571900006901', 'cpf', v_cpf, 'empresa_id', v_emp_b));
+  perform pg_temp.ok((select conta_id from tecnicos where id = v_tec_b) = v_b and (select conta_id from empresas where id = v_emp_b) = v_b,
+                     '[T69] mesmo CPF e CNPJ em outra conta');
+  -- na mesma conta continua recusado, sem dizer de qual conta
+  v_ok := false;
+  begin perform app_salvar_tecnico(jsonb_build_object('nome', 'QA Repetido', 'funcao', 'Técnico', 'telefone_e164', '5571900006902',
+                                                      'cpf', v_cpf, 'empresa_id', v_emp_b));
+  exception when others then v_ok := sqlerrm like 'Já existe um técnico com este CPF%'; end;
+  perform pg_temp.ok(v_ok, '[T69] CPF repetido na mesma conta');
+  v_ok := false;
+  begin perform app_salvar_empresa(jsonb_build_object('cnpj', v_cnpj, 'razao_social', 'QA de novo'));
+  exception when others then v_ok := sqlerrm = 'Já existe uma empresa com este CNPJ.'; end;
+  perform pg_temp.ok(v_ok, '[T69] CNPJ repetido na mesma conta');
+  -- login: o código do gestor da conta B leva ao cadastro da B, mesmo com o CPF também na conta 1
+  update tecnicos set opt_in = false where id = v_tec_b;   -- sem WhatsApp: o código é o do gestor
+  v_cod := app_ponto_gerar_codigo(v_tec_b)->>'codigo';
+  perform set_config('request.jwt.claims', '', true);
+  r := ponto_entrar(v_cpf, v_cod);
+  perform pg_temp.ok(r ? 'token' and (select tecnico_id from ponto_sessoes where token_hash = fn_sha256(r->>'token')) = v_tec_b,
+                     '[T69] login com o código da conta B entrou na B: ' || (r - 'token')::text);
+  -- código errado conta erro nos dois cadastros
+  select count(*) into v_n from ponto_acessos where tipo = 'entrar_erro' and tecnico_id in (v_tec_a, v_tec_b);
+  r := ponto_entrar(v_cpf, '000000');
+  perform pg_temp.ok(r ? 'erro' and (select count(*) from ponto_acessos where tipo = 'entrar_erro' and tecnico_id in (v_tec_a, v_tec_b))
+                       = v_n + 2, '[T69] erro registrado nos dois cadastros');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T69' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

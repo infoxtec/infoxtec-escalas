@@ -254,6 +254,15 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 129 (27/10, versão 20261102180000): CPF e CNPJ únicos por conta, multiempresa F6
+
+`tecnicos`: o CPF passa a ser único por conta (`tecnicos_conta_cpf_uk`), com índice simples em `cpf` para o login.
+`empresas`: o CNPJ passa a ser único por conta (`empresas_conta_cnpj_key`). A mesma pessoa pode ser funcionária de dois
+clientes, e o aviso de duplicidade não revela dado de outra conta. O telefone continua único no sistema até a F5 (o
+webhook acha o funcionário por ele); a mensagem não diz em qual conta. Login do app do ponto: `ponto_pedir_codigo` manda
+um código para cada cadastro ativo com o CPF e WhatsApp autorizado, com o nome da empresa na mensagem; `ponto_entrar`
+deixa o código digitado escolher o cadastro, conta o erro em cada cadastro do CPF e mantém os mesmos freios. Regressão: T69.
+
 ### Migration 128 (27/10, versão 20261102120000): desempenho do espelho do ponto
 
 As CTEs que chamam `fn_ponto_jornada_dia` em `app_ponto_espelho`, `fn_ponto_espelho_conteudo` e `app_carga_excedida`
