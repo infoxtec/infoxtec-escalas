@@ -76,7 +76,17 @@ jobs:
           esperado=$([ "$DESTINO" = producao ] && echo zpckrxydqqmmcrphrkxz || echo oruwnlxyvznpigbpjjbx)
           echo "::add-mask::$(echo "$DB_URL" | sed -nE 's#^[^:]+://[^:]+:([^@]+)@.*#\1#p')"
           ref=$(echo "$DB_URL" | sed -nE 's#^postgres(ql)?://postgres\.([a-z0-9]{20}):[^@]+@[a-z0-9-]+\.pooler\.supabase\.com:5432/.*#\2#p')
-          [ "$ref" = "$esperado" ] || { echo "::error::DB_URL do ambiente $DESTINO não é do projeto $esperado (use o Session pooler)"; exit 1; }
+          if [ "$ref" != "$esperado" ]; then
+            # diagnóstico sem a senha: só sim/não de cada parte do formato
+            sn() { if eval "$1"; then echo sim; else echo NÃO; fi; }
+            echo "começa com postgresql://:            $(sn '[[ "$DB_URL" =~ ^postgres(ql)?:// ]]')"
+            echo "usuário postgres.$esperado:  $(sn '[[ "$DB_URL" == *"://postgres.$esperado:"* ]]')"
+            echo "um @ só (senha sem @ ou com %40):  $(sn '[ "$(tr -cd @ <<<"$DB_URL" | wc -c)" = 1 ]')"
+            echo "servidor *.pooler.supabase.com:     $(sn '[[ "$DB_URL" =~ @[a-z0-9-]+\.pooler\.supabase\.com: ]]')"
+            echo "porta 5432 (Session, não 6543):     $(sn '[[ "$DB_URL" == *.com:5432/* ]]')"
+            echo "sem espaço, quebra ou colchete:     $(sn '! [[ "$DB_URL" =~ [[:space:]]|\[|\] ]]')"
+            echo "::error::DB_URL do ambiente $DESTINO não é o Session pooler do projeto $esperado (veja o NÃO acima)"; exit 1
+          fi
           echo "REF=$ref" >> "$GITHUB_ENV"
           if [ "$DESTINO" = producao ] && [ -n "$CONGELADA_ATE" ] && [ "$(date -u +%F)" \< "$(date -u -d "$CONGELADA_ATE + 1 day" +%F)" ]; then
             echo "::error::Produção congelada até $CONGELADA_ATE (variável CONGELADA_ATE)"; exit 1
