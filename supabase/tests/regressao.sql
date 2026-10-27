@@ -197,7 +197,9 @@ begin
      and not coalesce(array_to_string(p.proconfig, ',') like '%search_path=interno, public, extensions, pg_temp%', false);
   perform pg_temp.ok(v is null, '[T55] função sem o caminho interno, public, extensions, pg_temp: ' || coalesce(v, ''));
   select string_agg(p.proname, ', ') into v from pg_proc p join pg_language l on l.oid = p.prolang
-   where p.proname = any (array['fn_ponto_marcacoes_efetivas']) and (p.prosecdef or l.lanname <> 'sql' or p.proconfig is not null);
+   where p.proname = any (array['fn_ponto_marcacoes_efetivas'])
+     and (p.oid <> 'interno.fn_ponto_marcacoes_efetivas(uuid,timestamptz,timestamptz)'::regprocedure
+          or p.prosecdef or p.proisstrict or l.lanname <> 'sql' or p.proconfig is not null);
   perform pg_temp.ok(v is null, '[T55] exceção do caminho que não é sql simples sem definer: ' || coalesce(v, ''));
 end $$;
 
