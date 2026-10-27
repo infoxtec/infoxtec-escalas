@@ -96,6 +96,9 @@ $$;
 do $$
 declare v_emp uuid; v_loc uuid; i int; v_id uuid; v_base text;
 begin
+  -- sessão da conta 1 antes de qualquer dado: sem o default "conta 1" (F3d, 126), a linha nova recebe a conta da sessão
+  insert into conta_membros (conta_id, email, nome, papel, ativo) values ('00000000-0000-0000-0000-000000000001', 'qa-admin@teste.local', 'QA', 'admin', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
   perform pg_temp.ok(fn_cnpj_valido('11444777000161'), '[setup] CNPJ de teste');
   insert into empresas (cnpj, razao_social, nome_fantasia, fuso, empregadora, ativo)
   values ('11444777000161', 'QA Regressão Ltda', 'QA', 'America/Bahia', true, true) returning id into v_emp;
@@ -115,8 +118,6 @@ begin
     insert into qa values ('tec' || i, v_id::text);
   end loop;
 
-  insert into conta_membros (conta_id, email, nome, papel, ativo) values ('00000000-0000-0000-0000-000000000001', 'qa-admin@teste.local', 'QA', 'admin', true);
-  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
 
 -- T1 permissões ---------------------------------------------------------------------------------------
@@ -203,7 +204,7 @@ declare
     'app_mover_backlog_item', 'app_checklist_saude', 'app_checklist_testar', 'app_estado_motor',
     'app_plataforma_contas', 'app_plataforma_criar_conta', 'app_plataforma_salvar_conta'];
   v_tb_plataforma text[] := array['config', 'backlog_itens', 'motor_estado', 'saude_testes', 'ponto_geo', 'webhook_token_trocas',
-    'plataforma_log'];
+    'plataforma_log', 'feriados', 'ponto_motivos'];
   v text; n int; v_ok boolean;
 begin
   -- a lista da plataforma precisa existir (função ou tabela renomeada/removida obriga a revisar a classificação)
@@ -232,7 +233,14 @@ begin
                      '[T56] admins da plataforma');
   perform pg_temp.ok((select count(*) from conta_modulos where conta_id = '00000000-0000-0000-0000-000000000001' and ativo) = 2,
                      '[T56] módulos da conta 1');
-  -- linha nova sem conta explícita cai na conta 1 (até a F2 trazer a conta da sessão)
+  -- F3d (126): nenhum default "conta 1"; a linha nova recebe a conta da sessão e, sem sessão, é recusada
+  select string_agg(c.relname, ', ') into v from pg_attribute a join pg_class c on c.oid = a.attrelid
+    join pg_namespace s on s.oid = c.relnamespace left join pg_attrdef d on d.adrelid = c.oid and d.adnum = a.attnum
+   where s.nspname = 'interno' and a.attname = 'conta_id' and not a.attisdropped and c.relkind in ('r', 'p')
+     and c.relname not in ('contas', 'conta_membros', 'conta_modulos')
+     and coalesce(pg_get_expr(d.adbin, d.adrelid), '') <> 'fn_conta_atual()';
+  perform pg_temp.ok(v is null, '[T56] conta_id sem o default da sessão: ' || coalesce(v, ''));
+  perform pg_temp.ok(not exists (select 1 from pg_trigger where tgname = 'tg_trava_conta_unica'), '[T56] trava da 117 ainda existe');
   perform pg_temp.ok((select bool_and(conta_id = '00000000-0000-0000-0000-000000000001') from tecnicos), '[T56] técnico fora da conta 1');
   -- as tabelas novas seguem a regra: RLS ligado, sem política e sem privilégio para os papéis da API
   select string_agg(c.relname, ', ') into v from pg_class c
@@ -501,6 +509,7 @@ begin
   exception when others then
     if sqlerrm like 'FALHA%' then raise; end if;
   end;
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);  -- volta à sessão da conta 1
 end $$;
 
 -- T10 URA só em dia útil, das 08:00 às 20:00, fora de feriado (migration 64) -----------------------
@@ -1720,6 +1729,7 @@ begin
   begin perform app_dossie_local(v_loc, v_dia); exception when others then v_ok := true; end;
   perform pg_temp.ok(v_ok, '[T32] dossiê sem sessão');
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);  -- volta à sessão da conta 1
 end $$;
 
 -- T33 demonstração com dados fictícios (supabase/demo, backlog 101) -----------------------------------------
@@ -1901,6 +1911,7 @@ begin
                      and not has_function_privilege('anon', 'app_ponto_emitir_espelhos(date,uuid,boolean)', 'execute')
                      and not has_function_privilege('anon', 'app_ponto_espelhos(date)', 'execute'), '[T35] permissões do anon');
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);  -- volta à sessão da conta 1
 end $$;
 
 -- T36 assinatura do espelho pelo funcionário e envio pelo WhatsApp (migration 89, decisão 82) -----------------
@@ -3157,12 +3168,7 @@ declare
   v_ok boolean; v_msg text; v_r jsonb;
 begin
   insert into contas (id, nome) values (v_b, 'QA Conta B'), (v_c, 'QA Conta C');
-  -- a trava da F2 recusa membro fora da conta 1; o teste a desliga dentro da transação desfeita
-  v_ok := false;
-  begin insert into conta_membros (conta_id, email, papel) values (v_b, 'qa-trava@teste.local', 'admin');
-  exception when others then v_ok := sqlerrm like 'Multiempresa em construção%'; end;
-  perform pg_temp.ok(v_ok, '[T57] trava: membro fora da conta 1 recusado');
-  alter table conta_membros disable trigger tg_trava_conta_unica;
+  -- F3d (126): a trava da 117 saiu; conta de cliente aceita membro
   -- usuário só da conta B
   insert into conta_membros (conta_id, email, nome, papel) values (v_b, 'qa-b@teste.local', 'QA B', 'admin');
   -- usuário nas contas 1 e B
@@ -3361,7 +3367,7 @@ begin
   perform pg_temp.ok((select x.conta_id from times x join tecnicos t on t.time_id = x.id where t.id = v_tec) = v_b
                      and exists (select 1 from app_times() where nome = 'QA Time B'), '[T58] time da equipe nasce na conta B');
   -- habilidade com o mesmo nome de uma da conta 1: unicidade por conta
-  insert into habilidades (nome) values ('QA Habilidade T58');
+  insert into habilidades (conta_id, nome) values ('00000000-0000-0000-0000-000000000001', 'QA Habilidade T58');
   v_hab := app_salvar_habilidade(jsonb_build_object('nome', 'QA Habilidade T58'));
   perform pg_temp.ok((select conta_id from habilidades where id = v_hab) = v_b, '[T58] mesmo nome em outra conta');
   perform pg_temp.ok((select count(*) from app_tecnicos()) = 1 and (select count(*) from app_empresas()) = 1,
@@ -3659,7 +3665,7 @@ begin
   perform pg_temp.ok(v_ok, '[T65] plataforma exige duas etapas');
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
   perform pg_temp.ok((app_meu_acesso()->>'plataforma')::boolean, '[T65] acesso indica a plataforma');
-  -- criar (a trava da 117 está desligada desde o T57, nesta transação)
+  -- criar
   v_id := app_plataforma_criar_conta('  QA Cliente Novo ', 'Dono@Cliente.local', 'Dono', array['ponto']);
   perform pg_temp.ok(exists (select 1 from contas where id = v_id and nome = 'QA Cliente Novo' and ativa)
                      and (select array_agg(modulo) from conta_modulos where conta_id = v_id and ativo) = array['ponto']
@@ -3700,7 +3706,49 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T65' as resultado,
+-- T66 multiempresa F3d: fim do default "conta 1"; sem sessão, só os caminhos da operadora gravam (migration 126) ------
+do $$
+declare
+  v_a uuid := '00000000-0000-0000-0000-000000000001';
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_user uuid := gen_random_uuid(); v_fator uuid := gen_random_uuid();
+  v_id bigint; v_ok boolean; v_msg text; v_emp uuid;
+begin
+  -- na sessão da conta B, a linha nova nasce na B
+  perform set_config('request.headers', '{}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  insert into empresas (cnpj, razao_social) values ('66066066000192', 'QA F3d B') returning id into v_emp;
+  perform pg_temp.ok((select conta_id from empresas where id = v_emp) = v_b, '[T66] linha nova na conta da sessão');
+  -- sem sessão: tabela de cliente recusa
+  perform set_config('request.jwt.claims', '', true);
+  v_ok := false;
+  begin insert into empresas (cnpj, razao_social) values ('66066066000273', 'QA sem sessão');
+  exception when not_null_violation then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T66] sem sessão não cai na conta 1');
+  -- sem sessão: canal e cota da operadora
+  insert into webhook_eventos (evento, payload) values ('qa.t66', '{}') returning id into v_id;
+  perform pg_temp.ok((select conta_id from webhook_eventos where id = v_id) = v_a, '[T66] webhook na operadora');
+  insert into ponto_acessos (tipo, ip) values ('pedir_codigo', '10.6.6.6');
+  perform pg_temp.ok((select conta_id from ponto_acessos where ip = '10.6.6.6') = v_a, '[T66] tentativa sem funcionário na operadora');
+  insert into alertas_enviados (tipo, data_ref, enviado_em, enviado, detalhe)
+  values ('ponto_teto_qa_t66', current_date, now(), true, '{}');
+  perform pg_temp.ok((select conta_id from alertas_enviados where tipo = 'ponto_teto_qa_t66') = v_a, '[T66] teto na operadora');
+  v_ok := false;
+  begin insert into alertas_enviados (tipo, data_ref, enviado_em, enviado, detalhe) values ('qa_t66_sem_dono', current_date, now(), true, '{}');
+  exception when not_null_violation then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T66] alerta sem dono recusado');
+  -- duas etapas: um registro por conta do usuário
+  insert into conta_membros (conta_id, email, papel) values (v_a, 'qa-t66@teste.local', 'gestor'), (v_b, 'qa-t66@teste.local', 'leitura');
+  insert into auth.users (id, email) values (v_user, 'qa-t66@teste.local');
+  insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at)
+  values (v_fator, v_user, 'QA', 'totp', 'unverified', now(), now());
+  update auth.mfa_factors set status = 'verified', updated_at = now() where id = v_fator;
+  perform pg_temp.ok((select count(distinct conta_id) from painel_mfa_log where email = 'qa-t66@teste.local' and acao = 'ativou') = 2,
+                     '[T66] duas etapas registradas nas duas contas');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T66' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

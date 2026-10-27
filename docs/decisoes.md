@@ -1710,3 +1710,16 @@ login do CLI, 502 do Supabase) e exigiam comando dele.
 - **Token da conta só na produção (P1 do `seguranca`):** o `SUPABASE_ACCESS_TOKEN` vale para a conta inteira, inclusive
   a produção. Num ambiente sem aprovação, um merge que mudasse o workflow publicaria na produção sem passar pelo
   responsável. Por isso ele fica só no ambiente `producao`; a homologação recebe apenas o `DB_URL` dela.
+
+## 119. Sem "conta 1" automática: a linha nova recebe a conta da sessão
+
+**Data:** 27/10/2026. **Ajuste da decisão 114 na F3d (migration 126).** A 114 previa tirar o default de `conta_id` das
+tabelas de cliente. O default passou a ser `fn_conta_atual()`, a conta da sessão, em vez de nenhum.
+- **Por quê:** o objetivo da 114 era que nada caísse calado na conta 1. Com o default da sessão, a linha gravada pelo
+  painel nasce na conta de quem grava, sem reescrever cada função que insere. Sem sessão (cron, webhook, app do
+  ponto), o default é nulo e o banco recusa.
+- **Exceções explícitas:** o webhook e as tentativas do app do ponto sem funcionário vão para a operadora, que é dona
+  do canal até a F5. O teto do app do ponto também vai para a operadora (122).
+- **O que segura uma conta errada:** as chaves compostas da 123 recusam referência entre contas, e os gatilhos de
+  herança da 119 põem a conta da origem.
+- **Feriados e motivos do ponto** viram catálogo da plataforma. O feriado por local entra na F4.
