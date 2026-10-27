@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { fetchComConta, supabase } from './supabase'
 import type {
   Acesso, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre, ValidacaoCarga, ModeloCarga, CargaHoraria, CargaAtribuicao, CargaFuncionario, TimeEquipe, AlvoCarga, ProgramacaoLimite, AceiteProgramacao, AceiteProgramacaoAssinado, CargaExcedida, ValidacaoFolha, FechamentoFolha, PreviaFolha, PontoHeAutorizacao, EspelhoPdf, ComprovanteRegistro } from './types'
 
@@ -282,7 +282,7 @@ export async function lerValidadePorOCR(arquivo: File): Promise<{ sugestao: stri
   const { data: sessao } = await supabase.auth.getSession()
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/documento-ocr`
   try {
-    const resp = await fetch(url, {
+    const resp = await fetchComConta(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
