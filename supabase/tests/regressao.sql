@@ -200,8 +200,10 @@ end $$;
 do $$
 declare
   v_fn_plataforma text[] := array['app_email', 'app_exigir', 'app_meu_acesso', 'app_backlog', 'app_salvar_backlog_item',
-    'app_mover_backlog_item', 'app_checklist_saude', 'app_checklist_testar', 'app_estado_motor'];
-  v_tb_plataforma text[] := array['config', 'backlog_itens', 'motor_estado', 'saude_testes', 'ponto_geo', 'webhook_token_trocas'];
+    'app_mover_backlog_item', 'app_checklist_saude', 'app_checklist_testar', 'app_estado_motor',
+    'app_plataforma_contas', 'app_plataforma_criar_conta', 'app_plataforma_salvar_conta'];
+  v_tb_plataforma text[] := array['config', 'backlog_itens', 'motor_estado', 'saude_testes', 'ponto_geo', 'webhook_token_trocas',
+    'plataforma_log'];
   v text; n int; v_ok boolean;
 begin
   -- a lista da plataforma precisa existir (função ou tabela renomeada/removida obriga a revisar a classificação)
@@ -3638,7 +3640,67 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T64' as resultado,
+-- T65 multiempresa F3c: contas criadas e mantidas só pela plataforma (migration 125) --------------------------------
+do $$
+declare
+  v_id uuid; v_r jsonb; v_ok boolean; v_msg text;
+begin
+  -- admin de conta que não é da plataforma
+  perform set_config('request.headers', '{}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  v_ok := false;
+  begin perform app_plataforma_contas(); exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
+  perform pg_temp.ok(v_ok and not (app_meu_acesso()->>'plataforma')::boolean, '[T65] admin de conta não administra contas');
+  -- da plataforma, mas sem duas etapas
+  insert into plataforma_admins (email) values ('qa-admin@teste.local');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal1"}', true);
+  v_ok := false;
+  begin perform app_plataforma_contas(); exception when others then v_ok := sqlerrm like 'Ative e confirme%'; end;
+  perform pg_temp.ok(v_ok, '[T65] plataforma exige duas etapas');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform pg_temp.ok((app_meu_acesso()->>'plataforma')::boolean, '[T65] acesso indica a plataforma');
+  -- criar (a trava da 117 está desligada desde o T57, nesta transação)
+  v_id := app_plataforma_criar_conta('  QA Cliente Novo ', 'Dono@Cliente.local', 'Dono', array['ponto']);
+  perform pg_temp.ok(exists (select 1 from contas where id = v_id and nome = 'QA Cliente Novo' and ativa)
+                     and (select array_agg(modulo) from conta_modulos where conta_id = v_id and ativo) = array['ponto']
+                     and exists (select 1 from conta_membros where conta_id = v_id and email = 'dono@cliente.local'
+                                   and papel = 'admin' and criado_por = 'qa-admin@teste.local')
+                     and exists (select 1 from plataforma_log where conta_alvo = v_id and acao = 'criar_conta'),
+                     '[T65] conta criada com módulo, administrador e registro');
+  v_ok := false;
+  begin perform app_plataforma_criar_conta('qa cliente novo', 'x@y.local', null, array['escala']);
+  exception when others then v_ok := sqlerrm = 'Já existe uma conta com este nome.'; end;
+  perform pg_temp.ok(v_ok, '[T65] nome repetido');
+  v_ok := false;
+  begin insert into contas (nome) values (' qa CLIENTE novo ');   -- direto no banco, sem a função (corrida)
+  exception when unique_violation then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T65] índice único do nome');
+  v_ok := false;
+  begin perform app_plataforma_criar_conta('QA Outra', 'x@y.local', null, array['folha']);
+  exception when others then v_ok := sqlerrm like 'Escolha os módulos%'; end;
+  perform pg_temp.ok(v_ok, '[T65] módulo desconhecido');
+  -- alterar: nome, módulos e desativar; a operadora não desliga
+  perform app_plataforma_salvar_conta(v_id, 'QA Cliente Renomeado', false, array['escala', 'ponto']);
+  perform pg_temp.ok(exists (select 1 from contas where id = v_id and nome = 'QA Cliente Renomeado' and not ativa)
+                     and (select count(*) from conta_modulos where conta_id = v_id and ativo) = 2,
+                     '[T65] conta alterada');
+  v_ok := false;
+  begin perform app_plataforma_salvar_conta('00000000-0000-0000-0000-000000000001', 'Infoxtec', false, array['escala', 'ponto']);
+  exception when others then v_ok := sqlerrm like 'A conta da operadora%'; end;
+  perform pg_temp.ok(v_ok, '[T65] operadora não desativa');
+  v_r := app_plataforma_contas();
+  perform pg_temp.ok(exists (select 1 from jsonb_array_elements(v_r) e where e->>'id' = v_id::text
+                               and e->'admins' = '["dono@cliente.local"]'::jsonb and not (e->>'ativa')::boolean),
+                     '[T65] lista das contas: ' || left(v_r::text, 200));
+  -- conta desativada: o administrador dela fica sem acesso
+  perform set_config('request.jwt.claims', '{"email":"dono@cliente.local","role":"authenticated","aal":"aal2"}', true);
+  v_ok := false;
+  begin perform app_exigir(array['admin']); exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
+  perform pg_temp.ok(v_ok, '[T65] conta desativada sem acesso');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T65' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

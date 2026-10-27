@@ -254,6 +254,19 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 125 (27/10, versão 20261031180000): contas da plataforma, multiempresa F3c
+
+`fn_exigir_plataforma()`: sessão, e-mail em `plataforma_admins` e verificação em duas etapas (`aal2`) sempre, mesmo
+sem `mfa_obrigatorio`. `app_plataforma_contas` lista as contas com administradores, usuários ativos e módulos;
+`app_plataforma_criar_conta(nome, e-mail do admin, nome do admin, módulos)` cria a conta, os módulos e o primeiro
+administrador (o login dele é o convite do Supabase Auth); `app_plataforma_salvar_conta` muda nome, módulos e ativa (a
+conta da operadora não desliga). Nome de conta único sem diferenciar maiúsculas. Tudo fica em `plataforma_log` (tabela
+da plataforma, coluna `conta_alvo`; guarda o e-mail do administrador criado: finalidade auditoria das contas, base
+legítimo interesse e segurança, art. 7º, IX e art. 46 da LGPD; retenção a definir com a exclusão de conta na F8, que
+hoje é barrada pela chave do log). Índice único `contas_nome_uq` em `lower(btrim(nome))`. A guarda é
+`interno.fn_exigir_plataforma()`, fora da API. `app_meu_acesso` ganha `plataforma`. Enquanto a trava da 117 existir, criar conta
+é recusado no administrador. Regressão: T65.
+
 ### Migration 124 (26/10, versão 20261031120000): usuário do painel por conta, multiempresa F3a
 
 Papel, ativo, nome e as permissões do RH (`ve_saude`, `rh_folhas`) passam a ser da conta, em `conta_membros`, com

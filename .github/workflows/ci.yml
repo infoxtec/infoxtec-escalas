@@ -97,7 +97,8 @@ jobs:
           faltando=$(psql "postgresql://postgres@127.0.0.1:54322/postgres" -At -c "
             select string_agg(p.proname, ', ') from pg_proc p join pg_namespace n on n.oid = p.pronamespace
             where n.nspname = 'public' and p.proname like 'app\_%' and p.proname not in ('app_exigir', 'app_email', 'app_meu_acesso', 'app_pode_gerir_documentos', 'app_pode_gerir_documento')  -- auxiliares de acesso
-              and (not p.prosecdef or pg_get_functiondef(p.oid) not ilike '%app_exigir%')")
+              and (not p.prosecdef or (pg_get_functiondef(p.oid) not ilike '%app_exigir%'
+                                       and pg_get_functiondef(p.oid) not ilike '%fn_exigir_plataforma%'))")
           if [ -n "$faltando" ]; then echo "Funções app_* sem app_exigir ou sem security definer: $faltando"; exit 1; fi
           echo "ok"
       - name: Só ponto_* abre para anon, e toda ponto_* valida a sessão (decisão 49)
