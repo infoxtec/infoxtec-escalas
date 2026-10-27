@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Columns3, Edit2, Info, Plus, RefreshCw, ShieldCheck } from 'lucide-react'
+import { Columns3, Edit2, Info, Mail, Plus, RefreshCw, ShieldCheck } from 'lucide-react'
 import { Button, ErrorBox, Field, Input, Modal, Select, ToggleRow, useToast } from '../components/ui'
 import { PlainTh, SortableTh, useColumnWidths, useSortable } from '../components/SortableTh'
-import { api, erroMsg } from '../lib/api'
+import { api, convidarUsuario, erroMsg, mensagemConvite } from '../lib/api'
+import { contaAtual } from '../lib/supabase'
 import { formatDateTime, PAPEL_LABEL } from '../lib/types'
 import type { Papel, UsuarioPainel } from '../lib/types'
 
@@ -23,6 +24,8 @@ export default function UsuariosPage() {
   const [mfa, setMfa] = useState<{ ativos: Map<string, string>; historico: { email: string; acao: 'ativou' | 'desativou'; em: string }[] } | null>(null)
   const [edit, setEdit] = useState<{ email: string; nome: string; papel: Papel; ativo: boolean; novo: boolean; ve_saude: boolean; ve_saude_antes: boolean; rh_folhas: boolean; rh_folhas_antes: boolean } | null>(null)
   const [salvando, setSalvando] = useState(false)
+  const [convites, setConvites] = useState<Map<string, { em: string; resultado: string }>>(new Map())
+  const [convidando, setConvidando] = useState<string | null>(null)
   const [erroForm, setErroForm] = useState<string | null>(null)
 
   const carregar = useCallback(async () => {
@@ -31,6 +34,7 @@ export default function UsuariosPage() {
     api.rhFolhasHistorico().then(setHistRh).catch(() => setHistRh([]))
     api.usuariosMfa().then(m => setMfa({ ativos: new Map(m.ativos.map(a => [a.email, a.desde])), historico: m.historico }))
       .catch(() => setMfa(null))
+    api.convites().then(c => setConvites(new Map(c.map(x => [x.email, { em: x.em, resultado: x.resultado }])))).catch(() => setConvites(new Map()))
     try { setLista(await api.usuarios()) } catch (e) { setErro(erroMsg(e)) }
     finally { setCarregando(false) }
   }, [])
@@ -40,7 +44,7 @@ export default function UsuariosPage() {
     nome: u => u.nome ?? u.email, email: u => u.email, papel: u => PAPEL_LABEL[u.papel], ativo: u => u.ativo,
     mfa: u => !!mfa?.ativos.has(u.email.toLowerCase()),
   }, { key: 'nome' })
-  const { col, total, restaurarTudo } = useColumnWidths('usuarios', { nome: 200, email: 260, papel: 150, ativo: 90, mfa: 120, criado: 260, acoes: 70 })
+  const { col, total, restaurarTudo } = useColumnWidths('usuarios', { nome: 200, email: 260, papel: 150, ativo: 90, mfa: 120, criado: 260, acoes: 100 })
 
   const salvar = async () => {
     if (!edit) return
@@ -53,11 +57,24 @@ export default function UsuariosPage() {
       if (ve !== edit.ve_saude_antes) await api.definirVeSaude(edit.email.trim(), ve)
       const rh = edit.rh_folhas && edit.papel !== 'leitura'
       if (rh !== edit.rh_folhas_antes) await api.definirRhFolhas(edit.email.trim(), rh)
-      toast(edit.novo ? 'Usuário liberado no painel.' : 'Usuário atualizado.')
+      if (edit.novo) {
+        const email = edit.email.trim().toLowerCase()
+        const conta = contaAtual()
+        toast(conta ? `Usuário liberado no painel. ${mensagemConvite(email, await convidarUsuario(email, conta))}` : 'Usuário liberado no painel.')
+      } else toast('Usuário atualizado.')
       setEdit(null); await carregar()
     } catch (e) { setErroForm(erroMsg(e)) }
     finally { setSalvando(false) }
   }
+
+  const convidar = async (email: string) => {
+    const conta = contaAtual()
+    if (!conta) return
+    setConvidando(email)
+    try { toast(mensagemConvite(email, await convidarUsuario(email, conta))); await carregar() }
+    finally { setConvidando(null) }
+  }
+  const SITUACAO_CONVITE: Record<string, string> = { enviado: 'enviado', ja_tinha_login: 'já tinha login', falhou: 'falhou', pendente: 'pendente' }
 
   return (
     <div className="space-y-4">
@@ -104,7 +121,12 @@ export default function UsuariosPage() {
                       : <span className="text-muted-foreground">—</span>}
                 </td>
                 <td className="truncate px-3 py-2.5 text-xs text-muted-foreground">{u.criado_por ?? '—'} · {formatDateTime(u.created_at)}</td>
-                <td className="px-3 py-2.5 text-right">
+                <td className="whitespace-nowrap px-3 py-2.5 text-right">
+                  {u.ativo && (
+                    <Button variant="ghost" size="icon" aria-label="Enviar convite por e-mail" disabled={convidando === u.email}
+                      title={convites.has(u.email) ? `Último convite: ${formatDateTime(convites.get(u.email)!.em)} (${SITUACAO_CONVITE[convites.get(u.email)!.resultado] ?? ''}). Clique para enviar de novo.` : 'Enviar convite por e-mail para criar a senha'}
+                      onClick={() => void convidar(u.email)}><Mail className="h-3.5 w-3.5" /></Button>
+                  )}
                   <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => { setEdit({ email: u.email, nome: u.nome ?? '', papel: u.papel, ativo: u.ativo, novo: false, ve_saude: u.ve_saude, ve_saude_antes: u.ve_saude, rh_folhas: !!u.rh_folhas, rh_folhas_antes: !!u.rh_folhas }); setErroForm(null) }}><Edit2 className="h-3.5 w-3.5" /></Button>
                 </td>
               </tr>

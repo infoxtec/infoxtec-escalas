@@ -1727,3 +1727,19 @@ tabelas de cliente. O default passou a ser `fn_conta_atual()`, a conta da sessã
 - **Custo:** o default com sessão custa cerca de 14 µs por linha (2,4 µs sem sessão). Inserção em lote pelo painel
   deve gravar a conta explícita, calculada uma vez (pendência de desempenho, `arquiteto-dados`).
 - **Feriados e motivos do ponto** viram catálogo da plataforma. O feriado por local entra na F4.
+
+## 120. O Claude faz o merge; convite de usuário por e-mail pelo painel
+
+**Data:** 27/10/2026. **Pedidos do responsável:** tirar dele o passo do merge e acabar com a criação manual de usuário
+no Supabase.
+- **Merge:** o PR continua existindo, porque é o registro e passa pelo CI. Com o CI verde e as revisões obrigatórias
+  liberadas, o próprio Claude faz o merge. O merge aplica sozinho na homologação (decisão 118), e o responsável só
+  testa. Alternativa recusada: aplicar na homologação a partir da branch, antes do merge. A homologação ficaria com
+  versões que a `main` não tem, e o `db push` da produção quebraria. A produção continua dependendo da ordem e da
+  aprovação do responsável.
+- **Convite:** a Edge Function `convidar-usuario` chama o convite do Supabase Auth, que manda o e-mail para criar a
+  senha. Ela é chamada ao criar uma conta (o administrador da conta nova) e ao adicionar um usuário. A tela Usuários
+  também tem o botão para enviar de novo. O banco decide quem pode convidar e registra tudo (migration 127). A chave de
+  serviço fica só dentro da função. Quem já tem login não recebe convite: entra com a senha atual.
+- **Condição:** o e-mail sai pelo SMTP configurado no Auth de cada projeto. O SMTP padrão do Supabase tem limite baixo
+  e pode só entregar para quem é da equipe do projeto; para clientes, um SMTP próprio (Authentication → SMTP Settings).

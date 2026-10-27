@@ -3761,7 +3761,50 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T66' as resultado,
+-- T67 convite por e-mail pelo painel (migration 127) ----------------------------------------------------------------------
+do $$
+declare
+  v_a uuid := '00000000-0000-0000-0000-000000000001';
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_id bigint; v_ok boolean; v_msg text;
+begin
+  insert into conta_membros (conta_id, email, papel) values (v_b, 'qa-convidado@teste.local', 'gestor');
+  -- não membro
+  v_ok := false;
+  begin perform fn_convite_autorizar('qa-b@teste.local', 'aal2', v_b, 'ninguem@teste.local');
+  exception when others then v_ok := sqlerrm like 'Cadastre o usuário%'; end;
+  perform pg_temp.ok(v_ok, '[T67] convite de quem não é membro');
+  -- leitura da conta B não convida; admin de outra conta também não
+  v_ok := false;
+  begin perform fn_convite_autorizar('qa-ab@teste.local', 'aal2', v_b, 'qa-convidado@teste.local');
+  exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
+  perform pg_temp.ok(v_ok, '[T67] não admin da conta não convida');
+  -- plataforma (qa-admin, desde o T65) sem duas etapas
+  v_ok := false;
+  begin perform fn_convite_autorizar('qa-admin@teste.local', 'aal1', v_b, 'qa-convidado@teste.local');
+  exception when others then v_ok := sqlerrm like 'Ative e confirme%'; end;
+  perform pg_temp.ok(v_ok, '[T67] plataforma exige duas etapas');
+  -- admin da conta B convida; o mesmo e-mail logo depois é recusado
+  v_id := fn_convite_autorizar('QA-B@teste.local', 'aal1', v_b, 'QA-Convidado@teste.local');
+  perform pg_temp.ok((select conta_id = v_b and email = 'qa-convidado@teste.local' and resultado = 'pendente' from convites where id = v_id),
+                     '[T67] convite registrado na conta B');
+  v_ok := false;
+  begin perform fn_convite_autorizar('qa-b@teste.local', 'aal1', v_b, 'qa-convidado@teste.local');
+  exception when others then v_ok := sqlerrm like 'Convite já enviado há pouco%'; end;
+  perform pg_temp.ok(v_ok, '[T67] reenvio imediato recusado');
+  perform fn_convite_resultado(v_id, 'enviado');
+  perform fn_convite_resultado(v_id, 'falhou');   -- só fecha uma vez
+  perform pg_temp.ok((select resultado from convites where id = v_id) = 'enviado', '[T67] resultado gravado uma vez');
+  -- a lista é da conta da sessão
+  perform set_config('request.headers', '{}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform pg_temp.ok((select count(*) from app_convites() where email = 'qa-convidado@teste.local' and resultado = 'enviado') = 1,
+                     '[T67] lista de convites da conta B');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform pg_temp.ok(not exists (select 1 from app_convites() where email = 'qa-convidado@teste.local'), '[T67] conta 1 não vê convites da B');
+end $$;
+
+select 'REGRESSÃO OK: T1 a T67' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

@@ -254,6 +254,15 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 127 (27/10, versão 20261101180000): convite por e-mail
+
+`convites` (por conta): quem convidou, quem, quando e o resultado (`pendente`, `enviado`, `ja_tinha_login`, `falhou`).
+`fn_convite_autorizar(autor, aal, conta, e-mail)`: o convidado precisa ser membro ativo da conta ativa; convida a
+plataforma (duas etapas) ou o administrador da conta (duas etapas se `mfa_obrigatorio`); no máximo 20 convites por hora
+por autor e um por e-mail a cada 10 minutos. `fn_convite_resultado` fecha o registro uma vez. `app_convites` lista o
+último convite de cada e-mail da conta. Quem chama é a Edge Function `convidar-usuario`, que usa a chave de serviço
+só para o convite do Supabase Auth. Regressão: T67.
+
 ### Migration 126 (27/10, versão 20261101120000): fim da conta padrão e da trava, multiempresa F3d
 
 O default de `conta_id` deixa de ser a conta 1 e passa a ser `fn_conta_padrao()`, a conta da sessão sem lançar erro
