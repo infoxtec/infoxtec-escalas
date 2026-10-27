@@ -201,7 +201,7 @@ do $$
 declare
   v_fn_plataforma text[] := array['app_email', 'app_exigir', 'app_meu_acesso', 'app_backlog', 'app_salvar_backlog_item',
     'app_mover_backlog_item', 'app_checklist_saude', 'app_checklist_testar', 'app_estado_motor',
-    'app_exigir_plataforma', 'app_plataforma_contas', 'app_plataforma_criar_conta', 'app_plataforma_salvar_conta'];
+    'app_plataforma_contas', 'app_plataforma_criar_conta', 'app_plataforma_salvar_conta'];
   v_tb_plataforma text[] := array['config', 'backlog_itens', 'motor_estado', 'saude_testes', 'ponto_geo', 'webhook_token_trocas',
     'plataforma_log'];
   v text; n int; v_ok boolean;
@@ -3671,6 +3671,10 @@ begin
   begin perform app_plataforma_criar_conta('qa cliente novo', 'x@y.local', null, array['escala']);
   exception when others then v_ok := sqlerrm = 'Já existe uma conta com este nome.'; end;
   perform pg_temp.ok(v_ok, '[T65] nome repetido');
+  v_ok := false;
+  begin insert into contas (nome) values (' qa CLIENTE novo ');   -- direto no banco, sem a função (corrida)
+  exception when unique_violation then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T65] índice único do nome');
   v_ok := false;
   begin perform app_plataforma_criar_conta('QA Outra', 'x@y.local', null, array['folha']);
   exception when others then v_ok := sqlerrm like 'Escolha os módulos%'; end;

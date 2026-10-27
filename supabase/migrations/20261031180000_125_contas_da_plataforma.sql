@@ -16,8 +16,11 @@ create table interno.plataforma_log (
 alter table interno.plataforma_log enable row level security;
 create index plataforma_log_conta_idx on interno.plataforma_log (conta_alvo, em desc);
 
--- guarda das funções da plataforma: sessão, duas etapas e e-mail na lista da plataforma
-create or replace function public.app_exigir_plataforma()
+-- nome de conta único sem diferenciar maiúsculas nem espaços nas pontas (a função só dá a mensagem antes)
+create unique index contas_nome_uq on interno.contas (lower(btrim(nome)));
+
+-- guarda das funções da plataforma: sessão, lista da plataforma e duas etapas (fora da API, em interno)
+create or replace function interno.fn_exigir_plataforma()
  returns text language plpgsql stable
  set search_path to 'interno', 'public', 'extensions', 'pg_temp'
 as $function$
@@ -41,7 +44,7 @@ create or replace function public.app_plataforma_contas()
  set search_path to 'interno', 'public', 'extensions', 'pg_temp'
 as $function$
 begin
-  perform app_exigir_plataforma();
+  perform interno.fn_exigir_plataforma();
   return coalesce((select jsonb_agg(jsonb_build_object(
       'id', c.id, 'nome', c.nome, 'ativa', c.ativa, 'criada_em', c.criada_em,
       'membros', (select count(*) from interno.conta_membros m where m.conta_id = c.id and m.ativo),
@@ -58,7 +61,7 @@ create or replace function public.app_plataforma_criar_conta(p_nome text, p_admi
  set search_path to 'interno', 'public', 'extensions', 'pg_temp'
 as $function$
 declare
-  v_ator  text := app_exigir_plataforma();
+  v_ator  text := interno.fn_exigir_plataforma();
   v_nome  text := btrim(p_nome);
   v_email text := lower(btrim(p_admin_email));
   v_id    uuid;
@@ -76,7 +79,11 @@ begin
     raise exception 'Escolha os módulos da conta (escala, ponto).';
   end if;
 
-  insert into interno.contas (nome) values (v_nome) returning id into v_id;
+  begin
+    insert into interno.contas (nome) values (v_nome) returning id into v_id;
+  exception when unique_violation then
+    raise exception 'Já existe uma conta com este nome.';
+  end;
   insert into interno.conta_modulos (conta_id, modulo) select v_id, m from unnest(p_modulos) m group by m;
   insert into interno.conta_membros (conta_id, email, nome, papel, criado_por)
   values (v_id, v_email, nullif(btrim(p_admin_nome), ''), 'admin', v_ator);
@@ -90,7 +97,7 @@ create or replace function public.app_plataforma_salvar_conta(p_id uuid, p_nome 
  set search_path to 'interno', 'public', 'extensions', 'pg_temp'
 as $function$
 declare
-  v_ator text := app_exigir_plataforma();
+  v_ator text := interno.fn_exigir_plataforma();
   v_nome text := btrim(p_nome);
   c      interno.contas;
 begin
@@ -110,7 +117,11 @@ begin
     raise exception 'Escolha os módulos da conta (escala, ponto).';
   end if;
 
-  update interno.contas set nome = v_nome, ativa = coalesce(p_ativa, ativa) where id = p_id;
+  begin
+    update interno.contas set nome = v_nome, ativa = coalesce(p_ativa, ativa) where id = p_id;
+  exception when unique_violation then
+    raise exception 'Já existe uma conta com este nome.';
+  end;
   insert into interno.conta_modulos (conta_id, modulo, ativo)
   select p_id, m, m = any (p_modulos) from unnest(array['escala', 'ponto']) m
   on conflict (conta_id, modulo) do update
