@@ -238,7 +238,7 @@ begin
     join pg_namespace s on s.oid = c.relnamespace left join pg_attrdef d on d.adrelid = c.oid and d.adnum = a.attnum
    where s.nspname = 'interno' and a.attname = 'conta_id' and not a.attisdropped and c.relkind in ('r', 'p')
      and c.relname not in ('contas', 'conta_membros', 'conta_modulos')
-     and coalesce(pg_get_expr(d.adbin, d.adrelid), '') <> 'fn_conta_atual()';
+     and coalesce(pg_get_expr(d.adbin, d.adrelid), '') <> 'fn_conta_padrao()';
   perform pg_temp.ok(v is null, '[T56] conta_id sem o default da sessão: ' || coalesce(v, ''));
   perform pg_temp.ok(not exists (select 1 from pg_trigger where tgname = 'tg_trava_conta_unica'), '[T56] trava da 117 ainda existe');
   perform pg_temp.ok((select bool_and(conta_id = '00000000-0000-0000-0000-000000000001') from tecnicos), '[T56] técnico fora da conta 1');
@@ -3469,6 +3469,7 @@ begin
   -- marcação da conta B em cima da obra da conta A: o local de referência é o da B (o local entra no hash)
   insert into locais (nome, ativo, latitude, longitude, raio_m, conta_id)
   values ('QA Local B com área', true, -12.950000, -38.450000, 150, v_b) returning id into v_loc_b;
+  perform set_config('request.jwt.claims', '', true);   -- o app do ponto não tem sessão do painel
   r := fn_ponto_registrar(v_tec, 'entrada', 'app', -12.900000, -38.400000, 10, '{}');
   perform pg_temp.ok((select local_id = v_loc_b and not dentro_area and conta_id = v_b from ponto_marcacoes where id = (r->>'marcacao_id')::uuid)
                      and r->>'local' = 'QA Local B com área', '[T61] marcação da B: local e conta da B, fora da área da obra da A');
@@ -3568,6 +3569,8 @@ declare
   v_tec_b uuid := (select id from tecnicos where conta_id = (select v::uuid from qa where k = 'conta_b') and nome = 'QA Técnico B');
   v_ok boolean := false; v_n int;
 begin
+  -- sem sessão (como o cron): quem recusa é a chave composta; com sessão, a herança recusa antes (T66)
+  perform set_config('request.jwt.claims', '', true);
   -- escala da conta B (herda do técnico) com local da conta A: a chave composta recusa
   begin
     insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
@@ -3591,6 +3594,7 @@ begin
   perform pg_temp.ok(exists (select 1 from pg_proc where proname = 'app_ponto_acompanhamento'
                                     and 'plan_cache_mode=force_custom_plan' = any(proconfig)),
                      '[T63] acompanhamento sem plan_cache_mode');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
 end $$;
 
 -- T64 multiempresa F3a: usuário do painel por conta (migration 124) ---------------------------------------------------
@@ -3719,6 +3723,15 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
   insert into empresas (cnpj, razao_social) values ('66066066000192', 'QA F3d B') returning id into v_emp;
   perform pg_temp.ok((select conta_id from empresas where id = v_emp) = v_b, '[T66] linha nova na conta da sessão');
+  -- sessão da conta B gravando sobre funcionário da conta A: o banco recusa (herança com a sessão)
+  v_ok := false;
+  begin insert into ponto_acessos (tipo, ip, tecnico_id) values ('entrar_ok', '10.6.6.7', (select v::uuid from qa where k = 'tec1'));
+  exception when others then v_ok := sqlerrm = 'Origem de outra conta.'; end;
+  perform pg_temp.ok(v_ok, '[T66] origem de outra conta recusada');
+  -- membro de duas contas sem escolher: em tabela filha a conta vem da origem
+  perform set_config('request.jwt.claims', '{"email":"qa-ab@teste.local","role":"authenticated","aal":"aal2"}', true);
+  insert into ponto_acessos (tipo, ip, tecnico_id) values ('entrar_ok', '10.6.6.8', (select v::uuid from qa where k = 'tec1'));
+  perform pg_temp.ok((select conta_id from ponto_acessos where ip = '10.6.6.8') = v_a, '[T66] duas contas sem escolha herda da origem');
   -- sem sessão: tabela de cliente recusa
   perform set_config('request.jwt.claims', '', true);
   v_ok := false;

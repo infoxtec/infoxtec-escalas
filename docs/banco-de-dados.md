@@ -256,7 +256,8 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
 
 ### Migration 126 (27/10, versão 20261101120000): fim da conta padrão e da trava, multiempresa F3d
 
-O default de `conta_id` deixa de ser a conta 1 e passa a ser `fn_conta_atual()`, a conta da sessão (decisão 119). Sem
+O default de `conta_id` deixa de ser a conta 1 e passa a ser `fn_conta_padrao()`, a conta da sessão sem lançar erro
+(decisão 119). `fn_herdar_conta` recusa, com sessão, origem de outra conta. Sem
 sessão (cron, webhook, app do ponto), o default é nulo e o banco recusa a linha, a não ser que a conta venha da origem
 (gatilhos de herança da 119) ou do caminho:
 - `webhook_eventos`: gatilho `fn_conta_operadora` (canal da operadora até a F5);

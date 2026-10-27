@@ -1720,6 +1720,10 @@ tabelas de cliente. O default passou a ser `fn_conta_atual()`, a conta da sessã
   ponto), o default é nulo e o banco recusa.
 - **Exceções explícitas:** o webhook e as tentativas do app do ponto sem funcionário vão para a operadora, que é dona
   do canal até a F5. O teto do app do ponto também vai para a operadora (122).
-- **O que segura uma conta errada:** as chaves compostas da 123 recusam referência entre contas, e os gatilhos de
-  herança da 119 põem a conta da origem.
+- **O que segura uma conta errada:** os gatilhos de herança põem a conta da origem e, com sessão, recusam origem de
+  outra conta ("Origem de outra conta."); sem sessão, as chaves compostas da 123 recusam referência entre contas.
+- **Default que não lança:** `fn_conta_padrao()` devolve nulo para quem está em duas contas sem escolher; em tabela
+  filha a conta vem da origem, nas outras o `not null` recusa.
+- **Custo:** o default com sessão custa cerca de 14 µs por linha (2,4 µs sem sessão). Inserção em lote pelo painel
+  deve gravar a conta explícita, calculada uma vez (pendência de desempenho, `arquiteto-dados`).
 - **Feriados e motivos do ponto** viram catálogo da plataforma. O feriado por local entra na F4.

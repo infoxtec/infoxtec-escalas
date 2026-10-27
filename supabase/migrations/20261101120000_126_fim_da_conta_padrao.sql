@@ -6,6 +6,43 @@
 
 set lock_timeout = '5s';
 
+-- 0. Default: a conta da sessão, sem lançar erro (quem está em duas contas sem escolher recebe nulo; em tabela filha
+-- o gatilho de herança põe a conta da origem, nas outras o not null recusa)
+create or replace function interno.fn_conta_padrao()
+ returns uuid language plpgsql stable
+ set search_path to 'interno', 'public', 'extensions', 'pg_temp'
+as $function$
+begin
+  return interno.fn_conta_atual();
+exception when raise_exception then
+  return null;
+end $function$;
+
+-- herança (119) com a sessão: origem de outra conta é recusada (revisão do seguranca); sem sessão, vale a origem
+create or replace function interno.fn_herdar_conta()
+ returns trigger language plpgsql
+ set search_path to 'interno', 'public', 'extensions', 'pg_temp'
+as $function$
+declare
+  v_pai    uuid := (to_jsonb(new) ->> tg_argv[1])::uuid;
+  v_conta  uuid;
+  v_sessao uuid;
+begin
+  if v_pai is not null then
+    execute format('select conta_id from interno.%I where id = $1', tg_argv[0]) into v_conta using v_pai;
+    -- origem informada e não achada: recusa (a linha não cai calada em conta nenhuma)
+    if v_conta is null then
+      raise exception 'Origem % não encontrada para herdar a conta.', tg_argv[0];
+    end if;
+    v_sessao := interno.fn_conta_padrao();
+    if v_sessao is not null and v_sessao <> v_conta then
+      raise exception 'Origem de outra conta.';
+    end if;
+    new.conta_id := v_conta;
+  end if;
+  return new;
+end $function$;
+
 -- 1. Catálogos da plataforma: feriados nacionais e motivos do ponto valem para todas as contas (feriado por local: F4)
 alter table interno.feriados drop column conta_id;
 alter table interno.ponto_motivos drop column conta_id;
@@ -39,7 +76,9 @@ declare
   v_id    uuid;
   v_conta uuid;
 begin
-  v_id := coalesce(nullif(new.detalhe ->> 'tecnico', '')::uuid,
+  -- só converte o que tem forma de UUID: detalhe malformado não derruba o alerta
+  v_id := coalesce((regexp_match(coalesce(new.detalhe ->> 'tecnico', ''),
+                                 '^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$'))[1]::uuid,
                    (regexp_match(new.tipo, '([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})'))[1]::uuid);
   if v_id is not null then
     select conta_id into v_conta from interno.tecnicos where id = v_id;
@@ -80,6 +119,11 @@ begin
       insert into painel_mfa_log (conta_id, email, acao)
       select distinct m.conta_id, coalesce(v_email, '(usuário removido)'), v_acao
         from conta_membros m where m.email = v_email;
+      -- quem não é membro de conta nenhuma: registro na operadora, para o evento não se perder
+      if not found then
+        insert into painel_mfa_log (conta_id, email, acao)
+        values ('00000000-0000-0000-0000-000000000001', coalesce(v_email, '(usuário removido)'), v_acao);
+      end if;
     end if;
   exception when others then
     raise warning 'registro das duas etapas falhou: %', sqlerrm;
@@ -99,7 +143,7 @@ begin
              join pg_namespace n on n.oid = c.relnamespace
             where n.nspname = 'interno' and a.attname = 'conta_id' and c.relkind in ('r', 'p') and not a.attisdropped
               and c.relname not in ('contas', 'conta_membros', 'conta_modulos') loop
-    execute format('alter table interno.%I alter column conta_id set default interno.fn_conta_atual()', r.relname);
+    execute format('alter table interno.%I alter column conta_id set default interno.fn_conta_padrao()', r.relname);
   end loop;
 end $$;
 
