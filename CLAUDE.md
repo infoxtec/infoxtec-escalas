@@ -23,9 +23,11 @@ arquitetura e decisões em `docs/arquitetura.md` e `docs/decisoes.md`; fluxo de 
   os números de `telefones_homologacao` (trava da decisão 44, migration 99). Nunca cadastrar nele o token da
   instância da produção (`infoxtec`) nem os segredos da Twilio, nem rodar o `supabase/setup/cron.sql` da produção.
   A chave global da Evolution não vai para nenhum Vault: fica só no servidor da Oracle.
-- **Aplicação (decisão 118):** o merge na `main` aplica sozinho as migrations na homologação (com `plpgsql_check`), pelo
-  workflow `Aplicar`; as Edge Functions alteradas o Claude publica na homologação pelo conector do Supabase. O responsável valida e manda aplicar na produção; o Claude dispara o
-  workflow com o destino `producao` e o responsável aprova no GitHub. Ninguém roda comando. Os scripts
+- **Aplicação (decisões 118 e 120):** o Claude abre o PR e, com o CI verde e as revisões liberadas, **ele mesmo faz o
+  merge**; o merge na `main` aplica sozinho as migrations na homologação (com `plpgsql_check`), pelo workflow
+  `Aplicar`, e as Edge Functions alteradas o Claude publica na homologação pelo conector do Supabase. O responsável só
+  testa. Para a produção, o responsável manda; o Claude dispara o workflow com o destino `producao` e o responsável
+  aprova no GitHub. Ninguém roda comando. Os scripts
   `scripts/aplicar-*.sh` ficam só como contingência (antes de um `db push` à mão, conferir `supabase/.temp/project-ref`).
 - A lista de trabalho pendente, em ordem, está em `docs/plano-de-trabalho.md`. Ao concluir uma
   etapa, marcar `[x]` e registrar na tabela do fim do arquivo.
@@ -132,7 +134,7 @@ end $$;
 - Afirmação comercial — proposta, site, conversa de venda — só com lastro na matriz de
   `docs/plano-comercial.md`; nome, mote e posicionamento em `docs/marca.md`. Preço, SLA, garantia e
   aceitar risco são decisão do responsável, não do material de venda.
-- Trabalhar sempre em branch e abrir pull request. Nada vai direto para `main`.
+- Trabalhar sempre em branch e abrir pull request. Nada vai direto para `main`: o merge é do Claude, só com o CI verde e as revisões obrigatórias liberadas (decisão 120); PR que mexe em `.github/workflows` tem merge do responsável.
 - **O pacote já leva o próprio registro** (decisão 71): plano, README, backlog, sprint e documentação são
   atualizados no mesmo PR da entrega, antes do merge. Nunca abrir PR depois da produção só para registrar;
   a conferência da produção entra no próximo PR que já for abrir.

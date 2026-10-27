@@ -54,6 +54,7 @@ export const ponto = {
 
 export const api = {
   meuAcesso: () => rpc<Acesso>('app_meu_acesso'),
+  convites: () => rpc<{ email: string; em: string; resultado: string }[]>('app_convites'),
   plataformaContas: () => rpc<ContaPlataforma[]>('app_plataforma_contas'),
   plataformaCriarConta: (nome: string, adminEmail: string, adminNome: string, modulos: string[]) =>
     rpc<string>('app_plataforma_criar_conta', { p_nome: nome, p_admin_email: adminEmail, p_admin_nome: adminNome, p_modulos: modulos }),
@@ -277,6 +278,33 @@ export async function removerDocumento(id: string): Promise<void> {
 }
 
 /** OCR na nuvem (modo preciso, opcional): so usado se GOOGLE_VISION_KEY estiver cadastrada. */
+// Convite por e-mail (decisão 120): a Edge Function confere no banco quem pode convidar e chama o convite do Auth
+export interface ResultadoConvite { ok: boolean; enviado?: boolean; ja_tinha_login?: boolean; erro?: string }
+export async function convidarUsuario(email: string, conta: string): Promise<ResultadoConvite> {
+  const { data: sessao } = await supabase.auth.getSession()
+  try {
+    const resp = await fetchComConta(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/convidar-usuario`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessao.session?.access_token ?? ''}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ email, conta }),
+      signal: AbortSignal.timeout(30000),
+    })
+    const r = await resp.json().catch(() => ({}))
+    return r.ok ? r : { ok: false, erro: r.erro ?? 'O convite não pôde ser enviado.' }
+  } catch {
+    return { ok: false, erro: 'Sem conexão com o serviço de convite. Tente de novo.' }
+  }
+}
+
+export function mensagemConvite(email: string, r: ResultadoConvite): string {
+  if (!r.ok) return `Convite não enviado: ${r.erro}`
+  return r.ja_tinha_login ? `${email} já tem login: entra com a senha atual.` : `Convite enviado para ${email} (se já tiver login, entra com a senha atual).`
+}
+
 export async function lerValidadePorOCR(arquivo: File): Promise<{ sugestao: string | null; erro?: string }> {
   const base64 = await new Promise<string>((ok, falha) => {
     const r = new FileReader()

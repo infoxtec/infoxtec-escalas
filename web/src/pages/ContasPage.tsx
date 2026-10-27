@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Edit2, Loader2, Plus, RefreshCw } from 'lucide-react'
-import { Button, ErrorBox, Field, Input, Modal, ToggleRow } from '../components/ui'
-import { api, erroMsg } from '../lib/api'
+import { Button, ErrorBox, Field, Input, Modal, ToggleRow, useToast } from '../components/ui'
+import { api, convidarUsuario, erroMsg, mensagemConvite } from '../lib/api'
 import type { ContaPlataforma } from '../lib/types'
 
 const MODULOS: { id: 'escala' | 'ponto'; nome: string }[] = [
@@ -12,8 +12,9 @@ const MODULOS: { id: 'escala' | 'ponto'; nome: string }[] = [
 interface Edicao { id?: string; nome: string; ativa: boolean; modulos: string[]; admin_email: string; admin_nome: string }
 
 // Contas dos clientes (multiempresa F3c, decisão 117): só a plataforma cria e altera. O administrador da conta nova
-// entra pelo convite do Supabase Auth (Authentication → Users → Invite user) com o mesmo e-mail.
+// recebe o convite por e-mail ao salvar (decisão 120).
 export default function ContasPage() {
+  const toast = useToast()
   const [contas, setContas] = useState<ContaPlataforma[] | null>(null)
   const [edit, setEdit] = useState<Edicao | null>(null)
   const [salvando, setSalvando] = useState(false)
@@ -36,7 +37,11 @@ export default function ContasPage() {
     setSalvando(true)
     try {
       if (edit.id) await api.plataformaSalvarConta(edit.id, edit.nome, edit.ativa, edit.modulos)
-      else await api.plataformaCriarConta(edit.nome, edit.admin_email, edit.admin_nome, edit.modulos)
+      else {
+        const id = await api.plataformaCriarConta(edit.nome, edit.admin_email, edit.admin_nome, edit.modulos)
+        const email = edit.admin_email.trim().toLowerCase()
+        toast(mensagemConvite(email, await convidarUsuario(email, id)))
+      }
       await carregar(); setEdit(null)
     } catch (e) { setErro(erroMsg(e)) }
     finally { setSalvando(false) }
@@ -96,7 +101,7 @@ export default function ContasPage() {
           <div className="space-y-3">
             <Field label="Nome da conta *"><Input value={edit.nome} onChange={e => setEdit({ ...edit, nome: e.target.value })} disabled={salvando} /></Field>
             {!edit.id && (<>
-              <Field label="E-mail do administrador *" hint="Depois de salvar, convide este e-mail no Supabase Auth para ele criar a senha.">
+              <Field label="E-mail do administrador *" hint="Ao salvar, ele recebe por e-mail o convite para criar a senha.">
                 <Input type="email" value={edit.admin_email} onChange={e => setEdit({ ...edit, admin_email: e.target.value })} disabled={salvando} />
               </Field>
               <Field label="Nome do administrador"><Input value={edit.admin_nome} onChange={e => setEdit({ ...edit, admin_nome: e.target.value })} disabled={salvando} /></Field>
