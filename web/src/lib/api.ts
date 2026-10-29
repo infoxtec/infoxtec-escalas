@@ -1,6 +1,6 @@
 import { fetchComConta, supabase } from './supabase'
 import type {
-  Acesso, ContaPlataforma, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre, ValidacaoCarga, ModeloCarga, CargaHoraria, CargaAtribuicao, CargaFuncionario, TimeEquipe, AlvoCarga, ProgramacaoLimite, AceiteProgramacao, AceiteProgramacaoAssinado, CargaExcedida, ValidacaoFolha, FechamentoFolha, PreviaFolha, PontoHeAutorizacao, EspelhoPdf, ComprovanteRegistro } from './types'
+  Acesso, ContaPlataforma, Feriado, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre, ValidacaoCarga, ModeloCarga, CargaHoraria, CargaAtribuicao, CargaFuncionario, TimeEquipe, AlvoCarga, ProgramacaoLimite, AceiteProgramacao, AceiteProgramacaoAssinado, CargaExcedida, ValidacaoFolha, FechamentoFolha, PreviaFolha, PontoHeAutorizacao, EspelhoPdf, ComprovanteRegistro } from './types'
 
 function traduzir(msg: string): string {
   if (/JWT expired|invalid JWT|not authenticated/i.test(msg)) return 'Sessão expirada. Entre novamente.'
@@ -56,10 +56,13 @@ export const api = {
   meuAcesso: () => rpc<Acesso>('app_meu_acesso'),
   convites: () => rpc<{ email: string; em: string; resultado: string }[]>('app_convites'),
   plataformaContas: () => rpc<ContaPlataforma[]>('app_plataforma_contas'),
-  plataformaCriarConta: (nome: string, adminEmail: string, adminNome: string, modulos: string[]) =>
-    rpc<string>('app_plataforma_criar_conta', { p_nome: nome, p_admin_email: adminEmail, p_admin_nome: adminNome, p_modulos: modulos }),
-  plataformaSalvarConta: (id: string, nome: string, ativa: boolean, modulos: string[]) =>
-    rpc<void>('app_plataforma_salvar_conta', { p_id: id, p_nome: nome, p_ativa: ativa, p_modulos: modulos }),
+  plataformaCriarConta: (nome: string, adminEmail: string, adminNome: string, modulos: string[], uf: string, municipio: string) =>
+    rpc<string>('app_plataforma_criar_conta', { p_nome: nome, p_admin_email: adminEmail, p_admin_nome: adminNome, p_modulos: modulos, p_uf: uf, p_municipio: municipio }),
+  plataformaSalvarConta: (id: string, nome: string, ativa: boolean, modulos: string[], uf: string, municipio: string) =>
+    rpc<void>('app_plataforma_salvar_conta', { p_id: id, p_nome: nome, p_ativa: ativa, p_modulos: modulos, p_uf: uf, p_municipio: municipio }),
+  plataformaFeriados: (ano: number) => rpc<Feriado[]>('app_plataforma_feriados', { p_ano: ano }),
+  plataformaSalvarFeriado: (f: Partial<Feriado>) => rpc<number>('app_plataforma_salvar_feriado', { p: f }),
+  plataformaRemoverFeriado: (id: number) => rpc<void>('app_plataforma_remover_feriado', { p_id: id }),
   estadoMotor: () => rpc<EstadoMotor>('app_estado_motor'),
   checklistSaude: () => rpc<ChecklistSaude>('app_checklist_saude'),
   checklistTestar: () => rpc<{ enfileirado: boolean; recente?: boolean; erro: string | null }>('app_checklist_testar'),

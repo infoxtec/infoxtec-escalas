@@ -254,6 +254,17 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 132 (29/10, versão 20261104120000): lugar no painel, multiempresa F4b
+
+`app_salvar_local` aceita `uf` (duas letras); local novo sem cidade fica com a cidade da sede (antes, "Salvador" fixo) e,
+sem UF, herda a UF da sede só se a cidade for a da sede (outra cidade sem UF cai no funcionário); na alteração, a UF só
+muda se vier no pedido. Os locais sem UF cuja cidade é a da sede recebem a UF dela.
+`app_plataforma_contas` devolve `uf` e `municipio`; `app_plataforma_criar_conta` e `app_plataforma_salvar_conta` ganham
+`p_uf` e `p_municipio` (nulo mantém a sede, para o painel antigo; vazio limpa; município exige UF; a troca vai para o log). Novas, só para a plataforma
+(`fn_exigir_plataforma`): `app_plataforma_feriados(ano)`, `app_plataforma_salvar_feriado(p)` (estadual, municipal ou
+facultativo; o nacional não se altera) e `app_plataforma_remover_feriado(id)` (o nacional não se remove). Painel 3.52.0:
+sede na aba Contas, UF no cadastro do local e a aba Feriados da plataforma. Regressão: T72.
+
 ### Migration 131 (29/10, versão 20261103180000): feriado por estado e município, multiempresa F4a
 
 `feriados` ganha `id`, `uf` e `municipio`: o nacional vale para todos; o estadual, só na UF; o municipal, só no município

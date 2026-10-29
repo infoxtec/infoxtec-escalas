@@ -10,7 +10,15 @@ export interface Acesso {
   email: string | null; papel: Papel | null; nome: string | null; ve_saude?: boolean; rh_folhas?: boolean; mfa_obrigatorio?: boolean
   conta?: string | null; contas?: ContaDoUsuario[]; plataforma?: boolean
 }
-export interface ContaPlataforma { id: string; nome: string; ativa: boolean; criada_em: string; membros: number; admins: string[]; modulos: string[] }
+export interface ContaPlataforma {
+  id: string; nome: string; ativa: boolean; criada_em: string; membros: number; admins: string[]; modulos: string[]
+  uf: string | null; municipio: string | null   // sede da conta: define os feriados (migration 131)
+}
+
+export interface Feriado {
+  id: number; data: string; nome: string; abrangencia: 'nacional' | 'estadual' | 'municipal' | 'facultativo'
+  uf: string | null; municipio: string | null
+}
 
 export interface EscalaPainel {
   id: string
@@ -78,7 +86,7 @@ export interface Tecnico {
 }
 
 export interface Local {
-  id: string; nome: string; cliente: string | null; endereco: string | null; cidade: string | null
+  id: string; nome: string; cliente: string | null; endereco: string | null; cidade: string | null; uf: string | null
   referencia: string | null; link_maps: string | null; contato_local: string | null
   telefone_contato: string | null; ativo: boolean; created_at: string
   latitude: number | null; longitude: number | null; raio_m: number; cliente_empresa_id: string | null

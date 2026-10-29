@@ -7,7 +7,7 @@ import { api, erroMsg } from '../lib/api'
 import { coordenadasDoLink } from '../lib/types'
 import type { Empresa, Local } from '../lib/types'
 
-const NOVO: Partial<Local> = { nome: '', cliente: '', endereco: '', cidade: 'Salvador', referencia: '', link_maps: '', contato_local: '', telefone_contato: '', ativo: true, raio_m: 200 }
+const NOVO: Partial<Local> = { nome: '', cliente: '', endereco: '', cidade: '', uf: '', referencia: '', link_maps: '', contato_local: '', telefone_contato: '', ativo: true, raio_m: 200 }
 
 export default function LocaisPage({ locais, recarregar, podeEditar }: {
   locais: Local[]; recarregar: () => Promise<void>; podeEditar: boolean
@@ -110,10 +110,13 @@ export default function LocaisPage({ locais, recarregar, podeEditar }: {
               <Field label="Cliente"><Input value={edit.cliente ?? ''} onChange={e => set('cliente', e.target.value)} disabled={salvando} /></Field>
             </div>
             <Field label="Endereço"><Input value={edit.endereco ?? ''} onChange={e => set('endereco', e.target.value)} disabled={salvando} /></Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Cidade"><Input value={edit.cidade ?? ''} onChange={e => set('cidade', e.target.value)} disabled={salvando} /></Field>
-              <Field label="Referência"><Input value={edit.referencia ?? ''} onChange={e => set('referencia', e.target.value)} disabled={salvando} /></Field>
+            <div className="grid grid-cols-[1fr_5rem] gap-3">
+              <Field label="Cidade" hint="Com a UF, define os feriados do local. Em branco: a sede da conta.">
+                <Input value={edit.cidade ?? ''} onChange={e => set('cidade', e.target.value)} disabled={salvando} />
+              </Field>
+              <Field label="UF"><Input value={edit.uf ?? ''} maxLength={2} onChange={e => set('uf', e.target.value.toUpperCase())} disabled={salvando} /></Field>
             </div>
+            <Field label="Referência"><Input value={edit.referencia ?? ''} onChange={e => set('referencia', e.target.value)} disabled={salvando} /></Field>
             <Field label="Link do Google Maps" hint="Vai dentro da mensagem do WhatsApp."><Input value={edit.link_maps ?? ''} onChange={e => set('link_maps', e.target.value)} placeholder="https://maps.google.com/..." disabled={salvando} /></Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Contato no local"><Input value={edit.contato_local ?? ''} onChange={e => set('contato_local', e.target.value)} disabled={salvando} /></Field>

@@ -9,7 +9,7 @@ const MODULOS: { id: 'escala' | 'ponto'; nome: string }[] = [
   { id: 'ponto', nome: 'Registro de ponto' },
 ]
 
-interface Edicao { id?: string; nome: string; ativa: boolean; modulos: string[]; admin_email: string; admin_nome: string }
+interface Edicao { id?: string; nome: string; ativa: boolean; modulos: string[]; admin_email: string; admin_nome: string; uf: string; municipio: string }
 
 // Contas dos clientes (multiempresa F3c, decisão 117): só a plataforma cria e altera. O administrador da conta nova
 // recebe o convite por e-mail ao salvar (decisão 120).
@@ -34,11 +34,13 @@ export default function ContasPage() {
     if (edit.nome.trim().length < 2) return setErro('Informe o nome da conta.')
     if (edit.modulos.length === 0) return setErro('Escolha ao menos um módulo.')
     if (!edit.id && !edit.admin_email.includes('@')) return setErro('Informe o e-mail do administrador.')
+    if (edit.uf && !/^[A-Z]{2}$/.test(edit.uf)) return setErro('UF com duas letras (ex.: BA).')
+    if (edit.municipio.trim() && !edit.uf) return setErro('Informe a UF da sede junto com o município.')
     setSalvando(true)
     try {
-      if (edit.id) await api.plataformaSalvarConta(edit.id, edit.nome, edit.ativa, edit.modulos)
+      if (edit.id) await api.plataformaSalvarConta(edit.id, edit.nome, edit.ativa, edit.modulos, edit.uf, edit.municipio)
       else {
-        const id = await api.plataformaCriarConta(edit.nome, edit.admin_email, edit.admin_nome, edit.modulos)
+        const id = await api.plataformaCriarConta(edit.nome, edit.admin_email, edit.admin_nome, edit.modulos, edit.uf, edit.municipio)
         const email = edit.admin_email.trim().toLowerCase()
         toast(mensagemConvite(email, await convidarUsuario(email, id)))
       }
@@ -56,7 +58,7 @@ export default function ContasPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => void carregar()}><RefreshCw className="h-3.5 w-3.5" /> Atualizar</Button>
-          <Button size="sm" onClick={() => { setEdit({ nome: '', ativa: true, modulos: ['escala', 'ponto'], admin_email: '', admin_nome: '' }); setErro(null) }}>
+          <Button size="sm" onClick={() => { setEdit({ nome: '', ativa: true, modulos: ['escala', 'ponto'], admin_email: '', admin_nome: '', uf: '', municipio: '' }); setErro(null) }}>
             <Plus className="h-4 w-4" /> Nova conta
           </Button>
         </div>
@@ -67,7 +69,7 @@ export default function ContasPage() {
         <div className="overflow-x-auto rounded-md border">
           <table className="w-full text-sm">
             <thead><tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
-              <th className="px-3 py-2">Conta</th><th className="px-3 py-2">Administradores</th><th className="px-3 py-2">Módulos</th>
+              <th className="px-3 py-2">Conta</th><th className="px-3 py-2">Sede</th><th className="px-3 py-2">Administradores</th><th className="px-3 py-2">Módulos</th>
               <th className="px-3 py-2 text-center">Usuários</th><th className="px-3 py-2 text-center">Ativa</th><th className="w-12" />
             </tr></thead>
             <tbody>
@@ -75,13 +77,14 @@ export default function ContasPage() {
                 <tr key={c.id} className={`border-b last:border-0 hover:bg-muted/30 ${!c.ativa ? 'opacity-50' : ''}`}>
                   <td className="px-3 py-2.5"><p className="font-medium">{c.nome}</p>
                     <p className="text-xs text-muted-foreground">desde {new Date(c.criada_em).toLocaleDateString('pt-BR')}</p></td>
+                  <td className="px-3 py-2.5 text-xs">{c.uf ? [c.municipio, c.uf].filter(Boolean).join(' / ') : <span className="text-muted-foreground">sem sede</span>}</td>
                   <td className="px-3 py-2.5 text-xs">{c.admins.join(', ') || <span className="text-muted-foreground">nenhum</span>}</td>
                   <td className="px-3 py-2.5 text-xs">{c.modulos.join(', ')}</td>
                   <td className="px-3 py-2.5 text-center text-xs">{c.membros}</td>
                   <td className="px-3 py-2.5 text-center"><span className={`inline-block h-2 w-2 rounded-full ${c.ativa ? 'bg-green-500' : 'bg-gray-400'}`} /></td>
                   <td className="px-3 py-2.5 text-right">
                     <Button variant="ghost" size="icon" aria-label="Editar"
-                      onClick={() => { setEdit({ id: c.id, nome: c.nome, ativa: c.ativa, modulos: c.modulos, admin_email: '', admin_nome: '' }); setErro(null) }}>
+                      onClick={() => { setEdit({ id: c.id, nome: c.nome, ativa: c.ativa, modulos: c.modulos, admin_email: '', admin_nome: '', uf: c.uf ?? '', municipio: c.municipio ?? '' }); setErro(null) }}>
                       <Edit2 className="h-3.5 w-3.5" />
                     </Button>
                   </td>
@@ -106,6 +109,12 @@ export default function ContasPage() {
               </Field>
               <Field label="Nome do administrador"><Input value={edit.admin_nome} onChange={e => setEdit({ ...edit, admin_nome: e.target.value })} disabled={salvando} /></Field>
             </>)}
+            <div className="grid grid-cols-[1fr_5rem] gap-3">
+              <Field label="Município da sede" hint="Com a UF, define os feriados estaduais e municipais da conta.">
+                <Input value={edit.municipio} onChange={e => setEdit({ ...edit, municipio: e.target.value })} disabled={salvando} />
+              </Field>
+              <Field label="UF"><Input value={edit.uf} maxLength={2} onChange={e => setEdit({ ...edit, uf: e.target.value.toUpperCase() })} disabled={salvando} /></Field>
+            </div>
             {MODULOS.map(m => (
               <ToggleRow key={m.id} label={m.nome} checked={edit.modulos.includes(m.id)} onChange={v => alternarModulo(m.id, v)} disabled={salvando} />
             ))}

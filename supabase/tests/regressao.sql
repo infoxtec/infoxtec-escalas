@@ -3947,7 +3947,70 @@ begin
   perform pg_temp.ok(v_ok, '[T71] feriado municipal sem lugar');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T71' as resultado,
+-- T72 multiempresa F4b: lugar no painel (migration 132) ---------------------------------------------------------------
+do $$
+declare
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_loc uuid; v_fer bigint; v_conta uuid; v_ok boolean; v_r jsonb;
+begin
+  perform set_config('request.headers', '{}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  -- local sem UF na conta 1 (sede Salvador/BA): cidade e UF da sede
+  v_loc := app_salvar_local(jsonb_build_object('nome', 'QA Local T72'));
+  perform pg_temp.ok((select cidade = 'Salvador' and uf = 'BA' from locais where id = v_loc), '[T72] local com o lugar da sede');
+  v_loc := app_salvar_local(jsonb_build_object('nome', 'QA Local T72 SP', 'cidade', 'Campinas', 'uf', 'sp'));
+  perform pg_temp.ok((select uf = 'SP' from locais where id = v_loc), '[T72] UF informada');
+  v_loc := app_salvar_local(jsonb_build_object('nome', 'QA Local T72 fora', 'cidade', 'São Paulo'));
+  perform pg_temp.ok((select uf is null from locais where id = v_loc), '[T72] cidade fora da sede não herda a UF da sede');
+  v_ok := false;
+  begin perform app_salvar_local(jsonb_build_object('nome', 'QA UF ruim', 'uf', 'Bahia'));
+  exception when others then v_ok := sqlerrm like 'UF inválida%'; end;
+  perform pg_temp.ok(v_ok, '[T72] UF inválida no local');
+  -- conta com sede pela plataforma (qa-admin é da plataforma desde o T65)
+  v_conta := app_plataforma_criar_conta('QA Conta Recife', 'dono-recife@teste.local', 'Dono', array['ponto'], 'pe', 'Recife');
+  perform pg_temp.ok((select uf = 'PE' and municipio = 'Recife' from contas where id = v_conta), '[T72] sede na criação');
+  perform app_plataforma_salvar_conta(v_conta, 'QA Conta Recife', true, array['ponto'], 'PE', 'Olinda');
+  perform pg_temp.ok((select municipio = 'Olinda' from contas where id = v_conta)
+                     and exists (select 1 from jsonb_array_elements(app_plataforma_contas()) e where e->>'id' = v_conta::text and e->>'municipio' = 'Olinda'),
+                     '[T72] sede alterada e listada');
+  v_ok := false;
+  -- painel anterior (sem UF e município) mantém a sede
+  perform app_plataforma_salvar_conta(v_conta, 'QA Conta Recife', true, array['ponto']);
+  perform pg_temp.ok((select uf = 'PE' and municipio = 'Olinda' from contas where id = v_conta), '[T72] salvar sem sede mantém a sede');
+  begin perform app_plataforma_salvar_conta(v_conta, 'QA Conta Recife', true, array['ponto'], '', 'Olinda');
+  exception when others then v_ok := sqlerrm like 'Informe a UF%'; end;
+  perform pg_temp.ok(v_ok, '[T72] município sem UF');
+  -- feriado municipal de Olinda: vale em Olinda, não em Salvador
+  v_fer := app_plataforma_salvar_feriado(jsonb_build_object('data', '2026-03-12', 'nome', 'QA Aniversário de Olinda',
+                                                            'abrangencia', 'municipal', 'uf', 'PE', 'municipio', 'Olinda'));
+  perform pg_temp.ok(fn_feriado_da_conta(date '2026-03-12', v_conta) = 'QA Aniversário de Olinda'
+                     and fn_feriado_da_conta(date '2026-03-12', '00000000-0000-0000-0000-000000000001') is null, '[T72] feriado municipal cadastrado');
+  v_ok := false;
+  begin perform app_plataforma_salvar_feriado(jsonb_build_object('data', '2026-03-12', 'nome', 'QA de novo',
+                                                                 'abrangencia', 'municipal', 'uf', 'PE', 'municipio', 'olinda '));
+  exception when others then v_ok := sqlerrm like 'Já existe feriado%'; end;
+  perform pg_temp.ok(v_ok, '[T72] feriado repetido no mesmo lugar');
+  v_ok := false;
+  begin perform app_plataforma_salvar_feriado(jsonb_build_object('data', '2026-03-13', 'nome', 'QA sem município', 'abrangencia', 'municipal', 'uf', 'PE'));
+  exception when others then v_ok := sqlerrm like 'Estadual precisa da UF%'; end;
+  perform pg_temp.ok(v_ok, '[T72] municipal sem município');
+  v_r := app_plataforma_feriados(2026);
+  perform pg_temp.ok(exists (select 1 from jsonb_array_elements(v_r) e where (e->>'id')::bigint = v_fer), '[T72] lista do ano');
+  v_ok := false;
+  begin perform app_plataforma_remover_feriado((select id from feriados where abrangencia = 'nacional' limit 1));
+  exception when others then v_ok := sqlerrm like 'Feriado não encontrado%'; end;
+  perform pg_temp.ok(v_ok, '[T72] nacional não se remove');
+  perform app_plataforma_remover_feriado(v_fer);
+  perform pg_temp.ok(not exists (select 1 from feriados where id = v_fer), '[T72] feriado removido');
+  -- quem não é da plataforma não mexe nos feriados
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  v_ok := false;
+  begin perform app_plataforma_feriados(2026); exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
+  perform pg_temp.ok(v_ok, '[T72] admin de conta não vê o cadastro de feriados');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T72' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

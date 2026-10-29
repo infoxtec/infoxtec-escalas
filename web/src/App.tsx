@@ -26,12 +26,13 @@ import RoadmapPage from './pages/RoadmapPage'
 import AdminPage from './pages/AdminPage'
 import EmpresasPage from './pages/EmpresasPage'
 import ContasPage from './pages/ContasPage'
+import FeriadosPage from './pages/FeriadosPage'
 import Verificacao from './components/Verificacao'
 import { MfaCadastrar, MfaDesativar, MfaVerificar, estadoMfa } from './components/Mfa'
 import type { EstadoMfa } from './components/Mfa'
 import MarcaAnimada from './components/MarcaAnimada'
 
-type Aba = 'inicio' | 'empresas' | 'agenda' | 'ponto' | 'cargas' | 'operacao' | 'gerencial' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios' | 'roadmap' | 'admin' | 'contas'
+type Aba = 'inicio' | 'empresas' | 'agenda' | 'ponto' | 'cargas' | 'operacao' | 'gerencial' | 'tecnicos' | 'locais' | 'habilidades' | 'usuarios' | 'roadmap' | 'admin' | 'contas' | 'feriados'
 
 // Check verde da marca, que vem logo depois do nome (docs/marca.md)
 function CheckVerde() {
@@ -183,7 +184,7 @@ function Painel({ email }: { email: string }) {
       { id: 'roadmap' as Aba, label: 'Roadmap', Icone: Rocket },
       { id: 'admin' as Aba, label: 'Checklist Sistema', Icone: Settings },
     ] : []),
-    ...(acesso.plataforma ? [{ id: 'contas' as Aba, label: 'Contas', Icone: Briefcase }] : []),
+    ...(acesso.plataforma ? [{ id: 'contas' as Aba, label: 'Contas', Icone: Briefcase }, { id: 'feriados' as Aba, label: 'Feriados', Icone: CalendarDays }] : []),
   ]
 
   return (
@@ -260,6 +261,7 @@ function Painel({ email }: { email: string }) {
         {aba === 'usuarios' && papel === 'admin' && <UsuariosPage />}
         {aba === 'roadmap' && papel === 'admin' && <RoadmapPage podeEditar />}
         {aba === 'contas' && acesso.plataforma && <ContasPage />}
+        {aba === 'feriados' && acesso.plataforma && <FeriadosPage />}
         {aba === 'admin' && papel === 'admin' && <AdminPage />}
       </main>
     </div>
