@@ -356,3 +356,5 @@ avaliação.
 | 27/10 | Multiempresa F6 (migration 129, versão 20261102180000): CPF e CNPJ únicos por conta; login do ponto escolhe o cadastro pelo código | Banco vazio: regressão T1 a T69, `plpgsql_check` zero | Homologação: a aplicar no merge |
 | 29/10 | F6 conferida pelo Claude na homologação (conta Teste, transação desfeita): mesmo CPF e CNPJ em outra conta, recusa na mesma conta, isolamento entre contas e login do app no cadastro certo | Todos os itens ok | Homologação 29/10 |
 | 29/10 | URA com falas curtas (migration 130, versão 20261103120000), aprovadas pelo responsável | Banco vazio: regressão T1 a T70, `plpgsql_check` zero | Homologação: a aplicar no merge; ligação de verdade só na produção (homologação sem Twilio) |
+| 29/10 | **Produção:** F6 (129) e URA com falas curtas (130), com aprovação do responsável; ligação de teste ouvida pelo responsável | `plpgsql_check` zero na produção | Produção 29/10 |
+| 29/10 | Multiempresa F4a (migration 131, versão 20261103180000): feriado por estado e município, sede da conta e UF do local | Banco vazio: regressão T1 a T71, `plpgsql_check` zero | Homologação: a aplicar no merge; F4b (painel) a seguir |

@@ -254,6 +254,18 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 131 (29/10, versão 20261103180000): feriado por estado e município, multiempresa F4a
+
+`feriados` ganha `id`, `uf` e `municipio`: o nacional vale para todos; o estadual, só na UF; o municipal, só no município
+(comparação sem acento e caixa, `fn_norm_lugar`); o ponto facultativo pode ser nacional ou local. Os estaduais da carga
+atual ficam na BA e os municipais em Salvador. `contas` ganha a sede (`uf`, `municipio`; conta 1 = Salvador/BA) e
+`locais` ganha `uf`. `fn_feriado(data, uf, município, facultativo)` e os atalhos `fn_feriado_da_conta`,
+`fn_feriado_da_empresa`, `fn_feriado_do_tecnico` e `fn_feriado_da_escala` escolhem o lugar: na programação e na ligação,
+o local com cidade (UF do local ou da sede); senão, a empresa do funcionário; senão, a sede da conta. Passam a usá-los:
+pendências e cobrança de escala (sede da conta), indicadores, espelho e pendências da folha, folga compensatória,
+pedidos parados (empresa) e a ligação da URA (`fn_ligacao_permitida(momento, programação)`; sem programação, só os
+nacionais). `fn_dias_uteis`, sem lugar, conta só os nacionais. Regressão: T71; T10 ajustado.
+
 ### Migration 130 (29/10, versão 20261103120000): falas da URA mais curtas
 
 `fn_voz_twiml` e `fn_voz_resposta`: só o texto falado muda (aprovado pelo responsável em 29/10). Abertura: "Oi, Ana! Aqui é

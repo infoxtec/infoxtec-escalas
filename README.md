@@ -247,4 +247,5 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Painel da homologação também no Cloudflare (etapa 17, fase 1, 22/10); produção segue na Vercel
 - [ ] Backlog de 60 dias (ver [docs/backlog.md](docs/backlog.md))
 - [x] Multiempresa F1 a F3 (contas de cliente, usuário por conta, seletor de conta, tela Contas), convite por e-mail e espelho do ponto 65 vezes mais rápido: produção em 27/10 (migrations 117 a 128)
-- [ ] Multiempresa F6: CPF e CNPJ únicos por conta (migration 129, homologação)
+- [x] Multiempresa F6 (CPF e CNPJ por conta) e URA com falas curtas: produção em 29/10 (migrations 129 e 130)
+- [ ] Multiempresa F4: feriado por estado e município (migration 131, homologação)
