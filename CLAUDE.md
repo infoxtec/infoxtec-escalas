@@ -63,8 +63,8 @@ cd web && npm ci && npm run build   # checagem de tipos + build; precisa passar 
 npx supabase migration new 39_descricao   # nova migration (numeração segue a última)
 ```
 
-**Numeração de migration (revisão de 25/10):** as versões 116 a 131 estão à frente da data real (a 131 é
-`20261103180000`). Enquanto a data real não passar da última versão do diretório, a migration nova leva a versão à
+**Numeração de migration (revisão de 25/10):** as versões 116 a 132 estão à frente da data real (a 132 é
+`20261104120000`). Enquanto a data real não passar da última versão do diretório, a migration nova leva a versão à
 mão, sempre maior que a última. Nunca usar o `migration new` se ele gerar versão menor que a última.
 
 O CI (`.github/workflows/ci.yml`) roda em todo pull request: build do painel, `deno check` das
