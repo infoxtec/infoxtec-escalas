@@ -3401,7 +3401,9 @@ do $$
 declare
   v_b uuid := (select v::uuid from qa where k = 'conta_b');
   v_tec_a uuid := (select v::uuid from qa where k = 'tec1');
-  v_tec uuid; v_loc uuid; v_esc uuid; v_ok boolean; v_msg text; v_dia date := current_date + 3;
+  v_tec uuid; v_loc uuid; v_esc uuid; v_ok boolean; v_msg text;
+  -- quarta-feira da semana que vem: dia útil sempre (com "hoje + 3" o teste falhava quando caía no domingo)
+  v_dia date := current_date + ((3 - extract(dow from current_date)::int + 7) % 7) + 7;
 begin
   perform set_config('request.headers', '{}', true);
   perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
@@ -3875,7 +3877,32 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T69' as resultado,
+-- T70 URA: falas curtas aprovadas em 29/10, com o primeiro nome (migration 130) --------------------------------------
+do $$
+declare
+  v_tec uuid := (select v::uuid from qa where k = 'tec2');
+  v_loc uuid := (select v::uuid from qa where k = 'loc');
+  v_esc uuid; v_lig uuid; x text; v_nome text;
+begin
+  select split_part(nome, ' ', 1) into v_nome from tecnicos where id = v_tec;
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, current_date + 3, time '08:00', 'QA T70', 'notificada', 'qa') returning id into v_esc;
+  insert into ligacoes (escala_id, tecnico_id, telefone, status) values (v_esc, v_tec, '5579999997070', 'discando') returning id into v_lig;
+  insert into qa values ('t70_cfg', coalesce(fn_config('voz_url'), ''));
+  x := fn_voz_twiml(v_lig);
+  perform pg_temp.ok(x is null or (x like '%Oi, ' || v_nome || '! Aqui é da Infoxtec. Sua programação é %, às 8 horas, em %'
+                                   and x like '%Para confirmar, digite 1. Se não puder ir, digite 2.%'
+                                   and x not like '%feira%'), '[T70] abertura: ' || coalesce(left(x, 300), 'nula (sem voz_url no teste)'));
+  -- não digitou: fala nova, e nada de "amanhã" fixo nas falas de resposta
+  x := fn_voz_resposta(v_lig, '');
+  perform pg_temp.ok(x like '%Não recebi sua resposta. O supervisor vai falar com você. Até mais!%', '[T70] sem resposta: ' || x);
+  x := fn_voz_resposta(v_lig, '1');
+  perform pg_temp.ok(x like '%Confirmado, ' || v_nome || '! Obrigado e bom trabalho.%' and x not like '%amanhã%', '[T70] confirmou: ' || x);
+  x := fn_voz_resposta(v_lig, '2');
+  perform pg_temp.ok(x like '%Essa programação já estava respondida. Obrigado, ' || v_nome || '!%', '[T70] já respondida: ' || x);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T70' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

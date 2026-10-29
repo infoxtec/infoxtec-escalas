@@ -254,6 +254,13 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 130 (29/10, versão 20261103120000): falas da URA mais curtas
+
+`fn_voz_twiml` e `fn_voz_resposta`: só o texto falado muda (aprovado pelo responsável em 29/10). Abertura: "Oi, Ana! Aqui é
+da Infoxtec. Sua programação é amanhã, quinta, às 8 horas, em Obra Torre A. Para confirmar, digite 1. Se não puder ir,
+digite 2." (cerca de 10 s, antes 22 s). Respostas sem o "bom trabalho amanhã" fixo. Regras, WhatsApp e avisos ao
+supervisor iguais. Regressão: T70. O T59 passa a usar uma quarta-feira (falhava quando "hoje + 3" caía no domingo).
+
 ### Migration 129 (27/10, versão 20261102180000): CPF e CNPJ únicos por conta, multiempresa F6
 
 `tecnicos`: o CPF passa a ser único por conta (`tecnicos_conta_cpf_uk`), com índice simples em `cpf` para o login.
