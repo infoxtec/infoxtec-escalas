@@ -257,7 +257,7 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
 ### Migration 131 (29/10, versão 20261103180000): feriado por estado e município, multiempresa F4a
 
 `feriados` ganha `id`, `uf` e `municipio`: o nacional vale para todos; o estadual, só na UF; o municipal, só no município
-(comparação sem acento e caixa, `fn_norm_lugar`); o ponto facultativo pode ser nacional ou local. Os estaduais da carga
+(comparação sem acento e caixa, `fn_norm_lugar`); local sem UF usa o lugar do funcionário; o ponto facultativo pode ser nacional ou local. Os estaduais da carga
 atual ficam na BA e os municipais em Salvador. `contas` ganha a sede (`uf`, `municipio`; conta 1 = Salvador/BA) e
 `locais` ganha `uf`. `fn_feriado(data, uf, município, facultativo)` e os atalhos `fn_feriado_da_conta`,
 `fn_feriado_da_empresa`, `fn_feriado_do_tecnico` e `fn_feriado_da_escala` escolhem o lugar: na programação e na ligação,

@@ -5,7 +5,7 @@
 -- fn_dias_uteis (prazo dos pedidos, sem lugar) passa a contar só os feriados nacionais.
 
 set lock_timeout = '5s';
-set search_path to interno, public, extensions;   -- a view recriada cita funções sem o esquema
+set local search_path to interno, public, extensions;   -- só nesta migration: a view recriada cita funções sem o esquema
 
 -- 1. Lugares: sede da conta e UF do local
 alter table interno.contas add column uf char(2) check (uf ~ '^[A-Z]{2}$'), add column municipio text;
@@ -79,15 +79,16 @@ as $function$
     from interno.tecnicos t where t.id = p_tecnico
 $function$;
 
--- programação: o local (com cidade; UF do local ou da sede) ou, sem cidade, o funcionário
+-- programação: o local (com cidade e UF) ou, sem eles, o funcionário
 create or replace function interno.fn_feriado_da_escala(p_data date, p_escala uuid, p_facultativo boolean default true)
  returns text language sql stable
  set search_path to 'interno', 'public', 'extensions', 'pg_temp'
 as $function$
-  select case when nullif(btrim(l.cidade), '') is not null
-              then interno.fn_feriado(p_data, coalesce(l.uf, c.uf), l.cidade, p_facultativo)
+  -- local sem UF não herda a UF da sede (um local em São Paulo de conta baiana teria os feriados da Bahia): cai no funcionário
+  select case when nullif(btrim(l.cidade), '') is not null and l.uf is not null
+              then interno.fn_feriado(p_data, l.uf, l.cidade, p_facultativo)
               else interno.fn_feriado_do_tecnico(p_data, e.tecnico_id, p_facultativo) end
-    from interno.escalas e join interno.contas c on c.id = e.conta_id left join interno.locais l on l.id = e.local_id
+    from interno.escalas e left join interno.locais l on l.id = e.local_id
    where e.id = p_escala
 $function$;
 
@@ -858,6 +859,8 @@ create or replace view interno.vw_ligacoes_pendentes as  WITH agora AS (
            FROM ligacoes l
           WHERE l.escala_id = e.id AND ((l.status = ANY (ARRAY['criada'::text, 'discando'::text])) OR l.criada_em > (now() - make_interval(mins => fn_config_int('ligacao_intervalo_min'::text)))))) AND COALESCE(fn_ligacao_permitida(now(), e.id), false) AND fn_ponto_afastado_ate(t.id, e.data_servico) IS NULL;
 
+
+revoke all on interno.vw_ligacoes_pendentes from public, anon, authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION interno.fn_preparar_ligacao(p_escala uuid)
  RETURNS jsonb

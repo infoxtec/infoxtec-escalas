@@ -3924,6 +3924,15 @@ begin
                      '[T71] sede da conta');
   -- funcionário: o lugar da empresa dele
   perform pg_temp.ok(fn_feriado_do_tecnico(date '2026-06-24', v_tec) is not null, '[T71] funcionário de empresa em Salvador');
+  -- funcionário de empresa em outra cidade: o São João de Salvador não vale (com a regra antiga, valia)
+  declare v_emp_sp uuid; v_tec_sp uuid;
+  begin
+    insert into empresas (cnpj, razao_social, cidade, uf, empregadora) values ('71717171000184', 'QA Empresa Campinas', 'Campinas', 'SP', true)
+    returning id into v_emp_sp;
+    insert into tecnicos (nome, telefone_e164, empresa_id) values ('QA Técnico Campinas', '5519900007101', v_emp_sp) returning id into v_tec_sp;
+    perform pg_temp.ok(fn_feriado_do_tecnico(date '2026-06-24', v_tec_sp) is null and fn_feriado_do_tecnico(date '2026-12-25', v_tec_sp) is not null,
+                       '[T71] funcionário de Campinas sem o São João de Salvador');
+  end;
   -- programação: o local com cidade manda; local em São Paulo não tem o São João de Salvador
   insert into locais (nome, ativo, cidade, uf) values ('QA Local SP', true, 'São Paulo', 'SP') returning id into v_loc;
   insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
