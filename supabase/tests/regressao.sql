@@ -532,7 +532,8 @@ begin
     ('12/10', '2026-10-12 10:00 America/Bahia', false),
     ('Carnaval', '2027-02-09 10:00 America/Bahia', false),
     ('Sexta-feira Santa', '2027-03-26 10:00 America/Bahia', false),
-    ('2 de Julho', '2026-07-02 10:00 America/Bahia', false)) c(caso, m, esperado)
+    -- feriado estadual só vale com o lugar da programação (131); sem programação, só os nacionais
+    ('2 de Julho sem lugar', '2026-07-02 10:00 America/Bahia', true)) c(caso, m, esperado)
    where fn_ligacao_permitida(m::timestamptz) is distinct from esperado;
   perform pg_temp.ok(v is null, '[T10] regra de ligação errada em: ' || coalesce(v, ''));
 end $$;
@@ -3902,7 +3903,51 @@ begin
   perform pg_temp.ok(x like '%Essa programação já estava respondida. Obrigado, ' || v_nome || '!%', '[T70] já respondida: ' || x);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T70' as resultado,
+-- T71 multiempresa F4: feriado por estado e município (migration 131) ---------------------------------------------------
+do $$
+declare
+  v_a uuid := '00000000-0000-0000-0000-000000000001';
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_tec uuid := (select v::uuid from qa where k = 'tec2');
+  v_loc uuid; v_esc uuid; v_ok boolean;
+begin
+  -- nacional vale em qualquer lugar; estadual só na UF; municipal só no município (sem acento e caixa)
+  perform pg_temp.ok(fn_feriado(date '2026-12-25', 'SP', 'Campinas') is not null, '[T71] Natal em Campinas');
+  perform pg_temp.ok(fn_feriado(date '2026-07-02', 'BA', 'Feira de Santana') is not null, '[T71] 2 de Julho na Bahia');
+  perform pg_temp.ok(fn_feriado(date '2026-07-02', 'SP', 'Campinas') is null, '[T71] 2 de Julho fora da Bahia');
+  perform pg_temp.ok(fn_feriado(date '2026-06-24', 'BA', 'SALVADOR ') is not null, '[T71] São João em Salvador');
+  perform pg_temp.ok(fn_feriado(date '2026-06-24', 'BA', 'Feira de Santana') is null, '[T71] São João de Salvador fora de Salvador');
+  perform pg_temp.ok(fn_feriado(date '2026-02-16', 'SP', 'Campinas') is not null and fn_feriado(date '2026-02-16', 'SP', 'Campinas', false) is null,
+                     '[T71] ponto facultativo só quando pedido');
+  -- sede da conta: a conta 1 é Salvador; a conta B, sem sede, só tem os nacionais
+  perform pg_temp.ok(fn_feriado_da_conta(date '2026-06-24', v_a) is not null and fn_feriado_da_conta(date '2026-06-24', v_b) is null,
+                     '[T71] sede da conta');
+  -- funcionário: o lugar da empresa dele
+  perform pg_temp.ok(fn_feriado_do_tecnico(date '2026-06-24', v_tec) is not null, '[T71] funcionário de empresa em Salvador');
+  -- funcionário de empresa em outra cidade: o São João de Salvador não vale (com a regra antiga, valia)
+  declare v_emp_sp uuid; v_tec_sp uuid;
+  begin
+    insert into empresas (cnpj, razao_social, cidade, uf, empregadora) values ('71717171000184', 'QA Empresa Campinas', 'Campinas', 'SP', true)
+    returning id into v_emp_sp;
+    insert into tecnicos (nome, telefone_e164, empresa_id) values ('QA Técnico Campinas', '5519900007101', v_emp_sp) returning id into v_tec_sp;
+    perform pg_temp.ok(fn_feriado_do_tecnico(date '2026-06-24', v_tec_sp) is null and fn_feriado_do_tecnico(date '2026-12-25', v_tec_sp) is not null,
+                       '[T71] funcionário de Campinas sem o São João de Salvador');
+  end;
+  -- programação: o local com cidade manda; local em São Paulo não tem o São João de Salvador
+  insert into locais (nome, ativo, cidade, uf) values ('QA Local SP', true, 'São Paulo', 'SP') returning id into v_loc;
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, date '2026-06-24', time '09:00', 'QA T71', 'rascunho', 'qa') returning id into v_esc;
+  perform pg_temp.ok(fn_feriado_da_escala(date '2026-06-24', v_esc) is null and fn_feriado_da_escala(date '2026-12-25', v_esc) is not null,
+                     '[T71] programação em São Paulo');
+  perform pg_temp.ok(fn_ligacao_permitida(timestamptz '2026-06-24 10:00 America/Bahia', v_esc), '[T71] ligação liberada no São João fora de Salvador');
+  -- cadastro: municipal precisa de UF e município
+  v_ok := false;
+  begin insert into feriados (data, nome, abrangencia) values (date '2026-08-15', 'QA municipal sem lugar', 'municipal');
+  exception when check_violation then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T71] feriado municipal sem lugar');
+end $$;
+
+select 'REGRESSÃO OK: T1 a T71' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
