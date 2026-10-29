@@ -3,7 +3,8 @@
 
 set lock_timeout = '5s';
 
--- locais já cadastrados na cidade da sede da conta recebem a UF dela (os outros caem no funcionário, 131)
+-- locais já cadastrados na cidade da sede da conta recebem a UF dela (os outros caem no funcionário, 131); local novo
+-- sem UF herda a da sede só se a cidade for a da sede (ou vier em branco)
 update interno.locais l set uf = c.uf
   from interno.contas c
  where c.id = l.conta_id and l.uf is null and c.uf is not null
@@ -41,7 +42,10 @@ begin
                         latitude, longitude, raio_m, cliente_empresa_id, conta_id)
     values (trim(p->>'nome'), nullif(trim(p->>'cliente'), ''), nullif(trim(p->>'endereco'), ''),
             coalesce(nullif(trim(p->>'cidade'), ''), (select municipio from contas where id = v_conta)),
-            coalesce(upper(nullif(trim(p->>'uf'), '')), (select uf from contas where id = v_conta)), nullif(trim(p->>'referencia'), ''),
+            coalesce(upper(nullif(trim(p->>'uf'), '')),
+                     (select c.uf from contas c where c.id = v_conta
+                         and (nullif(trim(p->>'cidade'), '') is null or fn_norm_lugar(p->>'cidade') = fn_norm_lugar(c.municipio)))),
+            nullif(trim(p->>'referencia'), ''),
             nullif(trim(p->>'link_maps'), ''), nullif(trim(p->>'contato_local'), ''),
             nullif(trim(p->>'telefone_contato'), ''), coalesce((p->>'ativo')::boolean, true),
             v_lat, v_lng, coalesce(nullif(p->>'raio_m', '')::int, 200), v_cli, v_conta)
@@ -107,6 +111,9 @@ begin
   if nullif(btrim(p_municipio), '') is not null and nullif(btrim(p_uf), '') is null then
     raise exception 'Informe a UF da sede junto com o município.';
   end if;
+  if length(btrim(p_municipio)) > 120 then
+    raise exception 'Município com no máximo 120 caracteres.';
+  end if;
   if v_nome is null or length(v_nome) not between 2 and 120 then
     raise exception 'Informe o nome da conta (2 a 120 caracteres).';
   end if;
@@ -146,16 +153,24 @@ AS $function$
 declare
   v_ator text := interno.fn_exigir_plataforma();
   v_nome text := btrim(p_nome);
+  v_uf   text;
+  v_mun  text;
   c      interno.contas;
 begin
-  if nullif(btrim(p_uf), '') is not null and upper(btrim(p_uf)) !~ '^[A-Z]{2}$' then
-    raise exception 'UF inválida: use a sigla com duas letras (ex.: BA).';
-  end if;
-  if nullif(btrim(p_municipio), '') is not null and nullif(btrim(p_uf), '') is null then
-    raise exception 'Informe a UF da sede junto com o município.';
-  end if;
   select * into c from interno.contas where id = p_id for update;
   if not found then raise exception 'Conta não encontrada.'; end if;
+  -- parâmetro nulo (painel anterior à 3.52.0) mantém a sede; texto vazio limpa
+  v_uf  := case when p_uf is null then c.uf else upper(nullif(btrim(p_uf), '')) end;
+  v_mun := case when p_municipio is null then c.municipio else nullif(btrim(p_municipio), '') end;
+  if v_uf is not null and v_uf !~ '^[A-Z]{2}$' then
+    raise exception 'UF inválida: use a sigla com duas letras (ex.: BA).';
+  end if;
+  if v_mun is not null and v_uf is null then
+    raise exception 'Informe a UF da sede junto com o município.';
+  end if;
+  if length(v_mun) > 120 then
+    raise exception 'Município com no máximo 120 caracteres.';
+  end if;
   if v_nome is null or length(v_nome) not between 2 and 120 then
     raise exception 'Informe o nome da conta (2 a 120 caracteres).';
   end if;
@@ -172,7 +187,7 @@ begin
 
   begin
     update interno.contas set nome = v_nome, ativa = coalesce(p_ativa, ativa),
-           uf = upper(nullif(btrim(p_uf), '')), municipio = nullif(btrim(p_municipio), '') where id = p_id;
+           uf = v_uf, municipio = v_mun where id = p_id;
   exception when unique_violation then
     raise exception 'Já existe uma conta com este nome.';
   end;
@@ -185,8 +200,8 @@ begin
   values (v_ator, 'alterar_conta', p_id, jsonb_build_object(
     'nome', case when c.nome <> v_nome then jsonb_build_array(c.nome, v_nome) end,
     'ativa', case when c.ativa <> coalesce(p_ativa, c.ativa) then p_ativa end,
-    'sede', case when c.uf is distinct from upper(nullif(btrim(p_uf), '')) or c.municipio is distinct from nullif(btrim(p_municipio), '')
-                 then jsonb_build_array(c.uf, c.municipio, upper(nullif(btrim(p_uf), '')), nullif(btrim(p_municipio), '')) end,
+    'sede', case when c.uf is distinct from v_uf or c.municipio is distinct from v_mun
+                 then jsonb_build_array(c.uf, c.municipio, v_uf, v_mun) end,
     'modulos', p_modulos));
 end $function$
 ;
@@ -201,7 +216,7 @@ begin
   perform interno.fn_exigir_plataforma();
   return coalesce((select jsonb_agg(jsonb_build_object('id', f.id, 'data', f.data, 'nome', f.nome, 'abrangencia', f.abrangencia,
                                                        'uf', f.uf, 'municipio', f.municipio) order by f.data, f.uf nulls first, f.municipio nulls first)
-                     from interno.feriados f where extract(year from f.data) = p_ano), '[]'::jsonb);
+                     from interno.feriados f where f.data >= make_date(p_ano, 1, 1) and f.data < make_date(p_ano + 1, 1, 1)), '[]'::jsonb);
 end $function$;
 
 create or replace function public.app_plataforma_salvar_feriado(p jsonb)
@@ -218,6 +233,9 @@ begin
   if nullif(p->>'data', '') is null or length(btrim(coalesce(p->>'nome', ''))) < 3 then
     raise exception 'Informe a data e o nome do feriado.';
   end if;
+  if length(btrim(p->>'nome')) > 120 or length(v_mun) > 120 then
+    raise exception 'Nome e município com no máximo 120 caracteres.';
+  end if;
   if v_abr is null or v_abr not in ('estadual', 'municipal', 'facultativo') then
     raise exception 'Escolha: estadual, municipal ou facultativo (o nacional vem da carga da plataforma).';
   end if;
@@ -225,6 +243,9 @@ begin
     raise exception 'UF inválida: use a sigla com duas letras (ex.: BA).';
   end if;
   if v_abr = 'estadual' then v_mun := null; end if;
+  if v_mun is not null and v_uf is null then
+    raise exception 'Informe a UF junto com o município.';
+  end if;
   begin
     if v_id is null then
       insert into interno.feriados (data, nome, abrangencia, uf, municipio)

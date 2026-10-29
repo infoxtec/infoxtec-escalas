@@ -3960,6 +3960,8 @@ begin
   perform pg_temp.ok((select cidade = 'Salvador' and uf = 'BA' from locais where id = v_loc), '[T72] local com o lugar da sede');
   v_loc := app_salvar_local(jsonb_build_object('nome', 'QA Local T72 SP', 'cidade', 'Campinas', 'uf', 'sp'));
   perform pg_temp.ok((select uf = 'SP' from locais where id = v_loc), '[T72] UF informada');
+  v_loc := app_salvar_local(jsonb_build_object('nome', 'QA Local T72 fora', 'cidade', 'São Paulo'));
+  perform pg_temp.ok((select uf is null from locais where id = v_loc), '[T72] cidade fora da sede não herda a UF da sede');
   v_ok := false;
   begin perform app_salvar_local(jsonb_build_object('nome', 'QA UF ruim', 'uf', 'Bahia'));
   exception when others then v_ok := sqlerrm like 'UF inválida%'; end;
@@ -3972,7 +3974,10 @@ begin
                      and exists (select 1 from jsonb_array_elements(app_plataforma_contas()) e where e->>'id' = v_conta::text and e->>'municipio' = 'Olinda'),
                      '[T72] sede alterada e listada');
   v_ok := false;
-  begin perform app_plataforma_salvar_conta(v_conta, 'QA Conta Recife', true, array['ponto'], null, 'Olinda');
+  -- painel anterior (sem UF e município) mantém a sede
+  perform app_plataforma_salvar_conta(v_conta, 'QA Conta Recife', true, array['ponto']);
+  perform pg_temp.ok((select uf = 'PE' and municipio = 'Olinda' from contas where id = v_conta), '[T72] salvar sem sede mantém a sede');
+  begin perform app_plataforma_salvar_conta(v_conta, 'QA Conta Recife', true, array['ponto'], '', 'Olinda');
   exception when others then v_ok := sqlerrm like 'Informe a UF%'; end;
   perform pg_temp.ok(v_ok, '[T72] município sem UF');
   -- feriado municipal de Olinda: vale em Olinda, não em Salvador
