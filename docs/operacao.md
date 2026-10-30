@@ -411,7 +411,7 @@ O resumo do que muda, e o que se esquece:
 | **Webhook** | `fn_evo_post('/webhook/set/…')` **no servidor novo**. Sem isso, a resposta do técnico nunca chega — e o sintoma é silencioso, porque as escalas continuam saindo |
 | `net._http_response` | apagar a resposta do `/webhook/set/`, que guarda o token |
 
-**Operação do servidor** (no servidor, em `~/infoxtec-escalas/infra/evolution`): `docker compose ps`,
+**Operação do servidor** (no servidor, em `~/evolution`; o repositório guarda a cópia em `infra/evolution`): `docker compose ps`,
 `docker compose logs --tail 100 evolution`, troca da chave-mestra, troca da imagem e
 `apt upgrade` uma vez por mês — a tabela está em `evolution-propria.md`.
 

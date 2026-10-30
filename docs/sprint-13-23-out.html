@@ -95,7 +95,7 @@ ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
 
 <div class="wrap">
   <header>
-    <span class="eyebrow">Infoxtec Escalas · Trilha · proposta para aprovação</span>
+    <span class="eyebrow">Infoxtec Escalas · Trilha · sprint encerrada em 23/10 · atualizada em 30/10</span>
     <h1>Sprint de 13 a 23 de outubro</h1>
     <div class="objetivo">
       <p><strong>Objetivo:</strong> fechar o endurecimento da decisão 51 (permissões, backup, webhook) e completar a jornada do ponto (084, entrega 2), com <strong>no máximo uma mudança de risco por dia na produção</strong>.</p>
@@ -113,6 +113,7 @@ ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
     <p><strong>Desta sprint (13 a 23/10):</strong> fechada na T16. Twilio: decisão 109 (24/10), a assinatura segue em observação. Monitor externo (10c): o alerta por e-mail quando o WhatsApp cai está na homologação (migration 135) e o healthchecks.io passa a ser ligado pelo painel (migration 136, a configurar). Ficam para uma próxima sprint: teste do alfinete arrastado no mapa (Android e iPhone), DEV-04 (substituir técnico depois de a escala começar) e etapa 19 (pré-visualização com aviso de LGPD).</p>
     <p><strong>Da sprint 26/10 a 06/11:</strong> 1) Twilio, feito (decisão 109); 2) marca animada, feito (25/10); 3) etapa 17, fase 2: homologação no Cloudflare desde 24/10, produção a partir de 06/11 (decisão 116); 4) primeiro fechamento real de outubro, acompanhado, confirmado pelo responsável para 31/10 a 05/11; 5) multiempresa: estimativa superada, F1 a F6 prontos (F4 na homologação); 6) REP-P: consulta v4 enviada em 25/10, aguardando o parecer do Gabriel; e-CNPJ comprado (informado em 30/10).</p>
     <p><strong>Na homologação, testado, para a produção depois de 06/11:</strong> migrations 131 a 135 (feriado por lugar, cadastro com CNPJ e CEP, exclusão de usuário, alerta da Evolution) e as Edge Functions <code>consulta-cadastro</code>, <code>excluir-usuario</code>, <code>alerta-email</code> e <code>espelho-pdf</code>. Queda da Evolution de 29/10: causa encontrada (troca do celular), procedimento em <code>operacao.md</code>.</p>
+    <p><strong>Próximos pacotes propostos (ordem):</strong> 1) produção de 06/11: migrations 131 a 136, Edge Functions e o painel da produção no Cloudflare (etapa 17); 2) acompanhamento do fechamento de outubro (31/10 a 05/11, sem mudança na produção); 3) multiempresa F5, canal e motor por conta (WhatsApp por cliente, webhook por instância, fila justa), 1 a 2 semanas; 4) multiempresa F8, entrada e saída do cliente (exportação e exclusão com a guarda de 5 anos), 1 a 1,5 semana — com a F5, libera o 2º cliente; 5) assinatura ICP-Brasil com o e-CNPJ: espelho em PAdES e AFD em CAdES, mais os tipos 2, 5 e 6 e o AEJ (depende do parecer do Gabriel em parte); 6) pequenos: DEV-04, etapa 19, teste do alfinete no mapa, T48 e T49 independentes do horário. A F7 (cotas e custo por conta) entra antes do 3º cliente.</p>
     <h2 style="margin:0">Revisão em 22/10 (T16)</h2>
     <p><strong>Entrou:</strong> decisão 100 inteira e as decisões 104 a 107 — migrations 104 a 112 na produção (espelho com o art. 84 em PDF assinado, comprovante de cada marcação, limite de 8 pedidos, HE depois da meia-noite, mês fecha em 10 dias, aviso só ao supervisor da mesma empresa); decisões E, F e G (101 a 103: repositório fechado, persona <code>engenheiro-saas</code>, consulta REP-P v3); revisão SaaS com o time (17/10); etapa 17, fase 1: painel da homologação no Cloudflare (PR #140). <strong>Escorregou:</strong> bloqueio da assinatura da Twilio (decisão do responsável até 27/10). <strong>Medidas do Scrum Master:</strong> 1 e 2 cumpridas em 11/10. <strong>Próxima sprint (26/10 a 06/11), proposta:</strong> 1) Twilio até 27/10; 2) logo animada nos painéis (aguarda o arquivo); 3) etapa 17, fase 2 — login do Supabase e leitura de documento no Cloudflare da homologação, depois a produção, fora de 31/10 a 05/11 (fechamento do mês); 4) primeiro fechamento real de outubro com as regras novas, acompanhado; 5) modelo multiempresa (<code>contas</code>) com estimativa até 30/11 (decisão 76); 6) REP-P: consulta v3 ao jurídico e compra do e-CNPJ.</p>
     <h2 style="margin:0">Situação em 16/10, tarde</h2>
@@ -136,7 +137,7 @@ ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
     <h3 style="margin:.8em 0 0">Situação em 11/10, fim do dia</h3>
     <p><strong>Antecipado em 11/10, fora do escopo original da sprint:</strong> a 084 entrega 3 inteira na produção — justificativa de ponto pelo funcionário (WhatsApp "ajuste" e app), cofre criptografado de atestados, validade do atestado (sem ponto e sem escala no afastamento), documento pelo WhatsApp, timbre com QR e registro sequencial, cofre contra print, reincidência, pedido parado e métrica, e alta antecipada registrada pelo gestor (migrations 66 a 74, painel 3.21.0, decisões 55 a 64; CI T1 a T20). <strong>Medidas do Scrum Master aprovadas pelo responsável e cumpridas:</strong> chave do cofre guardada fora do Supabase e conferida pela impressão digital; documento de 4,1 MB enviado e guardado no cofre; nada publicado em 14 e 16/10 além da T09 e da T12. <strong>Faltam:</strong> T09 (14/10, 21h), T14 (15/10; log sem token pela URL desde 10/10, 14h49), T12 (16/10), T15 (20/10), decisões E, F e G (21/10), T16 (22/10) e fechamento (23/10).</p>
     <h3 style="margin:.8em 0 0">Situação em 10/10, fim do dia</h3>
-    <div class="barra" role="img" aria-label="13 de 18 tarefas concluídas, mais o P1"><i style="width:72%"></i></div>
+    
     <p><strong>13 de 18 tarefas concluídas, mais o P1 (paralelo).</strong> <strong>T18:</strong> URA automática ligada na produção (voz-escala versão 72; primeira ligação possível na terça, 13/10, 08:00). <strong>P1:</strong> fuso do motor e habilidades na regressão (T12 e T13, CI verde). <strong>T11 e T13 adiantadas nove dias:</strong> ajustes de ponto com justificativa (migration 65, painel 3.14.0) na produção em 10/10, com CI verde (regressão T1 a T11), revisão do <span class="mono">seguranca</span> sem P1 e os dez achados corrigidos no mesmo PR — a 084 está completa. Na produção também: webhook com token no cabeçalho, migration 63 (nenhum papel da API alcança tabela; conferido: 0 acessos) e migration 64 (URA só em dia útil, das 08:00 às 20:00, fora de feriado). Decidido pelo responsável: <strong>sem bloqueio da Twilio</strong> e <strong>URA automática ativa</strong> (decisão 54).</p>
     <div class="feitos">
       <span class="tag ok">T01 teste da 62</span><span class="tag ok">T02 1º backup com âncora</span><span class="tag ok">T03 decisões A, B e C</span>
@@ -203,17 +204,17 @@ ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
         <div class="cel"></div>
         <div class="cel"><a class="t d feito" href="#T03"><b>T03</b>Decisões A, B e C</a></div>
         <div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div>
-        <div class="cel"><a class="t c" href="#T11"><b>T11</b>Ajustes com justificativa na homologação</a></div>
-        <div class="cel"><a class="t r" href="#T11"><b>T11</b>Teste conjunto dos ajustes<span class="teste">✓ teste</span></a></div>
-        <div class="cel"><a class="t r" href="#T13"><b>T13</b>Ajustes na produção, painel 3.14.0<span class="teste">✓ teste</span></a></div>
+        <div class="cel"><a class="t c feito" href="#T11"><b>T11</b>Ajustes com justificativa na homologação</a></div>
+        <div class="cel"><a class="t r feito" href="#T11"><b>T11</b>Teste conjunto dos ajustes<span class="teste">✓ teste</span></a></div>
+        <div class="cel"><a class="t r feito" href="#T13"><b>T13</b>Ajustes na produção, painel 3.14.0<span class="teste">✓ teste</span></a></div>
         <div class="cel"></div><div class="cel"></div>
 
         <div class="trilha">Qualidade e registro<small>Claude, em paralelo</small></div>
         <div class="cel"></div>
         <div class="cel"><a class="t c feito" href="#T04"><b>T04</b>PR de documentação: backlog, plano e README em dia</a></div>
-        <div class="cel"><a class="t c" href="#P1"><b>P1</b>Testes de fuso do motor e habilidades (até 22/10)</a></div>
+        <div class="cel"><a class="t c feito" href="#P1"><b>P1</b>Testes de fuso do motor e habilidades (até 22/10)</a></div>
         <div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div><div class="cel"></div>
-        <div class="cel"><a class="t d" href="#T16"><b>T16</b>Revisão da sprint e decisão da Twilio</a></div>
+        <div class="cel"><a class="t d feito" href="#T16"><b>T16</b>Revisão da sprint e decisão da Twilio</a></div>
       </div>
     </div>
   </section>
@@ -286,31 +287,31 @@ flowchart LR
       <article class="ficha feito" id="T08"><header><h3><span class="mono">T08</span> Migration 63: service_role sem tabelas</h3><span class="tag c">Claude</span><span class="tag ok">feito 10/10, homologação</span></header>
         <dl><dt>Quando</dt><dd>Sex 16/10</dd><dt>O quê</dt><dd>Revogar do <span class="mono">service_role</span> tabelas e sequências do <span class="mono">public</span>, com default privileges. O <span class="mono">infra-bd</span> confirma antes que nada usa a chave.</dd><dt>Depende</dt><dd>T01</dd><dt>Pronto</dt><dd>Homologação com zero privilégios; suíte de regressão verde; teste do painel e do app.</dd></dl></article>
 
-      <article class="ficha" id="T09"><header><h3><span class="mono">T09</span> Trocar o token do webhook</h3><span class="tag r">Responsável</span></header>
+      <article class="ficha feito" id="T09"><header><h3><span class="mono">T09</span> Trocar o token do webhook</h3><span class="tag r">Responsável</span><span class="tag ok">feito 15/10: troca automática (migration 103)</span></header>
         <dl><dt>Quando</dt><dd>Qua 14/10, 21h às 21h30 (antecipada)</dd><dt>O quê</dt><dd>Token novo no Vault e no <span class="mono">/webhook/set</span>, em 5 minutos. O comando de volta ao token antigo fica pronto.</dd><dt>Depende</dt><dd>T07 sem 401 inesperado</dd><dt>Pronto</dt><dd>Escala de teste enviada e confirmada.</dd></dl></article>
 
       <article class="ficha feito" id="T10"><header><h3><span class="mono">T10</span> Migration 63 na produção</h3><span class="tag r">Responsável</span><span class="tag ok">feito 10/10</span></header>
         <dl><dt>Quando</dt><dd>Seg 19/10</dd><dt>O quê</dt><dd><span class="mono">aplicar-producao.sh</span> com a consulta de conferência antes e depois.</dd><dt>Depende</dt><dd>T08</dd><dt>Pronto</dt><dd><span class="mono">service_role</span> com zero privilégios; app, WhatsApp e painel ok.</dd></dl></article>
 
-      <article class="ficha" id="T11"><header><h3><span class="mono">T11</span> Ajustes de ponto com justificativa</h3><span class="tag c">Claude</span></header>
+      <article class="ficha feito" id="T11"><header><h3><span class="mono">T11</span> Ajustes de ponto com justificativa</h3><span class="tag c">Claude</span><span class="tag ok">feito 10/10 (antecipada)</span></header>
         <dl><dt>Quando</dt><dd>Seg 19/10 na homologação; teste conjunto ter 20/10</dd><dt>O quê</dt><dd>O gestor lança o ajuste com motivo; o espelho recalcula; a marcação original não muda; ajuste sem motivo é recusado.</dd><dt>Depende</dt><dd>T03</dd><dt>Pronto</dt><dd>Migration, painel 3.14.0, revisão do <span class="mono">seguranca</span> (quem vê, guarda de 5 anos), suíte de regressão com o caso novo.</dd></dl></article>
 
-      <article class="ficha" id="T12"><header><h3><span class="mono">T12</span> Desativar a chave service_role antiga</h3><span class="tag r">Responsável</span></header>
+      <article class="ficha feito" id="T12"><header><h3><span class="mono">T12</span> Desativar a chave service_role antiga</h3><span class="tag r">Responsável</span><span class="tag ok">feito 16/10</span></header>
         <dl><dt>Quando</dt><dd>Ter 20/10</dd><dt>O quê</dt><dd>No painel do Supabase, depois de 24 h da 63 estável.</dd><dt>Depende</dt><dd>T10 e a decisão D</dd><dt>Pronto</dt><dd>Checklist Sistema, backup e motor verdes no dia seguinte.</dd></dl></article>
 
-      <article class="ficha" id="T13"><header><h3><span class="mono">T13</span> Ajustes na produção</h3><span class="tag r">Responsável</span></header>
+      <article class="ficha feito" id="T13"><header><h3><span class="mono">T13</span> Ajustes na produção</h3><span class="tag r">Responsável</span><span class="tag ok">feito 10/10 (antecipada)</span></header>
         <dl><dt>Quando</dt><dd>Qua 21/10</dd><dt>O quê</dt><dd>Merge, painel publicado, migration aplicada e o mesmo teste da homologação.</dd><dt>Depende</dt><dd>T11 aprovado</dd><dt>Pronto</dt><dd>084 entrega 2 com <span class="mono">[x]</span>; Kanban movido.</dd></dl></article>
 
-      <article class="ficha" id="T14"><header><h3><span class="mono">T14</span> PR: tirar o token da URL</h3><span class="tag c">Claude</span></header>
+      <article class="ficha feito" id="T14"><header><h3><span class="mono">T14</span> PR: tirar o token da URL</h3><span class="tag c">Claude</span><span class="tag ok">feito 15/10: substituída pela 103</span></header>
         <dl><dt>Quando</dt><dd>Qua 21/10</dd><dt>O quê</dt><dd>A Edge Function só aceita o cabeçalho.</dd><dt>Depende</dt><dd>T09 e 3 a 7 dias de log limpo</dd><dt>Pronto</dt><dd>Revisão do <span class="mono">seguranca</span>, CI verde.</dd></dl></article>
 
-      <article class="ficha" id="T15"><header><h3><span class="mono">T15</span> Publicar sem o token na URL</h3><span class="tag r">Responsável</span></header>
+      <article class="ficha feito" id="T15"><header><h3><span class="mono">T15</span> Publicar sem o token na URL</h3><span class="tag r">Responsável</span><span class="tag ok">feito 15/10: substituída pela 103</span></header>
         <dl><dt>Quando</dt><dd>Qui 22/10</dd><dt>O quê</dt><dd>Publicar a Edge Function e testar ponto e escala.</dd><dt>Depende</dt><dd>T14</dd><dt>Pronto</dt><dd>Etapa 15a com <span class="mono">[x]</span>: decisão 51 fechada.</dd></dl></article>
 
-      <article class="ficha" id="P1"><header><h3><span class="mono">P1</span> Testes de fuso e habilidades</h3><span class="tag c">Claude</span></header>
+      <article class="ficha feito" id="P1"><header><h3><span class="mono">P1</span> Testes de fuso e habilidades</h3><span class="tag c">Claude</span><span class="tag ok">feito 10/10</span></header>
         <dl><dt>Quando</dt><dd>Em paralelo, até 22/10</dd><dt>O quê</dt><dd>Casos novos na suíte de regressão: fuso do motor (Bahia × UTC) e habilidades exigidas na escala.</dd><dt>Depende</dt><dd>—</dd><dt>Pronto</dt><dd>CI verde; do responsável, só o merge. Fecha a etapa 15.</dd></dl></article>
 
-      <article class="ficha" id="T16"><header><h3><span class="mono">T16</span> Revisão da sprint</h3><span class="tag d">Decisão</span></header>
+      <article class="ficha feito" id="T16"><header><h3><span class="mono">T16</span> Revisão da sprint</h3><span class="tag d">Decisão</span><span class="tag ok">feito 22/10</span></header>
         <dl><dt>Quando</dt><dd>Qui 22/10</dd><dt>O quê</dt><dd>O que entrou, o que escorregou e a próxima sprint. A decisão da Twilio já foi tomada em 10/10 (decisão 54); aqui se mede o primeiro ciclo da URA automática.</dd><dt>Depende</dt><dd>Tudo acima</dd><dt>Pronto</dt><dd>Plano, backlog e README registrados.</dd></dl></article>
     </div>
   </section>
@@ -322,12 +323,12 @@ flowchart LR
       <thead><tr><th>Decisão</th><th>Pergunta</th><th>Recomendação do time</th><th>Até</th></tr></thead>
       <tbody>
         <tr><td class="mono">A</td><td>O papel leitura vê o espelho de jornada?</td><td>Vê totais e avisos, sem localização</td><td>feito 10/10</td></tr>
-        <tr><td class="mono">B</td><td>O aviso ao gestor leva o nome do funcionário?</td><td>Primeiro nome, nunca o CPF</td><td>Ter 13</td></tr>
-        <tr><td class="mono">C</td><td>Quem lança ajuste de ponto?</td><td>Admin e gestor; o funcionário é avisado pelo WhatsApp</td><td>Ter 13</td></tr>
+        <tr><td class="mono">B</td><td>O aviso ao gestor leva o nome do funcionário?</td><td>Primeiro nome, nunca o CPF</td><td>feito 10/10 (decisão 52)</td></tr>
+        <tr><td class="mono">C</td><td>Quem lança ajuste de ponto?</td><td>Admin e gestor; o funcionário é avisado pelo WhatsApp</td><td>feito 10/10 (decisão 52)</td></tr>
         <tr><td class="mono">D</td><td>Quando desativar a chave service_role antiga?</td><td><strong>Decidido pelo PO:</strong> sex 16, com a 63 estável há 6 dias</td><td>—</td></tr>
         <tr><td class="mono">E</td><td>O repositório continua público?</td><td>Tornar privado: a documentação expõe topologia e defesas</td><td>decidido 17/10: privado, só colaboradores (decisão 101)</td></tr>
         <tr><td class="mono">F</td><td>Adotar a persona engenheiro-saas?</td><td>Adiar: hoje se sobrepõe ao CTO e ao infra-bd</td><td>decidido 17/10: adotada (decisão 102)</td></tr>
-        <tr><td class="mono">G</td><td>Situação do parecer REP-P (076, Gabriel)?</td><td>Informar: sem ele, a avaliação de 30 dias (088) não tem data</td><td>17/10: consulta redigida, a enviar ao Gabriel (decisão 103)</td></tr>
+        <tr><td class="mono">G</td><td>Situação do parecer REP-P (076, Gabriel)?</td><td>Informar: sem ele, a avaliação de 30 dias (088) não tem data</td><td>consulta v4 enviada em 25/10; aguardando o parecer do Gabriel</td></tr>
       </tbody>
     </table>
     </div>
@@ -349,7 +350,7 @@ flowchart LR
         <li>Teste do pino arrastado no mapa (Android e iPhone). Entra em 23/10 se sobrar folga.</li>
         <li>Máquina OrbStack arm64: não mexer em meio a cinco publicações.</li>
         <li>Substituir técnico depois de a escala começar (DEV-04).</li>
-        <li>Monitor externo no healthchecks.io (10c).</li>
+        <li>Monitor externo no healthchecks.io (10c). <em>Feito em 30/10 pelo painel (migration 136), testado na homologação.</em></li>
         <li>Pré-visualização de documentos com aviso de LGPD (etapa 19).</li>
       </ul>
       <h2 style="margin-top:20px">Pronto, para toda tarefa</h2>
