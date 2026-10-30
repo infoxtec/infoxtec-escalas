@@ -1777,3 +1777,16 @@ no Supabase.
   tirou o acesso, guardada por 5 anos (legítimo interesse, LGPD art. 7º, IX). Os registros de ação que citam o e-mail (logs, aceites, ajustes) não são apagados: são guarda legal.
 - Ninguém exclui a si mesmo e o último administrador ativo não sai. O admin de um cliente não descobre se a pessoa usa
   outra conta: a resposta é a mesma.
+
+## 123. E-mails do Auth pelo SMTP da hospedagem, em português
+
+*30/10/2026 — SMTP testado pelo responsável na homologação e na produção.*
+
+- **Envio:** caixa `trilha@infoxtec.com.br` da hospedagem (Uni5, cPanel), sem serviço extra. Host
+  `emailssl-vip.uni5.net`, porta 587 (STARTTLS). `smtp.uni5.net` não responde ao Supabase (tempo esgotado) e
+  `mail.infoxtec.com.br` aponta para o mesmo servidor, mas o certificado é `*.uni5.net` e o Auth recusa o nome. O SPF
+  do domínio já inclui `_spf.uni5.net`. Limite do Auth: 30 e-mails por hora. A senha da caixa fica só no Supabase.
+- **Textos:** convite e nova senha em português, com o texto do responsável, em `supabase/templates/` (valem no banco
+  local pelo `config.toml`; na homologação e na produção são colados em Authentication → Emails → Templates).
+- **Se a Uni5 barrar o envio** ou o volume passar do limite: trocar por um serviço de envio (Resend) só nas
+  configurações do Auth, sem mudar o código.
