@@ -4264,6 +4264,12 @@ begin
   perform set_config('request.jwt.claims', '', true);
   perform set_config('trilha.conta', '', true);
   v_tok := fn_segredo((select webhook_segredo from conta_canais where conta_id = v_b));
+  -- a resposta do /webhook/set (com o token) é apagada pelo vigia assim que chega (o envio é o stub do T13: pedido 0)
+  insert into net._http_response (id, status_code, content, created) values (987654, 200, 'x-webhook-token', now());
+  update conta_canais set webhook_req = 987654 where conta_id = v_b;
+  perform fn_vigiar_evolution();
+  perform pg_temp.ok(not exists (select 1 from net._http_response where id = 987654)
+                     and (select webhook_req is null from conta_canais where conta_id = v_b), '[T78] resposta com o token apagada');
   perform pg_temp.ok(v_tok ~ '^[0-9a-f]{64}$', '[T78] token do webhook da instância');
   perform pg_temp.ok(fn_webhook_conta(repeat('a', 64), 'qa-operadora') = '00000000-0000-0000-0000-000000000001'
                      and fn_webhook_conta(repeat('a', 64), null) = '00000000-0000-0000-0000-000000000001'

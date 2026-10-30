@@ -11,7 +11,8 @@ create unique index tecnicos_conta_telefone_uk on interno.tecnicos (conta_id, te
 create index tecnicos_telefone_idx on interno.tecnicos (telefone_e164);
 
 -- token do webhook por instância (nome do segredo no Vault)
-alter table interno.conta_canais add column webhook_segredo text unique check (webhook_segredo ~ '^WEBHOOK_TOKEN_[0-9a-f]{32}$');
+alter table interno.conta_canais add column webhook_segredo text unique check (webhook_segredo ~ '^WEBHOOK_TOKEN_[0-9a-f]{32}$'),
+  add column webhook_req bigint;   -- pedido do /webhook/set: a resposta (com o token) é apagada pelo vigia
 
 -- conta do contexto do canal: a do webhook que chegou, a da escala que o motor envia ou a do cadastro do ponto
 create or replace function interno.fn_conta_contexto()
@@ -1003,12 +1004,13 @@ begin
   update interno.conta_canais set webhook_segredo = v_wseg where conta_id = p_conta;
   if coalesce(p_ativo, true) and coalesce(interno.fn_config('webhook_url'), '') <> '' then
     perform set_config('trilha.conta', p_conta::text, true);
-    perform interno.fn_evo_post('/webhook/set/' || interno.fn_config('evolution_instancia'),
+    update interno.conta_canais set webhook_req = interno.fn_evo_post('/webhook/set/' || interno.fn_config('evolution_instancia'),
       jsonb_build_object('webhook', jsonb_build_object(
         'enabled', true, 'url', interno.fn_config('webhook_url'),
         'headers', jsonb_build_object('x-webhook-token', v_tok),
         'byEvents', false, 'base64', false,
-        'events', jsonb_build_array('MESSAGES_UPSERT', 'MESSAGES_UPDATE'))));
+        'events', jsonb_build_array('MESSAGES_UPSERT', 'MESSAGES_UPDATE'))))
+     where conta_id = p_conta;
     perform set_config('trilha.conta', '', true);
   end if;
   insert into interno.plataforma_log (autor, acao, conta_alvo, detalhe)
@@ -1016,6 +1018,122 @@ begin
           'chave_trocada', v_chave <> '', 'instancia_antes', v_antes.instancia));
 end $function$;
 
+
+-- status de entrega só na conta da instância; e o vigia apaga a resposta do /webhook/set (revisão do seguranca)
+CREATE OR REPLACE FUNCTION interno.fn_wh_status(p_data jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SET search_path TO 'interno', 'public', 'extensions', 'pg_temp'
+AS $function$
+declare
+  it     jsonb;
+  v_id   text;
+  v_st   text;
+  v_novo envio_status;
+  v_n    int := 0;
+begin
+  for it in
+    select value from jsonb_array_elements(
+      case when jsonb_typeof(p_data) = 'array' then p_data else jsonb_build_array(p_data) end)
+  loop
+    v_id := coalesce(it->>'keyId', it->'key'->>'id', it->>'id');
+    v_st := upper(coalesce(it->>'status', it->'update'->>'status', ''));
+    v_novo := case
+      when v_st in ('DELIVERY_ACK', 'DELIVERED', '3') then 'entregue'
+      when v_st in ('READ', 'PLAYED', '4', '5')       then 'lida'
+    end;
+    continue when v_id is null or v_novo is null;
+
+    update notificacoes set
+      status_envio = case when status_envio = 'lida' then status_envio else v_novo end,
+      entregue_em  = coalesce(entregue_em, now()),
+      lida_em      = case when v_novo = 'lida' then coalesce(lida_em, now()) else lida_em end
+    where wa_message_id = v_id
+      and status_envio in ('enviada', 'entregue', 'lida')
+      and conta_id = coalesce(fn_conta_contexto(), conta_id);   -- F5b: só a conta da instância que avisou
+
+    if found then v_n := v_n + 1; end if;
+  end loop;
+  return jsonb_build_object('status_atualizados', v_n);
+end $function$
+;
+
+CREATE OR REPLACE FUNCTION interno.fn_vigiar_evolution()
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SET search_path TO 'interno', 'public', 'extensions', 'pg_temp'
+AS $function$
+declare
+  v       evolution_vigia;
+  v_resp  record;
+  v_estado text;
+  v_limite int := greatest(coalesce(fn_config_int('evolution_alerta_falhas'), 2), 1);
+  v_inst  text := fn_config('evolution_instancia');
+  v_fuso  text := coalesce(fn_config('fuso'), 'America/Bahia');
+  v_manager text := rtrim(coalesce(fn_config('evolution_url'), ''), '/') || '/manager';
+begin
+  -- F5b: a resposta do /webhook/set das instâncias de cliente repete o token no cabeçalho; sai assim que chega
+  with r as (delete from net._http_response h using conta_canais c where h.id = c.webhook_req returning h.id)
+  update conta_canais set webhook_req = null where webhook_req in (select id from r);
+  update conta_canais set webhook_req = null where webhook_req is not null and atualizado_em < now() - interval '1 day';
+  if nullif(fn_config('evolution_url'), '') is null or nullif(v_inst, '') is null then
+    return jsonb_build_object('situacao', 'sem evolution configurada');
+  end if;
+  insert into evolution_vigia (id) values (true) on conflict (id) do nothing;
+  select * into v from evolution_vigia where id for update skip locked;
+  if not found then return jsonb_build_object('situacao', 'outra volta em andamento'); end if;
+
+  if v.req_id is not null then
+    select r.status_code, r.content, r.timed_out, r.error_msg into v_resp from net._http_response r where r.id = v.req_id;
+    if found then
+      begin
+        v_estado := case when v_resp.status_code = 200 then left(coalesce(
+                      (v_resp.content::jsonb #>> '{instance,state}'), (v_resp.content::jsonb ->> 'state'), 'desconhecido'), 30)
+                    else 'sem_resposta' end;
+      exception when others then
+        v_estado := 'sem_resposta';   -- resposta que não é JSON
+      end;
+    elsif v.verificado_em < now() - interval '4 minutes' then
+      v_estado := 'sem_resposta';   -- o pg_net já descartou a resposta ou nunca respondeu
+    end if;
+  end if;
+
+  if v_estado is not null then
+    if v_estado = 'open' then
+      if v.alertado_em is not null then
+        perform fn_alerta_email('Trilha: WhatsApp de volta',
+          'O WhatsApp do Trilha (instância ' || v_inst || ') voltou a funcionar às '
+          || to_char(now() at time zone v_fuso, 'DD/MM HH24:MI') || '.' || E'\n'
+          || 'Ficou fora desde ' || to_char(v.fora_desde at time zone v_fuso, 'DD/MM HH24:MI') || '. '
+          || 'Confira no painel as programações e os avisos desse período.');
+      end if;
+      update evolution_vigia set estado = v_estado, falhas = 0, fora_desde = null, alertado_em = null where id;
+    else
+      update evolution_vigia set estado = v_estado, falhas = falhas + 1, fora_desde = coalesce(fora_desde, now()) where id
+        returning * into v;
+      if v.falhas >= v_limite and v.alertado_em is null then
+        perform fn_alerta_email('Trilha: WhatsApp fora do ar',
+          'O WhatsApp do Trilha (instância ' || v_inst || ') está fora do ar desde '
+          || to_char(v.fora_desde at time zone v_fuso, 'DD/MM HH24:MI') || ' (estado: ' || v_estado || ').' || E'\n\n'
+          || 'Enquanto isso, programações, confirmações e avisos pelo WhatsApp não saem.' || E'\n\n'
+          || 'Como resolver: abra ' || v_manager || ', entre na instância ' || v_inst
+          || ' e leia o QR code com o WhatsApp do celular da operação. Se a página não abrir, o servidor da Evolution '
+          || 'está fora: acione o suporte.' || E'\n\n'
+          || 'Quando voltar, você recebe outro e-mail.');
+        update evolution_vigia set alertado_em = now() where id;
+      end if;
+    end if;
+  end if;
+
+  begin
+    update evolution_vigia set req_id = fn_evo_get('/instance/connectionState/' || v_inst), verificado_em = now() where id;
+  exception when others then
+    -- sem a chave da Evolution no Vault (ou o pg_net fora): aparece no quadro da plataforma, em vez de só um aviso no log
+    update evolution_vigia set req_id = null, estado = 'erro_interno', verificado_em = now() where id;
+  end;
+  return jsonb_build_object('estado', coalesce(v_estado, v.estado), 'falhas', (select falhas from evolution_vigia where id));
+end $function$
+;
 
 do $$
 declare f record;

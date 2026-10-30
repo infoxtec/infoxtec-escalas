@@ -264,7 +264,9 @@ o telefone (em duas contas: null, envio recusado). `fn_webhook_conta(token, inst
 token da instalação dá a operadora; instância de um canal ativo com o token próprio dela (`conta_canais.webhook_segredo`,
 `WEBHOOK_TOKEN_<conta>` no Vault) dá a conta; o resto é "token invalido". `fn_webhook_evolution` grava o evento na conta
 e as procuras do funcionário (`fn_wh_mensagem`, `fn_ponto_wh`, `fn_ponto_he_resposta`) ficam na conta do contexto.
-`app_plataforma_salvar_canal` cria o token do webhook da instância e aponta o webhook dela para o sistema.
+`app_plataforma_salvar_canal` cria o token do webhook da instância e aponta o webhook dela para o sistema; o pedido
+fica em `conta_canais.webhook_req` e o vigia (`fn_vigiar_evolution`) apaga a resposta, que repete o token, assim que
+ela chega. `fn_wh_status` só muda o status de entrega das notificações da conta do contexto.
 `fn_evo_canal_tecnico` dá à Edge Function `webhook-evolution` o canal da conta do funcionário para baixar mídia.
 Regressão: T78 (T77 ajustado: a sessão do painel decide a conta).
 
