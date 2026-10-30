@@ -255,4 +255,4 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [ ] Multiempresa F5a: canal de WhatsApp por conta (migration 137, painel 3.57.0; homologação testada)
 - [ ] Multiempresa F5b: entrada pela instância e telefone único por conta (migration 138; homologação testada)
 - [ ] Multiempresa F5c: fila justa, avisos com a conta e vigia por canal (migration 139; homologação)
-- [ ] Recuperação da verificação em duas etapas por e-mail ou WhatsApp (migration 140, painel 3.59.0; homologação)
+- [ ] Recuperação da verificação em duas etapas por e-mail ou WhatsApp (migration 140, painel 3.59.1; homologação em 30/10; produção em 30/10, congelamento furado a pedido do responsável)

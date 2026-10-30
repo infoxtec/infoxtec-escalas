@@ -42,7 +42,12 @@ function MfaRecuperar({ onOk, onVoltar }: { onOk: () => void; onVoltar: () => vo
   const pedir = async (canal: 'email' | 'whatsapp') => {
     setOcupado(true); setErro(null)
     const r = await recuperarDuasEtapas({ acao: 'pedir', canal })
-    if (r.ok) setEnviados(p => ({ ...p, [canal]: r.destino ?? 'enviado' })); else setErro(r.erro ?? 'Não foi possível enviar.')
+    if (r.ok) {
+      // um pedido novo anula o código anterior do mesmo canal: o campo recomeça vazio e a hora mostra qual vale
+      const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      setEnviados(p => ({ ...p, [canal]: `${r.destino ?? 'enviado'}, às ${hora}` }))
+      if (canal === 'email') setCEmail(''); else setCWhats('')
+    } else setErro(r.erro ?? 'Não foi possível enviar.')
     setOcupado(false)
   }
   const confirmar = async () => {
@@ -58,6 +63,9 @@ function MfaRecuperar({ onOk, onVoltar }: { onOk: () => void; onVoltar: () => vo
       <p className="text-sm text-muted-foreground">
         Receba um código para trocar o aplicativo autenticador. Quem é administrador da plataforma precisa dos dois códigos.
       </p>
+      {(enviados.email || enviados.whatsapp) && (
+        <p className="text-xs text-muted-foreground">Vale só o último código de cada canal: pedir de novo anula o anterior.</p>
+      )}
       <div className="grid grid-cols-2 gap-2">
         <Button variant="outline" disabled={ocupado} onClick={() => void pedir('email')}><Mail className="h-4 w-4" /> Por e-mail</Button>
         <Button variant="outline" disabled={ocupado} onClick={() => void pedir('whatsapp')}><MessageCircle className="h-4 w-4" /> Por WhatsApp</Button>
