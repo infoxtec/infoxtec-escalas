@@ -254,6 +254,15 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 141 (30/10, versão 20261113120000): entrada repetível, multiempresa F8a
+
+`contas.estado` (`ativa`, `encerrada`, `apagando`, `custodia`, `apagada`; só `ativa` opera, e `ativa = true` exige o
+estado `ativa`), base das entregas F8b a F8e. `app_plataforma_criar_conta` repetível: mesmo nome, mesmo admin, mesmos
+módulos e mesma sede devolvem a conta que já existe, sem gravar nada (o painel reenvia o convite); dado diferente é
+recusado dizendo o que difere. `fn_conta_provisionamento(conta)`: o que falta para operar (admin, convite aceito, sede,
+WhatsApp, empresa — empregadora quando há ponto —, funcionários); `app_plataforma_contas` devolve `estado` e
+`provisionamento`. Regressão: T81 (e o T65 com a mensagem nova).
+
 ### Migration 140 (30/10, versão 20261112120000): recuperação da verificação em duas etapas
 
 `conta_membros.telefone_e164` (WhatsApp de recuperação, opcional; `app_definir_telefone_usuario`, só o admin, avisa a
