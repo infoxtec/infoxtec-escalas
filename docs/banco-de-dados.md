@@ -254,6 +254,18 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 140 (30/10, versão 20261112120000): recuperação da verificação em duas etapas
+
+`conta_membros.telefone_e164` (WhatsApp de recuperação, opcional; `app_definir_telefone_usuario`, só o admin, avisa a
+pessoa por e-mail; `app_usuarios` devolve o campo). `mfa_recuperacoes` (código com hash, canal, validade de 10 minutos,
+tentativas, uso; tabela da plataforma, guarda de 1 ano). `fn_mfa_recuperacao_pedir(e-mail, canal)`: só usuário ativo ou
+da plataforma; 1 pedido por minuto por canal e 6 por dia; WhatsApp só com um número cadastrado (pelo canal da conta).
+`fn_mfa_codigo_ok` (5 tentativas por código) e `fn_mfa_recuperacao_confirmar` (plataforma precisa dos dois códigos;
+recusa volta como `{erro}`, sem exceção, para a tentativa errada ficar contada; avisa a pessoa e a plataforma). A Edge
+Function `recuperar-duas-etapas` (sessão só com a senha) chama as duas e apaga os fatores no Auth. `alertas_email` ganha
+`para` (destinatário escolhido; sem ele, a plataforma) e `sensivel` (o texto com o código some depois do envio);
+`fn_alerta_email(assunto, texto, para, sensível)`. Regressão: T80.
+
 ### Migration 139 (30/10, versão 20261111120000): fila justa, avisos com a conta e vigia por canal, multiempresa F5c
 
 Motor: rodízio entre as contas na fase de envio (a 1ª escala de cada conta, depois a 2ª...) e teto por conta por

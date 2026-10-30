@@ -22,7 +22,7 @@ export default function UsuariosPage() {
   const [histRh, setHistRh] = useState<{ email: string; valor: boolean; autor: string; em: string }[]>([])
   // null = ainda sem a informação (ou o banco sem a migration 82): a coluna mostra "?", nunca "—" falso
   const [mfa, setMfa] = useState<{ ativos: Map<string, string>; historico: { email: string; acao: 'ativou' | 'desativou'; em: string }[] } | null>(null)
-  const [edit, setEdit] = useState<{ email: string; nome: string; papel: Papel; ativo: boolean; novo: boolean; ve_saude: boolean; ve_saude_antes: boolean; rh_folhas: boolean; rh_folhas_antes: boolean } | null>(null)
+  const [edit, setEdit] = useState<{ email: string; nome: string; papel: Papel; ativo: boolean; novo: boolean; ve_saude: boolean; ve_saude_antes: boolean; rh_folhas: boolean; rh_folhas_antes: boolean; telefone: string; telefone_antes: string } | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [convites, setConvites] = useState<Map<string, { em: string; resultado: string }>>(new Map())
   const [convidando, setConvidando] = useState<string | null>(null)
@@ -61,6 +61,8 @@ export default function UsuariosPage() {
       if (ve !== edit.ve_saude_antes) await api.definirVeSaude(edit.email.trim(), ve)
       const rh = edit.rh_folhas && edit.papel !== 'leitura'
       if (rh !== edit.rh_folhas_antes) await api.definirRhFolhas(edit.email.trim(), rh)
+      // WhatsApp de recuperação das duas etapas (migration 140): a pessoa é avisada por e-mail da troca
+      if (edit.telefone.replace(/\D/g, '') !== edit.telefone_antes) await api.definirTelefoneUsuario(edit.email.trim(), edit.telefone)
       if (edit.novo) {
         const email = edit.email.trim().toLowerCase()
         const conta = contaAtual()
@@ -98,7 +100,7 @@ export default function UsuariosPage() {
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" onClick={restaurarTudo} title="Voltar todas as colunas à largura padrão"><Columns3 className="h-3.5 w-3.5" /> Larguras padrão</Button>
           <Button variant="outline" size="sm" onClick={() => void carregar()} disabled={carregando}><RefreshCw className={`h-3.5 w-3.5 ${carregando ? 'animate-spin' : ''}`} /> Atualizar</Button>
-          <Button size="sm" onClick={() => { setEdit({ email: '', nome: '', papel: 'gestor', ativo: true, novo: true, ve_saude: false, ve_saude_antes: false, rh_folhas: false, rh_folhas_antes: false }); setErroForm(null) }}><Plus className="h-4 w-4" /> Adicionar usuário</Button>
+          <Button size="sm" onClick={() => { setEdit({ email: '', nome: '', papel: 'gestor', ativo: true, novo: true, ve_saude: false, ve_saude_antes: false, rh_folhas: false, rh_folhas_antes: false, telefone: '', telefone_antes: '' }); setErroForm(null) }}><Plus className="h-4 w-4" /> Adicionar usuário</Button>
         </div>
       </div>
 
@@ -142,7 +144,7 @@ export default function UsuariosPage() {
                       title={convites.has(u.email) ? `Último convite: ${formatDateTime(convites.get(u.email)!.em)} (${SITUACAO_CONVITE[convites.get(u.email)!.resultado] ?? ''}). Clique para enviar de novo.` : 'Enviar convite por e-mail para criar a senha'}
                       onClick={() => void convidar(u.email)}><Mail className="h-3.5 w-3.5" /></Button>
                   )}
-                  <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => { setEdit({ email: u.email, nome: u.nome ?? '', papel: u.papel, ativo: u.ativo, novo: false, ve_saude: u.ve_saude, ve_saude_antes: u.ve_saude, rh_folhas: !!u.rh_folhas, rh_folhas_antes: !!u.rh_folhas }); setErroForm(null) }}><Edit2 className="h-3.5 w-3.5" /></Button>
+                  <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => { setEdit({ email: u.email, nome: u.nome ?? '', papel: u.papel, ativo: u.ativo, novo: false, ve_saude: u.ve_saude, ve_saude_antes: u.ve_saude, rh_folhas: !!u.rh_folhas, rh_folhas_antes: !!u.rh_folhas, telefone: u.telefone_e164 ?? '', telefone_antes: u.telefone_e164 ?? '' }); setErroForm(null) }}><Edit2 className="h-3.5 w-3.5" /></Button>
                   <Button variant="ghost" size="icon" aria-label="Excluir usuário" title="Excluir de vez" onClick={() => setExcluir(u)}><Trash2 className="h-3.5 w-3.5" /></Button>
                 </td>
               </tr>
@@ -207,6 +209,9 @@ export default function UsuariosPage() {
           <div className="space-y-3">
             <Field label="E-mail *"><Input type="email" value={edit.email} disabled={!edit.novo || salvando} onChange={e => setEdit({ ...edit, email: e.target.value })} /></Field>
             <Field label="Nome"><Input value={edit.nome} disabled={salvando} onChange={e => setEdit({ ...edit, nome: e.target.value })} /></Field>
+            <Field label="WhatsApp de recuperação" hint="Opcional. Recebe o código se a pessoa perder o aplicativo autenticador. Só números, com DDI e DDD: 5571981776307.">
+              <Input inputMode="numeric" value={edit.telefone} disabled={salvando} onChange={e => setEdit({ ...edit, telefone: e.target.value.replace(/[^\d]/g, '').slice(0, 13) })} />
+            </Field>
             <Field label="Papel" hint={DESCRICAO[edit.papel]}>
               <Select className="w-full" value={edit.papel} disabled={salvando} onChange={e => setEdit({ ...edit, papel: e.target.value as Papel })}>
                 <option value="admin">Administrador</option><option value="gestor">Gestor</option><option value="leitura">Somente leitura</option>

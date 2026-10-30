@@ -1841,3 +1841,17 @@ no Supabase.
   Os e-mails extras do alerta (`alerta_emails`) são só de gente da plataforma: o alerta leva o nome das contas.
 - **Fica para depois:** rodízio automático do token do webhook das instâncias de cliente (hoje só o da operadora roda
   sozinho); Twilio por cliente (decisão 108), quando o primeiro cliente pedir a URA.
+
+## 128. Recuperação da verificação em duas etapas por e-mail ou WhatsApp
+
+*30/10/2026 — pedido do responsável depois de perder o autenticador (migration 140, painel 3.59.0).*
+
+- Na tela do código, "Perdi meu autenticador": a pessoa já entrou com a senha e recebe um código de 6 dígitos por
+  e-mail (o do login) ou pelo WhatsApp de recuperação (cadastrado pelo administrador na tela Usuários). Com o código, o
+  autenticador antigo sai e o painel pede o novo.
+- **Administrador da plataforma precisa dos dois códigos** (e-mail e WhatsApp): uma caixa de e-mail invadida não basta
+  para uma conta com poder sobre todos os clientes.
+- Código vale 10 minutos, 5 tentativas; 1 pedido por minuto por canal e 6 por dia. Toda troca avisa a pessoa e a
+  plataforma por e-mail e fica registrada por 1 ano. O código não fica guardado no texto do e-mail depois do envio.
+- O WhatsApp não vira o segundo fator do dia a dia: o Supabase só o aceita por SMS ou Twilio; pelo nosso canal ele é o
+  caminho de emergência. O SQL de remoção do fator (usado em 30/10) fica só como contingência.
