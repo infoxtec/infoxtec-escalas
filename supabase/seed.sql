@@ -6,7 +6,7 @@ set search_path = interno, public, extensions;  -- tabelas no esquema interno (m
 insert into tecnicos (conta_id, nome, telefone_e164, funcao, is_supervisor, opt_in, opt_in_em) values
   ('00000000-0000-0000-0000-000000000001', 'Supervisor Exemplo', '5571900000001', 'Supervisor', true,  true, now()),
   ('00000000-0000-0000-0000-000000000001', 'Tecnico Exemplo',    '5571900000002', 'Instalador', false, true, now())
-on conflict (telefone_e164) do nothing;
+on conflict (conta_id, telefone_e164) do nothing;   -- telefone único por conta (migration 138)
 
 insert into locais (conta_id, nome, cliente, endereco, referencia) values
   ('00000000-0000-0000-0000-000000000001', 'Obra Exemplo - Torre A', 'Cliente Exemplo', 'Endereco de teste - Salvador/BA', 'Portaria');
