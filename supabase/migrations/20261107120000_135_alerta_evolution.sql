@@ -152,7 +152,8 @@ begin
     return jsonb_build_object('situacao', 'sem evolution configurada');
   end if;
   insert into evolution_vigia (id) values (true) on conflict (id) do nothing;
-  select * into v from evolution_vigia where id for update;
+  select * into v from evolution_vigia where id for update skip locked;
+  if not found then return jsonb_build_object('situacao', 'outra volta em andamento'); end if;
 
   if v.req_id is not null then
     select r.status_code, r.content, r.timed_out, r.error_msg into v_resp from net._http_response r where r.id = v.req_id;
@@ -196,7 +197,12 @@ begin
     end if;
   end if;
 
-  update evolution_vigia set req_id = fn_evo_get('/instance/connectionState/' || v_inst), verificado_em = now() where id;
+  begin
+    update evolution_vigia set req_id = fn_evo_get('/instance/connectionState/' || v_inst), verificado_em = now() where id;
+  exception when others then
+    -- sem a chave da Evolution no Vault (ou o pg_net fora): aparece no quadro da plataforma, em vez de só um aviso no log
+    update evolution_vigia set req_id = null, estado = 'erro_interno', verificado_em = now() where id;
+  end;
   return jsonb_build_object('estado', coalesce(v_estado, v.estado), 'falhas', (select falhas from evolution_vigia where id));
 end $function$;
 
