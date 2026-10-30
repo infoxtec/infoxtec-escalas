@@ -59,7 +59,7 @@ gargalo é teste e revisão, não escrita.
 | F4 | Configuração por conta | `config_conta` sobre o padrão global; `fn_config` resolve a conta; fuso único; feriados por UF e município; MFA por conta | 1–1,5 |
 | F5 | Canal e motor | `conta_canais` (instância, token e segredo por conta no Vault); webhook por instância; fila justa (rodízio) e teto por conta | 1–2 |
 | F6 | Contrair | Fim do "sem empresa vê tudo" e do "funcionário sem empresa avisa todos os supervisores" (decisão 107), das unicidades globais e de `painel_usuarios`, com o painel novo já publicado (decisão 24) | 0,5 |
-| F8 | Entrada e saída | `app_plataforma_criar_conta` repetível; exportação completa; exclusão registrada (LGPD art. 16) respeitando a guarda de 5 anos do ponto — obrigação de operador já no 2º cliente | 1–1,5 |
+| F8 | Entrada e saída | `app_plataforma_criar_conta` repetível; exportação completa; exclusão registrada (LGPD art. 16) respeitando a guarda de 5 anos do ponto — obrigação de operador já no 2º cliente. *Revista em 30/10 (decisão 129): 2,5–3,5 semanas em cinco entregas, F8a a F8e, com custódia opcional do ponto* | 2,5–3,5 |
 | **Núcleo** | **074, F0–F6 e F8: 2º cliente na mesma instalação** | | **9–13,5** |
 | F7 | Cotas, custo e observação | Contadores por conta (mensagens, ligações, OCR, armazenamento, técnicos, assentos), alertas com o nome da conta, SLO do envio | 1 |
 

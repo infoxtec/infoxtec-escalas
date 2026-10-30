@@ -1867,3 +1867,25 @@ no Supabase.
   configurado), a resposta do pg_net do envio pelo WhatsApp é apagada no próximo pedido ou confirmação, e um pedido novo
   anula os códigos anteriores do mesmo canal. O código só é dado como usado depois que o Auth apaga os fatores
   (`fn_mfa_recuperacao_concluir`): se a remoção falhar, a pessoa tenta de novo com o mesmo código.
+
+## 129. Multiempresa F8: entrada e saída do cliente
+
+*30/10/2026 — decisões do responsável sobre o desenho do `arquiteto-dados` (migration 141 em diante).*
+
+- **Cinco entregas**, um PR cada: F8a entrada repetível e provisionamento; F8b encerrar e reabrir (acesso, WhatsApp,
+  motor, app do ponto e URA param na hora); F8c exportação completa; F8d exclusão registrada; F8e custódia do ponto.
+  Esforço revisto de 1–1,5 para 2,5–3,5 semanas: o ponto hoje recusa qualquer exclusão e a conta desativada só bloqueia
+  o painel.
+- **Saída:** o cliente baixa tudo e a conta é apagada **30 dias** depois do encerramento; nesse prazo a plataforma pode
+  reabrir. **Custódia opcional por contrato:** o ponto fica só para leitura e cada registro é apagado sozinho ao fim da
+  guarda; sem custódia, apaga tudo. A guarda é obrigação do empregador (o cliente); a Infoxtec é operadora.
+- **Exportação completa:** o administrador da conta e a plataforma podem baixar quando quiserem (portabilidade, LGPD
+  art. 18, V).
+- **Ciclo de vida da conta** em `contas.estado`; só `ativa` opera. A suspensão manual continua sendo `ativa = false`.
+- **Entrada:** criar a conta de novo com os mesmos dados devolve a mesma conta (o convite que falhou é reenviado sem
+  erro); dado diferente é recusado. A tela Contas mostra o que falta para cada conta operar.
+- **Em aberto (antes da F8c a F8e):** prazo da custódia (proposta: cada registro até a data dele + 5 anos, CF art. 7º,
+  XXIX, com retenção suspensa por processo avisado pelo cliente; base a conferir com o `juridico`); acesso na custódia
+  (proposta: sem login, exportação a pedido); exportação final automática no encerramento; nome da conta apagada e
+  e-mails do cliente nos registros da plataforma; backups do Supabase (dado apagado sobrevive ~7 dias, cláusula no
+  contrato); apagar a instância do cliente na Evolution (conversas na Oracle) no roteiro de saída.

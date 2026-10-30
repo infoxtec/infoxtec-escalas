@@ -4,6 +4,10 @@ import { Button, ErrorBox, Field, Input, Modal, ToggleRow, useToast } from '../c
 import { api, convidarUsuario, erroMsg, mensagemConvite } from '../lib/api'
 import type { ContaPlataforma } from '../lib/types'
 
+const ITENS: Record<string, string> = {
+  admin: 'Administrador', login: 'Convite aceito', sede: 'Sede', canal: 'WhatsApp', empresa: 'Empresa', equipe: 'Funcionários',
+}
+
 const MODULOS: { id: 'escala' | 'ponto'; nome: string }[] = [
   { id: 'escala', nome: 'Escala (agenda e WhatsApp)' },
   { id: 'ponto', nome: 'Registro de ponto' },
@@ -81,7 +85,7 @@ export default function ContasPage() {
           <table className="w-full text-sm">
             <thead><tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
               <th className="px-3 py-2">Conta</th><th className="px-3 py-2">Sede</th><th className="px-3 py-2">Administradores</th><th className="px-3 py-2">Módulos</th>
-              <th className="px-3 py-2">WhatsApp</th><th className="px-3 py-2 text-center">Usuários</th><th className="px-3 py-2 text-center">Ativa</th><th className="w-12" />
+              <th className="px-3 py-2">WhatsApp</th><th className="px-3 py-2 text-center">Usuários</th><th className="px-3 py-2">Pronta?</th><th className="px-3 py-2 text-center">Ativa</th><th className="w-12" />
             </tr></thead>
             <tbody>
               {contas.map(c => (
@@ -95,6 +99,12 @@ export default function ContasPage() {
                     return !k?.instancia ? <span className="text-amber-600">sem canal</span>
                       : <span className={k.ativo ? '' : 'text-muted-foreground line-through'}>{k.instancia}{k.da_instalacao ? ' (instalação)' : ''}</span> })()}</td>
                   <td className="px-3 py-2.5 text-center text-xs">{c.membros}</td>
+                  <td className="px-3 py-2.5 text-xs">{(() => {
+                    const falta = (c.provisionamento ?? []).filter(i => !i.ok)
+                    if (!c.provisionamento) return <span className="text-muted-foreground">—</span>
+                    return falta.length === 0 ? <span className="text-green-700">pronta</span>
+                      : <span className="text-amber-600" title={falta.map(i => `${ITENS[i.item] ?? i.item}: ${i.detalhe}`).join('\n')}>
+                          falta: {falta.map(i => (ITENS[i.item] ?? i.item).toLowerCase()).join(', ')}</span> })()}</td>
                   <td className="px-3 py-2.5 text-center"><span className={`inline-block h-2 w-2 rounded-full ${c.ativa ? 'bg-green-500' : 'bg-gray-400'}`} /></td>
                   <td className="px-3 py-2.5 text-right">
                     <Button variant="ghost" size="icon" aria-label="Editar"
@@ -118,7 +128,7 @@ export default function ContasPage() {
           <div className="space-y-3">
             <Field label="Nome da conta *"><Input value={edit.nome} onChange={e => setEdit({ ...edit, nome: e.target.value })} disabled={salvando} /></Field>
             {!edit.id && (<>
-              <Field label="E-mail do administrador *" hint="Ao salvar, ele recebe por e-mail o convite para criar a senha.">
+              <Field label="E-mail do administrador *" hint="Ao salvar, ele recebe por e-mail o convite para criar a senha. Se o convite falhar, salve de novo com os mesmos dados: a conta não duplica.">
                 <Input type="email" value={edit.admin_email} onChange={e => setEdit({ ...edit, admin_email: e.target.value })} disabled={salvando} />
               </Field>
               <Field label="Nome do administrador"><Input value={edit.admin_nome} onChange={e => setEdit({ ...edit, admin_nome: e.target.value })} disabled={salvando} /></Field>
@@ -145,6 +155,14 @@ export default function ContasPage() {
                   </div>
                   <ToggleRow label="Canal ativo" checked={edit.canal_ativo} onChange={v => setEdit({ ...edit, canal_ativo: v })} disabled={salvando} />
                 </div>)}
+            {edit.id && (contas?.find(c => c.id === edit.id)?.provisionamento?.length ?? 0) > 0 && (
+              <div className="space-y-1 rounded-md border p-3">
+                <p className="text-sm font-medium">Para a conta operar</p>
+                {contas?.find(c => c.id === edit.id)?.provisionamento?.map(i => (
+                  <p key={i.item} className="text-xs"><span className={i.ok ? 'text-green-700' : 'text-amber-600'}>{i.ok ? '✓' : '•'}</span>{' '}
+                    <span className="font-medium">{ITENS[i.item] ?? i.item}:</span> <span className="text-muted-foreground">{i.detalhe}</span></p>
+                ))}
+              </div>)}
             {edit.id && <ToggleRow label="Ativa" description="Conta desativada: ninguém dela entra no painel; os dados ficam guardados."
               checked={edit.ativa} onChange={v => setEdit({ ...edit, ativa: v })} disabled={salvando} />}
             {erro && <ErrorBox>{erro}</ErrorBox>}

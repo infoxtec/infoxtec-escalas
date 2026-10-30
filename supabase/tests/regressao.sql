@@ -3690,7 +3690,7 @@ begin
                      '[T65] conta criada com módulo, administrador e registro');
   v_ok := false;
   begin perform app_plataforma_criar_conta('qa cliente novo', 'x@y.local', null, array['escala']);
-  exception when others then v_ok := sqlerrm = 'Já existe uma conta com este nome.'; end;
+  exception when others then v_ok := sqlerrm like 'Já existe uma conta com este nome, com outro administrador%'; end;
   perform pg_temp.ok(v_ok, '[T65] nome repetido');
   v_ok := false;
   begin insert into contas (nome) values (' qa CLIENTE novo ');   -- direto no banco, sem a função (corrida)
@@ -4426,7 +4426,54 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
 end $$;
 create or replace function fn_evo_post(p_path text, p_body jsonb) returns bigint language sql as $$ select 0::bigint $$;
-select 'REGRESSÃO OK: T1 a T80' as resultado,
+-- T81 entrada repetível e provisionamento (migration 141, F8a) -----------------------------------------------------
+do $$
+declare v_id uuid; v_ok boolean; v_n int; v_p jsonb;
+begin
+  perform set_config('request.headers', '{}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  v_id := app_plataforma_criar_conta('QA Entrada', 'dono-entrada@teste.local', 'Dono', array['ponto', 'escala'], 'ba', 'Salvador');
+  select count(*) into v_n from plataforma_log where conta_alvo = v_id;
+  -- repetir com os mesmos dados (convite que falhou, rede que caiu) devolve a mesma conta e não grava nada
+  perform pg_temp.ok(app_plataforma_criar_conta(' qa entrada ', 'Dono-Entrada@teste.local', null, array['escala', 'ponto', 'ponto']) = v_id
+                     and (select count(*) from contas where lower(nome) = 'qa entrada') = 1
+                     and (select count(*) from conta_membros where conta_id = v_id) = 1
+                     and (select count(*) from conta_modulos where conta_id = v_id) = 2
+                     and (select count(*) from plataforma_log where conta_alvo = v_id) = v_n,
+                     '[T81] criar de novo devolve a mesma conta');
+  v_ok := false;
+  begin perform app_plataforma_criar_conta('QA Entrada', 'dono-entrada@teste.local', null, array['ponto']);
+  exception when others then v_ok := sqlerrm like '%com outros módulos%'; end;
+  perform pg_temp.ok(v_ok, '[T81] módulos diferentes recusados');
+  v_ok := false;
+  begin perform app_plataforma_criar_conta('QA Entrada', 'dono-entrada@teste.local', null, array['ponto', 'escala'], 'PE', 'Recife');
+  exception when others then v_ok := sqlerrm like '%com outra sede%'; end;
+  perform pg_temp.ok(v_ok, '[T81] sede diferente recusada');
+  -- estado e a regra "ativa só no estado ativa"
+  perform pg_temp.ok((select estado = 'ativa' from contas where id = v_id), '[T81] conta nasce no estado ativa');
+  v_ok := false;
+  begin update contas set estado = 'encerrada' where id = v_id; exception when check_violation then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T81] conta encerrada não fica ativa');
+  update contas set ativa = false, estado = 'encerrada' where id = v_id;
+  v_ok := false;
+  begin perform app_plataforma_criar_conta('QA Entrada', 'dono-entrada@teste.local', null, array['ponto', 'escala'], 'BA', 'Salvador');
+  exception when others then v_ok := sqlerrm like '%encerrada. Escolha outro nome%'; end;
+  perform pg_temp.ok(v_ok, '[T81] conta encerrada não é reaproveitada');
+  update contas set estado = 'ativa', ativa = true where id = v_id;
+  -- provisionamento: o que falta aparece; a conta nova tem admin e sede, sem login, canal, empresa e equipe
+  select x.p into v_p from (select e->'provisionamento' as p from jsonb_array_elements(app_plataforma_contas()) e
+                             where (e->>'id')::uuid = v_id) x;
+  perform pg_temp.ok(jsonb_array_length(v_p) = 6
+                     and (select bool_and((i->>'ok')::boolean = (i->>'item' in ('admin', 'sede'))) from jsonb_array_elements(v_p) i),
+                     '[T81] provisionamento mostra o que falta');
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  v_ok := false;
+  begin perform app_plataforma_criar_conta('QA Entrada', 'dono-entrada@teste.local', null, array['ponto', 'escala']);
+  exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T81] só a plataforma cria conta');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+end $$;
+select 'REGRESSÃO OK: T1 a T81' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
