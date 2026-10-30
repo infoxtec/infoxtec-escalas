@@ -6,6 +6,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const TIMEOUT_MS = 6_000;
+const MAX_RESPOSTA = 256 * 1024;
 
 // mesmos domínios do painel que a convidar-usuario aceita
 const ORIGEM_PAINEL = /^https:\/\/(infoxtec-escalas|web-[a-z0-9-]+-infoxtec-escalas)\.vercel\.app$/;
@@ -41,8 +42,11 @@ async function logado(req: Request): Promise<boolean> {
 async function buscar(url: string): Promise<Record<string, unknown> | null> {
   try {
     const resp = await fetch(url, { headers: { Accept: "application/json", "User-Agent": "Trilha/1.0" }, signal: AbortSignal.timeout(TIMEOUT_MS) });
-    if (!resp.ok) return null;
-    const j = await resp.json();
+    if (!resp.ok || Number(resp.headers.get("content-length") ?? 0) > MAX_RESPOSTA) return null;
+    // corpo lido com teto (a Receita manda o quadro de sócios junto; ele é descartado aqui)
+    const corpo = await resp.text();
+    if (corpo.length > MAX_RESPOSTA) return null;
+    const j = JSON.parse(corpo);
     return j && typeof j === "object" ? j as Record<string, unknown> : null;
   } catch {
     return null;
@@ -76,7 +80,7 @@ async function consultarCnpj(cnpj: string) {
     return {
       razao_social: txt(w.razao_social), nome_fantasia: nome(e.nome_fantasia), situacao: nome(e.situacao_cadastral),
       logradouro: nome(rua), numero: txt(e.numero, 20), complemento: nome(e.complemento), bairro: nome(e.bairro),
-      cidade: nome((e.cidade as Record<string, unknown> | null)?.nome), uf: txt((e.estado as Record<string, unknown> | null)?.sigla, 2),
+      cidade: nome((e.cidade as Record<string, unknown> | null)?.nome), uf: txt((e.estado as Record<string, unknown> | null)?.sigla, 2)?.toUpperCase() ?? null,
       cep: so(e.cep, /^\d{8}$/), fonte: "Receita Federal (CNPJ.ws)",
     };
   }
@@ -86,11 +90,11 @@ async function consultarCnpj(cnpj: string) {
 async function consultarCep(cep: string) {
   const v = await buscar(`https://viacep.com.br/ws/${cep}/json/`);
   if (v && !v.erro && txt(v.localidade)) {
-    return { logradouro: txt(v.logradouro), bairro: txt(v.bairro), cidade: txt(v.localidade), uf: txt(v.uf, 2), cep, fonte: "Correios (ViaCEP)" };
+    return { logradouro: txt(v.logradouro), bairro: txt(v.bairro), cidade: txt(v.localidade), uf: txt(v.uf, 2)?.toUpperCase() ?? null, cep, fonte: "Correios (ViaCEP)" };
   }
   const b = await buscar(`https://brasilapi.com.br/api/cep/v2/${cep}`);
   if (b && txt(b.city)) {
-    return { logradouro: txt(b.street), bairro: txt(b.neighborhood), cidade: txt(b.city), uf: txt(b.state, 2), cep, fonte: "Correios (BrasilAPI)" };
+    return { logradouro: txt(b.street), bairro: txt(b.neighborhood), cidade: txt(b.city), uf: txt(b.state, 2)?.toUpperCase() ?? null, cep, fonte: "Correios (BrasilAPI)" };
   }
   return null;
 }
@@ -105,7 +109,9 @@ Deno.serve(async (req: Request) => {
   if (!await logado(req)) return json({ ok: false, erro: "Sessão expirada. Entre novamente." }, 401);
 
   let corpo: { tipo?: unknown; valor?: unknown };
-  try { corpo = JSON.parse(await req.text()); } catch { return json({ ok: false, erro: "pedido inválido" }, 400); }
+  const texto = await req.text();
+  if (texto.length > 512) return json({ ok: false, erro: "pedido grande demais" }, 413);
+  try { corpo = JSON.parse(texto); } catch { return json({ ok: false, erro: "pedido inválido" }, 400); }
   const valor = typeof corpo.valor === "string" ? corpo.valor.toUpperCase().replace(/[^0-9A-Z]/g, "") : "";
 
   if (corpo.tipo === "cnpj" && /^[0-9A-Z]{12}\d{2}$/.test(valor)) {

@@ -260,7 +260,9 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
 para os só com números). `app_salvar_empresa` guarda o CNPJ só com letras e dígitos, em maiúsculas. `empresas` e `locais`
 ganham `cep` (8 dígitos); `app_salvar_empresa` e `app_salvar_local` aceitam `cep` (sem a chave no pedido, fica o que
 estava). `fn_afd_cnpj` leva o CNPJ com letras ao AFD (`app_ponto_afd`; `fn_afd_n` segue tirando as letras do número do
-INPI). A consulta de CNPJ e CEP é a Edge Function `consulta-cadastro` (decisão 121), que não grava nada. Regressão: T73.
+INPI). A consulta de CNPJ e CEP é a Edge Function `consulta-cadastro` (decisão 121), que não grava nada. LGPD: a razão social
+de um MEI traz o nome (às vezes o CPF) do titular; é dado público da Receita, gravado só se o gestor salvar, com a
+mesma finalidade e visibilidade do cadastro de empresas; sócios e contatos não chegam ao painel. Regressão: T73.
 
 ### Migration 132 (29/10, versão 20261104120000): lugar no painel, multiempresa F4b
 
