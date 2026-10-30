@@ -252,4 +252,5 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [ ] Pacote de cadastro: CNPJ com letras, consulta de CNPJ e CEP com preenchimento automático e aviso de CPF (migration 133, painel 3.53.0; homologação testada)
 - [ ] Exclusão definitiva de usuário pela tela Usuários (migration 134, painel 3.54.0; homologação testada)
 - [ ] Alerta por e-mail quando o WhatsApp cai e volta (migration 135, painel 3.55.0; homologação testada)
-- [ ] Multiempresa F5a: canal de WhatsApp por conta (migration 137, painel 3.57.0; homologação)
+- [ ] Multiempresa F5a: canal de WhatsApp por conta (migration 137, painel 3.57.0; homologação testada)
+- [ ] Multiempresa F5b: entrada pela instância e telefone único por conta (migration 138; homologação)

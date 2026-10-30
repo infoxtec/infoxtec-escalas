@@ -103,9 +103,10 @@ async function lerComTeto(msg: Request | Response, teto: number): Promise<string
 async function receberMidia(tecnico: string, midiaId: string, data: unknown) {
   try {
     const d = data as { key?: unknown; message?: unknown };
+    // canal da conta do funcionário (F5b, migration 138): a mídia de um cliente não passa pela instância de outro
     const [cfg] = await sql`
-      select fn_config('evolution_url') as url, fn_config('evolution_instancia') as inst,
-             fn_segredo('EVOLUTION_API_KEY') as chave, coalesce(fn_config('ambiente'), 'producao') as ambiente
+      select c->>'url' as url, c->>'inst' as inst, c->>'chave' as chave, coalesce(fn_config('ambiente'), 'producao') as ambiente
+        from (select fn_evo_canal_tecnico(${tecnico}::uuid) as c) x
     `;
     if (!cfg?.url || !cfg?.inst || !cfg?.chave) throw new Error("evolution sem configuracao");
     // a homologação só usa a instância dela, e a produção nunca a da homologação (decisão 94)
