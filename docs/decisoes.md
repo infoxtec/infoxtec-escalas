@@ -1790,3 +1790,16 @@ no Supabase.
   local pelo `config.toml`; na homologação e na produção são colados em Authentication → Emails → Templates).
 - **Se a Uni5 barrar o envio** ou o volume passar do limite: trocar por um serviço de envio (Resend) só nas
   configurações do Auth, sem mudar o código.
+
+## 124. Alerta da queda do WhatsApp por e-mail, pelo vigia do motor
+
+*30/10/2026 — pedido do responsável depois da queda das duas instâncias da Evolution.*
+
+- O aviso não pode depender do WhatsApp: sai por e-mail, pela caixa da hospedagem (decisão 123), para a plataforma.
+- O vigia do motor (a cada 5 min) pergunta o estado da instância à Evolution; duas verificações seguidas fora do ar
+  (10 min) disparam o e-mail, uma vez por queda; a volta dispara outro. Sem agendador novo: os dois ambientes já rodam
+  o vigia, e cada um vigia a própria instância.
+- O e-mail sai pela Edge Function `alerta-email` (o Auth do Supabase só manda os e-mails dele). A Edge Function não sai
+  pela porta 587: usa a 465 (SSL). A senha da caixa fica só no segredo `ALERTA_SMTP_SENHA` da função.
+- **Limite:** se o servidor da Oracle cair inteiro, o vigia vê "sem resposta" e avisa do mesmo jeito; se o Supabase
+  cair, não há aviso (o painel também fica fora).
