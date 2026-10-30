@@ -15,6 +15,9 @@ verify_jwt = true   # chamada pelo painel com a sessão do usuário; o banco con
 [functions.consulta-cadastro]
 verify_jwt = true   # chamada pelo painel com a sessão do usuário; só consulta CNPJ e CEP públicos
 
+[functions.excluir-usuario]
+verify_jwt = true   # chamada pelo painel com a sessão do usuário; o banco confere quem pode excluir
+
 [functions.voz-escala]
 verify_jwt = false   # chamada pela Twilio e pelo motor; protegida por token e assinatura
 

@@ -1765,3 +1765,15 @@ no Supabase.
   e pede base legal própria na LGPD: fora por ora.
 - **Condição:** as APIs gratuitas não têm SLA. Se faltarem com frequência ou o volume crescer, trocar por fornecedor pago
   só dentro da função.
+
+## 122. Exclusão definitiva de usuário, com registro que fica
+
+*30/10/2026 — pedido do responsável (migration 134, painel 3.54.0).*
+
+- Além de desativar, o administrador da conta pode **excluir de vez** um usuário pela tela Usuários. O vínculo com a
+  conta é apagado (o histórico de convites fica, com o limite de envio); o login no Supabase Auth também, se a pessoa não for de outra conta nem da
+  plataforma (Edge Function `excluir-usuario`, com a chave de serviço só dentro dela).
+- Fica o registro da exclusão (e-mail, papel, autor, quando), como os outros históricos de acesso: é a prova de quem
+  tirou o acesso, guardada por 5 anos (legítimo interesse, LGPD art. 7º, IX). Os registros de ação que citam o e-mail (logs, aceites, ajustes) não são apagados: são guarda legal.
+- Ninguém exclui a si mesmo e o último administrador ativo não sai. O admin de um cliente não descobre se a pessoa usa
+  outra conta: a resposta é a mesma.

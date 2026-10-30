@@ -55,6 +55,7 @@ export const ponto = {
 export const api = {
   meuAcesso: () => rpc<Acesso>('app_meu_acesso'),
   convites: () => rpc<{ email: string; em: string; resultado: string }[]>('app_convites'),
+  usuariosExcluidos: () => rpc<{ email: string; papel: Papel; autor: string; em: string }[]>('app_usuarios_excluidos'),
   plataformaContas: () => rpc<ContaPlataforma[]>('app_plataforma_contas'),
   plataformaCriarConta: (nome: string, adminEmail: string, adminNome: string, modulos: string[], uf: string, municipio: string) =>
     rpc<string>('app_plataforma_criar_conta', { p_nome: nome, p_admin_email: adminEmail, p_admin_nome: adminNome, p_modulos: modulos, p_uf: uf, p_municipio: municipio }),
@@ -321,6 +322,28 @@ export async function consultarCadastro(tipo: 'cnpj' | 'cep', valor: string): Pr
     return r.ok ? r : { ok: false, erro: r.erro ?? 'Consulta indisponível. Preencha à mão.' }
   } catch {
     return { ok: false, erro: 'Consulta indisponível. Preencha à mão.' }
+  }
+}
+
+// Exclusão definitiva (Edge Function excluir-usuario, migration 134): o banco decide quem pode; o login some se a pessoa
+// não for de outra conta. login_apagado só volta para a plataforma.
+export async function excluirUsuario(email: string, conta: string): Promise<{ ok: boolean; login_apagado?: boolean | null; erro?: string }> {
+  const { data: sessao } = await supabase.auth.getSession()
+  try {
+    const resp = await fetchComConta(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/excluir-usuario`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessao.session?.access_token ?? ''}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ email, conta }),
+      signal: AbortSignal.timeout(30000),
+    })
+    const r = await resp.json().catch(() => ({}))
+    return r.ok ? r : { ok: false, erro: r.erro ?? 'O usuário não pôde ser excluído.' }
+  } catch {
+    return { ok: false, erro: 'Sem conexão com o serviço. Tente de novo.' }
   }
 }
 

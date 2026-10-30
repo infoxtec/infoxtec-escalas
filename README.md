@@ -249,4 +249,5 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Multiempresa F1 a F3 (contas de cliente, usuário por conta, seletor de conta, tela Contas), convite por e-mail e espelho do ponto 65 vezes mais rápido: produção em 27/10 (migrations 117 a 128)
 - [x] Multiempresa F6 (CPF e CNPJ por conta) e URA com falas curtas: produção em 29/10 (migrations 129 e 130)
 - [ ] Multiempresa F4: feriado por estado e município (migrations 131 e 132, painel 3.52.0 com a aba Feriados; homologação testada)
-- [ ] Pacote de cadastro: CNPJ com letras, consulta de CNPJ e CEP com preenchimento automático e aviso de CPF (migration 133, painel 3.53.0; homologação)
+- [ ] Pacote de cadastro: CNPJ com letras, consulta de CNPJ e CEP com preenchimento automático e aviso de CPF (migration 133, painel 3.53.0; homologação testada)
+- [ ] Exclusão definitiva de usuário pela tela Usuários (migration 134, painel 3.54.0; homologação)
