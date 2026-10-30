@@ -18,6 +18,9 @@ verify_jwt = true   # chamada pelo painel com a sessão do usuário; só consult
 [functions.excluir-usuario]
 verify_jwt = true   # chamada pelo painel com a sessão do usuário; o banco confere quem pode excluir
 
+[functions.alerta-email]
+verify_jwt = false   # chamada só pelo banco (pg_net); protegida por token conferido no banco
+
 [functions.voz-escala]
 verify_jwt = false   # chamada pela Twilio e pelo motor; protegida por token e assinatura
 

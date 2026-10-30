@@ -208,9 +208,10 @@ do $$
 declare
   v_fn_plataforma text[] := array['app_email', 'app_exigir', 'app_meu_acesso', 'app_backlog', 'app_salvar_backlog_item',
     'app_mover_backlog_item', 'app_checklist_saude', 'app_checklist_testar', 'app_estado_motor',
-    'app_plataforma_contas', 'app_plataforma_criar_conta', 'app_plataforma_salvar_conta'];
+    'app_plataforma_contas', 'app_plataforma_criar_conta', 'app_plataforma_salvar_conta',
+    'app_plataforma_testar_alerta', 'app_plataforma_alertas'];
   v_tb_plataforma text[] := array['config', 'backlog_itens', 'motor_estado', 'saude_testes', 'ponto_geo', 'webhook_token_trocas',
-    'plataforma_log', 'feriados', 'ponto_motivos'];
+    'plataforma_log', 'feriados', 'ponto_motivos', 'evolution_vigia', 'alertas_email'];
   v text; n int; v_ok boolean;
 begin
   -- a lista da plataforma precisa existir (função ou tabela renomeada/removida obriga a revisar a classificação)
@@ -4090,7 +4091,64 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T74' as resultado,
+-- T75 alerta por e-mail da Evolution (migration 135) ------------------------------------------------------------------
+do $$
+declare
+  v_req bigint; v_tok text := repeat('ab', 32); v_d jsonb; v_id bigint;
+begin
+  insert into config (chave, valor) values ('evolution_url', 'https://evo.teste'), ('evolution_instancia', 'qa-inst')
+    on conflict (chave) do update set valor = excluded.valor;
+  delete from config where chave = 'alerta_email_url';
+  if not exists (select 1 from vault.secrets where name = 'EVOLUTION_API_KEY') then perform vault.create_secret('qa', 'EVOLUTION_API_KEY'); end if;
+  delete from evolution_vigia; delete from alertas_email;
+  -- 1ª volta: só pede o estado
+  perform fn_vigiar_evolution();
+  -- respostas "close" em duas voltas: na segunda, sai o e-mail de queda
+  for i in 1..2 loop
+    select req_id into v_req from evolution_vigia;
+    insert into net._http_response (id, status_code, content, created) values (v_req, 200, '{"instance":{"state":"close"}}', now());
+    perform fn_vigiar_evolution();
+  end loop;
+  perform pg_temp.ok((select falhas = 2 and alertado_em is not null and estado = 'close' from evolution_vigia)
+                     and (select count(*) from alertas_email where assunto = 'Trilha: WhatsApp fora do ar') = 1, '[T75] queda avisada uma vez');
+  select req_id into v_req from evolution_vigia;
+  insert into net._http_response (id, status_code, content, created) values (v_req, 200, '{"instance":{"state":"close"}}', now());
+  perform fn_vigiar_evolution();
+  perform pg_temp.ok((select count(*) from alertas_email where assunto = 'Trilha: WhatsApp fora do ar') = 1, '[T75] sem e-mail repetido');
+  -- resposta que não é JSON conta como falha, sem quebrar o vigia
+  select req_id into v_req from evolution_vigia;
+  insert into net._http_response (id, status_code, content, created) values (v_req, 200, '<html>', now());
+  perform fn_vigiar_evolution();
+  perform pg_temp.ok((select estado = 'sem_resposta' from evolution_vigia), '[T75] resposta inválida');
+  -- volta: e-mail de volta e contador zerado
+  select req_id into v_req from evolution_vigia;
+  insert into net._http_response (id, status_code, content, created) values (v_req, 200, '{"instance":{"state":"open"}}', now());
+  perform fn_vigiar_evolution();
+  perform pg_temp.ok((select falhas = 0 and alertado_em is null and estado = 'open' from evolution_vigia)
+                     and exists (select 1 from alertas_email where assunto = 'Trilha: WhatsApp de volta'), '[T75] volta avisada');
+  -- a Edge Function: token errado recusado; dados com a plataforma; resultado gravado
+  perform fn_segredo_gravar('ALERTA_EMAIL_TOKEN', v_tok);
+  select id into v_id from alertas_email where assunto = 'Trilha: WhatsApp fora do ar';
+  begin perform fn_alerta_email_dados('cd' || repeat('0', 62), v_id); perform pg_temp.ok(false, '[T75] token errado');
+  exception when others then perform pg_temp.ok(sqlerrm = 'token inválido', '[T75] token errado recusado'); end;
+  v_d := fn_alerta_email_dados(v_tok, v_id);
+  perform pg_temp.ok(v_d->'para' ? 'qa-admin@teste.local' and v_d->'smtp'->>'host' is not null and not (v_d->'smtp' ? 'senha'),
+                     '[T75] dados para a Edge Function');
+  perform fn_alerta_email_resultado(v_tok, v_id, true, null);
+  perform pg_temp.ok((select enviado_em is not null from alertas_email where id = v_id) and fn_alerta_email_dados(v_tok, v_id) is null,
+                     '[T75] enviado não sai de novo');
+  -- teste pela tela Contas, só a plataforma
+  perform set_config('request.headers', '{}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform pg_temp.ok(app_plataforma_testar_alerta() > 0, '[T75] teste pela plataforma');
+  perform pg_temp.ok(jsonb_array_length(app_plataforma_alertas()->'alertas') >= 3, '[T75] teste e lista');
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  begin perform app_plataforma_testar_alerta(); perform pg_temp.ok(false, '[T75] admin de conta testa');
+  exception when others then perform pg_temp.ok(sqlerrm like 'Sem permissão%', '[T75] admin de conta não testa'); end;
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T75' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

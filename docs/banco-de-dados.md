@@ -254,6 +254,19 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 135 (30/10, versão 20261107120000): alerta por e-mail quando o WhatsApp cai
+
+`evolution_vigia` (uma linha: pedido em andamento, último estado, falhas seguidas, desde quando está fora, se já
+avisou) e `alertas_email` (fila dos e-mails, 90 dias), tabelas da plataforma (RLS ligado, sem políticas).
+`fn_vigiar_evolution`, chamada pelo `fn_vigiar_motor` a cada 5 min (falha nela não para o vigia do motor), lê a resposta
+do `connectionState` pedido na volta anterior e faz o pedido novo; fora de `open` por `evolution_alerta_falhas` voltas
+(2 = 10 min), põe um e-mail na fila; quando volta a `open`, outro. `fn_alerta_email` grava na fila e chama a Edge
+Function `alerta-email` (token `ALERTA_EMAIL_TOKEN` no Vault, criado no primeiro uso); `fn_alerta_email_dados` e
+`fn_alerta_email_resultado` só respondem com o token. Destinatários: a plataforma e `alerta_emails`. SMTP em `config`
+(`alerta_smtp_host`, `alerta_smtp_porta` 465, `alerta_smtp_usuario`); a senha só no segredo `ALERTA_SMTP_SENHA` da
+função. `app_plataforma_testar_alerta` e `app_plataforma_alertas` (aba Contas). Regressão: T75; T56 classifica as duas
+tabelas como da plataforma.
+
 ### Migration 134 (30/10, versão 20261106120000): exclusão definitiva de usuário
 
 Tabela `usuarios_excluidos` (conta, e-mail, papel, autor, quando e a `situacao` do login: `mantido`, `pendente` com o
