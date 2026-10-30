@@ -1802,4 +1802,4 @@ no Supabase.
 - O e-mail sai pela Edge Function `alerta-email` (o Auth do Supabase só manda os e-mails dele). A Edge Function não sai
   pela porta 587: usa a 465 (SSL). A senha da caixa fica só no segredo `ALERTA_SMTP_SENHA` da função.
 - **Limite:** se o servidor da Oracle cair inteiro, o vigia vê "sem resposta" e avisa do mesmo jeito; se o Supabase
-  cair, não há aviso (o painel também fica fora).
+  cair, quem avisa é o monitor externo (healthchecks.io, etapa 10c), ligado pelo painel da plataforma (migration 136).

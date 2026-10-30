@@ -254,6 +254,13 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 136 (30/10, versão 20261108120000): monitor externo pelo painel
+
+`app_plataforma_monitor` (ligado ou não, e os 4 últimos caracteres do endereço) e `app_plataforma_salvar_monitor(url)`
+gravam `monitor_ping_url` pela aba Contas, sem SQL na produção (só `https://hc-ping.com/<uuid>` ou vazio; o gatilho da
+`config` confere de novo). A troca vai para o `plataforma_log` (ação `monitor_externo`, sem o endereço inteiro).
+Regressão: T76.
+
 ### Migration 135 (30/10, versão 20261107120000): alerta por e-mail quando o WhatsApp cai
 
 `evolution_vigia` (uma linha: pedido em andamento, último estado, falhas seguidas, desde quando está fora, se já

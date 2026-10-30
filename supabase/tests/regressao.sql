@@ -209,7 +209,7 @@ declare
   v_fn_plataforma text[] := array['app_email', 'app_exigir', 'app_meu_acesso', 'app_backlog', 'app_salvar_backlog_item',
     'app_mover_backlog_item', 'app_checklist_saude', 'app_checklist_testar', 'app_estado_motor',
     'app_plataforma_contas', 'app_plataforma_criar_conta', 'app_plataforma_salvar_conta',
-    'app_plataforma_testar_alerta', 'app_plataforma_alertas'];
+    'app_plataforma_testar_alerta', 'app_plataforma_alertas', 'app_plataforma_monitor', 'app_plataforma_salvar_monitor'];
   v_tb_plataforma text[] := array['config', 'backlog_itens', 'motor_estado', 'saude_testes', 'ponto_geo', 'webhook_token_trocas',
     'plataforma_log', 'feriados', 'ponto_motivos', 'evolution_vigia', 'alertas_email'];
   v text; n int; v_ok boolean;
@@ -4148,7 +4148,30 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T75' as resultado,
+-- T76 monitor externo pelo painel (migration 136) ---------------------------------------------------------------------
+do $$
+declare v_ok boolean;
+begin
+  perform set_config('request.headers', '{}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform app_plataforma_salvar_monitor(' https://hc-ping.com/0123ABCD-0123-4567-89ab-0123456789ab ');
+  perform pg_temp.ok((select valor = 'https://hc-ping.com/0123abcd-0123-4567-89ab-0123456789ab' from config where chave = 'monitor_ping_url')
+                     and (app_plataforma_monitor()->>'ligado')::boolean and app_plataforma_monitor()->>'final' = '89ab'
+                     and exists (select 1 from plataforma_log where acao = 'monitor_externo'), '[T76] monitor ligado e registrado');
+  v_ok := false;
+  begin perform app_plataforma_salvar_monitor('https://exemplo.com/ping');
+  exception when others then v_ok := sqlerrm like 'Use o endereço de ping%'; end;
+  perform pg_temp.ok(v_ok, '[T76] endereço fora do healthchecks recusado');
+  perform app_plataforma_salvar_monitor('');
+  perform pg_temp.ok(not (app_plataforma_monitor()->>'ligado')::boolean, '[T76] monitor desligado');
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  v_ok := false;
+  begin perform app_plataforma_salvar_monitor(''); exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
+  perform pg_temp.ok(v_ok, '[T76] admin de conta não mexe no monitor');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T76' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
