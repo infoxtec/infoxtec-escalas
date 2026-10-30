@@ -254,6 +254,23 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 137 (30/10, versão 20261109120000): canal de WhatsApp por conta, multiempresa F5a
+
+`conta_canais` (uma linha por conta cliente: instância, URL da Evolution, nome do segredo no Vault
+`EVOLUTION_API_KEY_<conta>`, ativo; RLS ligado, sem políticas). A operadora (conta 1) fica fora da tabela e segue no
+canal da instalação (`evolution_url`, `evolution_instancia`, `EVOLUTION_API_KEY`). `fn_conta_do_numero` acha a conta
+de quem recebe pelo telefone do funcionário (único no sistema até a F5b; sem funcionário, a operadora).
+`fn_evo_destino(caminho, número)` devolve URL, caminho com a instância da conta e o segredo, ou null se a conta não tem
+canal ativo; `fn_evo_post` passa a usá-la e, sem canal, recusa com aviso no log (nunca sai pelo número da operadora,
+decisão 108). `fn_segredo_gravar` aceita `EVOLUTION_API_KEY_<32 hex>`. `app_plataforma_canais` (sem a chave) e
+`app_plataforma_salvar_canal(conta, instância, chave, ativo)` (chave em branco mantém a do Vault; a instância da
+operadora e a `trilha-homologacao` na produção são recusadas; troca no `plataforma_log`, ação `canal_whatsapp`).
+O motor (`fn_dispatcher_whatsapp`) confere o destino antes de enviar: escala de conta sem canal vira `falha`
+("conta sem canal"), com o ciclo normal de nova tentativa e supervisor. Número que, na forma canônica, bate em duas
+contas não é adivinhado (recusado); índice `tecnicos_tel_canonico_idx`. Na homologação, envio de conta cliente vira só
+aviso. Telefone e conta explícitos no envio e entrada pela instância (webhook por conta): F5b; fila justa: F5c.
+Regressão: T77.
+
 ### Migration 136 (30/10, versão 20261108120000): monitor externo pelo painel
 
 `app_plataforma_monitor` (ligado ou não, e os 4 últimos caracteres do endereço) e `app_plataforma_salvar_monitor(url)`
