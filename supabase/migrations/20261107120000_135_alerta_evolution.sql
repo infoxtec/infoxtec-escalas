@@ -32,7 +32,7 @@ create index alertas_email_criado_idx on interno.alertas_email (criado_em desc);
 
 insert into interno.config (chave, valor, descricao) values
   ('evolution_alerta_falhas', '2', 'Verificações seguidas (a cada 5 min) com o WhatsApp fora do ar antes do e-mail de alerta'),
-  ('alerta_emails', '', 'E-mails extras do alerta, separados por vírgula (a plataforma sempre recebe)'),
+  ('alerta_emails', '', 'E-mails extras do alerta, separados por vírgula (a plataforma sempre recebe). Quem entra aqui vê no e-mail o endereço do Manager da Evolution'),
   ('alerta_smtp_host', 'emailssl-vip.uni5.net', 'Servidor SMTP do alerta (a senha fica no segredo ALERTA_SMTP_SENHA da Edge Function)'),
   ('alerta_smtp_porta', '465', 'Porta do SMTP do alerta (465, SSL: a Edge Function não sai pela 587)'),
   ('alerta_smtp_usuario', 'trilha@infoxtec.com.br', 'Usuário e remetente do SMTP do alerta')
@@ -158,8 +158,8 @@ begin
     select r.status_code, r.content, r.timed_out, r.error_msg into v_resp from net._http_response r where r.id = v.req_id;
     if found then
       begin
-        v_estado := case when v_resp.status_code = 200 then coalesce(
-                      (v_resp.content::jsonb #>> '{instance,state}'), (v_resp.content::jsonb ->> 'state'), 'desconhecido')
+        v_estado := case when v_resp.status_code = 200 then left(coalesce(
+                      (v_resp.content::jsonb #>> '{instance,state}'), (v_resp.content::jsonb ->> 'state'), 'desconhecido'), 30)
                     else 'sem_resposta' end;
       exception when others then
         v_estado := 'sem_resposta';   -- resposta que não é JSON
@@ -209,6 +209,7 @@ create or replace function public.app_plataforma_testar_alerta()
 as $function$
 declare v_ator text := interno.fn_exigir_plataforma();
 begin
+  perform pg_advisory_xact_lock(hashtext('alerta_email_teste'));
   if exists (select 1 from interno.alertas_email where assunto like 'Trilha: teste%' and criado_em > now() - interval '2 minutes') then
     raise exception 'Teste enviado há pouco. Aguarde 2 minutos.';
   end if;
