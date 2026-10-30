@@ -1,6 +1,6 @@
 import { fetchComConta, supabase } from './supabase'
 import type {
-  Acesso, ContaPlataforma, Feriado, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre, ValidacaoCarga, ModeloCarga, CargaHoraria, CargaAtribuicao, CargaFuncionario, TimeEquipe, AlvoCarga, ProgramacaoLimite, AceiteProgramacao, AceiteProgramacaoAssinado, CargaExcedida, ValidacaoFolha, FechamentoFolha, PreviaFolha, PontoHeAutorizacao, EspelhoPdf, ComprovanteRegistro } from './types'
+  Acesso, ConsultaCadastro, ContaPlataforma, Feriado, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre, ValidacaoCarga, ModeloCarga, CargaHoraria, CargaAtribuicao, CargaFuncionario, TimeEquipe, AlvoCarga, ProgramacaoLimite, AceiteProgramacao, AceiteProgramacaoAssinado, CargaExcedida, ValidacaoFolha, FechamentoFolha, PreviaFolha, PontoHeAutorizacao, EspelhoPdf, ComprovanteRegistro } from './types'
 
 function traduzir(msg: string): string {
   if (/JWT expired|invalid JWT|not authenticated/i.test(msg)) return 'Sessão expirada. Entre novamente.'
@@ -300,6 +300,27 @@ export async function convidarUsuario(email: string, conta: string): Promise<Res
     return r.ok ? r : { ok: false, erro: r.erro ?? 'O convite não pôde ser enviado.' }
   } catch {
     return { ok: false, erro: 'Sem conexão com o serviço de convite. Tente de novo.' }
+  }
+}
+
+// CNPJ (Receita) e CEP (Correios) para preencher o cadastro; não grava nada (Edge Function consulta-cadastro)
+export async function consultarCadastro(tipo: 'cnpj' | 'cep', valor: string): Promise<ConsultaCadastro> {
+  const { data: sessao } = await supabase.auth.getSession()
+  try {
+    const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/consulta-cadastro`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessao.session?.access_token ?? ''}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ tipo, valor }),
+      signal: AbortSignal.timeout(15000),
+    })
+    const r = await resp.json().catch(() => ({}))
+    return r.ok ? r : { ok: false, erro: r.erro ?? 'Consulta indisponível. Preencha à mão.' }
+  } catch {
+    return { ok: false, erro: 'Consulta indisponível. Preencha à mão.' }
   }
 }
 

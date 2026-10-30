@@ -9,7 +9,7 @@ const ROTULO: Record<string, string> = {
   inicio_he: 'Início de hora extra', fim_he: 'Fim de hora extra',
 }
 const cpfFmt = (c: string) => c.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4')
-const cnpjFmt = (c: string) => c.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
+const cnpjFmt = (c: string) => c.replace(/^([0-9A-Z]{2})([0-9A-Z]{3})([0-9A-Z]{3})([0-9A-Z]{4})(\d{2})$/, '$1.$2.$3/$4-$5')
 // a fonte padrão do PDF só tem o alfabeto latino (WinAnsi)
 const txt = (s: unknown) => String(s ?? '').normalize('NFC').replace(/[^\x20-\x7E -ÿ–—…]/g, '?')
 

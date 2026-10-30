@@ -254,6 +254,14 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 133 (30/10, versão 20261105120000): CNPJ alfanumérico e CEP, pacote de cadastro
+
+`fn_cnpj_valido` aceita o CNPJ com letras (12 posições `[0-9A-Z]` e 2 dígitos; caractere = ASCII − 48, o mesmo cálculo
+para os só com números). `app_salvar_empresa` guarda o CNPJ só com letras e dígitos, em maiúsculas. `empresas` e `locais`
+ganham `cep` (8 dígitos); `app_salvar_empresa` e `app_salvar_local` aceitam `cep` (sem a chave no pedido, fica o que
+estava). `fn_afd_cnpj` leva o CNPJ com letras ao AFD (`app_ponto_afd`; `fn_afd_n` segue tirando as letras do número do
+INPI). A consulta de CNPJ e CEP é a Edge Function `consulta-cadastro` (decisão 121), que não grava nada. Regressão: T73.
+
 ### Migration 132 (29/10, versão 20261104120000): lugar no painel, multiempresa F4b
 
 `app_salvar_local` aceita `uf` (duas letras); local novo sem cidade fica com a cidade da sede (antes, "Salvador" fixo) e,

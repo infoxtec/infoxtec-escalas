@@ -3,11 +3,11 @@ import { Columns3, Crosshair, Edit2, ExternalLink, FileCheck2, MapPin, Plus, Ref
 import { Button, ErrorBox, Field, Input, Modal, Select, ToggleRow } from '../components/ui'
 import DossieLocal from '../components/DossieLocal'
 import { PlainTh, SortableTh, useColumnWidths, useSortable } from '../components/SortableTh'
-import { api, erroMsg } from '../lib/api'
-import { coordenadasDoLink } from '../lib/types'
+import { api, consultarCadastro, erroMsg } from '../lib/api'
+import { coordenadasDoLink, enderecoDaConsulta, mascaraCep } from '../lib/types'
 import type { Empresa, Local } from '../lib/types'
 
-const NOVO: Partial<Local> = { nome: '', cliente: '', endereco: '', cidade: '', uf: '', referencia: '', link_maps: '', contato_local: '', telefone_contato: '', ativo: true, raio_m: 200 }
+const NOVO: Partial<Local> = { nome: '', cliente: '', endereco: '', cep: '', cidade: '', uf: '', referencia: '', link_maps: '', contato_local: '', telefone_contato: '', ativo: true, raio_m: 200 }
 
 export default function LocaisPage({ locais, recarregar, podeEditar }: {
   locais: Local[]; recarregar: () => Promise<void>; podeEditar: boolean
@@ -27,6 +27,17 @@ export default function LocaisPage({ locais, recarregar, podeEditar }: {
   const { col, total, restaurarTudo } = useColumnWidths('locais', { nome: 200, cliente: 150, endereco: 280, cidade: 110, referencia: 160, contato: 160, maps: 80, area: 110, ativo: 80, acoes: 90 })
 
   const set = (k: keyof Local, v: string | boolean | number | null) => setEdit(p => ({ ...p, [k]: v }))
+  const [avisoCep, setAvisoCep] = useState<string | null>(null)
+  // CEP completo: rua, bairro, cidade e UF dos Correios (a cidade e a UF definem os feriados do local)
+  const mudarCep = async (v: string) => {
+    const cep = mascaraCep(v)
+    set('cep', cep)
+    if (cep.length < 9) return setAvisoCep(null)
+    const r = await consultarCadastro('cep', cep)
+    if (!r.ok) return setAvisoCep(r.erro ?? 'CEP não encontrado.')
+    setEdit(p => p && p.cep === cep ? { ...p, endereco: enderecoDaConsulta(r) || p.endereco, cidade: r.cidade ?? p.cidade, uf: r.uf ?? p.uf } : p)
+    setAvisoCep(`Endereço do CEP preenchido (${r.fonte}). Complete com o número.`)
+  }
   const num = (v: string) => v.trim() === '' ? null : Number(v.replace(',', '.'))
   const doLink = () => {
     const c = coordenadasDoLink(edit?.link_maps ?? '')
@@ -55,7 +66,7 @@ export default function LocaisPage({ locais, recarregar, podeEditar }: {
           <Button variant="outline" size="sm" disabled={atualizando} onClick={async () => { setAtualizando(true); await recarregar(); setAtualizando(false) }}>
             <RefreshCw className={`h-3.5 w-3.5 ${atualizando ? 'animate-spin' : ''}`} /> Atualizar
           </Button>
-          {podeEditar && <Button size="sm" onClick={() => { setEdit({ ...NOVO }); setErro(null) }}><Plus className="h-4 w-4" /> Novo local</Button>}
+          {podeEditar && <Button size="sm" onClick={() => { setEdit({ ...NOVO }); setErro(null); setAvisoCep(null) }}><Plus className="h-4 w-4" /> Novo local</Button>}
         </div>
       </div>
 
@@ -90,7 +101,7 @@ export default function LocaisPage({ locais, recarregar, podeEditar }: {
                   <td className="px-3 py-2.5 text-center">{l.link_maps ? <a href={l.link_maps} target="_blank" rel="noopener noreferrer" className="inline-flex text-primary"><ExternalLink className="h-3.5 w-3.5" /></a> : <span className="text-xs text-muted-foreground">—</span>}</td>
                   <td className="px-3 py-2.5 text-center text-xs">{l.latitude != null ? <span className="inline-flex items-center gap-1 text-primary" title={`${l.latitude}, ${l.longitude}`}><MapPin className="h-3.5 w-3.5" />{l.raio_m} m</span> : <span className="text-muted-foreground">—</span>}</td>
                   <td className="px-3 py-2.5 text-center"><span className={`inline-block h-2 w-2 rounded-full ${l.ativo ? 'bg-green-500' : 'bg-gray-400'}`} /></td>
-                  <td className="px-3 py-2.5 text-right"><Button variant="ghost" size="icon" aria-label="Dossiê de conformidade" title="Dossiê de conformidade" onClick={() => setDossie(l)}><FileCheck2 className="h-3.5 w-3.5" /></Button>{podeEditar && <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => { setEdit({ ...l }); setErro(null) }}><Edit2 className="h-3.5 w-3.5" /></Button>}</td>
+                  <td className="px-3 py-2.5 text-right"><Button variant="ghost" size="icon" aria-label="Dossiê de conformidade" title="Dossiê de conformidade" onClick={() => setDossie(l)}><FileCheck2 className="h-3.5 w-3.5" /></Button>{podeEditar && <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => { setEdit({ ...l, cep: mascaraCep(l.cep ?? '') }); setErro(null); setAvisoCep(null) }}><Edit2 className="h-3.5 w-3.5" /></Button>}</td>
                 </tr>
               ))}
             </tbody>
@@ -109,7 +120,11 @@ export default function LocaisPage({ locais, recarregar, podeEditar }: {
               <Field label="Nome *"><Input value={edit.nome ?? ''} onChange={e => set('nome', e.target.value)} disabled={salvando} /></Field>
               <Field label="Cliente"><Input value={edit.cliente ?? ''} onChange={e => set('cliente', e.target.value)} disabled={salvando} /></Field>
             </div>
-            <Field label="Endereço"><Input value={edit.endereco ?? ''} onChange={e => set('endereco', e.target.value)} disabled={salvando} /></Field>
+            <div className="grid grid-cols-[7rem_1fr] gap-3">
+              <Field label="CEP"><Input value={edit.cep ?? ''} onChange={e => void mudarCep(e.target.value)} placeholder="00000-000" maxLength={9} disabled={salvando} /></Field>
+              <Field label="Endereço"><Input value={edit.endereco ?? ''} onChange={e => set('endereco', e.target.value)} disabled={salvando} /></Field>
+            </div>
+            {avisoCep && <p className="text-xs text-muted-foreground">{avisoCep}</p>}
             <div className="grid grid-cols-[1fr_5rem] gap-3">
               <Field label="Cidade" hint="Com a UF, define os feriados do local. Em branco: a sede da conta.">
                 <Input value={edit.cidade ?? ''} onChange={e => set('cidade', e.target.value)} disabled={salvando} />
