@@ -305,6 +305,24 @@ returning chave, valor;
 
 O gatilho da migration 45 recusa valor que não comece com `https://`.
 
+## Trocar o celular do WhatsApp da operação
+
+Causa da queda de 29/10: a troca do celular desconectou as duas instâncias (`infoxtec` e `trilha-homologacao`). O
+servidor e os containers não caíram (no ar desde 30/09, sem reinício nem falta de memória). Aparelho novo, WhatsApp
+reinstalado ou backup restaurado derrubam os aparelhos conectados; a Evolution é um deles.
+
+1. **Antes:** escolher um horário fora da janela de envio (antes das 07:00 ou depois das 21:00) e longe do
+   fechamento do mês.
+2. **Trocar o celular** e abrir o WhatsApp no aparelho novo.
+3. **Logo depois**, no Manager da Evolution (`<evolution_url>/manager`), em cada instância: conectar e ler o QR Code
+   pelo celular novo (WhatsApp → Aparelhos conectados → Conectar um aparelho).
+4. **Conferir:** em até 5 minutos, o quadro "Alerta do WhatsApp por e-mail" (aba Contas) mostra "conectado". Se o
+   alerta de queda já tiver saído, chega o e-mail "Trilha: WhatsApp de volta".
+5. As escalas que falharam nesse intervalo o motor reenvia sozinho (seção abaixo).
+
+O alerta por e-mail (migration 135) avisa a plataforma 10 minutos depois de a sessão cair, também quando a causa
+for esta.
+
 ## Evolution fora do ar: contingência manual
 
 Quando o monitor avisar que a Evolution está falhando, ou os técnicos não receberem:
