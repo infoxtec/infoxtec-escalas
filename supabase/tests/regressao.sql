@@ -4033,7 +4033,50 @@ begin
                      '[T73] CNPJ com letras no AFD');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T73' as resultado,
+-- T74 exclusão definitiva de usuário (migration 134) -----------------------------------------------------------------
+do $$
+declare
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_r jsonb; v_ok boolean;
+begin
+  insert into conta_membros (conta_id, email, nome, papel) values
+    (v_b, 'qa-sai@teste.local', 'QA Sai', 'gestor'), (v_b, 'qa-fica@teste.local', 'QA Fica', 'leitura'),
+    ('00000000-0000-0000-0000-000000000001', 'qa-fica@teste.local', 'QA Fica', 'leitura');
+  -- quem não é admin da conta não exclui
+  v_ok := false;
+  begin perform fn_usuario_excluir('qa-fica@teste.local', 'aal2', v_b, 'qa-sai@teste.local');
+  exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
+  perform pg_temp.ok(v_ok, '[T74] não admin não exclui');
+  v_ok := false;
+  begin perform fn_usuario_excluir('qa-b@teste.local', 'aal2', v_b, 'qa-b@teste.local');
+  exception when others then v_ok := sqlerrm like 'Você não pode excluir o próprio%'; end;
+  perform pg_temp.ok(v_ok, '[T74] não exclui a si mesmo');
+  -- o único admin ativo não sai (excluído pela plataforma)
+  v_ok := false;
+  begin perform fn_usuario_excluir('qa-admin@teste.local', 'aal2', v_b, 'qa-b@teste.local');
+  exception when others then v_ok := sqlerrm like 'Este é o único administrador%'; end;
+  perform pg_temp.ok(v_ok, '[T74] último admin não sai');
+  -- excluído de vez; sem outra conta, o login entra na resposta (aqui sem auth.users: null)
+  v_r := fn_usuario_excluir('qa-b@teste.local', 'aal2', v_b, 'qa-sai@teste.local');
+  perform pg_temp.ok(not exists (select 1 from conta_membros where email = 'qa-sai@teste.local')
+                     and exists (select 1 from usuarios_excluidos where email = 'qa-sai@teste.local' and conta_id = v_b and autor = 'qa-b@teste.local')
+                     and v_r ? 'login' and not (v_r->>'plataforma')::boolean, '[T74] excluído e registrado');
+  -- quem é de outra conta perde só esta; o login fica
+  v_r := fn_usuario_excluir('qa-b@teste.local', 'aal2', v_b, 'qa-fica@teste.local');
+  perform pg_temp.ok(v_r->>'login' is null and exists (select 1 from conta_membros where email = 'qa-fica@teste.local'),
+                     '[T74] login fica quando há outra conta');
+  v_ok := false;
+  begin perform fn_usuario_excluir('qa-b@teste.local', 'aal2', v_b, 'qa-sai@teste.local');
+  exception when others then v_ok := sqlerrm like 'Usuário não encontrado%'; end;
+  perform pg_temp.ok(v_ok, '[T74] excluir de novo avisa');
+  -- histórico só da conta, só para o admin
+  perform set_config('request.headers', '{}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform pg_temp.ok((select count(*) from app_usuarios_excluidos()) = 2, '[T74] histórico da conta');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T74' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Columns3, Edit2, Info, Mail, Plus, RefreshCw, ShieldCheck } from 'lucide-react'
-import { Button, ErrorBox, Field, Input, Modal, Select, ToggleRow, useToast } from '../components/ui'
+import { Columns3, Edit2, Info, Mail, Plus, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react'
+import { Button, Confirm, ErrorBox, Field, Input, Modal, Select, ToggleRow, useToast } from '../components/ui'
 import { PlainTh, SortableTh, useColumnWidths, useSortable } from '../components/SortableTh'
-import { api, convidarUsuario, erroMsg, mensagemConvite } from '../lib/api'
+import { api, convidarUsuario, erroMsg, excluirUsuario, mensagemConvite } from '../lib/api'
 import { contaAtual } from '../lib/supabase'
 import { formatDateTime, PAPEL_LABEL } from '../lib/types'
 import type { Papel, UsuarioPainel } from '../lib/types'
@@ -27,11 +27,15 @@ export default function UsuariosPage() {
   const [convites, setConvites] = useState<Map<string, { em: string; resultado: string }>>(new Map())
   const [convidando, setConvidando] = useState<string | null>(null)
   const [erroForm, setErroForm] = useState<string | null>(null)
+  const [excluir, setExcluir] = useState<UsuarioPainel | null>(null)
+  const [excluindo, setExcluindo] = useState(false)
+  const [excluidos, setExcluidos] = useState<{ email: string; papel: Papel; autor: string; em: string }[]>([])
 
   const carregar = useCallback(async () => {
     setCarregando(true); setErro(null)
     api.veSaudeHistorico().then(setHistorico).catch(() => setHistorico([]))
     api.rhFolhasHistorico().then(setHistRh).catch(() => setHistRh([]))
+    api.usuariosExcluidos().then(setExcluidos).catch(() => setExcluidos([]))
     api.usuariosMfa().then(m => setMfa({ ativos: new Map(m.ativos.map(a => [a.email, a.desde])), historico: m.historico }))
       .catch(() => setMfa(null))
     api.convites().then(c => setConvites(new Map(c.map(x => [x.email, { em: x.em, resultado: x.resultado }])))).catch(() => setConvites(new Map()))
@@ -73,6 +77,17 @@ export default function UsuariosPage() {
     setConvidando(email)
     try { toast(mensagemConvite(email, await convidarUsuario(email, conta))); await carregar() }
     finally { setConvidando(null) }
+  }
+  const confirmarExclusao = async () => {
+    const conta = contaAtual()
+    if (!excluir || !conta) return
+    setExcluindo(true)
+    try {
+      const r = await excluirUsuario(excluir.email, conta)
+      if (!r.ok) { setErro(r.erro ?? 'O usuário não pôde ser excluído.'); return }
+      toast(r.login_apagado === false ? `${excluir.email} saiu da conta, mas o login não pôde ser apagado: avise o suporte.` : `${excluir.email} excluído.`)
+      setExcluir(null); await carregar()
+    } finally { setExcluindo(false) }
   }
   const SITUACAO_CONVITE: Record<string, string> = { enviado: 'enviado', ja_tinha_login: 'já tinha login', falhou: 'falhou', pendente: 'pendente' }
 
@@ -128,12 +143,27 @@ export default function UsuariosPage() {
                       onClick={() => void convidar(u.email)}><Mail className="h-3.5 w-3.5" /></Button>
                   )}
                   <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => { setEdit({ email: u.email, nome: u.nome ?? '', papel: u.papel, ativo: u.ativo, novo: false, ve_saude: u.ve_saude, ve_saude_antes: u.ve_saude, rh_folhas: !!u.rh_folhas, rh_folhas_antes: !!u.rh_folhas }); setErroForm(null) }}><Edit2 className="h-3.5 w-3.5" /></Button>
+                  <Button variant="ghost" size="icon" aria-label="Excluir usuário" title="Excluir de vez" onClick={() => setExcluir(u)}><Trash2 className="h-3.5 w-3.5" /></Button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {excluidos.length > 0 && (
+        <div className="space-y-1 rounded-md border p-3 text-xs">
+          <p className="font-semibold">Usuários excluídos</p>
+          {excluidos.map((x, i) => (
+            <p key={i} className="text-muted-foreground">{formatDateTime(x.em)} · {x.email} ({PAPEL_LABEL[x.papel] ?? x.papel}) · por {x.autor}</p>
+          ))}
+        </div>
+      )}
+
+      <Confirm open={!!excluir} title="Excluir usuário" confirmLabel="Excluir de vez" destructive busy={excluindo}
+        onConfirm={() => void confirmarExclusao()} onCancel={() => setExcluir(null)}>
+        {excluir && <p className="text-sm"><strong>{excluir.nome ?? excluir.email}</strong> ({excluir.email}) perde o acesso a esta conta na hora e sai da lista. Se não usar outra conta, o login também é apagado e, para voltar, precisa de um convite novo. O registro desta exclusão fica no histórico. Para só suspender, use Editar → desligar Ativo.</p>}
+      </Confirm>
 
       {histRh.length > 0 && (
         <div className="space-y-1 rounded-md border p-3 text-xs">

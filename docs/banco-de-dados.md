@@ -254,6 +254,17 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 134 (30/10, versão 20261106120000): exclusão definitiva de usuário
+
+Tabela `usuarios_excluidos` (conta, e-mail, papel, autor, quando e se o login foi apagado; RLS ligado, sem políticas):
+o registro que fica de quem saiu. `fn_usuario_excluir(autor, aal, conta, e-mail)`, chamada só pela Edge Function
+`excluir-usuario` com o autor conferido no Auth: mesmas regras de quem pode do convite (admin ativo da conta ou
+plataforma com duas etapas), ninguém exclui a si mesmo, o último admin ativo não sai; apaga os convites e o vínculo em
+`conta_membros` e devolve o id do login no Auth só se a pessoa não for de outra conta nem da plataforma (a função apaga
+o login, com os fatores de duas etapas). `fn_usuario_excluir_resultado` grava se o login saiu. `app_usuarios_excluidos`
+lista as 50 últimas exclusões da conta (só admin). O admin de um cliente recebe a mesma resposta com ou sem outra conta.
+Regressão: T74.
+
 ### Migration 133 (30/10, versão 20261105120000): CNPJ alfanumérico e CEP, pacote de cadastro
 
 `fn_cnpj_valido` aceita o CNPJ com letras (12 posições `[0-9A-Z]` e 2 dígitos; caractere = ASCII − 48, o mesmo cálculo
