@@ -58,6 +58,8 @@ export const api = {
   usuariosExcluidos: () => rpc<{ email: string; papel: Papel; autor: string; em: string }[]>('app_usuarios_excluidos'),
   plataformaAlertas: () => rpc<{ vigia: { estado: string | null; falhas: number; fora_desde: string | null; verificado_em: string | null } | null;
     alertas: { assunto: string; criado_em: string; enviado_em: string | null; erro: string | null }[] }>('app_plataforma_alertas'),
+  plataformaMonitor: () => rpc<{ ligado: boolean; final: string | null }>('app_plataforma_monitor'),
+  plataformaSalvarMonitor: (url: string) => rpc<void>('app_plataforma_salvar_monitor', { p_url: url }),
   plataformaTestarAlerta: () => rpc<number>('app_plataforma_testar_alerta'),
   plataformaContas: () => rpc<ContaPlataforma[]>('app_plataforma_contas'),
   plataformaCriarConta: (nome: string, adminEmail: string, adminNome: string, modulos: string[], uf: string, municipio: string) =>

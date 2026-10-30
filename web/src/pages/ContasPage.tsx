@@ -21,10 +21,13 @@ export default function ContasPage() {
   const [erro, setErro] = useState<string | null>(null)
   const [alertas, setAlertas] = useState<Awaited<ReturnType<typeof api.plataformaAlertas>> | null>(null)
   const [testando, setTestando] = useState(false)
+  const [monitor, setMonitor] = useState<{ ligado: boolean; final: string | null } | null>(null)
+  const [pingUrl, setPingUrl] = useState('')
 
   const carregar = useCallback(async () => {
     try { setContas(await api.plataformaContas()) } catch (e) { setErro(erroMsg(e)) }
     api.plataformaAlertas().then(setAlertas).catch(() => setAlertas(null))
+    api.plataformaMonitor().then(setMonitor).catch(() => setMonitor(null))
   }, [])
 
   // e-mail de teste pela fila dos alertas (Edge Function alerta-email, migration 135)
@@ -33,6 +36,11 @@ export default function ContasPage() {
     try { await api.plataformaTestarAlerta(); toast('Teste enviado. Confira a caixa em 1 a 2 minutos e clique em Atualizar.') }
     catch (e) { toast(erroMsg(e)) }
     finally { setTestando(false) }
+  }
+  // monitor externo (healthchecks.io, migration 136): o motor chama o endereço a cada minuto
+  const salvarMonitor = async (url: string) => {
+    try { await api.plataformaSalvarMonitor(url); setPingUrl(''); toast(url ? 'Monitor externo ligado.' : 'Monitor externo desligado.'); await carregar() }
+    catch (e) { toast(erroMsg(e)) }
   }
   const quando = (t: string | null) => t ? new Date(t).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'
   useEffect(() => { void carregar() }, [carregar])
@@ -87,6 +95,17 @@ export default function ContasPage() {
               ? <>Última verificação {quando(alertas.vigia.verificado_em)}: <strong className={alertas.vigia.estado === 'open' ? 'text-green-700' : 'text-amber-600'}>{alertas.vigia.estado === 'open' ? 'conectado' : alertas.vigia.estado ?? 'aguardando'}</strong>{alertas.vigia.fora_desde && <> · fora desde {quando(alertas.vigia.fora_desde)}</>}</>
               : 'O vigia ainda não rodou (roda a cada 5 minutos).'}
           </p>
+          {monitor && (
+            <div className="space-y-1 border-t pt-2">
+              <p className="font-medium text-foreground">Monitor externo (healthchecks.io): {monitor.ligado ? <span className="text-green-700">ligado (…{monitor.final})</span> : <span className="text-amber-600">desligado</span>}</p>
+              <p className="text-muted-foreground">Avisa por e-mail quando o Supabase ou o motor param. Cole o endereço de ping do check (https://hc-ping.com/...).</p>
+              <div className="flex gap-2">
+                <Input value={pingUrl} onChange={e => setPingUrl(e.target.value)} placeholder="https://hc-ping.com/..." className="h-8 text-xs" />
+                <Button size="sm" onClick={() => void salvarMonitor(pingUrl.trim())} disabled={!pingUrl.trim()}>Salvar</Button>
+                {monitor.ligado && <Button variant="outline" size="sm" onClick={() => void salvarMonitor('')}>Desligar</Button>}
+              </div>
+            </div>
+          )}
           {alertas.alertas.map((a, i) => (
             <p key={i} className="text-muted-foreground">{quando(a.criado_em)} · {a.assunto} · {a.enviado_em ? <span className="text-green-700">enviado</span> : a.erro ? <span className="text-amber-600">não enviado: {a.erro}</span> : 'na fila'}</p>
           ))}
