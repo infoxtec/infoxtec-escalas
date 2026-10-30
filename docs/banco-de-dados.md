@@ -254,6 +254,22 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 140 (30/10, versão 20261112120000): recuperação da verificação em duas etapas
+
+`conta_membros.telefone_e164` (WhatsApp de recuperação, opcional; `app_definir_telefone_usuario`, só o admin, avisa a
+pessoa por e-mail; `app_usuarios` devolve o campo). `mfa_recuperacoes` (código com hash, canal, validade de 10 minutos,
+tentativas, uso; tabela da plataforma, guarda de 1 ano). `fn_mfa_recuperacao_pedir(e-mail, canal)`: só usuário ativo ou
+da plataforma; 1 pedido por minuto por canal e 6 por dia; um pedido novo anula os códigos anteriores do canal; WhatsApp
+só com um número cadastrado, enviado pelo canal da conta (`fn_evo_post_na_conta`, `envio_req` guarda o pedido do pg_net);
+quem é da plataforma só pelo número da conta da operadora. `fn_mfa_limpar_envios` apaga as respostas do pg_net desses
+envios (repetem o código). `fn_mfa_codigo_ok` (5 tentativas por código) e `fn_mfa_recuperacao_confirmar` (plataforma
+precisa dos dois códigos; recusa volta como `{erro}`, sem exceção, para a tentativa errada ficar contada; devolve
+`usuario`, `email_ok`, `whatsapp_ok` sem gastar o código). `fn_mfa_recuperacao_concluir`, chamada depois de o Auth apagar
+os fatores: marca os códigos como usados e avisa a pessoa e a plataforma. A Edge Function `recuperar-duas-etapas`
+(sessão só com a senha) chama as três e apaga os fatores no Auth. `alertas_email` ganha
+`para` (destinatário escolhido; sem ele, a plataforma) e `sensivel` (o texto com o código some depois do envio, em 1 hora, ou na hora se o envio não estiver configurado);
+`fn_alerta_email(assunto, texto, para, sensível)`. Regressão: T80.
+
 ### Migration 139 (30/10, versão 20261111120000): fila justa, avisos com a conta e vigia por canal, multiempresa F5c
 
 Motor: rodízio entre as contas na fase de envio (a 1ª escala de cada conta, depois a 2ª...) e teto por conta por

@@ -1841,3 +1841,29 @@ no Supabase.
   Os e-mails extras do alerta (`alerta_emails`) são só de gente da plataforma: o alerta leva o nome das contas.
 - **Fica para depois:** rodízio automático do token do webhook das instâncias de cliente (hoje só o da operadora roda
   sozinho); Twilio por cliente (decisão 108), quando o primeiro cliente pedir a URA.
+
+## 128. Recuperação da verificação em duas etapas por e-mail ou WhatsApp
+
+*30/10/2026 — pedido do responsável depois de perder o autenticador (migration 140, painel 3.59.0).*
+
+- Na tela do código, "Perdi meu autenticador": a pessoa já entrou com a senha e recebe um código de 6 dígitos por
+  e-mail (o do login) ou pelo WhatsApp de recuperação (cadastrado pelo administrador na tela Usuários). Com o código, o
+  autenticador antigo sai e o painel pede o novo.
+- **Administrador da plataforma precisa dos dois códigos** (e-mail e WhatsApp): uma caixa de e-mail invadida não basta
+  para uma conta com poder sobre todos os clientes.
+- Código vale 10 minutos, 5 tentativas; 1 pedido por minuto por canal e 6 por dia. Toda troca avisa a pessoa e a
+  plataforma por e-mail e fica registrada por 1 ano. O código não fica guardado no texto do e-mail depois do envio.
+- O WhatsApp não vira o segundo fator do dia a dia: o Supabase só o aceita por SMS ou Twilio; pelo nosso canal ele é o
+  caminho de emergência. O SQL de remoção do fator (usado em 30/10) fica só como contingência.
+- **Risco aceito pelo responsável (30/10, opção "B, mas o número vale no momento do cadastro"):** o WhatsApp de
+  recuperação é definido pelo administrador da conta e vale na hora, sem carência. Um administrador mal-intencionado (ou
+  com a sessão roubada) pode cadastrar um número dele e trocar o autenticador de um usuário da conta, **inclusive para as outras contas da
+  pessoa** (o autenticador é um só por login), se ela não tiver WhatsApp cadastrado em outra conta (com números em duas
+  contas, se forem diferentes, o pedido pelo WhatsApp é recusado). Mitigações: a pessoa
+  recebe e-mail quando o número muda e quando o autenticador é trocado, a plataforma é avisada de toda troca, e quem é
+  da plataforma só recupera pelo número cadastrado na conta da operadora (o administrador de um cliente nunca o define).
+  Uma carência de 72h para número novo fica no backlog, se o risco mudar.
+- O código não fica guardado: o texto do e-mail some depois do envio (ou em 1 hora, ou já na hora, se o envio não estiver
+  configurado), a resposta do pg_net do envio pelo WhatsApp é apagada no próximo pedido ou confirmação, e um pedido novo
+  anula os códigos anteriores do mesmo canal. O código só é dado como usado depois que o Auth apaga os fatores
+  (`fn_mfa_recuperacao_concluir`): se a remoção falhar, a pessoa tenta de novo com o mesmo código.

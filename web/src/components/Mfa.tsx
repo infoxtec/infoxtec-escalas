@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { KeyRound, Loader2, LogOut, ShieldCheck } from 'lucide-react'
+import { KeyRound, Loader2, LogOut, Mail, MessageCircle, ShieldCheck } from 'lucide-react'
 import { Button, ErrorBox, Input } from './ui'
 import { supabase } from '../lib/supabase'
-import { erroMsg } from '../lib/api'
+import { erroMsg, recuperarDuasEtapas } from '../lib/api'
 
 // Verificação em duas etapas (MFA, backlog 037, decisão 67): código de 6 dígitos de um aplicativo
 // autenticador (Google Authenticator, Microsoft Authenticator, 1Password...). O fator é do Supabase Auth;
@@ -31,7 +31,54 @@ function Codigo({ valor, onChange, onEnter }: { valor: string; onChange: (v: str
 
 const sair = () => { void supabase.auth.signOut({ scope: 'local' }) }
 
+// "Perdi meu autenticador" (migration 140, decisão 128): código por e-mail ou WhatsApp; administrador da plataforma
+// precisa dos dois. Com o código certo, o autenticador antigo sai e o painel pede o novo.
+function MfaRecuperar({ onOk, onVoltar }: { onOk: () => void; onVoltar: () => void }) {
+  const [cEmail, setCEmail] = useState('')
+  const [cWhats, setCWhats] = useState('')
+  const [enviados, setEnviados] = useState<{ email?: string; whatsapp?: string }>({})
+  const [erro, setErro] = useState<string | null>(null)
+  const [ocupado, setOcupado] = useState(false)
+  const pedir = async (canal: 'email' | 'whatsapp') => {
+    setOcupado(true); setErro(null)
+    const r = await recuperarDuasEtapas({ acao: 'pedir', canal })
+    if (r.ok) setEnviados(p => ({ ...p, [canal]: r.destino ?? 'enviado' })); else setErro(r.erro ?? 'Não foi possível enviar.')
+    setOcupado(false)
+  }
+  const confirmar = async () => {
+    setOcupado(true); setErro(null)
+    const r = await recuperarDuasEtapas({ acao: 'confirmar', codigo_email: cEmail, codigo_whatsapp: cWhats })
+    if (!r.ok) { setErro(r.erro ?? 'Código errado ou vencido.'); setOcupado(false); return }
+    await supabase.auth.refreshSession()
+    setOcupado(false)
+    onOk()
+  }
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        Receba um código para trocar o aplicativo autenticador. Quem é administrador da plataforma precisa dos dois códigos.
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="outline" disabled={ocupado} onClick={() => void pedir('email')}><Mail className="h-4 w-4" /> Por e-mail</Button>
+        <Button variant="outline" disabled={ocupado} onClick={() => void pedir('whatsapp')}><MessageCircle className="h-4 w-4" /> Por WhatsApp</Button>
+      </div>
+      {enviados.email && (<div className="space-y-1"><p className="text-xs text-muted-foreground">Código do e-mail (enviado para {enviados.email}):</p>
+        <Codigo valor={cEmail} onChange={setCEmail} onEnter={() => void confirmar()} /></div>)}
+      {enviados.whatsapp && (<div className="space-y-1"><p className="text-xs text-muted-foreground">Código do WhatsApp (enviado para {enviados.whatsapp}):</p>
+        <Codigo valor={cWhats} onChange={setCWhats} onEnter={() => void confirmar()} /></div>)}
+      {erro && <ErrorBox>{erro}</ErrorBox>}
+      <div className="flex gap-2">
+        <Button className="flex-1" disabled={ocupado || (cEmail.length !== 6 && cWhats.length !== 6)} onClick={() => void confirmar()}>
+          {ocupado && <Loader2 className="h-4 w-4 animate-spin" />} Trocar o autenticador
+        </Button>
+        <Button variant="outline" onClick={onVoltar} disabled={ocupado}>Voltar</Button>
+      </div>
+    </div>
+  )
+}
+
 export function MfaVerificar({ onOk }: { onOk: () => void }) {
+  const [recuperando, setRecuperando] = useState(false)
   const [codigo, setCodigo] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
@@ -50,6 +97,7 @@ export function MfaVerificar({ onOk }: { onOk: () => void }) {
     <div className="flex min-h-screen items-center justify-center p-6">
       <div className="w-full max-w-sm space-y-4 rounded-lg border bg-card p-6">
         <p className="flex items-center gap-2 font-semibold"><KeyRound className="h-5 w-5 text-primary" /> Verificação em duas etapas</p>
+        {recuperando ? <MfaRecuperar onOk={onOk} onVoltar={() => setRecuperando(false)} /> : (<>
         <p className="text-sm text-muted-foreground">Digite o código de 6 dígitos do aplicativo autenticador.</p>
         <Codigo valor={codigo} onChange={setCodigo} onEnter={() => void verificar()} />
         {erro && <ErrorBox>{erro}</ErrorBox>}
@@ -59,7 +107,8 @@ export function MfaVerificar({ onOk }: { onOk: () => void }) {
           </Button>
           <Button variant="outline" onClick={sair}><LogOut className="h-4 w-4" /> Sair</Button>
         </div>
-        <p className="text-xs text-muted-foreground">Perdeu o celular? Peça a um administrador para remover o seu cadastro de verificação.</p>
+        <button type="button" className="text-xs text-primary underline" onClick={() => setRecuperando(true)}>Perdi meu autenticador</button>
+        </>)}
       </div>
     </div>
   )

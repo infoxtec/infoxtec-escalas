@@ -250,6 +250,7 @@ export const api = {
   definirVeSaude: (email: string, valor: boolean) => rpc<void>('app_definir_ve_saude', { p_email: email, p_valor: valor }),
   definirRhFolhas: (email: string, valor: boolean) => rpc<void>('app_definir_rh_folhas', { p_email: email, p_valor: valor }),
   rhFolhasHistorico: () => rpc<{ email: string; valor: boolean; autor: string; em: string }[]>('app_rh_folhas_historico'),
+  definirTelefoneUsuario: (email: string, telefone: string) => rpc<void>('app_definir_telefone_usuario', { p_email: email, p_telefone: telefone }),
   salvarUsuario: (u: { email: string; nome: string; papel: Papel; ativo: boolean }) =>
     rpc<string>('app_salvar_usuario', { p_email: u.email, p_nome: u.nome, p_papel: u.papel, p_ativo: u.ativo }),
 }
@@ -352,6 +353,28 @@ export async function excluirUsuario(email: string, conta: string): Promise<{ ok
     return r.ok ? r : { ok: false, erro: r.erro ?? 'O usuário não pôde ser excluído.' }
   } catch {
     return { ok: false, erro: 'Sem conexão com o serviço. Tente de novo.' }
+  }
+}
+
+// Recuperação das duas etapas (Edge Function recuperar-duas-etapas, migration 140): sessão só com a senha (aal1)
+export async function recuperarDuasEtapas(corpo: { acao: 'pedir'; canal: 'email' | 'whatsapp' } | { acao: 'confirmar'; codigo_email: string; codigo_whatsapp: string })
+  : Promise<{ ok: boolean; erro?: string; destino?: string; removidos?: number }> {
+  const { data: sessao } = await supabase.auth.getSession()
+  try {
+    const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/recuperar-duas-etapas`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessao.session?.access_token ?? ''}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify(corpo),
+      signal: AbortSignal.timeout(30000),
+    })
+    const r = await resp.json().catch(() => ({}))
+    return r.ok ? r : { ok: false, erro: r.erro ?? 'Não foi possível concluir agora.' }
+  } catch {
+    return { ok: false, erro: 'Sem conexão. Tente de novo.' }
   }
 }
 

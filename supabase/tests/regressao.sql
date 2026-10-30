@@ -212,7 +212,7 @@ declare
     'app_plataforma_testar_alerta', 'app_plataforma_alertas', 'app_plataforma_monitor', 'app_plataforma_salvar_monitor',
     'app_plataforma_canais', 'app_plataforma_salvar_canal'];
   v_tb_plataforma text[] := array['config', 'backlog_itens', 'motor_estado', 'saude_testes', 'ponto_geo', 'webhook_token_trocas',
-    'plataforma_log', 'feriados', 'ponto_motivos', 'evolution_vigia', 'alertas_email'];
+    'plataforma_log', 'feriados', 'ponto_motivos', 'evolution_vigia', 'alertas_email', 'mfa_recuperacoes'];
   v text; n int; v_ok boolean;
 begin
   -- a lista da plataforma precisa existir (função ou tabela renomeada/removida obriga a revisar a classificação)
@@ -4336,7 +4336,97 @@ begin
                      and not exists (select 1 from net._http_response where id = v_req), '[T79] volta do canal avisada');
 end $$;
 
-select 'REGRESSÃO OK: T1 a T79' as resultado,
+-- T80 recuperação da verificação em duas etapas (migration 140) ------------------------------------------------------
+-- o texto do WhatsApp fica guardado (o envio é stub), para ler o código; o stub simples volta no fim
+create or replace function fn_evo_post(p_path text, p_body jsonb) returns bigint language sql as $$
+  insert into qa values ('ultimo_wa', p_body->>'number' || ':' || coalesce(p_body->>'text', '')) on conflict (k) do update set v = excluded.v;
+  select 0::bigint $$;
+do $$
+declare
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_uid uuid := '00000000-0000-0000-0000-0000000000f0';
+  v_r jsonb; v_cod text; v_ok boolean; v_id bigint; v_ant uuid;
+begin
+  insert into conta_membros (conta_id, email, nome, papel) values (v_b, 'qa-recupera@teste.local', 'QA MFA', 'gestor');
+  insert into auth.users (id, email, aud, role) values (v_uid, 'qa-recupera@teste.local', 'authenticated', 'authenticated');
+  -- WhatsApp de recuperação pelo admin da conta, com aviso à pessoa
+  perform set_config('request.headers', '{}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  v_ok := false;
+  begin perform app_definir_telefone_usuario('qa-recupera@teste.local', '71955'); exception when others then v_ok := sqlerrm like 'WhatsApp inválido%'; end;
+  perform pg_temp.ok(v_ok, '[T80] WhatsApp inválido');
+  perform app_definir_telefone_usuario('qa-recupera@teste.local', '+55 71 95555-0080');
+  perform pg_temp.ok((select telefone_e164 = '5571955550080' from conta_membros where conta_id = v_b and email = 'qa-recupera@teste.local')
+                     and exists (select 1 from alertas_email where para = array['qa-recupera@teste.local'] and assunto like '%WhatsApp de recuperação%')
+                     and exists (select 1 from app_usuarios() u where u.email = 'qa-recupera@teste.local' and u.telefone_e164 = '5571955550080'),
+                     '[T80] WhatsApp cadastrado e pessoa avisada');
+  perform set_config('request.jwt.claims', '', true);
+  -- sem a Edge Function configurada, o texto sensível nem fica guardado
+  perform fn_alerta_email('qa sensível', 'código 123456', array['qa-recupera@teste.local'], true);
+  perform pg_temp.ok((select texto not like '%123456%' and erro is not null from alertas_email where assunto = 'qa sensível'),
+                     '[T80] sem envio configurado, sensível não fica guardado');
+  insert into config (chave, valor) values ('alerta_email_url', 'http://127.0.0.1:9/alerta-email')
+    on conflict (chave) do update set valor = excluded.valor;
+  -- código por e-mail: só para a pessoa, e o texto some depois do envio
+  v_r := fn_mfa_recuperacao_pedir('QA-RECUPERA@teste.local', 'email');
+  select id, substring(texto from '([0-9]{6})') into v_id, v_cod from alertas_email where para = array['qa-recupera@teste.local'] and sensivel order by id desc limit 1;
+  perform pg_temp.ok(v_r->>'enviado' = 'email' and v_cod ~ '^[0-9]{6}$', '[T80] código pelo e-mail');
+  v_ok := false;
+  begin perform fn_mfa_recuperacao_pedir('qa-recupera@teste.local', 'email'); exception when others then v_ok := sqlerrm like 'Código enviado há pouco%'; end;
+  perform pg_temp.ok(v_ok, '[T80] pedido repetido em menos de um minuto');
+  -- código errado: recusado sem exceção e a tentativa fica contada
+  v_r := fn_mfa_recuperacao_confirmar('qa-recupera@teste.local', case when v_cod = '000000' then '111111' else '000000' end, null);
+  perform pg_temp.ok(v_r->>'erro' = 'Código errado ou vencido.'
+                     and (select tentativas = 1 from mfa_recuperacoes where email = 'qa-recupera@teste.local' and canal = 'email'), '[T80] código errado contado');
+  v_r := fn_mfa_recuperacao_confirmar('qa-recupera@teste.local', v_cod, null);
+  -- confirmar não gasta o código: só o concluir, depois de o Auth apagar os fatores
+  perform pg_temp.ok((v_r->>'usuario')::uuid = v_uid and (v_r->>'email_ok')::boolean and not (v_r->>'whatsapp_ok')::boolean
+                     and (select usado_em is null from mfa_recuperacoes where email = 'qa-recupera@teste.local' and canal = 'email'),
+                     '[T80] confirmar não gasta o código');
+  perform fn_mfa_recuperacao_concluir('qa-recupera@teste.local', true, false);
+  perform pg_temp.ok((v_r->>'usuario')::uuid = v_uid
+                     and (select usado_em is not null from mfa_recuperacoes where email = 'qa-recupera@teste.local' and canal = 'email')
+                     and exists (select 1 from alertas_email where para = array['qa-recupera@teste.local'] and assunto like '%foi trocada')
+                     and exists (select 1 from alertas_email where para is null and assunto like '%trocada (qa-recupera@teste.local)'),
+                     '[T80] recuperação pelo e-mail, com avisos');
+  perform pg_temp.ok((fn_mfa_recuperacao_confirmar('qa-recupera@teste.local', v_cod, null)->>'erro') is not null, '[T80] código não vale duas vezes');
+  perform fn_segredo_gravar('ALERTA_EMAIL_TOKEN', repeat('cd', 32));
+  perform fn_alerta_email_resultado(repeat('cd', 32), v_id, true, null);
+  perform pg_temp.ok((select texto not like '%' || v_cod || '%' from alertas_email where id = v_id), '[T80] código apagado depois do envio');
+  -- WhatsApp: pelo número cadastrado
+  v_r := fn_mfa_recuperacao_pedir('qa-recupera@teste.local', 'whatsapp');
+  v_cod := substring((select v from qa where k = 'ultimo_wa') from ':.*([0-9]{6})');
+  perform pg_temp.ok(v_r->>'destino' = '***0080' and (select v like '5571955550080:%' from qa where k = 'ultimo_wa')
+                     and (select envio_req = 0 from mfa_recuperacoes where email = 'qa-recupera@teste.local' and canal = 'whatsapp')
+                     and (fn_mfa_recuperacao_confirmar('qa-recupera@teste.local', null, v_cod)->>'usuario')::uuid = v_uid,
+                     '[T80] recuperação pelo WhatsApp');
+  -- um pedido novo anula o código anterior
+  update mfa_recuperacoes set criado_em = criado_em - interval '2 minutes' where email = 'qa-recupera@teste.local';
+  select id into v_ant from mfa_recuperacoes where email = 'qa-recupera@teste.local' and canal = 'whatsapp' order by criado_em desc limit 1;
+  perform fn_mfa_recuperacao_pedir('qa-recupera@teste.local', 'whatsapp');
+  perform pg_temp.ok((select expira_em <= now() from mfa_recuperacoes where id = v_ant)
+                     and (select count(*) = 1 from mfa_recuperacoes where email = 'qa-recupera@teste.local' and canal = 'whatsapp' and expira_em > now()),
+                     '[T80] pedido novo anula o anterior');
+  -- plataforma: um código só não basta
+  insert into auth.users (id, email, aud, role) values ('00000000-0000-0000-0000-0000000000f1', 'qa-admin@teste.local', 'authenticated', 'authenticated')
+    on conflict do nothing;
+  perform fn_mfa_recuperacao_pedir('qa-admin@teste.local', 'email');
+  v_cod := substring((select texto from alertas_email where para = array['qa-admin@teste.local'] and sensivel order by id desc limit 1) from '([0-9]{6})');
+  perform pg_temp.ok((fn_mfa_recuperacao_confirmar('qa-admin@teste.local', v_cod, null)->>'erro') like 'Confirme os códigos%',
+                     '[T80] plataforma precisa dos dois códigos');
+  -- plataforma: WhatsApp só pelo número da conta da operadora, nunca pelo de um cliente
+  insert into conta_membros (conta_id, email, nome, papel, telefone_e164) values (v_b, 'qa-admin@teste.local', 'QA admin', 'admin', '5571955550081')
+    on conflict (conta_id, email) do update set telefone_e164 = excluded.telefone_e164, ativo = true;
+  v_ok := false;
+  begin perform fn_mfa_recuperacao_pedir('qa-admin@teste.local', 'whatsapp'); exception when others then v_ok := sqlerrm like 'Nenhum WhatsApp cadastrado%'; end;
+  perform pg_temp.ok(v_ok, '[T80] plataforma não recupera pelo número de um cliente');
+  v_ok := false;
+  begin perform fn_mfa_recuperacao_pedir('ninguem@teste.local', 'email'); exception when others then v_ok := sqlerrm like 'Usuário sem acesso%'; end;
+  perform pg_temp.ok(v_ok, '[T80] quem não é usuário não pede');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+end $$;
+create or replace function fn_evo_post(p_path text, p_body jsonb) returns bigint language sql as $$ select 0::bigint $$;
+select 'REGRESSÃO OK: T1 a T80' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
