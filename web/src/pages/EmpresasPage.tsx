@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Edit2, Loader2, Plus, RefreshCw } from 'lucide-react'
 import { Button, ErrorBox, Field, Input, Modal, Select, ToggleRow } from '../components/ui'
-import { api, erroMsg } from '../lib/api'
-import { LOGOS_EMPRESA, cnpjValido, formatCnpj, logoEmpresa } from '../lib/types'
+import { api, consultarCadastro, erroMsg } from '../lib/api'
+import { LOGOS_EMPRESA, cnpjValido, enderecoDaConsulta, formatCnpj, limparCnpj, logoEmpresa, mascaraCep, mascaraCnpj } from '../lib/types'
 import type { Empresa } from '../lib/types'
 
-const NOVA: Partial<Empresa> = { cnpj: '', razao_social: '', nome_fantasia: '', endereco: '', cidade: 'Salvador', uf: 'BA', empregadora: false, ativo: true, logo: '' }
+const NOVA: Partial<Empresa> = { cnpj: '', razao_social: '', nome_fantasia: '', endereco: '', cep: '', cidade: 'Salvador', uf: 'BA', empregadora: false, ativo: true, logo: '' }
 
 // Empresas: empregadoras (dono do ponto dos funcionários) e clientes (dono dos locais).
 // Base do Módulo Registro de Ponto (docs/modulo-registro-de-ponto/).
@@ -21,6 +21,36 @@ export default function EmpresasPage({ podeEditar, ehAdmin }: { podeEditar: bool
   useEffect(() => { void carregar() }, [carregar])
 
   const set = (k: keyof Empresa, v: string | boolean) => setEdit(p => ({ ...p, [k]: v }))
+  const [consulta, setConsulta] = useState<{ tipo: 'ok' | 'aviso' | 'buscando'; texto: string } | null>(null)
+
+  // CNPJ completo e válido: busca na Receita e preenche razão social, nome fantasia e endereço (o usuário confere)
+  const mudarCnpj = async (v: string) => {
+    const cnpj = mascaraCnpj(v)
+    set('cnpj', cnpj)
+    if (limparCnpj(cnpj).length < 14) return setConsulta(null)
+    if (!cnpjValido(cnpj)) return setConsulta({ tipo: 'aviso', texto: 'CNPJ inválido: confira os números.' })
+    setConsulta({ tipo: 'buscando', texto: 'Consultando a Receita...' })
+    const r = await consultarCadastro('cnpj', cnpj)
+    if (!r.ok) return setConsulta({ tipo: 'aviso', texto: r.erro ?? 'Consulta indisponível.' })
+    setEdit(p => p && limparCnpj(p.cnpj ?? '') === limparCnpj(cnpj) ? {
+      ...p, razao_social: r.razao_social ?? p.razao_social, nome_fantasia: r.nome_fantasia ?? p.nome_fantasia,
+      endereco: enderecoDaConsulta(r) || p.endereco, cep: r.cep ? mascaraCep(r.cep) : p.cep,
+      cidade: r.cidade ?? p.cidade, uf: r.uf ?? p.uf,
+    } : p)
+    const ativa = !r.situacao || /ativa/i.test(r.situacao)
+    setConsulta({ tipo: ativa ? 'ok' : 'aviso', texto: `Preenchido com ${r.fonte}${r.situacao ? ` · situação: ${r.situacao}` : ''}. Confira antes de salvar.` })
+  }
+
+  // CEP completo: rua, bairro, cidade e UF dos Correios; o número fica com o usuário
+  const mudarCep = async (v: string) => {
+    const cep = mascaraCep(v)
+    set('cep', cep)
+    if (cep.length < 9) return
+    const r = await consultarCadastro('cep', cep)
+    if (!r.ok) return setConsulta({ tipo: 'aviso', texto: r.erro ?? 'CEP não encontrado.' })
+    setEdit(p => p && p.cep === cep ? { ...p, endereco: enderecoDaConsulta(r) || p.endereco, cidade: r.cidade ?? p.cidade, uf: r.uf ?? p.uf } : p)
+    setConsulta({ tipo: 'ok', texto: `Endereço do CEP preenchido (${r.fonte}). Complete com o número.` })
+  }
 
   const salvar = async () => {
     if (!edit) return
@@ -28,7 +58,7 @@ export default function EmpresasPage({ podeEditar, ehAdmin }: { podeEditar: bool
     if (!cnpjValido(edit.cnpj ?? '')) return setErro('CNPJ inválido.')
     if (!edit.razao_social?.trim()) return setErro('Razão social é obrigatória.')
     setSalvando(true)
-    try { await api.salvarEmpresa({ ...edit, logo: edit.logo ?? '' }); await carregar(); setEdit(null) }
+    try { await api.salvarEmpresa({ ...edit, logo: edit.logo ?? '', cep: edit.cep ?? '' }); await carregar(); setEdit(null) }
     catch (e) { setErro(erroMsg(e)) }
     finally { setSalvando(false) }
   }
@@ -42,7 +72,7 @@ export default function EmpresasPage({ podeEditar, ehAdmin }: { podeEditar: bool
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => void carregar()}><RefreshCw className="h-3.5 w-3.5" /> Atualizar</Button>
-          {podeEditar && <Button size="sm" onClick={() => { setEdit({ ...NOVA }); setErro(null) }}><Plus className="h-4 w-4" /> Nova empresa</Button>}
+          {podeEditar && <Button size="sm" onClick={() => { setEdit({ ...NOVA }); setErro(null); setConsulta(null) }}><Plus className="h-4 w-4" /> Nova empresa</Button>}
         </div>
       </div>
 
@@ -64,7 +94,7 @@ export default function EmpresasPage({ podeEditar, ehAdmin }: { podeEditar: bool
                   <td className="px-3 py-2.5 text-xs">{e.cidade}/{e.uf}</td>
                   <td className="px-3 py-2.5 text-center text-xs">{e.empregadora ? <span className="font-medium text-primary">Sim</span> : <span className="text-muted-foreground">Não</span>}</td>
                   <td className="px-3 py-2.5 text-center"><span className={`inline-block h-2 w-2 rounded-full ${e.ativo ? 'bg-green-500' : 'bg-gray-400'}`} /></td>
-                  <td className="px-3 py-2.5 text-right">{podeEditar && <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => { setEdit({ ...e, cnpj: formatCnpj(e.cnpj) }); setErro(null) }}><Edit2 className="h-3.5 w-3.5" /></Button>}</td>
+                  <td className="px-3 py-2.5 text-right">{podeEditar && <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => { setEdit({ ...e, cnpj: formatCnpj(e.cnpj), cep: mascaraCep(e.cep ?? '') }); setErro(null); setConsulta(null) }}><Edit2 className="h-3.5 w-3.5" /></Button>}</td>
                 </tr>
               ))}
             </tbody>
@@ -79,10 +109,16 @@ export default function EmpresasPage({ podeEditar, ehAdmin }: { podeEditar: bool
         </>}>
         {edit && (
           <div className="space-y-3">
-            <Field label="CNPJ *"><Input value={edit.cnpj ?? ''} onChange={e => set('cnpj', e.target.value)} placeholder="00.000.000/0000-00" disabled={salvando} /></Field>
+            <Field label="CNPJ *" hint="Ao completar, os dados da Receita preenchem o cadastro. Aceita o CNPJ com letras.">
+              <Input value={edit.cnpj ?? ''} onChange={e => void mudarCnpj(e.target.value)} placeholder="00.000.000/0000-00" maxLength={18} disabled={salvando} />
+            </Field>
+            {consulta && <p className={`text-xs ${consulta.tipo === 'aviso' ? 'text-amber-600' : 'text-muted-foreground'}`}>{consulta.texto}</p>}
             <Field label="Razão social *"><Input value={edit.razao_social ?? ''} onChange={e => set('razao_social', e.target.value)} disabled={salvando} /></Field>
             <Field label="Nome fantasia"><Input value={edit.nome_fantasia ?? ''} onChange={e => set('nome_fantasia', e.target.value)} disabled={salvando} /></Field>
-            <Field label="Endereço"><Input value={edit.endereco ?? ''} onChange={e => set('endereco', e.target.value)} disabled={salvando} /></Field>
+            <div className="grid grid-cols-[7rem_1fr] gap-3">
+              <Field label="CEP"><Input value={edit.cep ?? ''} onChange={e => void mudarCep(e.target.value)} placeholder="00000-000" maxLength={9} disabled={salvando} /></Field>
+              <Field label="Endereço"><Input value={edit.endereco ?? ''} onChange={e => set('endereco', e.target.value)} disabled={salvando} /></Field>
+            </div>
             <div className="grid grid-cols-[1fr_80px] gap-3">
               <Field label="Cidade"><Input value={edit.cidade ?? ''} onChange={e => set('cidade', e.target.value)} disabled={salvando} /></Field>
               <Field label="UF"><Input value={edit.uf ?? ''} maxLength={2} onChange={e => set('uf', e.target.value.toUpperCase())} disabled={salvando} /></Field>

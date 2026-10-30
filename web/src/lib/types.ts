@@ -86,14 +86,14 @@ export interface Tecnico {
 }
 
 export interface Local {
-  id: string; nome: string; cliente: string | null; endereco: string | null; cidade: string | null; uf: string | null
+  id: string; nome: string; cliente: string | null; endereco: string | null; cep?: string | null; cidade: string | null; uf: string | null
   referencia: string | null; link_maps: string | null; contato_local: string | null
   telefone_contato: string | null; ativo: boolean; created_at: string
   latitude: number | null; longitude: number | null; raio_m: number; cliente_empresa_id: string | null
 }
 
 export interface Empresa {
-  id: string; cnpj: string; razao_social: string; nome_fantasia: string | null; endereco: string | null
+  id: string; cnpj: string; razao_social: string; nome_fantasia: string | null; endereco: string | null; cep?: string | null
   cidade: string; uf: string; fuso: string; empregadora: boolean; ativo: boolean; created_at: string
   logo?: string | null
   exige_registro_intervalo?: boolean   // decisão 100: sem o par de intervalo, o fechamento bloqueia
@@ -114,10 +114,13 @@ export function cpfValido(v: string): boolean {
   const dv = (n: number) => { let s = 0; for (let i = 0; i < n; i++) s += +c[i] * (n + 1 - i); const r = (s * 10) % 11; return r === 10 ? 0 : r }
   return dv(9) === +c[9] && dv(10) === +c[10]
 }
+// CNPJ alfanumérico (IN RFB 2.229/2024, desde julho de 2026): 12 posições com letras ou dígitos e 2 dígitos
+// verificadores; cada caractere vale o código ASCII menos 48 (A = 17), o mesmo cálculo de antes para os só com números
+export const limparCnpj = (v: string) => v.toUpperCase().replace(/[^0-9A-Z]/g, '')
 export function cnpjValido(v: string): boolean {
-  const c = v.replace(/\D/g, '')
-  if (!/^\d{14}$/.test(c) || /^(\d)\1{13}$/.test(c)) return false
-  const dv = (n: number) => { const p = n === 12 ? [5,4,3,2,9,8,7,6,5,4,3,2] : [6,5,4,3,2,9,8,7,6,5,4,3,2]; let s = 0; for (let i = 0; i < n; i++) s += +c[i] * p[i]; const r = s % 11; return r < 2 ? 0 : 11 - r }
+  const c = limparCnpj(v)
+  if (!/^[0-9A-Z]{12}\d{2}$/.test(c) || /^(.)\1{13}$/.test(c)) return false
+  const dv = (n: number) => { const p = n === 12 ? [5,4,3,2,9,8,7,6,5,4,3,2] : [6,5,4,3,2,9,8,7,6,5,4,3,2]; let s = 0; for (let i = 0; i < n; i++) s += (c.charCodeAt(i) - 48) * p[i]; const r = s % 11; return r < 2 ? 0 : 11 - r }
   return dv(12) === +c[12] && dv(13) === +c[13]
 }
 export function formatCpf(v: string | null): string {
@@ -126,8 +129,21 @@ export function formatCpf(v: string | null): string {
   return c.length === 11 ? `${c.slice(0, 3)}.${c.slice(3, 6)}.${c.slice(6, 9)}-${c.slice(9)}` : v
 }
 export function formatCnpj(v: string): string {
-  const c = v.replace(/\D/g, '')
+  const c = limparCnpj(v)
   return c.length === 14 ? `${c.slice(0, 2)}.${c.slice(2, 5)}.${c.slice(5, 8)}/${c.slice(8, 12)}-${c.slice(12)}` : v
+}
+// Máscaras enquanto digita (o banco guarda só os caracteres)
+export function mascaraCpf(v: string): string {
+  const c = v.replace(/\D/g, '').slice(0, 11)
+  return c.replace(/^(\d{3})(\d)/, '$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d{1,2})$/, '.$1-$2')
+}
+export function mascaraCnpj(v: string): string {
+  const c = limparCnpj(v).slice(0, 14)
+  return [c.slice(0, 2), c.slice(2, 5), c.slice(5, 8)].filter(Boolean).join('.') + (c.length > 8 ? '/' + c.slice(8, 12) : '') + (c.length > 12 ? '-' + c.slice(12) : '')
+}
+export function mascaraCep(v: string): string {
+  const c = v.replace(/\D/g, '').slice(0, 8)
+  return c.length > 5 ? `${c.slice(0, 5)}-${c.slice(5)}` : c
 }
 // Coordenadas a partir do link do Google Maps (formatos "@lat,lng" e "?q=lat,lng")
 export function coordenadasDoLink(link: string): { latitude: number; longitude: number } | null {
@@ -613,4 +629,17 @@ export function baixarPdf(p: EspelhoPdf) {
 export interface ComprovanteRegistro {
   titulo: string; nsr: number; tipo: string; canal: string; empregador: string; cnpj: string; cei_caepf_cno: string | null
   local: string | null; trabalhador: string; cpf: string; data: string; hora: string; fuso: string; inpi: string | null; sha256: string
+}
+
+/** Resposta da Edge Function consulta-cadastro (CNPJ na Receita, CEP nos Correios). */
+export interface ConsultaCadastro {
+  ok: boolean; erro?: string; fonte?: string
+  razao_social?: string | null; nome_fantasia?: string | null; situacao?: string | null
+  logradouro?: string | null; numero?: string | null; complemento?: string | null; bairro?: string | null
+  cidade?: string | null; uf?: string | null; cep?: string | null
+}
+/** Endereço numa linha a partir da consulta: "Rua X, 10, Sala 2 - Bairro". */
+export function enderecoDaConsulta(r: ConsultaCadastro): string {
+  const rua = [r.logradouro, r.numero, r.complemento].filter(Boolean).join(', ')
+  return [rua, r.bairro].filter(Boolean).join(' - ')
 }

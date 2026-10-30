@@ -241,7 +241,7 @@ function Comprovante({ c, token, onFechar }: { c: PontoComprovante; token: strin
           <dt className="text-muted-foreground">Trabalhador</dt><dd>{c.trabalhador}</dd>
           <dt className="text-muted-foreground">CPF</dt><dd>{formatCpf(c.cpf)}</dd>
           <dt className="text-muted-foreground">Empregador</dt><dd>{c.empresa}</dd>
-          <dt className="text-muted-foreground">CNPJ</dt><dd>{c.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')}</dd>
+          <dt className="text-muted-foreground">CNPJ</dt><dd>{c.cnpj.replace(/^([0-9A-Z]{2})([0-9A-Z]{3})([0-9A-Z]{3})([0-9A-Z]{4})(\d{2})$/, '$1.$2.$3/$4-$5')}</dd>
           {c.local && <><dt className="text-muted-foreground">Local</dt><dd>{c.local}</dd></>}
           <dt className="text-muted-foreground">Autenticação</dt><dd className="font-mono text-xs">{c.autenticacao}</dd>
           {c.login_origem === 'gestor' && <><dt className="text-muted-foreground">Acesso</dt><dd>com código gerado pelo gestor</dd></>}

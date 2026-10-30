@@ -89,7 +89,7 @@ export default function UsuariosPage() {
 
       <div className="flex items-start gap-2 rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-        <p>O acesso tem duas etapas: <strong className="text-foreground">1)</strong> convide a pessoa no Supabase em Authentication → Users → Invite user (ela recebe um e-mail e cria a própria senha); <strong className="text-foreground">2)</strong> cadastre aqui o mesmo e-mail com o papel desejado. Quem tem login mas não está nesta lista vê uma tela de acesso negado.</p>
+        <p>Em <strong className="text-foreground">Adicionar usuário</strong>, informe o e-mail e o papel: ao salvar, a pessoa recebe por e-mail o convite para criar a senha (quem já tem login entra com a senha atual). O envelope na linha reenvia o convite. Quem tem login mas não está nesta lista vê uma tela de acesso negado.</p>
       </div>
 
       {erro && <ErrorBox>{erro}</ErrorBox>}

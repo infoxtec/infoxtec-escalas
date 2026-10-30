@@ -1747,3 +1747,21 @@ no Supabase.
   tenha a pessoa login ou não; o registro do convite vale 90 dias.
 - **Condição:** o e-mail sai pelo SMTP configurado no Auth de cada projeto. O SMTP padrão do Supabase tem limite baixo
   e pode só entregar para quem é da equipe do projeto; para clientes, um SMTP próprio (Authentication → SMTP Settings).
+
+## 121. Consulta de CNPJ e CEP por APIs públicas gratuitas, pela Edge Function; CPF só pelo dígito
+
+*30/10/2026 — pacote de cadastro (migration 133, painel 3.53.0).*
+
+- **CNPJ:** dados abertos da Receita Federal pela BrasilAPI, com o CNPJ.ws público de reserva. Os dados abertos são
+  mensais: o painel avisa a situação cadastral e pede conferência, e nada é gravado sem o usuário salvar. O quadro de
+  sócios e os contatos não saem da função.
+- **CEP:** base dos Correios pelo ViaCEP, com a BrasilAPI de reserva. Preenche rua, bairro, cidade e UF; o número fica
+  com o usuário. Endereço continua em um campo só, com o CEP ao lado.
+- **Pela Edge Function `consulta-cadastro`** (só com sessão do painel), não do navegador direto: troca de fornecedor e
+  reserva sem publicar painel, tempo-limite e sem expor o navegador do usuário a terceiros.
+- **CNPJ alfanumérico** (IN RFB 2.229/2024, emitido desde julho de 2026): aceito no painel, no banco e no AFD
+  (`fn_afd_cnpj`). O leiaute do AFD com letras segue a conferir com a contadora, junto com o resto do Anexo V.
+- **CPF:** só o dígito verificador (máscara e aviso ao digitar). Consulta de nome e situação na Receita é paga (Serpro)
+  e pede base legal própria na LGPD: fora por ora.
+- **Condição:** as APIs gratuitas não têm SLA. Se faltarem com frequência ou o volume crescer, trocar por fornecedor pago
+  só dentro da função.

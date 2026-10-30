@@ -4,7 +4,7 @@ import { Button, Confirm, ErrorBox, Field, Input, Select, Sheet, SuccessBox, Tog
 import { PlainTh, SortableTh, useColumnWidths, useSortable } from '../components/SortableTh'
 import { api, erroMsg } from '../lib/api'
 import { NIVEL_LABEL } from '../lib/types'
-import { cpfValido, formatCpf, telefoneValido } from '../lib/types'
+import { cpfValido, formatCpf, mascaraCpf, telefoneValido } from '../lib/types'
 import type { Empresa, Habilidade, Nivel, Tecnico, TecnicoHabilidade } from '../lib/types'
 
 const NOVO: Partial<Tecnico> = { nome: '', telefone_e164: '', funcao: '', equipe: '', is_supervisor: false, opt_in: false, ativo: true, perfil_teste: false }
@@ -178,7 +178,11 @@ export default function TecnicosPage({ tecnicos, recarregar, podeEditar, podeExc
               <p className="text-xs text-muted-foreground">Identificam o funcionário no registro de ponto (Portaria 671/2021). O CPF é dado pessoal: só aparece inteiro nesta ficha.</p>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="CPF"><Input value={edit.cpf ?? ''} placeholder="000.000.000-00" maxLength={14} disabled={salvando}
-                  onChange={e => setEdit(p => ({ ...p, cpf: e.target.value }))} /></Field>
+                  onChange={e => setEdit(p => ({ ...p, cpf: mascaraCpf(e.target.value) }))} />
+                  {edit.cpf && !edit.cpf.includes('*') && edit.cpf.replace(/\D/g, '').length === 11 && (cpfValido(edit.cpf)
+                    ? <p className="mt-1 text-xs text-green-700">CPF válido.</p>
+                    : <p className="mt-1 text-xs text-amber-600">CPF inválido: confira os números.</p>)}
+                </Field>
                 <Field label="Matrícula"><Input value={edit.matricula ?? ''} disabled={salvando} onChange={e => setEdit(p => ({ ...p, matricula: e.target.value }))} /></Field>
               </div>
               <div className="grid grid-cols-2 gap-3">

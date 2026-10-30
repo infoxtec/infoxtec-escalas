@@ -23,7 +23,7 @@ function Qr({ texto, lado = 104 }: { texto: string; lado?: number }) {
 
 const dataBr = (d: string | null | undefined) => d ? d.slice(0, 10).split('-').reverse().join('/') : '—'
 const cpfFmt = (c: string) => c.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4')
-const cnpjFmt = (c: string) => c.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
+const cnpjFmt = (c: string) => c.replace(/^([0-9A-Z]{2})([0-9A-Z]{3})([0-9A-Z]{3})([0-9A-Z]{4})(\d{2})$/, '$1.$2.$3/$4-$5')
 const dataHora = (s: string) => new Date(s).toLocaleString('pt-BR', { timeZone: 'America/Bahia', dateStyle: 'short', timeStyle: 'short' })
 const SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
 // horas no formato HH:MM, como a folha de pagamento lê (decisão 83)

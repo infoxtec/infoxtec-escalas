@@ -4010,7 +4010,30 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T72' as resultado,
+-- T73 pacote de cadastro: CNPJ alfanumérico e CEP (migration 133) -----------------------------------------------------
+do $$
+declare
+  v_emp uuid; v_loc uuid; v_ok boolean;
+begin
+  perform set_config('request.headers', '{}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform pg_temp.ok(fn_cnpj_valido('12ABC34501DE35') and not fn_cnpj_valido('12ABC34501DE36')
+                     and fn_cnpj_valido('11222333000181') and not fn_cnpj_valido('12abc34501de35'), '[T73] CNPJ alfanumérico');
+  v_emp := app_salvar_empresa(jsonb_build_object('cnpj', '12.abc.345/01de-35', 'razao_social', 'QA Alfanumérica', 'cep', '40015-970'));
+  perform pg_temp.ok((select cnpj = '12ABC34501DE35' and cep = '40015970' from empresas where id = v_emp), '[T73] empresa com CNPJ com letras e CEP');
+  perform app_salvar_empresa(jsonb_build_object('id', v_emp, 'cnpj', '12ABC34501DE35', 'razao_social', 'QA Alfanumérica'));
+  perform pg_temp.ok((select cep = '40015970' from empresas where id = v_emp), '[T73] painel antigo mantém o CEP');
+  v_ok := false;
+  begin perform app_salvar_empresa(jsonb_build_object('cnpj', '12ABC34501DE35', 'razao_social', 'QA', 'cep', '4001')); 
+  exception when others then v_ok := sqlerrm like 'CEP inválido%'; end;
+  perform pg_temp.ok(v_ok, '[T73] CEP inválido na empresa');
+  v_loc := app_salvar_local(jsonb_build_object('nome', 'QA Local T73', 'cep', '40015970', 'cidade', 'Salvador'));
+  perform pg_temp.ok((select cep = '40015970' and uf = 'BA' from locais where id = v_loc), '[T73] local com CEP');
+  perform pg_temp.ok(fn_afd_cnpj('12.ABC.345/01DE-35') = '12ABC34501DE35' and fn_afd_cnpj('11.222.333/0001-81') = '11222333000181',
+                     '[T73] CNPJ com letras no AFD');
+end $$;
+
+select 'REGRESSÃO OK: T1 a T73' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
