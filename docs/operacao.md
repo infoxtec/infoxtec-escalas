@@ -316,7 +316,7 @@ reinstalado ou backup restaurado derrubam os aparelhos conectados; a Evolution �
 2. **Trocar o celular** e abrir o WhatsApp no aparelho novo.
 3. **Logo depois**, no Manager da Evolution (`<evolution_url>/manager`), em cada instância: conectar e ler o QR Code
    pelo celular novo (WhatsApp → Aparelhos conectados → Conectar um aparelho).
-4. **Conferir:** em até 5 minutos, o quadro "Alerta do WhatsApp por e-mail" (aba Contas) mostra "conectado". Se o
+4. **Conferir:** em até 5 minutos, o quadro "Alertas da plataforma" (Checklist Sistema) mostra "conectado". Se o
    alerta de queda já tiver saído, chega o e-mail "Trilha: WhatsApp de volta".
 5. As escalas que falharam nesse intervalo o motor reenvia sozinho (seção abaixo).
 

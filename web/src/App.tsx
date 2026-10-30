@@ -262,7 +262,7 @@ function Painel({ email }: { email: string }) {
         {aba === 'roadmap' && papel === 'admin' && <RoadmapPage podeEditar />}
         {aba === 'contas' && acesso.plataforma && <ContasPage />}
         {aba === 'feriados' && acesso.plataforma && <FeriadosPage />}
-        {aba === 'admin' && papel === 'admin' && <AdminPage />}
+        {aba === 'admin' && papel === 'admin' && <AdminPage plataforma={acesso.plataforma} />}
       </main>
     </div>
   )

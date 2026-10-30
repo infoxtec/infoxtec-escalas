@@ -163,7 +163,7 @@ Daí em diante roda sozinho: backup todo dia às 03h37 e teste de restauração 
    as instruções (o aviso por WhatsApp no healthchecks.io é pago; o seu WhatsApp já recebe os
    avisos pelo próprio sistema).
 4. Copie a **ping URL** do check (começa com `https://hc-ping.com/`).
-5. No painel, aba **Contas** → quadro **Alerta do WhatsApp por e-mail** → campo do **Monitor externo**: cole a ping
+5. No painel, **Checklist Sistema** → quadro **Alertas da plataforma** → campo do **Monitor externo**: cole a ping
    URL e clique em **Salvar** (migration 136; antes era um `update` no SQL Editor).
 6. **Conferir:** em até 2 minutos o check fica verde (*up*) no healthchecks.io. Use **Send test
    notification** para ver chegar no e-mail e no Telegram.
