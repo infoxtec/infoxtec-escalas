@@ -26,3 +26,13 @@ verify_jwt = false   # chamada só pelo banco (pg_net); protegida por token conf
 
 [functions.webhook-evolution]
 verify_jwt = false   # chamada pela Evolution; protegida por token conferido no banco
+
+# Textos dos e-mails do Auth em português (decisão 123). No banco local valem daqui; na homologação e na produção,
+# o mesmo conteúdo é colado em Authentication → Emails → Templates.
+[auth.email.template.invite]
+subject = "Seu convite para o Trilha"
+content_path = "./supabase/templates/convite.html"
+
+[auth.email.template.recovery]
+subject = "Crie uma nova senha no Trilha"
+content_path = "./supabase/templates/recuperacao.html"
