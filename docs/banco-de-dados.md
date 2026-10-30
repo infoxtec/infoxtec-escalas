@@ -290,7 +290,7 @@ Regressão: T77.
 ### Migration 136 (30/10, versão 20261108120000): monitor externo pelo painel
 
 `app_plataforma_monitor` (ligado ou não, e os 4 últimos caracteres do endereço) e `app_plataforma_salvar_monitor(url)`
-gravam `monitor_ping_url` pela aba Contas, sem SQL na produção (só `https://hc-ping.com/<uuid>` ou vazio; o gatilho da
+gravam `monitor_ping_url` pelo Checklist Sistema (quadro "Alertas da plataforma", painel 3.58.0), sem SQL na produção (só `https://hc-ping.com/<uuid>` ou vazio; o gatilho da
 `config` confere de novo). A troca vai para o `plataforma_log` (ação `monitor_externo`, sem o endereço inteiro).
 Regressão: T76.
 
@@ -304,7 +304,7 @@ do `connectionState` pedido na volta anterior e faz o pedido novo; fora de `open
 Function `alerta-email` (token `ALERTA_EMAIL_TOKEN` no Vault, criado no primeiro uso); `fn_alerta_email_dados` e
 `fn_alerta_email_resultado` só respondem com o token. Destinatários: a plataforma e `alerta_emails`. SMTP em `config`
 (`alerta_smtp_host`, `alerta_smtp_porta` 465, `alerta_smtp_usuario`); a senha só no segredo `ALERTA_SMTP_SENHA` da
-função. `app_plataforma_testar_alerta` e `app_plataforma_alertas` (aba Contas). Regressão: T75; T56 classifica as duas
+função. `app_plataforma_testar_alerta` e `app_plataforma_alertas` (Checklist Sistema, quadro "Alertas da plataforma", só a plataforma). Regressão: T75; T56 classifica as duas
 tabelas como da plataforma.
 
 ### Migration 134 (30/10, versão 20261106120000): exclusão definitiva de usuário

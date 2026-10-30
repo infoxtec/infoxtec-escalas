@@ -2,13 +2,14 @@ import { useCallback, useEffect, useState } from 'react'
 import { AlertTriangle, CheckCircle2, ExternalLink, Info, Loader2, RefreshCw, XCircle } from 'lucide-react'
 import { Button, ErrorBox } from '../components/ui'
 import { api, erroMsg } from '../lib/api'
+import AlertasPlataforma from '../components/AlertasPlataforma'
 import type { ChecklistSaude, EstadoSaude, ItemSaude } from '../lib/types'
 
 // Checklist Sistema. Hoje com uma seção só (Checklist); as próximas entram em SECOES.
 const SECOES = [{ id: 'checklist', label: 'Checklist' }] as const
 type Secao = typeof SECOES[number]['id']
 
-export default function AdminPage() {
+export default function AdminPage({ plataforma = false }: { plataforma?: boolean }) {
   const [secao, setSecao] = useState<Secao>('checklist')
   return (
     <div className="space-y-4">
@@ -24,6 +25,7 @@ export default function AdminPage() {
           ))}
         </div>}
       </div>
+      {secao === 'checklist' && plataforma && <AlertasPlataforma />}
       {secao === 'checklist' && <Checklist />}
     </div>
   )
