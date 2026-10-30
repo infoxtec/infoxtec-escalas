@@ -253,4 +253,5 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [ ] Exclusão definitiva de usuário pela tela Usuários (migration 134, painel 3.54.0; homologação testada)
 - [ ] Alerta por e-mail quando o WhatsApp cai e volta (migration 135, painel 3.55.0; homologação testada)
 - [ ] Multiempresa F5a: canal de WhatsApp por conta (migration 137, painel 3.57.0; homologação testada)
-- [ ] Multiempresa F5b: entrada pela instância e telefone único por conta (migration 138; homologação)
+- [ ] Multiempresa F5b: entrada pela instância e telefone único por conta (migration 138; homologação testada)
+- [ ] Multiempresa F5c: fila justa, avisos com a conta e vigia por canal (migration 139; homologação)
