@@ -1855,3 +1855,15 @@ no Supabase.
   plataforma por e-mail e fica registrada por 1 ano. O código não fica guardado no texto do e-mail depois do envio.
 - O WhatsApp não vira o segundo fator do dia a dia: o Supabase só o aceita por SMS ou Twilio; pelo nosso canal ele é o
   caminho de emergência. O SQL de remoção do fator (usado em 30/10) fica só como contingência.
+- **Risco aceito pelo responsável (30/10, opção "B, mas o número vale no momento do cadastro"):** o WhatsApp de
+  recuperação é definido pelo administrador da conta e vale na hora, sem carência. Um administrador mal-intencionado (ou
+  com a sessão roubada) pode cadastrar um número dele e trocar o autenticador de um usuário da conta, **inclusive para as outras contas da
+  pessoa** (o autenticador é um só por login), se ela não tiver WhatsApp cadastrado em outra conta (com números em duas
+  contas, se forem diferentes, o pedido pelo WhatsApp é recusado). Mitigações: a pessoa
+  recebe e-mail quando o número muda e quando o autenticador é trocado, a plataforma é avisada de toda troca, e quem é
+  da plataforma só recupera pelo número cadastrado na conta da operadora (o administrador de um cliente nunca o define).
+  Uma carência de 72h para número novo fica no backlog, se o risco mudar.
+- O código não fica guardado: o texto do e-mail some depois do envio (ou em 1 hora, ou já na hora, se o envio não estiver
+  configurado), a resposta do pg_net do envio pelo WhatsApp é apagada no próximo pedido ou confirmação, e um pedido novo
+  anula os códigos anteriores do mesmo canal. O código só é dado como usado depois que o Auth apaga os fatores
+  (`fn_mfa_recuperacao_concluir`): se a remoção falhar, a pessoa tenta de novo com o mesmo código.

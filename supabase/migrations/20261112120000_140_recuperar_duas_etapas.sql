@@ -18,7 +18,8 @@ create table interno.mfa_recuperacoes (
   criado_em timestamptz not null default now(),
   expira_em timestamptz not null,
   tentativas int not null default 0,
-  usado_em timestamptz
+  usado_em timestamptz,
+  envio_req bigint   -- pedido do pg_net do WhatsApp: a resposta repete o texto com o código e é apagada
 );
 alter table interno.mfa_recuperacoes enable row level security;
 create index mfa_recuperacoes_email_idx on interno.mfa_recuperacoes (email, criado_em desc);
@@ -39,9 +40,17 @@ declare
   v_id  bigint;
 begin
   delete from alertas_email where criado_em < now() - interval '90 days';
+  update alertas_email set texto = '(conteúdo sensível removido)'
+   where sensivel and criado_em < now() - interval '1 hour' and texto <> '(conteúdo sensível removido)';
   insert into alertas_email (assunto, texto, para, sensivel)
   values (left(p_assunto, 150), left(p_texto, 4000), p_para, coalesce(p_sensivel, false)) returning id into v_id;
-  if v_url is null then return v_id; end if;
+  if v_url is null then
+    -- sem a Edge Function, nada sai: o conteúdo sensível não fica guardado
+    if coalesce(p_sensivel, false) then
+      update alertas_email set texto = '(conteúdo sensível removido)', erro = 'envio de e-mail não configurado' where id = v_id;
+    end if;
+    return v_id;
+  end if;
   perform pg_advisory_xact_lock(hashtext('alerta_email_token'));
   v_tok := fn_segredo('ALERTA_EMAIL_TOKEN');
   if v_tok is null then
@@ -115,6 +124,7 @@ begin
     raise exception 'Usuário sem acesso ao painel.';
   end if;
   perform pg_advisory_xact_lock(hashtext('mfa_recuperacao:' || v_email));
+  perform fn_mfa_limpar_envios(v_email);
   delete from mfa_recuperacoes where criado_em < now() - interval '1 year';
   if (select count(*) from mfa_recuperacoes where email = v_email and criado_em > now() - interval '1 day') >= 6 then
     raise exception 'Muitos pedidos hoje. Tente amanhã ou fale com o suporte.';
@@ -123,13 +133,18 @@ begin
     raise exception 'Código enviado há pouco. Aguarde um minuto.';
   end if;
   if p_canal = 'whatsapp' then
+    -- quem é da plataforma só recupera pelo número cadastrado na conta da operadora (o admin de um cliente não troca)
     select array_agg(distinct telefone_e164) into v_tels from conta_membros
-     where email = v_email and ativo and telefone_e164 is not null;
+     where email = v_email and ativo and telefone_e164 is not null
+       and (conta_id = '00000000-0000-0000-0000-000000000001' or not exists (select 1 from plataforma_admins where email = v_email));
     if v_tels is null then raise exception 'Nenhum WhatsApp cadastrado para você. Use o e-mail ou peça ao administrador.'; end if;
     if cardinality(v_tels) > 1 then raise exception 'Há mais de um WhatsApp cadastrado para você. Use o e-mail.'; end if;
     select conta_id into v_conta from conta_membros where email = v_email and ativo and telefone_e164 = v_tels[1]
      order by conta_id = '00000000-0000-0000-0000-000000000001' desc limit 1;
   end if;
+  -- um pedido novo anula os códigos anteriores do mesmo canal
+  update mfa_recuperacoes set expira_em = least(expira_em, now())
+   where email = v_email and canal = p_canal and usado_em is null and expira_em > now();
   v_cod := lpad(((('x' || encode(extensions.gen_random_bytes(4), 'hex'))::bit(32)::bigint) % 1000000)::text, 6, '0');
   insert into mfa_recuperacoes (id, email, canal, codigo_hash, expira_em)
   values (v_id, v_email, p_canal, encode(extensions.digest(v_id::text || ':' || v_cod, 'sha256'), 'hex'), now() + interval '10 minutes');
@@ -139,9 +154,11 @@ begin
       || 'Se não foi você quem pediu, ignore este e-mail e troque a sua senha: alguém pode estar tentando entrar com ela.',
       array[v_email], true);
   else
-    perform fn_wa_texto_na_conta(v_conta, v_tels[1],
-      '🔐 Trilha: seu código para trocar a verificação em duas etapas é *' || v_cod || '* (vale 10 minutos). '
-      || 'Se não foi você, troque a sua senha.');
+    update mfa_recuperacoes set envio_req = fn_evo_post_na_conta(v_conta, '/message/sendText/' || fn_config('evolution_instancia'),
+      jsonb_build_object('number', v_tels[1], 'text',
+        '🔐 Trilha: seu código para trocar a verificação em duas etapas é *' || v_cod || '* (vale 10 minutos). '
+        || 'Se não foi você, troque a sua senha.'))
+     where id = v_id;
   end if;
   return jsonb_build_object('enviado', p_canal,
     'destino', case when p_canal = 'email' then regexp_replace(v_email, '^(.)[^@]*', '\1***')
@@ -149,7 +166,8 @@ begin
 end $function$;
 
 -- confere os códigos e devolve o id do login para a Edge Function apagar o autenticador; plataforma precisa dos dois.
--- Recusa volta como {erro} (sem exceção), para a tentativa errada continuar contada
+-- Recusa volta como {erro} (sem exceção), para a tentativa errada continuar contada. O uso e os avisos ficam para
+-- fn_mfa_recuperacao_concluir, depois de o Auth apagar os fatores (se ele falhar, o código continua valendo)
 create or replace function interno.fn_mfa_recuperacao_confirmar(p_email text, p_codigo_email text, p_codigo_whatsapp text)
  returns jsonb
  language plpgsql
@@ -161,23 +179,38 @@ declare
   v_ok_email boolean := false;
   v_ok_whats boolean := false;
   v_user uuid;
-  v_canais text;
-  v_fuso text := coalesce(fn_config('fuso'), 'America/Bahia');
 begin
   perform pg_advisory_xact_lock(hashtext('mfa_recuperacao:' || v_email));
+  perform fn_mfa_limpar_envios(v_email);
+  if not exists (select 1 from conta_membros where email = v_email and ativo) and not v_plat then
+    return jsonb_build_object('erro', 'Usuário sem acesso ao painel.');
+  end if;
   v_ok_email := fn_mfa_codigo_ok(v_email, 'email', p_codigo_email);
   v_ok_whats := fn_mfa_codigo_ok(v_email, 'whatsapp', p_codigo_whatsapp);
   if v_plat and not (v_ok_email and v_ok_whats) then
-    return jsonb_build_object('erro', 'Administrador da plataforma: confirme os dois códigos, do e-mail e do WhatsApp.');
+    return jsonb_build_object('erro', 'Confirme os códigos do e-mail e do WhatsApp.');
   end if;
   if not (v_ok_email or v_ok_whats) then return jsonb_build_object('erro', 'Código errado ou vencido.'); end if;
   select id into v_user from auth.users where lower(email) = v_email limit 1;
   if v_user is null then return jsonb_build_object('erro', 'Usuário sem acesso ao painel.'); end if;
+  return jsonb_build_object('usuario', v_user, 'email_ok', v_ok_email, 'whatsapp_ok', v_ok_whats);
+end $function$;
+
+-- depois de apagados os fatores: códigos usados e avisos à pessoa e à plataforma
+create or replace function interno.fn_mfa_recuperacao_concluir(p_email text, p_email_ok boolean, p_whatsapp_ok boolean)
+ returns void
+ language plpgsql
+ set search_path to 'interno', 'public', 'extensions', 'pg_temp'
+as $function$
+declare
+  v_email text := lower(btrim(coalesce(p_email, '')));
+  v_canais text := concat_ws(' e ', case when p_email_ok then 'e-mail' end, case when p_whatsapp_ok then 'WhatsApp' end);
+  v_fuso text := coalesce(fn_config('fuso'), 'America/Bahia');
+begin
+  perform pg_advisory_xact_lock(hashtext('mfa_recuperacao:' || v_email));
   update mfa_recuperacoes set usado_em = now()
    where email = v_email and usado_em is null and expira_em > now()
-     and ((canal = 'email' and v_ok_email) or (canal = 'whatsapp' and v_ok_whats));
-  v_canais := concat_ws(' e ', case when v_ok_email then 'e-mail' end, case when v_ok_whats then 'WhatsApp' end);
-  -- aviso à pessoa e à plataforma: se não foi ela, dá para agir
+     and ((canal = 'email' and p_email_ok) or (canal = 'whatsapp' and p_whatsapp_ok));
   perform fn_alerta_email('Trilha: sua verificação em duas etapas foi trocada',
     'A verificação em duas etapas do seu login no Trilha (' || v_email || ') foi removida às '
     || to_char(now() at time zone v_fuso, 'DD/MM HH24:MI') || ', com código pelo ' || v_canais || '.' || E'\n\n'
@@ -186,8 +219,18 @@ begin
   perform fn_alerta_email('Trilha: verificação em duas etapas trocada (' || left(v_email, 80) || ')',
     'O login ' || v_email || ' removeu a verificação em duas etapas às ' || to_char(now() at time zone v_fuso, 'DD/MM HH24:MI')
     || ', com código pelo ' || v_canais || '.');
-  return jsonb_build_object('usuario', v_user);
 end $function$;
+
+-- respostas do pg_net dos envios por WhatsApp (repetem o texto com o código): saem assim que chegam
+create or replace function interno.fn_mfa_limpar_envios(p_email text)
+ returns void
+ language sql
+ set search_path to 'interno', 'public', 'extensions', 'pg_temp'
+as $function$
+  with r as (delete from net._http_response h using interno.mfa_recuperacoes m
+              where h.id = m.envio_req and (p_email is null or m.email = p_email) returning h.id)
+  update interno.mfa_recuperacoes set envio_req = null where envio_req in (select id from r);
+$function$;
 
 -- um código: o último pedido ainda válido do canal; 5 tentativas erradas e ele vence
 create or replace function interno.fn_mfa_codigo_ok(p_email text, p_canal text, p_codigo text)
@@ -216,12 +259,14 @@ create or replace function public.app_definir_telefone_usuario(p_email text, p_t
  set search_path to 'interno', 'public', 'extensions', 'pg_temp'
 as $function$
 declare
-  v_ator  text := app_exigir(array['admin']);
-  v_conta uuid := fn_conta_atual();
+  v_ator  text;
+  v_conta uuid;
   v_email text := lower(btrim(coalesce(p_email, '')));
   v_tel   text := nullif(regexp_replace(coalesce(p_telefone, ''), '\D', '', 'g'), '');
   v_antes text;
 begin
+  v_ator := app_exigir(array['admin']);
+  v_conta := fn_conta_atual();
   if v_tel is not null and v_tel !~ '^[0-9]{12,13}$' then
     raise exception 'WhatsApp inválido: use DDI e DDD, só números. Ex: 5571981776307';
   end if;

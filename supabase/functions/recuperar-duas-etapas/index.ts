@@ -1,7 +1,7 @@
 // Recuperação da verificação em duas etapas (migration 140, decisão 128). Quem perdeu o autenticador entra com a senha
 // (sessão aal1) e pede um código por e-mail ou WhatsApp; com o código certo (os dois, se for da plataforma), esta função
 // apaga os fatores do login no Supabase Auth e o painel pede o autenticador novo. Quem pode, limites, códigos e avisos:
-// tudo no banco (fn_mfa_recuperacao_pedir e fn_mfa_recuperacao_confirmar). A chave de serviço só existe aqui.
+// tudo no banco (fn_mfa_recuperacao_pedir, _confirmar e _concluir). A chave de serviço só existe aqui.
 // Deploy: supabase functions deploy recuperar-duas-etapas
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import postgres from "npm:postgres@3.4.5";
@@ -91,7 +91,7 @@ Deno.serve(async (req: Request) => {
       const ce = typeof corpo.codigo_email === "string" && CODIGO.test(corpo.codigo_email) ? corpo.codigo_email : null;
       const cw = typeof corpo.codigo_whatsapp === "string" && CODIGO.test(corpo.codigo_whatsapp) ? corpo.codigo_whatsapp : null;
       if (!ce && !cw) return json({ ok: false, erro: "Digite o código de 6 dígitos." }, 400);
-      const [linha] = await sql<{ r: { usuario?: string; erro?: string } }[]>`
+      const [linha] = await sql<{ r: { usuario?: string; erro?: string; email_ok?: boolean; whatsapp_ok?: boolean } }[]>`
         select fn_mfa_recuperacao_confirmar(${email}, ${ce}, ${cw}) as r`;
       if (linha.r.erro || !linha.r.usuario || !UUID.test(linha.r.usuario)) {
         return json({ ok: false, erro: linha.r.erro ?? "Código errado ou vencido." }, 400);
@@ -107,6 +107,8 @@ Deno.serve(async (req: Request) => {
         const del = await fetch(`${base}/${f.id}`, { method: "DELETE", headers: admin, signal: AbortSignal.timeout(TIMEOUT_MS) });
         if (!del.ok && del.status !== 404) throw new Error(`auth ${del.status}`);
       }
+      // só depois de o autenticador sair de fato: códigos dados como usados e avisos (à pessoa e à plataforma)
+      await sql`select fn_mfa_recuperacao_concluir(${email}, ${!!linha.r.email_ok}, ${!!linha.r.whatsapp_ok})`;
       return json({ ok: true, removidos: Array.isArray(fatores) ? fatores.length : 0 });
     }
     return json({ ok: false, erro: "Ação desconhecida." }, 400);
