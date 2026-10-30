@@ -1838,5 +1838,6 @@ no Supabase.
 - Todo aviso enviado a uma pessoa conhecida diz a conta dela; avisos de sistema saem pela operadora.
 - O vigia pergunta o estado do WhatsApp de cada cliente a cada 5 minutos e avisa a plataforma por e-mail na queda e na
   volta, como o da operadora.
+  Os e-mails extras do alerta (`alerta_emails`) são só de gente da plataforma: o alerta leva o nome das contas.
 - **Fica para depois:** rodízio automático do token do webhook das instâncias de cliente (hoje só o da operadora roda
   sozinho); Twilio por cliente (decisão 108), quando o primeiro cliente pedir a URA.

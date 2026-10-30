@@ -4,8 +4,66 @@
 
 set lock_timeout = '5s';
 
-insert into interno.config (chave, valor, descricao) values
-  ('envios_por_conta_por_execucao', '3', 'Fila justa: envios de escala por conta em cada execução do motor (rodízio entre as contas)')
+-- validação da chave nova (inteiro), a partir da definição da homologação
+CREATE OR REPLACE FUNCTION interno.fn_validar_config()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'interno', 'public', 'extensions', 'pg_temp'
+AS $function$
+declare
+  v text := coalesce(new.valor, '');
+begin
+  begin
+    if new.chave in ('envios_por_execucao','envios_por_conta_por_execucao','max_tentativas','avisar_supervisor_na','intervalo_reenvio_min',
+                     'timeout_entrega_min','motor_alerta_min','jornada_min','intervalo_min','intervalo_apos_min',
+                     'antecedencia_minima_min','certificacao_aviso_dias','documento_tamanho_max_mb',
+                     'ligacao_apos_tentativas','ligacao_intervalo_min','ligacao_max_por_escala',
+                     'ligacao_por_execucao','voz_timeout_dtmf','retencao_webhook_dias','retencao_cron_dias',
+                     'retencao_documentos_anos','retencao_payload_dias','conclusao_automatica_min',
+                     'banco_alerta_mb','alerta_certificacoes_dow') then
+      if v !~ '^\d+$' then raise exception 'inteiro'; end if;
+      -- 0 desliga; 1 (segunda) a 7 (domingo), o mesmo dia ISO que fn_alerta_certificacoes compara como
+      -- texto: um dígito só ('07' passaria no inteiro e nunca dispararia)
+      if new.chave = 'alerta_certificacoes_dow' and v !~ '^[0-7]$' then raise exception 'dia'; end if;
+    elsif new.chave = 'hora_noturna_min' then
+      if v::numeric <= 0 then raise exception 'positivo'; end if;
+    elsif new.chave in ('janela_envio_inicio','janela_envio_fim','alerta_escala_aviso','alerta_escala_prazo',
+                        'alerta_certificacoes_hora','ligacao_janela_inicio','ligacao_janela_fim',
+                        'noturno_inicio','noturno_fim') then
+      if v !~ '^\d{2}:\d{2}$' then raise exception 'hora'; end if;
+      perform v::time;
+    elsif new.chave in ('webhook_ativo','usar_botoes','ligacao_ativa','sem_escala_incluir_supervisores') then
+      if v not in ('true','false') then raise exception 'booleano'; end if;
+    elsif new.chave = 'fuso' then
+      if not exists (select 1 from pg_timezone_names where name = v) then raise exception 'fuso'; end if;
+    elsif new.chave = 'alerta_dias_semana' then
+      if v !~ '^[1-7](,[1-7])*$' then raise exception 'dias'; end if;
+    elsif new.chave = 'alerta_tecnico_telefones' then
+      if v <> '' and v !~ '^\d{12,13}(\s*,\s*\d{12,13})*$' then raise exception 'telefones'; end if;
+    elsif new.chave = 'monitor_ping_url' then
+      -- só o endereço de ping do healthchecks.io: a URL é chamada pelo motor a cada minuto
+      if v <> '' and v !~ '^https://hc-ping\.com/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
+        raise exception 'url';
+      end if;
+    end if;
+  exception when others then
+    raise exception 'Valor inválido para %: "%"', new.chave, new.valor
+      using hint = case new.chave
+        when 'alerta_dias_semana' then 'Use dias de 1 (segunda) a 7, separados por vírgula: 1,2,3,4,5'
+        when 'alerta_certificacoes_dow' then 'Use 1 (segunda) a 7 (domingo); 0 desliga o alerta'
+        when 'monitor_ping_url' then 'Use o endereço de ping do healthchecks.io: https://hc-ping.com/<uuid>, ou vazio'
+        when 'alerta_tecnico_telefones' then 'Use telefones com DDI e DDD, só números, separados por vírgula: 5571999999999'
+        when 'fuso' then 'Use um fuso válido, por exemplo America/Bahia'
+        else 'Confira o formato: inteiro, hora HH:MM ou true/false' end;
+  end;
+  return new;
+end $function$
+;
+
+-- padrão: o mesmo limite geral que a instalação já usa (com uma conta só, nada muda)
+insert into interno.config (chave, valor, descricao)
+select 'envios_por_conta_por_execucao', coalesce((select valor from interno.config where chave = 'envios_por_execucao'), '3'),
+       'Fila justa: envios de escala por conta em cada execução do motor (rodízio entre as contas)'
 on conflict (chave) do nothing;
 
 -- vigia de cada canal de cliente
@@ -73,6 +131,7 @@ declare
 begin
   for c in select k.*, ct.nome as conta_nome from conta_canais k join contas ct on ct.id = k.conta_id
             where k.ativo for update of k skip locked loop
+   begin
     v_estado := null;
     if c.vig_req is not null then
       select r.status_code, r.content into v_resp from net._http_response r where r.id = c.vig_req;
@@ -86,6 +145,7 @@ begin
         delete from net._http_response where id = c.vig_req;
       elsif c.vig_verificado_em < now() - interval '4 minutes' then
         v_estado := 'sem_resposta';
+        delete from net._http_response where id = c.vig_req;   -- resposta que chegar atrasada não fica órfã
       end if;
     end if;
     if v_estado = 'open' then
@@ -120,6 +180,9 @@ begin
       update conta_canais set vig_req = null, vig_estado = 'erro_interno', vig_verificado_em = now() where conta_id = c.conta_id;
     end;
     v_n := v_n + 1;
+   exception when others then
+    raise warning 'vigia do canal %: %', c.instancia, sqlerrm;   -- um canal com erro não para os outros
+   end;
   end loop;
   return v_n;
 end $function$;
@@ -541,7 +604,9 @@ begin
   for a in select f.* from (
              select p.*, row_number() over (partition by e.conta_id order by p.enviada_em nulls first) as ordem_conta
                from vw_acoes_pendentes p join escalas e on e.id = p.escala_id
-              where p.acao in ('enviar_primeira','reenviar_falha','reenviar','nao_recebeu')) f
+              where p.acao in ('enviar_primeira','reenviar_falha','reenviar','nao_recebeu')
+                -- sem webhook, lembrete e "não recebeu" não ocupam vaga na fila da conta
+                and (v_webhook or p.acao not in ('reenviar','nao_recebeu'))) f
             where f.ordem_conta <= v_limite_conta
             order by f.ordem_conta, f.enviada_em nulls first loop
     exit when v_sent >= v_limite;
@@ -715,7 +780,11 @@ begin
   end;
   -- F5c: o WhatsApp de cada cliente (só na produção: na homologação só existe a instância da operadora)
   if coalesce(fn_config('ambiente'), 'producao') <> 'homologacao' then
-    perform fn_vigiar_canais();
+    begin
+      perform fn_vigiar_canais();
+    exception when others then
+      raise warning 'vigia dos canais: %', sqlerrm;   -- não desfaz o vigia da operadora nem a limpeza do token
+    end;
   end if;
   return jsonb_build_object('estado', coalesce(v_estado, v.estado), 'falhas', (select falhas from evolution_vigia where id));
 end $function$

@@ -4307,7 +4307,11 @@ begin
   perform fn_evo_post_na_conta(v_b, '/message/sendText/qa-operadora', '{"number":"5571966660078","text":"x"}');
   perform pg_temp.ok(current_setting('trilha.conta', true) = '00000000-0000-0000-0000-000000000001', '[T79] contexto devolvido');
   perform set_config('trilha.conta', '', true);
+  begin perform 1 from (select 1) x; update config set valor = 'x' where chave = 'envios_por_conta_por_execucao';
+    perform pg_temp.ok(false, '[T79] teto por conta aceita texto');
+  exception when others then perform pg_temp.ok(sqlerrm like 'Valor inválido%', '[T79] teto por conta só inteiro'); end;
   perform pg_temp.ok((select prosrc ~ 'partition by e.conta_id' and prosrc ~ 'ordem_conta <= v_limite_conta'
+                               and prosrc ~ 'and \(v_webhook or p.acao not in \(''reenviar'',''nao_recebeu''\)\)'
                         from pg_proc where oid = 'interno.fn_dispatcher_whatsapp()'::regprocedure)
                      and (select prosrc ~ 'fn_wa_texto_na_conta\(s.conta_id' from pg_proc where proname = 'fn_avisar_supervisores')
                      and (select prosrc ~ 'fn_ponto_wa_na_conta\(t.conta_id' from pg_proc where proname = 'fn_ponto_lembrete_almoco'),
