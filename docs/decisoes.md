@@ -1803,3 +1803,16 @@ no Supabase.
   pela porta 587: usa a 465 (SSL). A senha da caixa fica só no segredo `ALERTA_SMTP_SENHA` da função.
 - **Limite:** se o servidor da Oracle cair inteiro, o vigia vê "sem resposta" e avisa do mesmo jeito; se o Supabase
   cair, quem avisa é o monitor externo (healthchecks.io, etapa 10c), ligado pelo painel da plataforma (migration 136).
+
+## 125. Canal de WhatsApp por conta: a conta de quem recebe decide a instância
+
+*30/10/2026 — multiempresa F5a (migration 137, painel 3.57.0), aplicando a decisão 108.*
+
+- Cada conta cliente tem a sua instância na Evolution, cadastrada pela plataforma na tela Contas; a chave (token da
+  instância) vai para o Vault e nunca volta ao painel. A operadora continua no canal da instalação.
+- O envio descobre a conta pelo funcionário que recebe (o telefone ainda é único no sistema) e sai pela instância dela.
+  **Conta sem canal ativo não envia**: a mensagem é recusada com aviso no log, nunca sai pelo número da Infoxtec.
+- Na homologação só existe a instância `trilha-homologacao`, que é da operadora: conta cliente não envia lá; o
+  roteamento é provado pela regressão (T77).
+- **Próximos passos:** F5b, a entrada pela instância (o webhook acha a conta pela instância, e o telefone passa a ser
+  único por conta); F5c, fila justa e teto por conta, e o vigia da Evolution por canal.

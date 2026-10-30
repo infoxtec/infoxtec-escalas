@@ -9,7 +9,11 @@ const MODULOS: { id: 'escala' | 'ponto'; nome: string }[] = [
   { id: 'ponto', nome: 'Registro de ponto' },
 ]
 
-interface Edicao { id?: string; nome: string; ativa: boolean; modulos: string[]; admin_email: string; admin_nome: string; uf: string; municipio: string }
+interface Edicao {
+  id?: string; nome: string; ativa: boolean; modulos: string[]; admin_email: string; admin_nome: string; uf: string; municipio: string
+  // canal de WhatsApp da conta (F5a, migration 137); a chave nunca volta do banco
+  canal_instancia: string; canal_chave: string; canal_ativo: boolean; canal_com_chave: boolean; canal_original: string
+}
 
 // Contas dos clientes (multiempresa F3c, decisão 117): só a plataforma cria e altera. O administrador da conta nova
 // recebe o convite por e-mail ao salvar (decisão 120).
@@ -21,12 +25,14 @@ export default function ContasPage() {
   const [erro, setErro] = useState<string | null>(null)
   const [alertas, setAlertas] = useState<Awaited<ReturnType<typeof api.plataformaAlertas>> | null>(null)
   const [testando, setTestando] = useState(false)
+  const [canais, setCanais] = useState<Awaited<ReturnType<typeof api.plataformaCanais>>>([])
   const [monitor, setMonitor] = useState<{ ligado: boolean; final: string | null } | null>(null)
   const [pingUrl, setPingUrl] = useState('')
 
   const carregar = useCallback(async () => {
     try { setContas(await api.plataformaContas()) } catch (e) { setErro(erroMsg(e)) }
     api.plataformaAlertas().then(setAlertas).catch(() => setAlertas(null))
+    api.plataformaCanais().then(setCanais).catch(() => setCanais([]))
     api.plataformaMonitor().then(setMonitor).catch(() => setMonitor(null))
   }, [])
 
@@ -58,8 +64,12 @@ export default function ContasPage() {
     if (edit.municipio.trim() && !edit.uf) return setErro('Informe a UF da sede junto com o município.')
     setSalvando(true)
     try {
-      if (edit.id) await api.plataformaSalvarConta(edit.id, edit.nome, edit.ativa, edit.modulos, edit.uf, edit.municipio)
-      else {
+      if (edit.id) {
+        await api.plataformaSalvarConta(edit.id, edit.nome, edit.ativa, edit.modulos, edit.uf, edit.municipio)
+        const mudouCanal = edit.canal_instancia.trim() && (edit.canal_instancia.trim() !== edit.canal_original || edit.canal_chave.trim()
+          || edit.canal_ativo !== (canais.find(k => k.conta_id === edit.id)?.ativo ?? true))
+        if (mudouCanal) await api.plataformaSalvarCanal(edit.id, edit.canal_instancia, edit.canal_chave, edit.canal_ativo)
+      } else {
         const id = await api.plataformaCriarConta(edit.nome, edit.admin_email, edit.admin_nome, edit.modulos, edit.uf, edit.municipio)
         const email = edit.admin_email.trim().toLowerCase()
         toast(mensagemConvite(email, await convidarUsuario(email, id)))
@@ -78,7 +88,7 @@ export default function ContasPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => void carregar()}><RefreshCw className="h-3.5 w-3.5" /> Atualizar</Button>
-          <Button size="sm" onClick={() => { setEdit({ nome: '', ativa: true, modulos: ['escala', 'ponto'], admin_email: '', admin_nome: '', uf: '', municipio: '' }); setErro(null) }}>
+          <Button size="sm" onClick={() => { setEdit({ nome: '', ativa: true, modulos: ['escala', 'ponto'], admin_email: '', admin_nome: '', uf: '', municipio: '', canal_instancia: '', canal_chave: '', canal_ativo: true, canal_com_chave: false, canal_original: '' }); setErro(null) }}>
             <Plus className="h-4 w-4" /> Nova conta
           </Button>
         </div>
@@ -118,7 +128,7 @@ export default function ContasPage() {
           <table className="w-full text-sm">
             <thead><tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
               <th className="px-3 py-2">Conta</th><th className="px-3 py-2">Sede</th><th className="px-3 py-2">Administradores</th><th className="px-3 py-2">Módulos</th>
-              <th className="px-3 py-2 text-center">Usuários</th><th className="px-3 py-2 text-center">Ativa</th><th className="w-12" />
+              <th className="px-3 py-2">WhatsApp</th><th className="px-3 py-2 text-center">Usuários</th><th className="px-3 py-2 text-center">Ativa</th><th className="w-12" />
             </tr></thead>
             <tbody>
               {contas.map(c => (
@@ -128,11 +138,14 @@ export default function ContasPage() {
                   <td className="px-3 py-2.5 text-xs">{c.uf ? [c.municipio, c.uf].filter(Boolean).join(' / ') : <span className="text-muted-foreground">sem sede</span>}</td>
                   <td className="px-3 py-2.5 text-xs">{c.admins.join(', ') || <span className="text-muted-foreground">nenhum</span>}</td>
                   <td className="px-3 py-2.5 text-xs">{c.modulos.join(', ')}</td>
+                  <td className="px-3 py-2.5 text-xs">{(() => { const k = canais.find(x => x.conta_id === c.id)
+                    return !k?.instancia ? <span className="text-amber-600">sem canal</span>
+                      : <span className={k.ativo ? '' : 'text-muted-foreground line-through'}>{k.instancia}{k.da_instalacao ? ' (instalação)' : ''}</span> })()}</td>
                   <td className="px-3 py-2.5 text-center text-xs">{c.membros}</td>
                   <td className="px-3 py-2.5 text-center"><span className={`inline-block h-2 w-2 rounded-full ${c.ativa ? 'bg-green-500' : 'bg-gray-400'}`} /></td>
                   <td className="px-3 py-2.5 text-right">
                     <Button variant="ghost" size="icon" aria-label="Editar"
-                      onClick={() => { setEdit({ id: c.id, nome: c.nome, ativa: c.ativa, modulos: c.modulos, admin_email: '', admin_nome: '', uf: c.uf ?? '', municipio: c.municipio ?? '' }); setErro(null) }}>
+                      onClick={() => { const k = canais.find(x => x.conta_id === c.id); setEdit({ id: c.id, nome: c.nome, ativa: c.ativa, modulos: c.modulos, admin_email: '', admin_nome: '', uf: c.uf ?? '', municipio: c.municipio ?? '', canal_instancia: k?.da_instalacao ? '' : k?.instancia ?? '', canal_chave: '', canal_ativo: k?.ativo ?? true, canal_com_chave: !!k?.com_chave, canal_original: k?.da_instalacao ? '' : k?.instancia ?? '' }); setErro(null) }}>
                       <Edit2 className="h-3.5 w-3.5" />
                     </Button>
                   </td>
@@ -166,6 +179,19 @@ export default function ContasPage() {
             {MODULOS.map(m => (
               <ToggleRow key={m.id} label={m.nome} checked={edit.modulos.includes(m.id)} onChange={v => alternarModulo(m.id, v)} disabled={salvando} />
             ))}
+            {edit.id && (canais.find(k => k.conta_id === edit.id)?.da_instalacao
+              ? <p className="text-xs text-muted-foreground">WhatsApp: canal da instalação ({canais.find(k => k.conta_id === edit.id)?.instancia}).</p>
+              : <div className="space-y-2 rounded-md border p-3">
+                  <p className="text-sm font-medium">WhatsApp da conta</p>
+                  <p className="text-xs text-muted-foreground">Cada cliente tem a sua instância na Evolution (decisão 108). Sem canal, a conta não envia mensagens.</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Instância"><Input value={edit.canal_instancia} onChange={e => setEdit({ ...edit, canal_instancia: e.target.value.toLowerCase() })} placeholder="cliente-x" disabled={salvando} /></Field>
+                    <Field label="Chave (token) da instância" hint={edit.canal_com_chave ? 'Guardada. Em branco mantém a atual.' : 'Obrigatória no primeiro cadastro.'}>
+                      <Input type="password" autoComplete="off" value={edit.canal_chave} onChange={e => setEdit({ ...edit, canal_chave: e.target.value })} disabled={salvando} />
+                    </Field>
+                  </div>
+                  <ToggleRow label="Canal ativo" checked={edit.canal_ativo} onChange={v => setEdit({ ...edit, canal_ativo: v })} disabled={salvando} />
+                </div>)}
             {edit.id && <ToggleRow label="Ativa" description="Conta desativada: ninguém dela entra no painel; os dados ficam guardados."
               checked={edit.ativa} onChange={v => setEdit({ ...edit, ativa: v })} disabled={salvando} />}
             {erro && <ErrorBox>{erro}</ErrorBox>}

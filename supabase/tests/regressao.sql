@@ -209,7 +209,8 @@ declare
   v_fn_plataforma text[] := array['app_email', 'app_exigir', 'app_meu_acesso', 'app_backlog', 'app_salvar_backlog_item',
     'app_mover_backlog_item', 'app_checklist_saude', 'app_checklist_testar', 'app_estado_motor',
     'app_plataforma_contas', 'app_plataforma_criar_conta', 'app_plataforma_salvar_conta',
-    'app_plataforma_testar_alerta', 'app_plataforma_alertas', 'app_plataforma_monitor', 'app_plataforma_salvar_monitor'];
+    'app_plataforma_testar_alerta', 'app_plataforma_alertas', 'app_plataforma_monitor', 'app_plataforma_salvar_monitor',
+    'app_plataforma_canais', 'app_plataforma_salvar_canal'];
   v_tb_plataforma text[] := array['config', 'backlog_itens', 'motor_estado', 'saude_testes', 'ponto_geo', 'webhook_token_trocas',
     'plataforma_log', 'feriados', 'ponto_motivos', 'evolution_vigia', 'alertas_email'];
   v text; n int; v_ok boolean;
@@ -4171,7 +4172,57 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T76' as resultado,
+-- T77 multiempresa F5a: canal de WhatsApp por conta (migration 137) -------------------------------------------------
+do $$
+declare
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_tb uuid; v_d jsonb; v_ok boolean; v_r jsonb;
+begin
+  insert into config (chave, valor) values ('evolution_url', 'https://evo.teste'), ('evolution_instancia', 'qa-operadora')
+    on conflict (chave) do update set valor = excluded.valor;
+  perform set_config('request.headers', '{}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  -- funcionário da conta B: sem canal, o envio não sai pelo número da operadora
+  insert into tecnicos (conta_id, nome, telefone_e164, ativo, opt_in) values (v_b, 'QA Canal B', '5571977770077', true, true)
+    returning id into v_tb;
+  perform pg_temp.ok(fn_conta_do_numero('5571977770077') = v_b and fn_conta_do_numero('5571900000999') = '00000000-0000-0000-0000-000000000001',
+                     '[T77] conta pelo número de quem recebe');
+  perform pg_temp.ok(fn_evo_destino('/message/sendText/qa-operadora', '5571977770077') is null, '[T77] conta sem canal não envia');
+  v_d := fn_evo_destino('/message/sendText/qa-operadora', '5571900000999');
+  perform pg_temp.ok(v_d->>'path' = '/message/sendText/qa-operadora' and v_d->>'segredo' = 'EVOLUTION_API_KEY', '[T77] operadora como antes');
+  -- cadastro pela plataforma: a chave vai para o Vault e não volta
+  v_ok := false;
+  begin perform app_plataforma_salvar_canal(v_b, 'qa-operadora', 'chave-qa-123456', true);
+  exception when others then v_ok := sqlerrm like 'Esta é a instância da operadora%'; end;
+  perform pg_temp.ok(v_ok, '[T77] instância da operadora recusada');
+  v_ok := false;
+  begin perform app_plataforma_salvar_canal(v_b, 'cliente-b', '', true);
+  exception when others then v_ok := sqlerrm like 'Informe a chave%'; end;
+  perform pg_temp.ok(v_ok, '[T77] canal novo sem chave');
+  perform app_plataforma_salvar_canal(v_b, 'Cliente-B', 'chave-qa-123456', true);
+  v_d := fn_evo_destino('/message/sendText/qa-operadora', '5571977770077');
+  perform pg_temp.ok(v_d->>'path' = '/message/sendText/cliente-b' and v_d->>'url' = 'https://evo.teste'
+                     and fn_segredo(v_d->>'segredo') = 'chave-qa-123456', '[T77] envio pelo canal da conta B');
+  v_r := app_plataforma_canais();
+  perform pg_temp.ok(exists (select 1 from jsonb_array_elements(v_r) e where e->>'conta_id' = v_b::text and e->>'instancia' = 'cliente-b'
+                             and (e->>'com_chave')::boolean and not (e ? 'segredo'))
+                     and v_r::text not like '%chave-qa-123456%', '[T77] lista sem a chave');
+  -- chave vazia mantém a do Vault; desativar volta a recusar
+  perform app_plataforma_salvar_canal(v_b, 'cliente-b', '', false);
+  perform pg_temp.ok(fn_evo_destino('/message/sendText/qa-operadora', '5571977770077') is null
+                     and fn_segredo('EVOLUTION_API_KEY_' || replace(v_b::text, '-', '')) = 'chave-qa-123456', '[T77] canal desativado');
+  v_ok := false;
+  begin perform app_plataforma_salvar_canal('00000000-0000-0000-0000-000000000001', 'outra', 'chave-qa-123456', true);
+  exception when others then v_ok := sqlerrm like 'A operadora usa o canal%'; end;
+  perform pg_temp.ok(v_ok, '[T77] operadora pelo canal da instalação');
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  v_ok := false;
+  begin perform app_plataforma_canais(); exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
+  perform pg_temp.ok(v_ok, '[T77] admin de conta não vê os canais');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T77' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
