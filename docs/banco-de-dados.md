@@ -254,6 +254,18 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 139 (30/10, versão 20261111120000): fila justa, avisos com a conta e vigia por canal, multiempresa F5c
+
+Motor: rodízio entre as contas na fase de envio (a 1ª escala de cada conta, depois a 2ª...) e teto por conta por
+execução (`envios_por_conta_por_execucao`, padrão 3, o mesmo do limite geral: com uma conta, nada muda).
+`fn_wa_texto_na_conta`, `fn_ponto_wa_na_conta` e `fn_evo_post_na_conta` dizem a conta só durante o envio e devolvem o
+contexto que havia; passam a usá-las `fn_avisar_supervisores` (conta do supervisor), `fn_avisar_tecnico` (avisos de
+sistema pela operadora), `fn_ponto_avisar`, `fn_ponto_avisar_supervisores`, `fn_ponto_lembrete_almoco`,
+`fn_ponto_aviso_intervalo_pendente`, `fn_ponto_espelho_pdf_gravar` (conta do funcionário) e `fn_ponto_alerta_teto`
+(operadora). `conta_canais` ganha o estado do vigia (`vig_*`); `fn_vigiar_canais`, chamada pelo vigia da operadora só na
+produção, pergunta o estado de cada canal ativo com a chave dele, apaga a resposta e manda e-mail à plataforma na queda
+(2 voltas) e na volta. Regressão: T79.
+
 ### Migration 138 (30/10, versão 20261110120000): entrada pela instância e telefone por conta, multiempresa F5b
 
 `tecnicos`: o telefone passa a ser único dentro da conta (`tecnicos_conta_telefone_uk`; sai `tecnicos_telefone_e164_key`):

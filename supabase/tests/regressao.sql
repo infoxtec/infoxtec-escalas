@@ -4296,7 +4296,47 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T78' as resultado,
+-- T79 multiempresa F5c: fila justa, avisos com a conta e vigia por canal (migration 139) ------------------------------
+do $$
+declare
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_req bigint; v_nome text := (select nome from contas where id = (select v::uuid from qa where k = 'conta_b'));
+begin
+  -- o envio com a conta dita devolve o contexto que havia
+  perform set_config('trilha.conta', '00000000-0000-0000-0000-000000000001', true);
+  perform fn_evo_post_na_conta(v_b, '/message/sendText/qa-operadora', '{"number":"5571966660078","text":"x"}');
+  perform pg_temp.ok(current_setting('trilha.conta', true) = '00000000-0000-0000-0000-000000000001', '[T79] contexto devolvido');
+  perform set_config('trilha.conta', '', true);
+  begin perform 1 from (select 1) x; update config set valor = 'x' where chave = 'envios_por_conta_por_execucao';
+    perform pg_temp.ok(false, '[T79] teto por conta aceita texto');
+  exception when others then perform pg_temp.ok(sqlerrm like 'Valor inválido%', '[T79] teto por conta só inteiro'); end;
+  perform pg_temp.ok((select prosrc ~ 'partition by e.conta_id' and prosrc ~ 'ordem_conta <= v_limite_conta'
+                               and prosrc ~ 'and \(v_webhook or p.acao not in \(''reenviar'',''nao_recebeu''\)\)'
+                        from pg_proc where oid = 'interno.fn_dispatcher_whatsapp()'::regprocedure)
+                     and (select prosrc ~ 'fn_wa_texto_na_conta\(s.conta_id' from pg_proc where proname = 'fn_avisar_supervisores')
+                     and (select prosrc ~ 'fn_ponto_wa_na_conta\(t.conta_id' from pg_proc where proname = 'fn_ponto_lembrete_almoco'),
+                     '[T79] fila justa e avisos com a conta');
+  -- vigia do canal da conta B (ativo desde o T78): duas voltas fora do ar = um e-mail; a volta = outro
+  delete from alertas_email;
+  update conta_canais set ativo = true, vig_req = null, vig_falhas = 0, vig_alertado_em = null, vig_fora_desde = null where conta_id = v_b;
+  perform fn_vigiar_canais();
+  for i in 1..3 loop
+    select vig_req into v_req from conta_canais where conta_id = v_b;
+    insert into net._http_response (id, status_code, content, created) values (v_req, 200, '{"instance":{"state":"close"}}', now());
+    perform fn_vigiar_canais();
+  end loop;
+  perform pg_temp.ok((select vig_falhas = 3 and vig_alertado_em is not null from conta_canais where conta_id = v_b)
+                     and (select count(*) from alertas_email where assunto like 'Trilha: WhatsApp de % fora do ar') = 1,
+                     '[T79] queda do canal avisada uma vez');
+  select vig_req into v_req from conta_canais where conta_id = v_b;
+  insert into net._http_response (id, status_code, content, created) values (v_req, 200, '{"instance":{"state":"open"}}', now());
+  perform fn_vigiar_canais();
+  perform pg_temp.ok((select vig_falhas = 0 and vig_alertado_em is null and vig_estado = 'open' from conta_canais where conta_id = v_b)
+                     and exists (select 1 from alertas_email where assunto = 'Trilha: WhatsApp de ' || left(v_nome, 60) || ' de volta')
+                     and not exists (select 1 from net._http_response where id = v_req), '[T79] volta do canal avisada');
+end $$;
+
+select 'REGRESSÃO OK: T1 a T79' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

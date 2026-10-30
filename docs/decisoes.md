@@ -1828,3 +1828,16 @@ no Supabase.
   que está em duas contas não é adivinhado e o envio é recusado.
 - **Pendência (F5c):** alertas que hoje acham a conta só pelo telefone (prazo da escala, documentos, avisos ao suporte)
   passam a dizer a conta; fila justa e teto por conta; vigia da Evolution por canal; rodízio do token das instâncias.
+
+## 127. Fila justa por conta e vigia do WhatsApp de cada cliente
+
+*30/10/2026 — multiempresa F5c (migration 139); fecha a F5 da estimativa (decisão 108).*
+
+- O motor alterna entre as contas ao enviar as escalas e limita os envios de cada conta por execução: um cliente com
+  muitas escalas não atrasa os outros. Com uma conta só, nada muda.
+- Todo aviso enviado a uma pessoa conhecida diz a conta dela; avisos de sistema saem pela operadora.
+- O vigia pergunta o estado do WhatsApp de cada cliente a cada 5 minutos e avisa a plataforma por e-mail na queda e na
+  volta, como o da operadora.
+  Os e-mails extras do alerta (`alerta_emails`) são só de gente da plataforma: o alerta leva o nome das contas.
+- **Fica para depois:** rodízio automático do token do webhook das instâncias de cliente (hoje só o da operadora roda
+  sozinho); Twilio por cliente (decisão 108), quando o primeiro cliente pedir a URA.
