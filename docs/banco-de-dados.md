@@ -265,7 +265,11 @@ canal ativo; `fn_evo_post` passa a usá-la e, sem canal, recusa com aviso no log
 decisão 108). `fn_segredo_gravar` aceita `EVOLUTION_API_KEY_<32 hex>`. `app_plataforma_canais` (sem a chave) e
 `app_plataforma_salvar_canal(conta, instância, chave, ativo)` (chave em branco mantém a do Vault; a instância da
 operadora e a `trilha-homologacao` na produção são recusadas; troca no `plataforma_log`, ação `canal_whatsapp`).
-Entrada pela instância (webhook por conta) e fila justa: F5b e F5c. Regressão: T77.
+O motor (`fn_dispatcher_whatsapp`) confere o destino antes de enviar: escala de conta sem canal vira `falha`
+("conta sem canal"), com o ciclo normal de nova tentativa e supervisor. Número que, na forma canônica, bate em duas
+contas não é adivinhado (recusado); índice `tecnicos_tel_canonico_idx`. Na homologação, envio de conta cliente vira só
+aviso. Telefone e conta explícitos no envio e entrada pela instância (webhook por conta): F5b; fila justa: F5c.
+Regressão: T77.
 
 ### Migration 136 (30/10, versão 20261108120000): monitor externo pelo painel
 

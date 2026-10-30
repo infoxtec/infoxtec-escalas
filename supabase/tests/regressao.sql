@@ -4188,6 +4188,8 @@ begin
   perform pg_temp.ok(fn_conta_do_numero('5571977770077') = v_b and fn_conta_do_numero('5571900000999') = '00000000-0000-0000-0000-000000000001',
                      '[T77] conta pelo número de quem recebe');
   perform pg_temp.ok(fn_evo_destino('/message/sendText/qa-operadora', '5571977770077') is null, '[T77] conta sem canal não envia');
+  perform pg_temp.ok((select prosrc ~ 'fn_evo_destino\(v_payload ->> ''path'', v_payload -> ''body'' ->> ''number''\) is null'
+                        from pg_proc where oid = 'interno.fn_dispatcher_whatsapp()'::regprocedure), '[T77] motor registra falha sem canal');
   v_d := fn_evo_destino('/message/sendText/qa-operadora', '5571900000999');
   perform pg_temp.ok(v_d->>'path' = '/message/sendText/qa-operadora' and v_d->>'segredo' = 'EVOLUTION_API_KEY', '[T77] operadora como antes');
   -- cadastro pela plataforma: a chave vai para o Vault e não volta
