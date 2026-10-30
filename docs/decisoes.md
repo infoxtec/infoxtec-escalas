@@ -1816,3 +1816,15 @@ no Supabase.
   roteamento é provado pela regressão (T77).
 - **Próximos passos:** F5b, a entrada pela instância (o webhook acha a conta pela instância, e o telefone passa a ser
   único por conta); F5c, fila justa e teto por conta, e o vigia da Evolution por canal.
+
+## 126. Entrada pela instância, com token por instância; telefone único por conta
+
+*30/10/2026 — multiempresa F5b (migration 138).*
+
+- A conta de uma mensagem recebida é a da instância que a recebeu. Cada instância de cliente tem o seu token de webhook;
+  o token da instalação só vale para a instância da operadora. Uma instância não consegue se passar por outra conta.
+- O telefone do funcionário passa a ser único dentro da conta (como o CPF na F6): a mesma pessoa pode trabalhar para dois
+  clientes. Quem envia diz a conta (contexto do webhook, do motor, do ponto ou a sessão do painel); sem isso, um telefone
+  que está em duas contas não é adivinhado e o envio é recusado.
+- **Pendência (F5c):** alertas que hoje acham a conta só pelo telefone (prazo da escala, documentos, avisos ao suporte)
+  passam a dizer a conta; fila justa e teto por conta; vigia da Evolution por canal; rodízio do token das instâncias.

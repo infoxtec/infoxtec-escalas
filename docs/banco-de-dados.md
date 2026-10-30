@@ -254,6 +254,22 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 138 (30/10, versão 20261110120000): entrada pela instância e telefone por conta, multiempresa F5b
+
+`tecnicos`: o telefone passa a ser único dentro da conta (`tecnicos_conta_telefone_uk`; sai `tecnicos_telefone_e164_key`):
+a mesma pessoa pode estar em dois clientes. Contexto do canal: a configuração da transação `trilha.conta`
+(`fn_conta_contexto`), que o webhook, o motor (por escala, fases 2 e 3) e o pedido de código do ponto (por cadastro)
+preenchem antes de procurar ou enviar. `fn_conta_do_numero` usa o contexto ou a conta da sessão do painel; sem eles,
+o telefone (em duas contas: null, envio recusado). `fn_webhook_conta(token, instância)`: instância da instalação com o
+token da instalação dá a operadora; instância de um canal ativo com o token próprio dela (`conta_canais.webhook_segredo`,
+`WEBHOOK_TOKEN_<conta>` no Vault) dá a conta; o resto é "token invalido". `fn_webhook_evolution` grava o evento na conta
+e as procuras do funcionário (`fn_wh_mensagem`, `fn_ponto_wh`, `fn_ponto_he_resposta`) ficam na conta do contexto.
+`app_plataforma_salvar_canal` cria o token do webhook da instância e aponta o webhook dela para o sistema; o pedido
+fica em `conta_canais.webhook_req` e o vigia (`fn_vigiar_evolution`) apaga a resposta, que repete o token, assim que
+ela chega. `fn_wh_status` só muda o status de entrega das notificações da conta do contexto.
+`fn_evo_canal_tecnico` dá à Edge Function `webhook-evolution` o canal da conta do funcionário para baixar mídia.
+Regressão: T78 (T77 ajustado: a sessão do painel decide a conta).
+
 ### Migration 137 (30/10, versão 20261109120000): canal de WhatsApp por conta, multiempresa F5a
 
 `conta_canais` (uma linha por conta cliente: instância, URL da Evolution, nome do segredo no Vault

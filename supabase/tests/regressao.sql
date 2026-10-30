@@ -4185,6 +4185,8 @@ begin
   -- funcionário da conta B: sem canal, o envio não sai pelo número da operadora
   insert into tecnicos (conta_id, nome, telefone_e164, ativo, opt_in) values (v_b, 'QA Canal B', '5571977770077', true, true)
     returning id into v_tb;
+  -- sem sessão nem contexto (F5b): a conta sai do telefone
+  perform set_config('request.jwt.claims', '', true);
   perform pg_temp.ok(fn_conta_do_numero('5571977770077') = v_b and fn_conta_do_numero('5571900000999') = '00000000-0000-0000-0000-000000000001',
                      '[T77] conta pelo número de quem recebe');
   perform pg_temp.ok(fn_evo_destino('/message/sendText/qa-operadora', '5571977770077') is null, '[T77] conta sem canal não envia');
@@ -4192,6 +4194,7 @@ begin
                         from pg_proc where oid = 'interno.fn_dispatcher_whatsapp()'::regprocedure), '[T77] motor registra falha sem canal');
   v_d := fn_evo_destino('/message/sendText/qa-operadora', '5571900000999');
   perform pg_temp.ok(v_d->>'path' = '/message/sendText/qa-operadora' and v_d->>'segredo' = 'EVOLUTION_API_KEY', '[T77] operadora como antes');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
   -- cadastro pela plataforma: a chave vai para o Vault e não volta
   v_ok := false;
   begin perform app_plataforma_salvar_canal(v_b, 'qa-operadora', 'chave-qa-123456', true);
@@ -4202,17 +4205,21 @@ begin
   exception when others then v_ok := sqlerrm like 'Informe a chave%'; end;
   perform pg_temp.ok(v_ok, '[T77] canal novo sem chave');
   perform app_plataforma_salvar_canal(v_b, 'Cliente-B', 'chave-qa-123456', true);
+  perform set_config('request.jwt.claims', '', true);
   v_d := fn_evo_destino('/message/sendText/qa-operadora', '5571977770077');
   perform pg_temp.ok(v_d->>'path' = '/message/sendText/cliente-b' and v_d->>'url' = 'https://evo.teste'
                      and fn_segredo(v_d->>'segredo') = 'chave-qa-123456', '[T77] envio pelo canal da conta B');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
   v_r := app_plataforma_canais();
   perform pg_temp.ok(exists (select 1 from jsonb_array_elements(v_r) e where e->>'conta_id' = v_b::text and e->>'instancia' = 'cliente-b'
                              and (e->>'com_chave')::boolean and not (e ? 'segredo'))
                      and v_r::text not like '%chave-qa-123456%', '[T77] lista sem a chave');
   -- chave vazia mantém a do Vault; desativar volta a recusar
   perform app_plataforma_salvar_canal(v_b, 'cliente-b', '', false);
+  perform set_config('request.jwt.claims', '', true);
   perform pg_temp.ok(fn_evo_destino('/message/sendText/qa-operadora', '5571977770077') is null
                      and fn_segredo('EVOLUTION_API_KEY_' || replace(v_b::text, '-', '')) = 'chave-qa-123456', '[T77] canal desativado');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
   v_ok := false;
   begin perform app_plataforma_salvar_canal('00000000-0000-0000-0000-000000000001', 'outra', 'chave-qa-123456', true);
   exception when others then v_ok := sqlerrm like 'A operadora usa o canal%'; end;
@@ -4224,7 +4231,72 @@ begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
 end $$;
 
-select 'REGRESSÃO OK: T1 a T77' as resultado,
+-- T78 multiempresa F5b: entrada pela instância e telefone por conta (migration 138) ----------------------------------
+do $$
+declare
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_t1 uuid; v_tb uuid; v_ok boolean; v_tok text; v_r jsonb; v_c jsonb;
+begin
+  insert into config (chave, valor) values ('evolution_url', 'https://evo.teste'), ('evolution_instancia', 'qa-operadora'),
+    ('webhook_url', 'https://exemplo.invalid/webhook')
+    on conflict (chave) do update set valor = excluded.valor;
+  perform fn_segredo_gravar('WEBHOOK_TOKEN', repeat('a', 64));
+  -- a mesma pessoa nos dois clientes, com o mesmo telefone
+  insert into tecnicos (conta_id, nome, telefone_e164, ativo, opt_in) values
+    ('00000000-0000-0000-0000-000000000001', 'QA Dupla Op', '5571966660078', true, true) returning id into v_t1;
+  insert into tecnicos (conta_id, nome, telefone_e164, ativo, opt_in) values (v_b, 'QA Dupla B', '5571966660078', true, true)
+    returning id into v_tb;
+  v_ok := false;
+  begin insert into tecnicos (conta_id, nome, telefone_e164, ativo, opt_in) values (v_b, 'QA Dupla B2', '5571966660078', true, true);
+  exception when unique_violation then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T78] telefone repetido na mesma conta');
+  -- sem contexto, o telefone ambíguo não sai; com o contexto, sai pela conta dele
+  perform set_config('request.jwt.claims', '', true);
+  perform set_config('trilha.conta', '', true);
+  perform pg_temp.ok(fn_conta_do_numero('5571966660078') is null, '[T78] telefone em duas contas sem contexto');
+  perform set_config('trilha.conta', v_b::text, true);
+  perform pg_temp.ok(fn_conta_do_numero('5571966660078') = v_b, '[T78] contexto decide a conta');
+  perform set_config('trilha.conta', '', true);
+  -- canal da conta B com webhook próprio (cadastro pela plataforma)
+  perform set_config('request.headers', '{}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform app_plataforma_salvar_canal(v_b, 'cliente-b', 'chave-qa-123456', true);
+  perform set_config('request.jwt.claims', '', true);
+  perform set_config('trilha.conta', '', true);
+  v_tok := fn_segredo((select webhook_segredo from conta_canais where conta_id = v_b));
+  -- a resposta do /webhook/set (com o token) é apagada pelo vigia assim que chega (o envio é o stub do T13: pedido 0)
+  insert into net._http_response (id, status_code, content, created) values (987654, 200, 'x-webhook-token', now());
+  update conta_canais set webhook_req = 987654 where conta_id = v_b;
+  perform fn_vigiar_evolution();
+  perform pg_temp.ok(not exists (select 1 from net._http_response where id = 987654)
+                     and (select webhook_req is null from conta_canais where conta_id = v_b), '[T78] resposta com o token apagada');
+  perform pg_temp.ok(v_tok ~ '^[0-9a-f]{64}$', '[T78] token do webhook da instância');
+  perform pg_temp.ok(fn_webhook_conta(repeat('a', 64), 'qa-operadora') = '00000000-0000-0000-0000-000000000001'
+                     and fn_webhook_conta(repeat('a', 64), null) = '00000000-0000-0000-0000-000000000001'
+                     and fn_webhook_conta(v_tok, 'cliente-b') = v_b, '[T78] conta pela instância');
+  v_ok := false;
+  begin perform fn_webhook_conta(repeat('a', 64), 'cliente-b'); exception when others then v_ok := sqlerrm = 'token invalido'; end;
+  perform pg_temp.ok(v_ok, '[T78] token da instalação não vale na instância do cliente');
+  v_ok := false;
+  begin perform fn_webhook_conta(v_tok, 'qa-operadora'); exception when others then v_ok := sqlerrm = 'token invalido'; end;
+  perform pg_temp.ok(v_ok, '[T78] token do cliente não vale na instância da operadora');
+  -- mensagem que chega pela instância do cliente: registrada na conta B e achada só lá
+  v_r := fn_webhook_evolution(v_tok, jsonb_build_object('event', 'messages.upsert', 'instance', 'cliente-b',
+           'data', jsonb_build_object('key', jsonb_build_object('remoteJid', '5571966660078@s.whatsapp.net', 'fromMe', false,
+                                       'id', 'QA-T78'), 'message', jsonb_build_object('conversation', 'oi'))));
+  perform pg_temp.ok((select conta_id = v_b from webhook_eventos order by id desc limit 1)
+                     and coalesce(v_r->>'ignorado', '') <> 'numero nao cadastrado', '[T78] entrada na conta da instância: ' || coalesce(v_r::text, '-'));
+  perform set_config('trilha.conta', '', true);
+  v_c := fn_evo_canal_tecnico(v_tb);
+  perform pg_temp.ok(v_c->>'inst' = 'cliente-b' and v_c->>'chave' = 'chave-qa-123456'
+                     and fn_evo_canal_tecnico(v_t1)->>'inst' = 'qa-operadora', '[T78] mídia pelo canal da conta');
+  perform pg_temp.ok((select prosrc ~ 'set_config\(''trilha.conta'', v_tec.conta_id::text, true\)' from pg_proc where proname = 'ponto_pedir_codigo')
+                     and (select prosrc ~ 'set_config\(''trilha.conta'', v_conta::text, true\)' from pg_proc where proname = 'fn_dispatcher_whatsapp'),
+                     '[T78] motor e ponto dizem a conta');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+end $$;
+
+select 'REGRESSÃO OK: T1 a T78' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
