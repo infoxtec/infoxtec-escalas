@@ -4042,6 +4042,7 @@ begin
   insert into conta_membros (conta_id, email, nome, papel) values
     (v_b, 'qa-sai@teste.local', 'QA Sai', 'gestor'), (v_b, 'qa-fica@teste.local', 'QA Fica', 'leitura'),
     ('00000000-0000-0000-0000-000000000001', 'qa-fica@teste.local', 'QA Fica', 'leitura');
+  insert into convites (conta_id, email, autor, resultado) values (v_b, 'qa-sai@teste.local', 'qa-b@teste.local', 'enviado');
   -- quem não é admin da conta não exclui
   v_ok := false;
   begin perform fn_usuario_excluir('qa-fica@teste.local', 'aal2', v_b, 'qa-sai@teste.local');
@@ -4061,6 +4062,19 @@ begin
   perform pg_temp.ok(not exists (select 1 from conta_membros where email = 'qa-sai@teste.local')
                      and exists (select 1 from usuarios_excluidos where email = 'qa-sai@teste.local' and conta_id = v_b and autor = 'qa-b@teste.local')
                      and v_r ? 'login' and not (v_r->>'plataforma')::boolean, '[T74] excluído e registrado');
+  perform pg_temp.ok((select situacao = 'mantido' and login_id is null from usuarios_excluidos where email = 'qa-sai@teste.local'),
+                     '[T74] sem login no Auth: situação mantido');
+  -- com login no Auth: fica pendente com o id até a Edge Function responder
+  insert into conta_membros (conta_id, email, nome, papel) values (v_b, 'qa-auth@teste.local', 'QA Auth', 'gestor');
+  insert into auth.users (id, email, aud, role) values ('00000000-0000-0000-0000-0000000000a7', 'qa-auth@teste.local', 'authenticated', 'authenticated');
+  v_r := fn_usuario_excluir('qa-b@teste.local', 'aal2', v_b, 'qa-auth@teste.local');
+  perform pg_temp.ok(v_r->>'login' = '00000000-0000-0000-0000-0000000000a7'
+                     and (select situacao = 'pendente' and login_id = '00000000-0000-0000-0000-0000000000a7' from usuarios_excluidos where email = 'qa-auth@teste.local')
+                     and fn_usuario_login_livre('qa-auth@teste.local'), '[T74] login a apagar fica pendente');
+  perform fn_usuario_excluir_resultado((v_r->>'id')::bigint, true);
+  perform fn_usuario_excluir_resultado((v_r->>'id')::bigint, false);
+  perform pg_temp.ok((select situacao = 'apagado' from usuarios_excluidos where email = 'qa-auth@teste.local'), '[T74] resultado gravado uma vez');
+  perform pg_temp.ok(exists (select 1 from convites where email = 'qa-sai@teste.local'), '[T74] histórico de convites fica');
   -- quem é de outra conta perde só esta; o login fica
   v_r := fn_usuario_excluir('qa-b@teste.local', 'aal2', v_b, 'qa-fica@teste.local');
   perform pg_temp.ok(v_r->>'login' is null and exists (select 1 from conta_membros where email = 'qa-fica@teste.local'),
@@ -4072,7 +4086,7 @@ begin
   -- histórico só da conta, só para o admin
   perform set_config('request.headers', '{}', true);
   perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
-  perform pg_temp.ok((select count(*) from app_usuarios_excluidos()) = 2, '[T74] histórico da conta');
+  perform pg_temp.ok((select count(*) from app_usuarios_excluidos()) = 3, '[T74] histórico da conta');
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
 end $$;
 

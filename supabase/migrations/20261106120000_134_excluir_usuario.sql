@@ -8,15 +8,21 @@ set lock_timeout = '5s';
 create table interno.usuarios_excluidos (
   id bigint generated always as identity primary key,
   conta_id uuid not null references interno.contas (id) default interno.fn_conta_padrao(),
-  email text not null,
-  papel text not null,
+  email text not null check (email = lower(btrim(email))),
+  papel text not null check (papel in ('admin', 'gestor', 'leitura')),
   autor text not null,
   em timestamptz not null default now(),
-  -- null: o login segue (outra conta ou plataforma); depois da Edge Function, true se apagou, false se falhou
-  login_apagado boolean
+  -- mantido: o login segue (outra conta ou plataforma); pendente: a apagar pela Edge Function (login_id guardado para
+  -- repetir se ela cair no meio); apagado ou falhou: o resultado
+  situacao text not null check (situacao in ('mantido', 'pendente', 'apagado', 'falhou')),
+  login_id uuid
 );
 alter table interno.usuarios_excluidos enable row level security;
 create index usuarios_excluidos_conta_idx on interno.usuarios_excluidos (conta_id, em desc);
+
+-- o histórico de convites fica depois da exclusão (limite de envio e prova); a conferência de que o e-mail é membro
+-- continua na fn_convite_autorizar
+alter table interno.convites drop constraint convites_conta_id_email_fkey;
 
 -- Quem pode, o que sai e se o login some. Chamada só pela Edge Function excluir-usuario, com o autor já conferido no
 -- servidor de autenticação (mesmo desenho da fn_convite_autorizar). Devolve o id do login a apagar, ou null.
@@ -52,7 +58,7 @@ begin
   end if;
 
   -- o último administrador ativo não sai (linhas travadas: duas exclusões ao mesmo tempo)
-  perform 1 from conta_membros where conta_id = p_conta and papel = 'admin' and ativo for update;
+  perform 1 from conta_membros where conta_id = p_conta and papel = 'admin' and ativo order by email for update;
   select * into m from conta_membros where conta_id = p_conta and email = v_email for update;
   if not found then raise exception 'Usuário não encontrado nesta conta.'; end if;
   if m.papel = 'admin' and m.ativo
@@ -60,7 +66,8 @@ begin
     raise exception 'Este é o único administrador ativo. Cadastre outro administrador antes.';
   end if;
 
-  delete from convites where conta_id = p_conta and email = v_email;
+  -- retenção (LGPD, legítimo interesse: prova de quem tirou o acesso): o registro da exclusão vale 5 anos
+  delete from usuarios_excluidos where em < now() - interval '5 years';
   delete from conta_membros where conta_id = p_conta and email = v_email;
 
   -- o login só some se a pessoa não for de outra conta nem da plataforma
@@ -69,17 +76,31 @@ begin
   if not v_resta then
     select u.id into v_login from auth.users u where lower(u.email) = v_email limit 1;
   end if;
-  insert into usuarios_excluidos (conta_id, email, papel, autor)
-  values (p_conta, v_email, m.papel, v_autor) returning id into v_id;
-  return jsonb_build_object('id', v_id, 'login', v_login, 'plataforma', v_plataforma);
+  insert into usuarios_excluidos (conta_id, email, papel, autor, situacao, login_id)
+  values (p_conta, v_email, m.papel, v_autor, case when v_login is null then 'mantido' else 'pendente' end, v_login)
+  returning id into v_id;
+  return jsonb_build_object('id', v_id, 'login', v_login, 'email', v_email, 'plataforma', v_plataforma);
 end $function$;
+
+-- conferida de novo logo antes de apagar o login: um convite de outra conta pode ter chegado depois da exclusão
+create or replace function interno.fn_usuario_login_livre(p_email text)
+ returns boolean
+ language sql
+ stable
+ set search_path to 'interno', 'public', 'extensions', 'pg_temp'
+as $function$
+  select not exists (select 1 from interno.conta_membros where email = lower(btrim(p_email)))
+     and not exists (select 1 from interno.plataforma_admins where email = lower(btrim(p_email)))
+$function$;
 
 create or replace function interno.fn_usuario_excluir_resultado(p_id bigint, p_apagado boolean)
  returns void
  language sql
  set search_path to 'interno', 'public', 'extensions', 'pg_temp'
 as $function$
-  update interno.usuarios_excluidos set login_apagado = p_apagado where id = p_id and login_apagado is null
+  -- null: a pessoa voltou a ser membro no meio (convite de outra conta) e o login fica
+  update interno.usuarios_excluidos set situacao = case when p_apagado is null then 'mantido' when p_apagado then 'apagado' else 'falhou' end
+   where id = p_id and situacao = 'pendente'
 $function$;
 
 -- histórico de exclusões da conta (tela Usuários)

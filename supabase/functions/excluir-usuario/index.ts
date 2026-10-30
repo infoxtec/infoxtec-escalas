@@ -95,9 +95,9 @@ Deno.serve(async (req: Request) => {
   if (!EMAIL.test(email) || !UUID.test(conta)) return json({ ok: false, erro: "Informe o e-mail e a conta." }, 400);
 
   // quem pode e o que sai: tudo no banco, numa transação; a recusa é a mensagem do banco (texto nosso, sem dado de outros)
-  let r: { id: string; login: string | null; plataforma: boolean };
+  let r: { id: string; login: string | null; email: string; plataforma: boolean };
   try {
-    const [linha] = await sql<{ r: { id: string; login: string | null; plataforma: boolean } }[]>`
+    const [linha] = await sql<{ r: { id: string; login: string | null; email: string; plataforma: boolean } }[]>`
       select fn_usuario_excluir(${autor}, ${nivelDaSessao(req)}, ${conta}::uuid, ${email}) as r`;
     r = linha.r;
   } catch (err) {
@@ -117,6 +117,12 @@ Deno.serve(async (req: Request) => {
     return resposta(false);
   }
   try {
+    // entre a exclusão e aqui, outra conta pode ter convidado a pessoa: então o login fica
+    const [livre] = await sql<{ ok: boolean }[]>`select fn_usuario_login_livre(${r.email}) as ok`;
+    if (!livre?.ok) {
+      await sql`select fn_usuario_excluir_resultado(${r.id}::bigint, null)`;
+      return resposta(null);
+    }
     const resp = await fetch(`${Deno.env.get("SUPABASE_URL")}/auth/v1/admin/users/${r.login}`, {
       method: "DELETE", headers: admin, signal: AbortSignal.timeout(TIMEOUT_MS),
     });
