@@ -90,7 +90,7 @@ async function linkAssinado(admin: Record<string, string>, arquivo: string, segu
 }
 
 async function sha256(dados: Uint8Array): Promise<string> {
-  const h = new Uint8Array(await crypto.subtle.digest("SHA-256", dados));
+  const h = new Uint8Array(await crypto.subtle.digest("SHA-256", dados as Uint8Array<ArrayBuffer>));
   return Array.from(h, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
@@ -158,7 +158,7 @@ async function gerar(token: string, id: string) {
     const caminho = `${d.conta}/${id}.zip`;
     const up = await fetch(`${Deno.env.get("SUPABASE_URL")}/storage/v1/object/${BUCKET}/${caminho}`, {
       method: "POST", headers: { ...admin, "Content-Type": "application/zip", "x-upsert": "true" },
-      body: zip, signal: AbortSignal.timeout(120_000),
+      body: zip as Uint8Array<ArrayBuffer>, signal: AbortSignal.timeout(120_000),
     });
     if (!up.ok) throw new Error(`storage ${up.status}`);
     const link = d.origem === "encerramento" ? await linkAssinado(admin, caminho, 7 * 24 * 3600) : null;
