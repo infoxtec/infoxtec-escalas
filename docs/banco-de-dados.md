@@ -254,6 +254,17 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 142 (31/10, versão 20261114120000): encerrar e reabrir a conta, multiempresa F8b
+
+`contas.encerrada_em` e `apagar_em` (estado `encerrada` exige os dois). `fn_conta_operante(conta)`: só a conta ativa
+opera. `app_plataforma_encerrar_conta(conta, motivo)` (só a plataforma; a operadora nunca encerra): estado `encerrada`,
+`ativa = false`, apagar em 30 dias, sessões do app do ponto encerradas e códigos vencidos, registro no
+`plataforma_log` (`encerrar_conta`). `app_plataforma_reabrir_conta(conta)`: só antes de `apagar_em`; tudo volta, menos as
+sessões do ponto (`reabrir_conta`). Param na conta não operante (encerrada ou suspensa): `fn_evo_destino` (nenhum envio
+pelo WhatsApp), `vw_acoes_pendentes` e `vw_ligacoes_pendentes` (motor e URA). Só na encerrada: `fn_ponto_sessao` (app do
+ponto) e `fn_webhook_conta` (entrada recusada como token errado); a suspensa segue com o ponto e as respostas. O painel já parava (`fn_conta_de`). `app_plataforma_salvar_conta`
+recusa editar conta encerrada; `app_plataforma_contas` devolve `encerrada_em` e `apagar_em`. Regressão: T82.
+
 ### Migration 141 (30/10, versão 20261113120000): entrada repetível, multiempresa F8a
 
 `contas.estado` (`ativa`, `encerrada`, `apagando`, `custodia`, `apagada`; só `ativa` opera, e `ativa = true` exige o

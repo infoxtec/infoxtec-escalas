@@ -28,6 +28,7 @@ export default function ContasPage() {
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [canais, setCanais] = useState<Awaited<ReturnType<typeof api.plataformaCanais>>>([])
+  const [motivo, setMotivo] = useState<string | null>(null)   // encerrar (F8b): null = fechado
 
   const carregar = useCallback(async () => {
     try { setContas(await api.plataformaContas()) } catch (e) { setErro(erroMsg(e)) }
@@ -63,6 +64,29 @@ export default function ContasPage() {
     } catch (e) { setErro(erroMsg(e)) }
     finally { setSalvando(false) }
   }
+
+  const encerrar = async () => {
+    if (!edit?.id || motivo === null) return
+    if (motivo.trim().length < 3) return setErro('Informe o motivo do encerramento.')
+    if (!window.confirm(`Encerrar a conta "${edit.nome}"? Ninguém dela entra mais, o WhatsApp e o app do ponto param agora, `
+      + 'e os dados são apagados em 30 dias (até lá dá para reabrir).')) return
+    setSalvando(true); setErro(null)
+    try {
+      const r = await api.plataformaEncerrarConta(edit.id, motivo)
+      toast(`Conta encerrada. Os dados serão apagados em ${new Date(r.apagar_em).toLocaleDateString('pt-BR')}.`)
+      await carregar(); setEdit(null); setMotivo(null)
+    } catch (e) { setErro(erroMsg(e)) } finally { setSalvando(false) }
+  }
+
+  const reabrir = async () => {
+    if (!edit?.id) return
+    setSalvando(true); setErro(null)
+    try { await api.plataformaReabrirConta(edit.id); toast('Conta reaberta.'); await carregar(); setEdit(null) }
+    catch (e) { setErro(erroMsg(e)) } finally { setSalvando(false) }
+  }
+
+  const contaEdit = edit?.id ? contas?.find(c => c.id === edit.id) : undefined
+  const encerrada = !!contaEdit?.estado && contaEdit.estado !== 'ativa'
 
   return (
     <div className="space-y-4">
@@ -105,7 +129,9 @@ export default function ContasPage() {
                     return falta.length === 0 ? <span className="text-green-700">pronta</span>
                       : <span className="text-amber-600" title={falta.map(i => `${ITENS[i.item] ?? i.item}: ${i.detalhe}`).join('\n')}>
                           falta: {falta.map(i => (ITENS[i.item] ?? i.item).toLowerCase()).join(', ')}</span> })()}</td>
-                  <td className="px-3 py-2.5 text-center"><span className={`inline-block h-2 w-2 rounded-full ${c.ativa ? 'bg-green-500' : 'bg-gray-400'}`} /></td>
+                  <td className="px-3 py-2.5 text-center">{c.estado && c.estado !== 'ativa'
+                    ? <span className="text-xs text-red-600" title={c.apagar_em ? `Apagada em ${new Date(c.apagar_em).toLocaleDateString('pt-BR')}` : undefined}>encerrada</span>
+                    : <span className={`inline-block h-2 w-2 rounded-full ${c.ativa ? 'bg-green-500' : 'bg-gray-400'}`} />}</td>
                   <td className="px-3 py-2.5 text-right">
                     <Button variant="ghost" size="icon" aria-label="Editar"
                       onClick={() => { const k = canais.find(x => x.conta_id === c.id); setEdit({ id: c.id, nome: c.nome, ativa: c.ativa, modulos: c.modulos, admin_email: '', admin_nome: '', uf: c.uf ?? '', municipio: c.municipio ?? '', canal_instancia: k?.da_instalacao ? '' : k?.instancia ?? '', canal_chave: '', canal_ativo: k?.ativo ?? true, canal_com_chave: !!k?.com_chave, canal_original: k?.da_instalacao ? '' : k?.instancia ?? '' }); setErro(null) }}>
@@ -119,12 +145,24 @@ export default function ContasPage() {
         </div>
       )}
 
-      <Modal open={!!edit} onClose={() => { if (!salvando) setEdit(null) }} title={edit?.id ? 'Editar conta' : 'Nova conta'}
-        footer={<>
-          <Button variant="outline" onClick={() => setEdit(null)} disabled={salvando}>Cancelar</Button>
+      <Modal open={!!edit} onClose={() => { if (!salvando) { setEdit(null); setMotivo(null) } }} title={edit?.id ? 'Editar conta' : 'Nova conta'}
+        footer={encerrada ? <>
+          <Button variant="outline" onClick={() => setEdit(null)} disabled={salvando}>Fechar</Button>
+          {contaEdit?.estado === 'encerrada' && <Button onClick={() => void reabrir()} disabled={salvando}>{salvando ? 'Reabrindo...' : 'Reabrir conta'}</Button>}
+        </> : <>
+          <Button variant="outline" onClick={() => { setEdit(null); setMotivo(null) }} disabled={salvando}>Cancelar</Button>
           <Button onClick={() => void salvar()} disabled={salvando}>{salvando ? 'Salvando...' : 'Salvar'}</Button>
         </>}>
-        {edit && (
+        {edit && encerrada && (
+          <div className="space-y-2">
+            <p className="text-sm">Conta encerrada em {contaEdit?.encerrada_em ? new Date(contaEdit.encerrada_em).toLocaleDateString('pt-BR') : '—'}.
+              Ninguém dela entra, e o WhatsApp e o app do ponto estão parados.</p>
+            {contaEdit?.apagar_em && <p className="text-sm text-muted-foreground">Os dados serão apagados em {new Date(contaEdit.apagar_em).toLocaleDateString('pt-BR')}.
+              Até lá, "Reabrir conta" volta tudo como estava (os funcionários entram de novo no app do ponto).</p>}
+            {erro && <ErrorBox>{erro}</ErrorBox>}
+          </div>
+        )}
+        {edit && !encerrada && (
           <div className="space-y-3">
             <Field label="Nome da conta *"><Input value={edit.nome} onChange={e => setEdit({ ...edit, nome: e.target.value })} disabled={salvando} /></Field>
             {!edit.id && (<>
@@ -163,8 +201,20 @@ export default function ContasPage() {
                     <span className="font-medium">{ITENS[i.item] ?? i.item}:</span> <span className="text-muted-foreground">{i.detalhe}</span></p>
                 ))}
               </div>)}
-            {edit.id && <ToggleRow label="Ativa" description="Conta desativada: ninguém dela entra no painel; os dados ficam guardados."
+            {edit.id && <ToggleRow label="Ativa" description="Conta suspensa: ninguém dela entra no painel e nada sai pelo WhatsApp (escalas e URA param); o app do ponto e as respostas dos técnicos seguem. Os dados ficam guardados."
               checked={edit.ativa} onChange={v => setEdit({ ...edit, ativa: v })} disabled={salvando} />}
+            {edit.id && !canais.find(k => k.conta_id === edit.id)?.da_instalacao && (motivo === null
+              ? <button type="button" className="text-xs text-red-600 underline" onClick={() => setMotivo('')} disabled={salvando}>Encerrar a conta (saída do cliente)</button>
+              : <div className="space-y-2 rounded-md border border-red-200 p-3">
+                  <p className="text-sm font-medium text-red-700">Encerrar a conta</p>
+                  <p className="text-xs text-muted-foreground">Para tudo agora: painel, WhatsApp, motor, URA e app do ponto. Os dados são apagados
+                    em 30 dias; até lá dá para reabrir. Antes, combine com o cliente a exportação dos dados.</p>
+                  <Field label="Motivo *"><Input value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="ex.: fim do contrato" disabled={salvando} /></Field>
+                  <div className="flex gap-2">
+                    <Button variant="destructive" size="sm" onClick={() => void encerrar()} disabled={salvando}>Encerrar agora</Button>
+                    <Button variant="outline" size="sm" onClick={() => setMotivo(null)} disabled={salvando}>Desistir</Button>
+                  </div>
+                </div>)}
             {erro && <ErrorBox>{erro}</ErrorBox>}
           </div>
         )}

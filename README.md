@@ -256,5 +256,6 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Multiempresa F5b: entrada pela instância e telefone único por conta (migration 138; produção em 30/10)
 - [x] Multiempresa F5c: fila justa, avisos com a conta e vigia por canal (migration 139; produção em 30/10)
 - [x] Recuperação da verificação em duas etapas por e-mail ou WhatsApp (migration 140, painel 3.59.1; homologação em 30/10; produção em 30/10, congelamento furado a pedido do responsável)
-- [ ] Multiempresa F8a: criar conta repetível e lista do que falta para cada conta operar (migration 141, painel 3.60.0; homologação)
-- [ ] Convite por e-mail mandado pelo nosso SMTP, sem o limite de 10 s do Auth (Edge Function `convidar-usuario`, decisão 130; homologação)
+- [ ] Multiempresa F8a: criar conta repetível e lista do que falta para cada conta operar (migration 141, painel 3.60.0; homologação testada)
+- [ ] Convite por e-mail mandado pelo nosso SMTP, sem o limite de 10 s do Auth (Edge Function `convidar-usuario`, decisão 130; homologação testada)
+- [ ] Multiempresa F8b: encerrar e reabrir a conta do cliente (migration 142, painel 3.61.0; homologação)

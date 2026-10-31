@@ -69,6 +69,9 @@ export const api = {
     rpc<string>('app_plataforma_criar_conta', { p_nome: nome, p_admin_email: adminEmail, p_admin_nome: adminNome, p_modulos: modulos, p_uf: uf, p_municipio: municipio }),
   plataformaSalvarConta: (id: string, nome: string, ativa: boolean, modulos: string[], uf: string, municipio: string) =>
     rpc<void>('app_plataforma_salvar_conta', { p_id: id, p_nome: nome, p_ativa: ativa, p_modulos: modulos, p_uf: uf, p_municipio: municipio }),
+  plataformaEncerrarConta: (id: string, motivo: string) =>
+    rpc<{ estado: string; apagar_em: string }>('app_plataforma_encerrar_conta', { p_conta: id, p_motivo: motivo }),
+  plataformaReabrirConta: (id: string) => rpc<void>('app_plataforma_reabrir_conta', { p_conta: id }),
   plataformaFeriados: (ano: number) => rpc<Feriado[]>('app_plataforma_feriados', { p_ano: ano }),
   plataformaSalvarFeriado: (f: Partial<Feriado>) => rpc<number>('app_plataforma_salvar_feriado', { p: f }),
   plataformaRemoverFeriado: (id: number) => rpc<void>('app_plataforma_remover_feriado', { p_id: id }),

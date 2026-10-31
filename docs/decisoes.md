@@ -1882,6 +1882,10 @@ no Supabase.
 - **Exportação completa:** o administrador da conta e a plataforma podem baixar quando quiserem (portabilidade, LGPD
   art. 18, V).
 - **Ciclo de vida da conta** em `contas.estado`; só `ativa` opera. A suspensão manual continua sendo `ativa = false`.
+- **F8b (31/10):** a conta encerrada para o painel, o WhatsApp, o motor, a URA, o app do ponto e o webhook. A suspensa
+  (manual) para o painel, o WhatsApp, o motor e a URA, mas não o app do ponto nem as respostas dos técnicos: suspender não
+  pode impedir o funcionário de bater o ponto (revisão do `seguranca`). Encerrar exige motivo; reabrir só antes de
+  `apagar_em`, e a conta volta sem suspensão. Antes da produção, conferir se há conta suspensa que hoje ainda envia.
 - **Entrada:** criar a conta de novo com os mesmos dados devolve a mesma conta (o convite que falhou é reenviado sem
   erro); dado diferente é recusado. A tela Contas mostra o que falta para cada conta operar.
 - **Em aberto (antes da F8c a F8e):** prazo da custódia (proposta: cada registro até a data dele + 5 anos, CF art. 7º,
