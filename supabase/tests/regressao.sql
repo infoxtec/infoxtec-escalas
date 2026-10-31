@@ -4566,7 +4566,95 @@ begin
   perform pg_temp.ok(v_ok, '[T82] só a plataforma encerra');
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
 end $$;
-select 'REGRESSÃO OK: T1 a T82' as resultado,
+-- T83 exportação completa da conta (migration 143, F8c-1) -------------------------------------------------------
+do $$
+declare
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_id uuid; v_id2 uuid; v_ok boolean; v_d jsonb; v_csv text; v_tok text := repeat('ab', 32); v_n int;
+begin
+  perform set_config('request.headers', '{}', true);
+  perform fn_segredo_gravar('EXPORTACAO_TOKEN', v_tok);
+  delete from conta_exportacoes where conta_id = v_b;   -- as finais dos encerramentos do T82 ficaram na fila (sem URL)
+  -- o que entra: toda tabela com conta_id, sem segredo, hash de acesso nem binário
+  select count(*) into v_n from pg_class c where c.relnamespace = 'interno'::regnamespace and c.relkind in ('r', 'p')
+     and exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'conta_id' and not a.attisdropped);
+  perform pg_temp.ok((select count(*) from fn_exportar_tabelas()) = v_n
+                     and not exists (select 1 from fn_exportar_tabelas() t, unnest(t.colunas) c
+                                      where c in ('segredo', 'webhook_segredo', 'token_hash', 'codigo_hash')
+                                         or exists (select 1 from pg_attribute a where a.attrelid = ('interno.' || t.tabela)::regclass
+                                                      and a.attname = c and a.atttypid = 'bytea'::regtype))
+                     and not exists (select 1 from fn_exportar_tabelas() where cardinality(chave) = 0),
+                     '[T83] todas as tabelas da conta, sem segredo nem binário');
+  perform pg_temp.ok(fn_csv('a"b') = '"a""b"' and fn_csv(null) = '', '[T83] CSV com aspas e nulo');
+  -- administrador da conta, só com duas etapas
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal1"}', true);
+  v_ok := false;
+  begin perform app_conta_exportar(); exception when others then v_ok := sqlerrm like '%duas etapas%' or sqlerrm like 'Confirme%'; end;
+  perform pg_temp.ok(v_ok, '[T83] exportar exige duas etapas');
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  v_id := app_conta_exportar();
+  perform pg_temp.ok((select conta_id = v_b and estado = 'pendente' and origem = 'admin' from conta_exportacoes where id = v_id)
+                     and exists (select 1 from jsonb_array_elements(app_exportacoes()) e where (e->>'id')::uuid = v_id),
+                     '[T83] pedido do administrador na conta dele');
+  v_ok := false;
+  begin perform app_conta_exportar(); exception when others then v_ok := sqlerrm like 'Já há uma exportação%'; end;
+  perform pg_temp.ok(v_ok, '[T83] um pedido por vez');
+  perform set_config('request.jwt.claims', '', true);
+  -- a Edge Function: token, páginas só da conta do pedido, resultado
+  v_ok := false;
+  begin perform fn_exportacao_dados(repeat('cd', 32), v_id); exception when others then v_ok := sqlerrm = 'token inválido'; end;
+  perform pg_temp.ok(v_ok, '[T83] token errado recusado');
+  v_d := fn_exportacao_dados(v_tok, v_id);
+  perform pg_temp.ok((v_d->>'conta')::uuid = v_b and jsonb_array_length(v_d->'tabelas') = v_n
+                     and fn_exportacao_dados(v_tok, v_id) is null, '[T83] pedido começa uma vez');
+  v_csv := fn_exportar_csv(v_tok, v_id, 'tecnicos', 0, 20000);
+  perform pg_temp.ok(array_length(string_to_array(v_csv, E'\n'), 1) = (select count(*) from tecnicos where conta_id = v_b)
+                     and not exists (select 1 from tecnicos where conta_id <> v_b and v_csv like '%' || id::text || '%'),
+                     '[T83] CSV só com a conta do pedido');
+  perform pg_temp.ok(fn_exportar_csv(v_tok, v_id, 'tecnicos', 100000, 10) is null, '[T83] página depois do fim vem vazia');
+  v_ok := false;
+  begin perform fn_exportar_csv(v_tok, v_id, 'plataforma_admins', 0, 10); exception when others then v_ok := sqlerrm like 'tabela fora%'; end;
+  perform pg_temp.ok(v_ok, '[T83] tabela de fora recusada');
+  perform fn_exportacao_resultado(v_tok, v_id, true, v_b || '/' || v_id || '.zip', 1234, repeat('0', 64), null);
+  perform pg_temp.ok((select estado = 'pronta' and expira_em > now() + interval '6 days' from conta_exportacoes where id = v_id),
+                     '[T83] pronta por 7 dias');
+  -- link: administrador ativo da conta ou plataforma, com duas etapas
+  perform pg_temp.ok(fn_exportacao_link('qa-b@teste.local', 'aal2', v_id) = v_b || '/' || v_id || '.zip'
+                     and fn_exportacao_link('qa-admin@teste.local', 'aal2', v_id) is not null, '[T83] link para quem pode');
+  v_ok := false;
+  begin perform fn_exportacao_link('qa-b@teste.local', 'aal1', v_id); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T83] link sem duas etapas recusado');
+  v_ok := false;
+  begin perform fn_exportacao_link('ninguem@teste.local', 'aal2', v_id); exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
+  perform pg_temp.ok(v_ok, '[T83] link para quem não é da conta recusado');
+  update conta_exportacoes set expira_em = now() - interval '1 minute' where id = v_id;
+  select count(*) into v_n from fn_exportacoes_vencidas(v_tok) a where a = v_b || '/' || v_id || '.zip';
+  perform pg_temp.ok(v_n = 1 and (select estado = 'expirada' from conta_exportacoes where id = v_id), '[T83] pacote vencido sai');
+  -- encerramento: exportação final e o link por e-mail aos administradores
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform app_plataforma_encerrar_conta(v_b, 'teste da exportação final');
+  select id into v_id2 from conta_exportacoes where conta_id = v_b and origem = 'encerramento';
+  perform fn_exportacao_dados(v_tok, v_id2);
+  perform fn_exportacao_resultado(v_tok, v_id2, true, v_b || '/' || v_id2 || '.zip', 10, repeat('1', 64), null, 'https://exemplo.local/link');
+  perform pg_temp.ok(exists (select 1 from alertas_email where sensivel and assunto like '%exportação final%'
+                               and 'qa-b@teste.local' = any (para)),
+                     '[T83] exportação final avisada aos administradores');
+  perform pg_temp.ok(exists (select 1 from jsonb_array_elements(app_plataforma_exportacoes(v_b)) e where (e->>'id')::uuid = v_id2),
+                     '[T83] plataforma vê as exportações');
+  perform app_plataforma_reabrir_conta(v_b);
+  -- falha: volta para a fila até 3 tentativas
+  v_id := app_plataforma_exportar_conta(v_b);
+  perform fn_exportacao_dados(v_tok, v_id);
+  perform fn_exportacao_resultado(v_tok, v_id, false, null, null, null, 'erro de teste');
+  perform pg_temp.ok((select estado = 'pendente' and erro = 'erro de teste' from conta_exportacoes where id = v_id),
+                     '[T83] falha volta para a fila');
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  v_ok := false;
+  begin perform app_plataforma_exportar_conta(v_b); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T83] só a plataforma exporta outra conta');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+end $$;
+select 'REGRESSÃO OK: T1 a T83' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

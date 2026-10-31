@@ -1,6 +1,6 @@
 import { fetchComConta, supabase } from './supabase'
 import type {
-  Acesso, ConsultaCadastro, ContaPlataforma, Feriado, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre, ValidacaoCarga, ModeloCarga, CargaHoraria, CargaAtribuicao, CargaFuncionario, TimeEquipe, AlvoCarga, ProgramacaoLimite, AceiteProgramacao, AceiteProgramacaoAssinado, CargaExcedida, ValidacaoFolha, FechamentoFolha, PreviaFolha, PontoHeAutorizacao, EspelhoPdf, ComprovanteRegistro } from './types'
+  Acesso, ConsultaCadastro, ContaPlataforma, Exportacao, Feriado, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre, ValidacaoCarga, ModeloCarga, CargaHoraria, CargaAtribuicao, CargaFuncionario, TimeEquipe, AlvoCarga, ProgramacaoLimite, AceiteProgramacao, AceiteProgramacaoAssinado, CargaExcedida, ValidacaoFolha, FechamentoFolha, PreviaFolha, PontoHeAutorizacao, EspelhoPdf, ComprovanteRegistro } from './types'
 
 function traduzir(msg: string): string {
   if (/JWT expired|invalid JWT|not authenticated/i.test(msg)) return 'Sessão expirada. Entre novamente.'
@@ -72,6 +72,10 @@ export const api = {
   plataformaEncerrarConta: (id: string, motivo: string) =>
     rpc<{ estado: string; apagar_em: string }>('app_plataforma_encerrar_conta', { p_conta: id, p_motivo: motivo }),
   plataformaReabrirConta: (id: string) => rpc<void>('app_plataforma_reabrir_conta', { p_conta: id }),
+  plataformaExportarConta: (id: string) => rpc<string>('app_plataforma_exportar_conta', { p_conta: id }),
+  plataformaExportacoes: (id: string) => rpc<Exportacao[]>('app_plataforma_exportacoes', { p_conta: id }),
+  contaExportar: () => rpc<string>('app_conta_exportar'),
+  exportacoes: () => rpc<Exportacao[]>('app_exportacoes'),
   plataformaFeriados: (ano: number) => rpc<Feriado[]>('app_plataforma_feriados', { p_ano: ano }),
   plataformaSalvarFeriado: (f: Partial<Feriado>) => rpc<number>('app_plataforma_salvar_feriado', { p: f }),
   plataformaRemoverFeriado: (id: number) => rpc<void>('app_plataforma_remover_feriado', { p_id: id }),
@@ -314,6 +318,24 @@ export async function convidarUsuario(email: string, conta: string): Promise<Res
   } catch {
     return { ok: false, erro: 'Sem conexão com o serviço de convite. Tente de novo.' }
   }
+}
+
+// Exportação da conta (F8c, migration 143): o link é assinado pela Edge Function, só para quem pode, e vale 10 minutos
+export async function linkExportacao(id: string): Promise<string> {
+  const { data: sessao } = await supabase.auth.getSession()
+  const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/exportar-conta`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${sessao.session?.access_token ?? ''}`,
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ acao: 'link', id }),
+    signal: AbortSignal.timeout(20000),
+  }).catch(() => null)
+  const r = await resp?.json().catch(() => ({})) ?? {}
+  if (!r.ok || typeof r.url !== 'string') throw new Error(r.erro ?? 'Não foi possível gerar o link agora.')
+  return r.url
 }
 
 // CNPJ (Receita) e CEP (Correios) para preencher o cadastro; não grava nada (Edge Function consulta-cadastro)

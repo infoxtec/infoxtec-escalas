@@ -648,3 +648,10 @@ export function enderecoDaConsulta(r: ConsultaCadastro): string {
   const rua = [r.logradouro, r.numero, r.complemento].filter(Boolean).join(', ')
   return [rua, r.bairro].filter(Boolean).join(' - ')
 }
+
+// exportação completa da conta (F8c, migration 143)
+export interface Exportacao {
+  id: string; origem: 'admin' | 'plataforma' | 'encerramento'; estado: 'pendente' | 'gerando' | 'pronta' | 'falhou' | 'expirada'
+  pedido_por: string; criado_em: string; concluido_em: string | null; expira_em: string | null; tamanho: number | null
+  manifesto_sha256: string | null; erro: string | null
+}
