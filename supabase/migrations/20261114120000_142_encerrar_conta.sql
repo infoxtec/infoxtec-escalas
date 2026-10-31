@@ -234,7 +234,7 @@ end $function$
 
 create or replace view interno.vw_acoes_pendentes as
  WITH agora AS (
-         SELECT (now() AT TIME ZONE fn_config('fuso'::text)) AS local_ts
+         SELECT (now() AT TIME ZONE interno.fn_config('fuso'::text)) AS local_ts
         ), alvo AS (
          SELECT e.id AS escala_id,
             e.status,
@@ -245,9 +245,9 @@ create or replace view interno.vw_acoes_pendentes as
             n.tentativa,
             n.status_envio,
             n.enviada_em
-           FROM escalas e
-             JOIN tecnicos t ON t.id = e.tecnico_id AND t.ativo AND t.opt_in
-             JOIN contas c ON c.id = e.conta_id AND c.ativa
+           FROM interno.escalas e
+             JOIN interno.tecnicos t ON t.id = e.tecnico_id AND t.ativo AND t.opt_in
+             JOIN interno.contas c ON c.id = e.conta_id AND c.ativa
              LEFT JOIN LATERAL ( SELECT notificacoes.id,
                     notificacoes.escala_id,
                     notificacoes.tipo,
@@ -263,12 +263,12 @@ create or replace view interno.vw_acoes_pendentes as
                     notificacoes.lida_em,
                     notificacoes.created_at,
                     notificacoes.http_req_id
-                   FROM notificacoes
+                   FROM interno.notificacoes
                   WHERE notificacoes.escala_id = e.id
                   ORDER BY notificacoes.created_at DESC
                  LIMIT 1) n ON true
-          WHERE (e.status = ANY (ARRAY['agendada'::escala_status, 'notificada'::escala_status])) AND (e.data_servico + e.hora_inicio) > (( SELECT agora.local_ts
-                   FROM agora)) AND fn_ponto_afastado_ate(e.tecnico_id, e.data_servico) IS NULL
+          WHERE (e.status = ANY (ARRAY['agendada'::public.escala_status, 'notificada'::public.escala_status])) AND (e.data_servico + e.hora_inicio) > (( SELECT agora.local_ts
+                   FROM agora)) AND interno.fn_ponto_afastado_ate(e.tecnico_id, e.data_servico) IS NULL
         )
  SELECT a.escala_id,
     a.status,
@@ -280,27 +280,27 @@ create or replace view interno.vw_acoes_pendentes as
     a.enviada_em,
         CASE
             WHEN a.notificacao_id IS NULL THEN 'enviar_primeira'::text
-            WHEN a.tentativa >= fn_config_int('max_tentativas'::text) THEN 'escalonar'::text
-            WHEN a.status_envio = 'falha'::envio_status AND a.enviada_em < (now() - make_interval(mins => fn_config_int('timeout_entrega_min'::text))) THEN 'reenviar_falha'::text
-            WHEN a.status_envio = 'enviada'::envio_status AND a.enviada_em < (now() - make_interval(mins => fn_config_int('timeout_entrega_min'::text))) THEN 'nao_recebeu'::text
-            WHEN (a.status_envio = ANY (ARRAY['entregue'::envio_status, 'lida'::envio_status])) AND a.enviada_em < (now() - make_interval(mins => fn_config_int('intervalo_reenvio_min'::text))) THEN 'reenviar'::text
+            WHEN a.tentativa >= interno.fn_config_int('max_tentativas'::text) THEN 'escalonar'::text
+            WHEN a.status_envio = 'falha'::public.envio_status AND a.enviada_em < (now() - make_interval(mins => interno.fn_config_int('timeout_entrega_min'::text))) THEN 'reenviar_falha'::text
+            WHEN a.status_envio = 'enviada'::public.envio_status AND a.enviada_em < (now() - make_interval(mins => interno.fn_config_int('timeout_entrega_min'::text))) THEN 'nao_recebeu'::text
+            WHEN (a.status_envio = ANY (ARRAY['entregue'::public.envio_status, 'lida'::public.envio_status])) AND a.enviada_em < (now() - make_interval(mins => interno.fn_config_int('intervalo_reenvio_min'::text))) THEN 'reenviar'::text
             ELSE NULL::text
         END AS acao,
         CASE
-            WHEN a.status_envio = 'lida'::envio_status THEN 'leu e nao respondeu'::text
-            WHEN a.status_envio = 'entregue'::envio_status THEN 'recebeu e nao leu'::text
-            WHEN a.status_envio = 'enviada'::envio_status THEN 'nao recebeu'::text
-            WHEN a.status_envio = 'falha'::envio_status THEN 'falha no envio'::text
+            WHEN a.status_envio = 'lida'::public.envio_status THEN 'leu e nao respondeu'::text
+            WHEN a.status_envio = 'entregue'::public.envio_status THEN 'recebeu e nao leu'::text
+            WHEN a.status_envio = 'enviada'::public.envio_status THEN 'nao recebeu'::text
+            WHEN a.status_envio = 'falha'::public.envio_status THEN 'falha no envio'::text
             ELSE NULL::text
         END AS diagnostico,
-    a.tentativa >= fn_config_int('avisar_supervisor_na'::text) AND a.supervisor_avisado_em IS NULL AS avisar_supervisor
+    a.tentativa >= interno.fn_config_int('avisar_supervisor_na'::text) AND a.supervisor_avisado_em IS NULL AS avisar_supervisor
    FROM alvo a,
     agora g
-  WHERE g.local_ts::time without time zone >= fn_config('janela_envio_inicio'::text)::time without time zone AND g.local_ts::time without time zone <= fn_config('janela_envio_fim'::text)::time without time zone;
+  WHERE g.local_ts::time without time zone >= interno.fn_config('janela_envio_inicio'::text)::time without time zone AND g.local_ts::time without time zone <= interno.fn_config('janela_envio_fim'::text)::time without time zone;
 
 create or replace view interno.vw_ligacoes_pendentes as
  WITH agora AS (
-         SELECT (now() AT TIME ZONE COALESCE(NULLIF(fn_config('fuso'::text), ''::text), 'America/Bahia'::text)) AS local_ts
+         SELECT (now() AT TIME ZONE COALESCE(NULLIF(interno.fn_config('fuso'::text), ''::text), 'America/Bahia'::text)) AS local_ts
         )
  SELECT e.id AS escala_id,
     t.id AS tecnico_id,
@@ -308,11 +308,11 @@ create or replace view interno.vw_ligacoes_pendentes as
     t.telefone_e164 AS telefone,
     COALESCE(n.tentativa, 0) AS tentativas_whatsapp,
     ( SELECT count(*) AS count
-           FROM ligacoes l
+           FROM interno.ligacoes l
           WHERE l.escala_id = e.id) AS ligacoes_feitas
-   FROM escalas e
-     JOIN tecnicos t ON t.id = e.tecnico_id AND t.ativo AND t.opt_in AND NOT t.perfil_teste
-     JOIN contas c ON c.id = e.conta_id AND c.ativa
+   FROM interno.escalas e
+     JOIN interno.tecnicos t ON t.id = e.tecnico_id AND t.ativo AND t.opt_in AND NOT t.perfil_teste
+     JOIN interno.contas c ON c.id = e.conta_id AND c.ativa
      LEFT JOIN LATERAL ( SELECT notificacoes.id,
             notificacoes.escala_id,
             notificacoes.tipo,
@@ -328,18 +328,18 @@ create or replace view interno.vw_ligacoes_pendentes as
             notificacoes.lida_em,
             notificacoes.created_at,
             notificacoes.http_req_id
-           FROM notificacoes
+           FROM interno.notificacoes
           WHERE notificacoes.escala_id = e.id
           ORDER BY notificacoes.created_at DESC
          LIMIT 1) n ON true
      CROSS JOIN agora g
-  WHERE e.status = 'notificada'::escala_status AND e.local_id IS NOT NULL AND (e.data_servico + e.hora_inicio) > g.local_ts AND COALESCE(n.tentativa, 0) >= fn_config_int('ligacao_apos_tentativas'::text) AND (n.status_envio = ANY (ARRAY['enviada'::envio_status, 'entregue'::envio_status, 'lida'::envio_status])) AND NOT (EXISTS ( SELECT 1
-           FROM respostas r
+  WHERE e.status = 'notificada'::public.escala_status AND e.local_id IS NOT NULL AND (e.data_servico + e.hora_inicio) > g.local_ts AND COALESCE(n.tentativa, 0) >= interno.fn_config_int('ligacao_apos_tentativas'::text) AND (n.status_envio = ANY (ARRAY['enviada'::public.envio_status, 'entregue'::public.envio_status, 'lida'::public.envio_status])) AND NOT (EXISTS ( SELECT 1
+           FROM interno.respostas r
           WHERE r.escala_id = e.id)) AND (( SELECT count(*) AS count
-           FROM ligacoes l
-          WHERE l.escala_id = e.id)) < fn_config_int('ligacao_max_por_escala'::text) AND NOT (EXISTS ( SELECT 1
-           FROM ligacoes l
-          WHERE l.escala_id = e.id AND ((l.status = ANY (ARRAY['criada'::text, 'discando'::text])) OR l.criada_em > (now() - make_interval(mins => fn_config_int('ligacao_intervalo_min'::text)))))) AND COALESCE(fn_ligacao_permitida(now(), e.id), false) AND fn_ponto_afastado_ate(t.id, e.data_servico) IS NULL;
+           FROM interno.ligacoes l
+          WHERE l.escala_id = e.id)) < interno.fn_config_int('ligacao_max_por_escala'::text) AND NOT (EXISTS ( SELECT 1
+           FROM interno.ligacoes l
+          WHERE l.escala_id = e.id AND ((l.status = ANY (ARRAY['criada'::text, 'discando'::text])) OR l.criada_em > (now() - make_interval(mins => interno.fn_config_int('ligacao_intervalo_min'::text)))))) AND COALESCE(interno.fn_ligacao_permitida(now(), e.id), false) AND interno.fn_ponto_afastado_ate(t.id, e.data_servico) IS NULL;
 
 
 do $$
