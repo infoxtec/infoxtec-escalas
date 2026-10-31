@@ -265,7 +265,12 @@ pelo pg_net com o token `EXPORTACAO_TOKEN` (Vault, gravado no primeiro pedido; `
 final do encerramento, e-mail sensível aos administradores com o link de 7 dias), `fn_exportacao_link` (administrador
 ativo da conta ou plataforma, sempre com duas etapas) e `fn_exportacoes_vencidas`. Painel: `app_conta_exportar` e
 `app_exportacoes` (administrador), `app_plataforma_exportar_conta` e `app_plataforma_exportacoes`.
-`app_plataforma_encerrar_conta` pede a exportação final. Regressão: T83.
+`app_plataforma_encerrar_conta` pede a exportação final. Saúde com a máscara do painel (`fn_motivo_saude`): em
+`ponto_justificativas` e `ponto_abonos` o motivo de saúde vira `saude` e os textos da justificativa saem vazios;
+`ponto_conversas.dados` fica fora. `fn_exportacoes_manutencao`, fase 8 do motor (`fn_dispatcher_whatsapp`): retoma o
+pedido que falhou (2 min depois) ou travou (15 min), dá como falha na 3ª tentativa (a final do encerramento avisa a
+plataforma, `fn_exportacao_final_falhou`) e chama a limpeza dos pacotes vencidos. A Edge Function lê todas as tabelas
+numa transação só leitura (`repeatable read`). Regressão: T83.
 
 ### Migration 142 (31/10, versão 20261114120000): encerrar e reabrir a conta, multiempresa F8b
 

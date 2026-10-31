@@ -4648,6 +4648,28 @@ begin
   perform fn_exportacao_resultado(v_tok, v_id, false, null, null, null, 'erro de teste');
   perform pg_temp.ok((select estado = 'pendente' and erro = 'erro de teste' from conta_exportacoes where id = v_id),
                      '[T83] falha volta para a fila');
+  -- manutenção do motor: retoma a falha depois de 2 min e, na 3ª tentativa travada, dá como falha e avisa a plataforma
+  insert into config (chave, valor) values ('exportacao_url', 'http://127.0.0.1:9/exportar-conta')
+    on conflict (chave) do update set valor = excluded.valor;
+  update conta_exportacoes set concluido_em = now() - interval '3 minutes' where id = v_id;
+  select count(*) into v_n from net.http_request_queue;
+  perform fn_exportacoes_manutencao();
+  perform pg_temp.ok((select count(*) from net.http_request_queue) > v_n, '[T83] motor retoma o pedido que falhou');
+  update conta_exportacoes set estado = 'gerando', tentativas = 3, iniciado_em = now() - interval '20 minutes', origem = 'encerramento'
+   where id = v_id;
+  perform fn_exportacoes_manutencao();
+  perform pg_temp.ok((select estado = 'falhou' from conta_exportacoes where id = v_id)
+                     and exists (select 1 from alertas_email where para is null and assunto like '%exportação final%falhou'),
+                     '[T83] final travada vira falha e avisa a plataforma');
+  -- saúde sai com a máscara do painel
+  v_id := app_plataforma_exportar_conta(v_b);
+  perform fn_exportacao_dados(v_tok, v_id);
+  insert into ponto_justificativas (conta_id, empresa_id, tecnico_id, motivo, data, observacao, canal, status)
+  select v_b, e.id, t.id, (select codigo from ponto_motivos where saude order by codigo limit 1), current_date,
+         'qa83 dado de saúde', 'painel', 'pendente'
+    from tecnicos t, empresas e where t.conta_id = v_b and e.conta_id = v_b limit 1;
+  v_csv := fn_exportar_csv(v_tok, v_id, 'ponto_justificativas', 0, 20000);
+  perform pg_temp.ok(v_csv not like '%qa83 dado de saúde%' and v_csv like '%"saude"%', '[T83] saúde mascarada no CSV');
   perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
   v_ok := false;
   begin perform app_plataforma_exportar_conta(v_b); exception when others then v_ok := true; end;

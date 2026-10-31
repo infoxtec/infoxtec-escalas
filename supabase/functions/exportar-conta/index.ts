@@ -1,5 +1,6 @@
 // Exportação completa da conta (migration 143, decisão 129; portabilidade, LGPD art. 18, V). Duas entradas:
-// 1. O banco (pg_net) chama com x-exportacao-token e {id}: a função responde logo e, em segundo plano, lê cada tabela da
+// 1. O banco (pg_net) chama com x-exportacao-token e {id} (ou {acao: 'limpar'}, a manutenção do motor, que só apaga os
+//    pacotes vencidos): a função responde logo e, em segundo plano, lê cada tabela da
 //    conta em CSV (fn_exportar_csv, só as linhas da conta do pedido), monta o ZIP (dados/<tabela>.csv, esquema.json,
 //    LEIA-ME.txt, manifesto.sha256), guarda no bucket privado exportacoes e grava o resultado. Na exportação final do
 //    encerramento, manda junto um link assinado de 7 dias, que o banco envia por e-mail aos administradores da conta.
@@ -95,7 +96,8 @@ async function sha256(dados: Uint8Array): Promise<string> {
 
 type Dados = { conta: string; origem: string; nome: string; tabelas: { tabela: string; colunas: string[] }[] };
 
-async function gerar(token: string, id: string) {
+/** Pacotes vencidos (de qualquer conta): o banco tira da lista e o arquivo sai do bucket. */
+async function limpar(token: string) {
   const admin = cabecalhosAdmin();
   try {
     // pacotes vencidos de qualquer conta: o arquivo sai do bucket
@@ -109,7 +111,11 @@ async function gerar(token: string, id: string) {
   } catch (err) {
     console.error("exportar-conta: vencidos", err instanceof Error ? err.message.slice(0, 120) : "erro");
   }
+}
 
+async function gerar(token: string, id: string) {
+  const admin = cabecalhosAdmin();
+  await limpar(token);
   const [linha] = await sql<{ d: Dados | null }[]>`select fn_exportacao_dados(${token}, ${id}::uuid) as d`;
   const d = linha?.d;
   if (!d) return;
@@ -117,16 +123,19 @@ async function gerar(token: string, id: string) {
     if (!admin) throw new Error("falta a chave de serviço");
     const enc = new TextEncoder();
     const arquivos: Record<string, Uint8Array> = {};
-    for (const t of d.tabelas) {
-      const partes: string[] = ["﻿" + t.colunas.join(",")];
-      // página a página pela chave primária, até a página vazia
-      for (let offset = 0; ; offset += PAGINA) {
-        const [p] = await sql<{ c: string | null }[]>`select fn_exportar_csv(${token}, ${id}::uuid, ${t.tabela}, ${offset}, ${PAGINA}) as c`;
-        if (!p?.c) break;
-        partes.push(p.c);
+    // todas as tabelas do mesmo instante do banco (uma transação só leitura): página a página não perde nem repete linha
+    await sql.begin("isolation level repeatable read read only", async (tx) => {
+      for (const t of d.tabelas) {
+        const partes: string[] = ["\ufeff" + t.colunas.join(",")];
+        // página a página pela chave primária, até a página vazia
+        for (let offset = 0; ; offset += PAGINA) {
+          const [p] = await tx<{ c: string | null }[]>`select fn_exportar_csv(${token}, ${id}::uuid, ${t.tabela}, ${offset}, ${PAGINA}) as c`;
+          if (!p?.c) break;
+          partes.push(p.c);
+        }
+        arquivos[`dados/${t.tabela}.csv`] = enc.encode(partes.join("\r\n") + "\r\n");
       }
-      arquivos[`dados/${t.tabela}.csv`] = enc.encode(partes.join("\r\n") + "\r\n");
-    }
+    });
     const gerado = new Date().toISOString();
     arquivos["esquema.json"] = enc.encode(JSON.stringify({ conta: d.nome, conta_id: d.conta, gerado_em: gerado, tabelas: d.tabelas }, null, 2));
     arquivos["LEIA-ME.txt"] = enc.encode([
@@ -173,15 +182,15 @@ Deno.serve(async (req: Request) => {
   let corpo: { id?: unknown; acao?: unknown };
   try { corpo = JSON.parse(texto); } catch { return json({ ok: false, erro: "pedido inválido" }, 400); }
   const id = typeof corpo.id === "string" && UUID.test(corpo.id) ? corpo.id : "";
-  if (!id) return json({ ok: false, erro: "pedido inválido" }, 400);
 
-  // 1. chamada do banco
+  // 1. chamada do banco: gerar um pedido ou só apagar os vencidos (manutenção do motor)
   const token = req.headers.get("x-exportacao-token") ?? "";
   if (token) {
     if (!/^[0-9a-f]{64}$/.test(token)) return json({ ok: false, erro: "nao autorizado" }, 401);
     const [ok] = await sql<{ v: boolean }[]>`select fn_exportacao_token_ok(${token}) as v`;
     if (!ok?.v) return json({ ok: false, erro: "nao autorizado" }, 401);
-    const tarefa = gerar(token, id).catch((e) => console.error("exportar-conta:", e instanceof Error ? e.message.slice(0, 120) : "erro"));
+    if (!id && corpo.acao !== "limpar") return json({ ok: false, erro: "pedido inválido" }, 400);
+    const tarefa = (id ? gerar(token, id) : limpar(token)).catch((e) => console.error("exportar-conta:", e instanceof Error ? e.message.slice(0, 120) : "erro"));
     const runtime = (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime;
     if (runtime) runtime.waitUntil(tarefa);
     else await tarefa;
@@ -189,7 +198,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // 2. painel: link para baixar
-  if (corpo.acao !== "link") return json({ ok: false, erro: "Ação desconhecida." }, 400);
+  if (corpo.acao !== "link" || !id) return json({ ok: false, erro: "Ação desconhecida." }, 400);
   const email = await emailVerificado(req);
   if (!email) return json({ ok: false, erro: "Sessão expirada. Entre novamente." }, 401);
   const admin = cabecalhosAdmin();
