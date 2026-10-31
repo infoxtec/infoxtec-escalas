@@ -4497,7 +4497,7 @@ begin
                      and fn_evo_destino('/message/sendText/' || fn_config('evolution_instancia'), '5571966660082') is not null
                      and fn_webhook_conta(v_tok, 'cliente-b') = v_b
                      and fn_conta_de('qa-b@teste.local', v_b::text) = v_b
-                     and (localtime >= time '23:59' or exists (select 1 from vw_acoes_pendentes where escala_id = v_esc)),
+                     and ((now() at time zone fn_config('fuso'))::time >= time '23:59' or exists (select 1 from vw_acoes_pendentes where escala_id = v_esc)),
                      '[T82] conta ativa opera');
   -- suspensão manual: para o painel e o envio, mas não o app do ponto nem a entrada do webhook (o ponto não pode parar)
   update contas set ativa = false where id = v_b;
