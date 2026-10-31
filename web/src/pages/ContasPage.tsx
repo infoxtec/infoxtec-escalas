@@ -3,6 +3,7 @@ import { Edit2, Loader2, Plus, RefreshCw } from 'lucide-react'
 import { Button, ErrorBox, Field, Input, Modal, ToggleRow, useToast } from '../components/ui'
 import { api, convidarUsuario, erroMsg, mensagemConvite } from '../lib/api'
 import type { ContaPlataforma } from '../lib/types'
+import Exportacoes from '../components/Exportacoes'
 
 const ITENS: Record<string, string> = {
   admin: 'Administrador', login: 'Convite aceito', sede: 'Sede', canal: 'WhatsApp', empresa: 'Empresa', equipe: 'Funcionários',
@@ -160,6 +161,8 @@ export default function ContasPage() {
             {contaEdit?.apagar_em && <p className="text-sm text-muted-foreground">Os dados serão apagados em {new Date(contaEdit.apagar_em).toLocaleDateString('pt-BR')}.
               Até lá, "Reabrir conta" volta tudo como estava (os funcionários entram de novo no app do ponto).</p>}
             {erro && <ErrorBox>{erro}</ErrorBox>}
+            {contaEdit?.estado === 'encerrada' && edit.id && <div className="space-y-2 rounded-md border p-3">
+              <p className="text-sm font-medium">Exportação dos dados</p><Exportacoes conta={edit.id} /></div>}
           </div>
         )}
         {edit && !encerrada && (
@@ -203,6 +206,9 @@ export default function ContasPage() {
               </div>)}
             {edit.id && <ToggleRow label="Ativa" description="Conta suspensa: ninguém dela entra no painel e nada sai pelo WhatsApp (escalas e URA param); o app do ponto e as respostas dos técnicos seguem. Os dados ficam guardados."
               checked={edit.ativa} onChange={v => setEdit({ ...edit, ativa: v })} disabled={salvando} />}
+            {edit.id && <details className="rounded-md border p-3">
+              <summary className="cursor-pointer text-sm font-medium">Exportação dos dados</summary>
+              <div className="pt-2"><Exportacoes conta={edit.id} /></div></details>}
             {edit.id && !canais.find(k => k.conta_id === edit.id)?.da_instalacao && (motivo === null
               ? <button type="button" className="text-xs text-red-600 underline" onClick={() => setMotivo('')} disabled={salvando}>Encerrar a conta (saída do cliente)</button>
               : <div className="space-y-2 rounded-md border border-red-200 p-3">

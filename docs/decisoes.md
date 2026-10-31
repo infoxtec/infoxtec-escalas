@@ -1888,9 +1888,13 @@ no Supabase.
   `apagar_em`, e a conta volta sem suspensão. Antes da produção, conferir se há conta suspensa que hoje ainda envia.
 - **Entrada:** criar a conta de novo com os mesmos dados devolve a mesma conta (o convite que falhou é reenviado sem
   erro); dado diferente é recusado. A tela Contas mostra o que falta para cada conta operar.
-- **Em aberto (antes da F8c a F8e):** prazo da custódia (proposta: cada registro até a data dele + 5 anos, CF art. 7º,
+- **F8c (31/10):** exportação final automática no encerramento, com o link de 7 dias por e-mail aos administradores da
+  conta (confirmado pelo responsável). Dividida em F8c-1 (planilhas CSV de todas as tabelas, dicionário, leia-me e
+  manifesto SHA-256) e F8c-2 (espelhos em PDF, documentos, AFD e o ZIP à parte dos anexos de saúde). O pacote fica no
+  bucket privado `exportacoes`; o link do painel vale 10 minutos e é gerado só para quem pode, com duas etapas.
+- **Em aberto (antes da F8d e F8e):** prazo da custódia (proposta: cada registro até a data dele + 5 anos, CF art. 7º,
   XXIX, com retenção suspensa por processo avisado pelo cliente; base a conferir com o `juridico`); acesso na custódia
-  (proposta: sem login, exportação a pedido); exportação final automática no encerramento; nome da conta apagada e
+  (proposta: sem login, exportação a pedido); nome da conta apagada e
   e-mails do cliente nos registros da plataforma; backups do Supabase (dado apagado sobrevive ~7 dias, cláusula no
   contrato); apagar a instância do cliente na Evolution (conversas na Oracle) no roteiro de saída.
 

@@ -27,6 +27,9 @@ verify_jwt = true   # chamada pelo painel com a sessão da senha (aal1); o banco
 [functions.voz-escala]
 verify_jwt = false   # chamada pela Twilio e pelo motor; protegida por token e assinatura
 
+[functions.exportar-conta]
+verify_jwt = false   # chamada pelo banco (token conferido no banco) e pelo painel (sessão conferida no Auth)
+
 [functions.espelho-pdf]
 verify_jwt = false   # chamada só pelo banco (pg_net); protegida por token conferido no banco
 

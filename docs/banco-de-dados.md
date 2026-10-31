@@ -254,6 +254,24 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 143 (31/10, versão 20261115120000): exportação completa da conta, multiempresa F8c-1
+
+`conta_exportacoes` (pedido, origem `admin`/`plataforma`/`encerramento`, estado, arquivo no bucket privado `exportacoes`,
+tamanho, hash do manifesto, vence em 7 dias). `fn_exportar_tabelas()`: toda tabela do `interno` com `conta_id`, sem
+segredos, hashes de código e sessão, pedidos internos e colunas binárias. `fn_exportar_pedir` (um pedido em andamento
+por conta; o do administrador, um por dia; o do encerramento nunca é barrado) chama a Edge Function `exportar-conta`
+pelo pg_net com o token `EXPORTACAO_TOKEN` (Vault, gravado no primeiro pedido; `fn_segredo_gravar` passa a aceitá-lo).
+`fn_exportacao_dados`, `fn_exportar_csv` (página por chave primária, só a conta do pedido), `fn_exportacao_resultado` (na
+final do encerramento, e-mail sensível aos administradores com o link de 7 dias), `fn_exportacao_link` (administrador
+ativo da conta ou plataforma, sempre com duas etapas) e `fn_exportacoes_vencidas`. Painel: `app_conta_exportar` e
+`app_exportacoes` (administrador), `app_plataforma_exportar_conta` e `app_plataforma_exportacoes`.
+`app_plataforma_encerrar_conta` pede a exportação final. Saúde com a máscara do painel (`fn_motivo_saude`): em
+`ponto_justificativas` o motivo de saúde vira `saude` e os textos da justificativa saem vazios;
+`ponto_conversas.dados` fica fora. `fn_exportacoes_manutencao`, fase 8 do motor (`fn_dispatcher_whatsapp`): retoma o
+pedido que falhou (2 min depois) ou travou (15 min), dá como falha na 3ª tentativa ou, na final do encerramento, depois
+de 1 hora sem começar (a final avisa a plataforma, `fn_exportacao_final_falhou`) e chama a limpeza dos pacotes vencidos. A Edge Function lê todas as tabelas
+numa transação só leitura (`repeatable read`). Regressão: T83.
+
 ### Migration 142 (31/10, versão 20261114120000): encerrar e reabrir a conta, multiempresa F8b
 
 `contas.encerrada_em` e `apagar_em` (estado `encerrada` exige os dois). `fn_conta_operante(conta)`: só a conta ativa

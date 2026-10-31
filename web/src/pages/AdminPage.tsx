@@ -3,10 +3,11 @@ import { AlertTriangle, CheckCircle2, ExternalLink, Info, Loader2, RefreshCw, XC
 import { Button, ErrorBox } from '../components/ui'
 import { api, erroMsg } from '../lib/api'
 import AlertasPlataforma from '../components/AlertasPlataforma'
+import Exportacoes from '../components/Exportacoes'
 import type { ChecklistSaude, EstadoSaude, ItemSaude } from '../lib/types'
 
-// Checklist Sistema. Hoje com uma seção só (Checklist); as próximas entram em SECOES.
-const SECOES = [{ id: 'checklist', label: 'Checklist' }] as const
+// Checklist Sistema: o checklist e a exportação dos dados da conta (F8c, migration 143)
+const SECOES = [{ id: 'checklist', label: 'Checklist' }, { id: 'exportacao', label: 'Exportar dados' }] as const
 type Secao = typeof SECOES[number]['id']
 
 export default function AdminPage({ plataforma = false }: { plataforma?: boolean }) {
@@ -27,6 +28,7 @@ export default function AdminPage({ plataforma = false }: { plataforma?: boolean
       </div>
       {secao === 'checklist' && plataforma && <AlertasPlataforma />}
       {secao === 'checklist' && <Checklist />}
+      {secao === 'exportacao' && <Exportacoes />}
     </div>
   )
 }
