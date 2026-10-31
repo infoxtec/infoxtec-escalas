@@ -15,6 +15,7 @@ export interface ContaPlataforma {
   uf: string | null; municipio: string | null   // sede da conta: define os feriados (migration 131)
   // ciclo de vida e o que falta para operar (F8a, migration 141); opcionais até a migration chegar ao banco
   estado?: 'ativa' | 'encerrada' | 'apagando' | 'custodia' | 'apagada'
+  encerrada_em?: string | null; apagar_em?: string | null   // F8b, migration 142
   provisionamento?: { item: 'admin' | 'login' | 'sede' | 'canal' | 'empresa' | 'equipe'; ok: boolean; detalhe: string }[]
 }
 

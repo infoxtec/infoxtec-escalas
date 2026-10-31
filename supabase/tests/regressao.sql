@@ -4454,12 +4454,12 @@ begin
   v_ok := false;
   begin update contas set estado = 'encerrada' where id = v_id; exception when check_violation then v_ok := true; end;
   perform pg_temp.ok(v_ok, '[T81] conta encerrada não fica ativa');
-  update contas set ativa = false, estado = 'encerrada' where id = v_id;
+  update contas set ativa = false, estado = 'encerrada', encerrada_em = now(), apagar_em = now() + interval '30 days' where id = v_id;
   v_ok := false;
   begin perform app_plataforma_criar_conta('QA Entrada', 'dono-entrada@teste.local', null, array['ponto', 'escala'], 'BA', 'Salvador');
   exception when others then v_ok := sqlerrm like '%encerrada. Escolha outro nome%'; end;
   perform pg_temp.ok(v_ok, '[T81] conta encerrada não é reaproveitada');
-  update contas set estado = 'ativa', ativa = true where id = v_id;
+  update contas set estado = 'ativa', ativa = true, encerrada_em = null, apagar_em = null where id = v_id;
   -- provisionamento: o que falta aparece; a conta nova tem admin e sede, sem login, canal, empresa e equipe
   select x.p into v_p from (select e->'provisionamento' as p from jsonb_array_elements(app_plataforma_contas()) e
                              where (e->>'id')::uuid = v_id) x;
@@ -4473,7 +4473,100 @@ begin
   perform pg_temp.ok(v_ok, '[T81] só a plataforma cria conta');
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
 end $$;
-select 'REGRESSÃO OK: T1 a T81' as resultado,
+-- T82 encerrar e reabrir a conta (migration 142, F8b) -----------------------------------------------------------
+do $$
+declare
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_tec uuid; v_ok boolean; v_r jsonb; v_tok text; v_esc uuid; v_loc uuid;
+begin
+  perform set_config('request.headers', '{}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  -- antes: a conta B opera (painel, WhatsApp, webhook, app do ponto)
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, conta_id) values ('QA82', '5571966660082', true, true, v_b) returning id into v_tec;
+  insert into ponto_sessoes (tecnico_id, token_hash, expira_em) values (v_tec, fn_sha256('qa82-token'), now() + interval '1 hour');
+  insert into ponto_codigos (tecnico_id, codigo_hash, origem, expira_em) values (v_tec, 'x', 'whatsapp', now() + interval '5 minutes');
+  -- escala de amanhã da conta B, na fila do motor (janela de envio aberta o dia todo)
+  insert into locais (conta_id, nome, cliente, cidade) values (v_b, 'QA82 local', 'QA', 'Salvador') returning id into v_loc;
+  insert into escalas (conta_id, tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_b, v_tec, v_loc, current_date + 2, time '10:00', 'QA82', 'agendada', 'qa') returning id into v_esc;
+  update config set valor = '00:00' where chave = 'janela_envio_inicio';
+  update config set valor = '23:59' where chave = 'janela_envio_fim';
+  v_tok := fn_segredo((select webhook_segredo from conta_canais where conta_id = v_b));
+  perform set_config('trilha.conta', v_b::text, true);
+  perform pg_temp.ok(fn_conta_operante(v_b) and fn_ponto_sessao('qa82-token') = v_tec
+                     and fn_evo_destino('/message/sendText/' || fn_config('evolution_instancia'), '5571966660082') is not null
+                     and fn_webhook_conta(v_tok, 'cliente-b') = v_b
+                     and fn_conta_de('qa-b@teste.local', v_b::text) = v_b
+                     and ((now() at time zone fn_config('fuso'))::time >= time '23:59' or exists (select 1 from vw_acoes_pendentes where escala_id = v_esc)),
+                     '[T82] conta ativa opera');
+  -- suspensão manual: para o painel e o envio, mas não o app do ponto nem a entrada do webhook (o ponto não pode parar)
+  update contas set ativa = false where id = v_b;
+  perform pg_temp.ok(fn_evo_destino('/message/sendText/' || fn_config('evolution_instancia'), '5571966660082') is null
+                     and not exists (select 1 from vw_acoes_pendentes where escala_id = v_esc)
+                     and fn_ponto_sessao('qa82-token') = v_tec and fn_webhook_conta(v_tok, 'cliente-b') = v_b,
+                     '[T82] suspensa: envio para, ponto e webhook seguem');
+  update contas set ativa = true where id = v_b;
+  -- recusas
+  v_ok := false;
+  begin perform app_plataforma_encerrar_conta('00000000-0000-0000-0000-000000000001', 'teste'); exception when others then v_ok := sqlerrm like 'A conta da operadora%'; end;
+  perform pg_temp.ok(v_ok, '[T82] operadora não encerra');
+  v_ok := false;
+  begin perform app_plataforma_encerrar_conta(v_b, ' '); exception when others then v_ok := sqlerrm like 'Informe o motivo%'; end;
+  perform pg_temp.ok(v_ok, '[T82] motivo obrigatório');
+  -- encerrar: tudo para na hora
+  v_r := app_plataforma_encerrar_conta(v_b, 'fim do contrato (teste)');
+  perform pg_temp.ok(v_r->>'estado' = 'encerrada'
+                     and (select not ativa and estado = 'encerrada' and apagar_em between now() + interval '29 days' and now() + interval '31 days'
+                            from contas where id = v_b)
+                     and exists (select 1 from plataforma_log where conta_alvo = v_b and acao = 'encerrar_conta'),
+                     '[T82] conta encerrada com prazo de 30 dias');
+  v_ok := false;
+  begin perform fn_ponto_sessao('qa82-token'); exception when others then v_ok := sqlerrm like 'Sessão encerrada%'; end;
+  perform pg_temp.ok(v_ok and (select encerrada_em is not null from ponto_sessoes where tecnico_id = v_tec)
+                     and not exists (select 1 from ponto_codigos where tecnico_id = v_tec and expira_em > now()),
+                     '[T82] app do ponto parado');
+  perform pg_temp.ok(not fn_conta_operante(v_b)
+                     and fn_evo_destino('/message/sendText/' || fn_config('evolution_instancia'), '5571966660082') is null
+                     and not exists (select 1 from vw_acoes_pendentes where escala_id = v_esc)
+                     and not exists (select 1 from vw_ligacoes_pendentes p join escalas e on e.id = p.escala_id where e.conta_id = v_b),
+                     '[T82] WhatsApp, painel e filas param');
+  v_ok := false;
+  begin perform fn_webhook_conta(v_tok, 'cliente-b'); exception when others then v_ok := sqlerrm = 'token invalido'; end;
+  perform pg_temp.ok(v_ok, '[T82] webhook recusado');
+  v_ok := false;
+  begin perform fn_conta_de('qa-b@teste.local', v_b::text); exception when others then v_ok := sqlerrm like 'Sem acesso%'; end;
+  perform pg_temp.ok(v_ok, '[T82] painel recusa a conta encerrada');
+  -- a operadora segue enviando
+  perform set_config('trilha.conta', '00000000-0000-0000-0000-000000000001', true);
+  perform pg_temp.ok(fn_conta_operante('00000000-0000-0000-0000-000000000001'), '[T82] operadora não muda');
+  perform set_config('trilha.conta', '', true);
+  v_ok := false;
+  begin perform app_plataforma_salvar_conta(v_b, 'QA B', true, array['escala', 'ponto']); exception when others then v_ok := sqlerrm like 'Conta encerrada%'; end;
+  perform pg_temp.ok(v_ok, '[T82] editar não religa conta encerrada');
+  perform pg_temp.ok((select e->>'estado' = 'encerrada' and e->>'apagar_em' is not null from jsonb_array_elements(app_plataforma_contas()) e
+                       where (e->>'id')::uuid = v_b), '[T82] lista mostra o encerramento');
+  -- reabrir: dentro do prazo volta; fora do prazo, não
+  perform app_plataforma_reabrir_conta(v_b);
+  perform pg_temp.ok((select ativa and estado = 'ativa' and apagar_em is null from contas where id = v_b)
+                     and fn_webhook_conta(v_tok, 'cliente-b') = v_b
+                     and exists (select 1 from plataforma_log where conta_alvo = v_b and acao = 'reabrir_conta'),
+                     '[T82] reaberta dentro do prazo');
+  v_ok := false;
+  begin perform fn_ponto_sessao('qa82-token'); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T82] sessão antiga do ponto não volta');
+  perform app_plataforma_encerrar_conta(v_b, 'teste do prazo');
+  update contas set apagar_em = now() - interval '1 minute' where id = v_b;
+  v_ok := false;
+  begin perform app_plataforma_reabrir_conta(v_b); exception when others then v_ok := sqlerrm like 'O prazo para reabrir acabou%'; end;
+  perform pg_temp.ok(v_ok, '[T82] fora do prazo não reabre');
+  update contas set estado = 'ativa', ativa = true, encerrada_em = null, apagar_em = null where id = v_b;
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  v_ok := false;
+  begin perform app_plataforma_encerrar_conta(v_b, 'sem poder'); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T82] só a plataforma encerra');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+end $$;
+select 'REGRESSÃO OK: T1 a T82' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
