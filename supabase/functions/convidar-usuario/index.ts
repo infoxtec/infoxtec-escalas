@@ -1,11 +1,14 @@
 // Convite por e-mail pelo painel (decisão 120). O administrador da conta, ou a plataforma ao criar uma conta, convida
-// quem já é membro dela: o banco confere quem pode e registra (fn_convite_autorizar), e esta função chama o convite do
-// Supabase Auth, que manda o e-mail com o link para criar a senha. Quem já tem login não recebe convite: entra com a
-// senha atual e vê a conta nova no seletor.
+// quem já é membro dela: o banco confere quem pode e registra (fn_convite_autorizar). Esta função pede ao Supabase Auth
+// só o link do convite (generate_link, que cria o login sem mandar e-mail) e manda o e-mail ela mesma, pelo SMTP do
+// alerta (decisão 130): o envio do Auth tem limite de 10 s, e o SMTP da caixa às vezes passa disso, o que desfazia o
+// convite sem aviso. Se o e-mail não sai, o login recém-criado é apagado e o convite pode ser repetido.
+// Quem já tem login não recebe convite: entra com a senha atual e vê a conta nova no seletor.
 // A chave de serviço só existe aqui (SUPABASE_SECRET_KEYS, ou a antiga SUPABASE_SERVICE_ROLE_KEY): nunca sai da função.
 // Deploy: supabase functions deploy convidar-usuario
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import postgres from "npm:postgres@3.4.5";
+import nodemailer from "npm:nodemailer@6.9.16";
 
 const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { connection: { search_path: "interno, public, extensions" }, prepare: false, max: 2, idle_timeout: 20 });
 
@@ -85,6 +88,45 @@ function cabecalhosAdmin(): Record<string, string> | null {
   return antiga ? { apikey: antiga, Authorization: `Bearer ${antiga}` } : null;
 }
 
+// o mesmo texto de supabase/templates/convite.html (o Auth não manda mais este e-mail)
+function htmlConvite(link: string): string {
+  const l = link.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  return `<div style="font-family: Arial, Helvetica, sans-serif; max-width: 520px; margin: 0 auto; color: #1e293b;">
+  <p style="font-size: 22px; font-weight: bold; color: #2563eb; margin: 0 0 16px;">Trilha</p>
+  <p style="font-size: 16px;">Seja bem-vindo(a) ao Trilha! Para nós é uma honra ter você em nosso time.</p>
+  <p style="font-size: 16px;">Clique abaixo para aceitar o convite e escolher sua senha.</p>
+  <p style="margin: 28px 0;">
+    <a href="${l}" style="background: #2563eb; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-size: 16px; font-weight: bold;">Aceitar o convite</a>
+  </p>
+  <p style="font-size: 13px; color: #475569;">Se o botão não abrir, copie e cole este endereço no navegador:<br>${l}</p>
+  <p style="font-size: 13px; color: #475569;">Não esperava este convite? Pode ignorar este e-mail: nada é criado sem a sua senha.</p>
+  <p style="font-size: 13px; color: #475569;">Infoxtec · Trilha</p>
+</div>`;
+}
+
+/** Manda o convite pelo SMTP do alerta (config alerta_smtp_*; senha no segredo ALERTA_SMTP_SENHA). Devolve o erro ou null. */
+async function enviarConvite(email: string, link: string): Promise<string | null> {
+  const senha = Deno.env.get("ALERTA_SMTP_SENHA");
+  if (!senha) return "falta o segredo ALERTA_SMTP_SENHA";
+  const [c] = await sql<{ host: string | null; porta: string | null; usuario: string | null }[]>`
+    select fn_config('alerta_smtp_host') as host, fn_config('alerta_smtp_porta') as porta, fn_config('alerta_smtp_usuario') as usuario`;
+  if (!c?.host || !c?.usuario) return "SMTP não configurado";
+  const porta = Number(c.porta) || 465;
+  try {
+    const envio = nodemailer.createTransport({
+      host: c.host, port: porta, secure: porta === 465, auth: { user: c.usuario, pass: senha },
+      connectionTimeout: 15000, greetingTimeout: 10000, socketTimeout: 20000,
+    });
+    await envio.sendMail({
+      from: `Trilha <${c.usuario}>`, to: email, subject: "Seu convite para o Trilha", html: htmlConvite(link),
+      text: `Seja bem-vindo(a) ao Trilha! Para aceitar o convite e escolher sua senha, abra: ${link}`,
+    });
+    return null;
+  } catch (err) {
+    return err instanceof Error ? err.name : "falha no envio";
+  }
+}
+
 Deno.serve(async (req: Request) => {
   const CORS = cabecalhosCors(req);
   const json = (corpo: unknown, status = 200) =>
@@ -125,17 +167,31 @@ Deno.serve(async (req: Request) => {
   }
   // o link do e-mail volta para o painel de onde o convite saiu (se for um painel conhecido); senão, o Site URL do Auth
   const origem = destinoDoLink(req);
-  const destino = `${Deno.env.get("SUPABASE_URL")}/auth/v1/invite${origem ? `?redirect_to=${encodeURIComponent(origem)}` : ""}`;
+  const base = `${Deno.env.get("SUPABASE_URL")}/auth/v1/admin`;
   try {
-    const resp = await fetch(destino, {
+    const resp = await fetch(`${base}/generate_link`, {
       method: "POST",
       headers: { ...admin, "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ type: "invite", email, ...(origem ? { redirect_to: origem } : {}) }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (resp.ok) {
-      await sql`select fn_convite_resultado(${id}::bigint, 'enviado')`;
-      return json({ ok: true, enviado: true });
+      const r = await resp.json().catch(() => ({})) as { id?: string; action_link?: string; properties?: { action_link?: string } };
+      const link = r.properties?.action_link ?? r.action_link ?? "";
+      const falha = /^https:\/\//.test(link) || (HOMOLOGACAO && /^http:\/\//.test(link)) ? await enviarConvite(email, link) : "link ausente";
+      if (falha === null) {
+        await sql`select fn_convite_resultado(${id}::bigint, 'enviado')`;
+        return json({ ok: true, enviado: true });
+      }
+      console.error("convidar-usuario: e-mail não enviado", falha);
+      // sem e-mail, o login criado agora não serve: sai, para o convite poder ser repetido
+      if (r.id && UUID.test(r.id)) {
+        const del = await fetch(`${base}/users/${r.id}`, { method: "DELETE", headers: admin, signal: AbortSignal.timeout(TIMEOUT_MS) })
+          .catch(() => null);
+        if (!del?.ok && del?.status !== 404) console.error("convidar-usuario: login do convite não apagado", del?.status ?? "erro");
+      }
+      await sql`select fn_convite_resultado(${id}::bigint, 'falhou')`;
+      return json({ ok: false, erro: "O e-mail de convite não pôde ser enviado. Tente de novo em alguns minutos." }, 502);
     }
     const erro = await resp.json().catch(() => ({}));
     const codigo = String(erro?.error_code ?? erro?.code ?? "");

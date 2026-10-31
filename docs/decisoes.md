@@ -1889,3 +1889,17 @@ no Supabase.
   (proposta: sem login, exportação a pedido); exportação final automática no encerramento; nome da conta apagada e
   e-mails do cliente nos registros da plataforma; backups do Supabase (dado apagado sobrevive ~7 dias, cláusula no
   contrato); apagar a instância do cliente na Evolution (conversas na Oracle) no roteiro de saída.
+
+## 130. Convite mandado pelo nosso SMTP, não pelo Supabase Auth
+
+*31/10/2026 — no teste da F8a o convite não chegou: o Auth tem limite de 10 s para mandar o e-mail e o SMTP da caixa
+(uni5) passou disso; o Auth desfez o login sem avisar (`request_timeout` no log).*
+
+- A Edge Function `convidar-usuario` pede ao Auth só o link (`/admin/generate_link`, tipo `invite`, que cria o login sem
+  mandar e-mail) e manda o e-mail ela mesma, com o texto de `supabase/templates/convite.html`, pelo SMTP do alerta
+  (`alerta_smtp_*` na config, senha no segredo `ALERTA_SMTP_SENHA`, porta 465), sem o limite de 10 s.
+- Se o e-mail não sai, o login recém-criado é apagado e o painel diz que o convite pode ser repetido (com a F8a, salvar a
+  conta de novo reenvia).
+- O e-mail de "esqueci a senha" continua saindo pelo Auth; se o mesmo atraso aparecer nele, ganha o mesmo caminho.
+- Uma pessoa pode ser administradora de mais de uma conta (mesmo e-mail em contas diferentes): é o desenho da
+  multiempresa (decisão 117), não erro.
