@@ -169,7 +169,9 @@ begin
   end loop;
   -- travado na 3ª tentativa: falhou de vez (a final do encerramento avisa a plataforma)
   for e in update conta_exportacoes set estado = 'falhou', concluido_em = now(), erro = coalesce(erro, 'sem resposta da geração')
-            where estado = 'gerando' and tentativas >= 3 and iniciado_em < now() - interval '15 minutes'
+            where (estado = 'gerando' and tentativas >= 3 and iniciado_em < now() - interval '15 minutes')
+               -- a geração nunca respondeu (função fora do ar ou URL errada): a final não espera mais que 1 hora
+               or (estado = 'pendente' and origem = 'encerramento' and criado_em < now() - interval '1 hour')
            returning id, conta_id, origem, erro loop
     if e.origem = 'encerramento' then perform fn_exportacao_final_falhou(e.conta_id, e.erro); end if;
   end loop;
@@ -468,7 +470,7 @@ begin
   execute format('select string_agg(l, E''\n'' order by n) from (select row_number() over () as n, concat_ws('','', %s) as l
                     from (select * from interno.%I where conta_id = $1 order by %s limit $2 offset $3) z) y',
                  (select string_agg(case
-                     when p_tabela in ('ponto_justificativas', 'ponto_abonos') and c = 'motivo'
+                     when p_tabela = 'ponto_justificativas' and c = 'motivo'
                        then 'interno.fn_csv(case when interno.fn_motivo_saude(z.motivo) then ''saude'' else z.motivo end)'
                      when p_tabela = 'ponto_justificativas' and c in ('observacao', 'resposta', 'alerta_limite')
                        then format('interno.fn_csv(case when interno.fn_motivo_saude(z.motivo) then null else z.%I::text end)', c)

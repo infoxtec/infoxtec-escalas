@@ -4661,6 +4661,12 @@ begin
   perform pg_temp.ok((select estado = 'falhou' from conta_exportacoes where id = v_id)
                      and exists (select 1 from alertas_email where para is null and assunto like '%exportação final%falhou'),
                      '[T83] final travada vira falha e avisa a plataforma');
+  delete from alertas_email where assunto like '%exportação final%falhou';
+  update conta_exportacoes set estado = 'pendente', tentativas = 0, criado_em = now() - interval '2 hours' where id = v_id;
+  perform fn_exportacoes_manutencao();
+  perform pg_temp.ok((select estado = 'falhou' from conta_exportacoes where id = v_id)
+                     and exists (select 1 from alertas_email where assunto like '%exportação final%falhou'),
+                     '[T83] final que nunca começou avisa em 1 hora');
   -- saúde sai com a máscara do painel
   v_id := app_plataforma_exportar_conta(v_b);
   perform fn_exportacao_dados(v_tok, v_id);
