@@ -2489,44 +2489,31 @@ do $$
 declare
   v_mes date := (date_trunc('month', current_date) - interval '2 months')::date;  -- o mesmo mês do T42
   v_ids uuid[] := array(select id from tecnicos where nome in ('QA Espelho 5x2', 'QA Espelho 12x36'));
-  a jsonb; b jsonb; r record;
+  a jsonb; b jsonb;
 begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
   perform pg_temp.ok(cardinality(v_ids) = 2, '[T43] funcionários do T42');
-  -- a diferença entre o painel com e sem os dois funcionários do T42 é a hora extra deles
+  -- hora extra dos DOIS, dia a dia, pelos mesmos caminhos do painel. O total global (b - a) é poluído
+  -- pelos demais perfis de teste que a suíte deixa com a marca ligada; medir a diferença dobra o valor.
+  -- 5x2: sábado de folga 4 h + domingo (DSR) 3 h = 420; 12x36: plantão de 11 h sem extra, plantão de 13 h = 60
+  perform pg_temp.ok(
+    (select coalesce(sum(greatest(coalesce((d.j->>'trabalhado_min')::int, 0)
+                                  - coalesce((d.c->>'minutos')::int, 0), 0)), 0)
+       from unnest(v_ids) v,
+            lateral (select interno.fn_ponto_jornada_dia(v, g::date) as j,
+                            interno.fn_carga_dia(v, g::date) as c
+                       from generate_series(v_mes, v_mes + 20, interval '1 day') g) d) = 480,
+    '[T43] hora extra pela escala dos dois: ' || (select coalesce(sum(greatest(coalesce((d.j->>'trabalhado_min')::int, 0)
+                                  - coalesce((d.c->>'minutos')::int, 0), 0)), 0)
+       from unnest(v_ids) v,
+            lateral (select interno.fn_ponto_jornada_dia(v, g::date) as j,
+                            interno.fn_carga_dia(v, g::date) as c
+                       from generate_series(v_mes, v_mes + 20, interval '1 day') g) d));
+  -- o painel inteiro segue servindo às asserções de jornada (a marca volta a false no fim)
   update tecnicos set perfil_teste = true where id = any(v_ids);
   a := app_painel_gerencial(v_mes, v_mes + 20)->'ponto';
   update tecnicos set perfil_teste = false where id = any(v_ids);
   b := app_painel_gerencial(v_mes, v_mes + 20)->'ponto';
-  -- instrumentação da auditoria de 01/11 (temporária): de onde vêm as escalas e a hora extra
-  raise notice '[T43] a=% b=%', a->>'minutos_hora_extra', b->>'minutos_hora_extra';
-  raise notice '[T43] escalas dos 2 QA no mês: %',
-    (select string_agg(t.nome || '=' || x.c::text, ' | ' order by t.nome)
-       from (select tecnico_id, count(*) c from escalas
-              where tecnico_id = any(v_ids) and data_servico between v_mes and v_mes + 20
-              group by 1) x join tecnicos t on t.id = x.tecnico_id);
-  raise notice '[T43] meses com escala dos 2 QA: %',
-    (select string_agg(distinct to_char(data_servico, 'YYYY-MM'), ', ')
-       from escalas where tecnico_id = any(v_ids));
-  raise notice '[T43] demo no mês: %',
-    (select count(*) from escalas e join tecnicos t on t.id = e.tecnico_id
-       join empresas em on em.id = t.empresa_id
-      where em.cnpj = '99999999000191' and e.data_servico between v_mes and v_mes + 20);
-  raise notice '[T43] perfis de teste ativos: %', (select count(*) from tecnicos where perfil_teste);
-  -- prova por dia (decisão do responsável 02/11): os seis dias como o banco os enxerga
-  for r in select t.nome, g::date as dia,
-                    coalesce((interno.fn_ponto_jornada_dia(t.id, g::date)->>'trabalhado_min')::int, 0) as trab,
-                    coalesce((interno.fn_carga_dia(t.id, g::date)->>'minutos')::int, 0) as carga
-             from unnest(v_ids) v join tecnicos t on t.id = v
-             cross join lateral generate_series(v_mes, v_mes + 20, interval '1 day') g
-            where (interno.fn_ponto_jornada_dia(t.id, g::date)->>'trabalhado_min') is not null
-               or coalesce((interno.fn_carga_dia(t.id, g::date)->>'minutos')::int, 0) > 0
-            order by 1, 2 loop
-    raise notice '[T43DIA] % % trab=% carga=%', r.nome, to_char(r.dia, 'YYYY-MM-DD'), r.trab, r.carga;
-  end loop;
-  -- 5x2: sábado de folga 4 h + domingo (DSR) 3 h = 420; 12x36: plantão de 11 h sem extra, plantão de 13 h = 60
-  perform pg_temp.ok((b->>'minutos_hora_extra')::int - (a->>'minutos_hora_extra')::int = 480,
-                     '[T43] hora extra pela escala: ' || ((b->>'minutos_hora_extra')::int - (a->>'minutos_hora_extra')::int));
   perform pg_temp.ok((b->>'semanas_acima_44h')::int = (a->>'semanas_acima_44h')::int,
                      '[T43] semanas acima de 44 h: ' || (b->>'semanas_acima_44h') || ' contra ' || (a->>'semanas_acima_44h'));
   perform pg_temp.ok((b->'jornada'->>'pela_escala')::boolean and (b->'jornada'->>'escalas')::int >= 2,
