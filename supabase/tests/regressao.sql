@@ -2489,7 +2489,7 @@ do $$
 declare
   v_mes date := (date_trunc('month', current_date) - interval '2 months')::date;  -- o mesmo mês do T42
   v_ids uuid[] := array(select id from tecnicos where nome in ('QA Espelho 5x2', 'QA Espelho 12x36'));
-  a jsonb; b jsonb;
+  a jsonb; b jsonb; r record;
 begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
   perform pg_temp.ok(cardinality(v_ids) = 2, '[T43] funcionários do T42');
