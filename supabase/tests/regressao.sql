@@ -2498,6 +2498,21 @@ begin
   a := app_painel_gerencial(v_mes, v_mes + 20)->'ponto';
   update tecnicos set perfil_teste = false where id = any(v_ids);
   b := app_painel_gerencial(v_mes, v_mes + 20)->'ponto';
+  -- instrumentação da auditoria de 01/11 (temporária): de onde vêm as escalas e a hora extra
+  raise notice '[T43] a=% b=%', a->>'minutos_hora_extra', b->>'minutos_hora_extra';
+  raise notice '[T43] escalas dos 2 QA no mês: %',
+    (select string_agg(t.nome || '=' || x.c::text, ' | ' order by t.nome)
+       from (select tecnico_id, count(*) c from escalas
+              where tecnico_id = any(v_ids) and data_servico between v_mes and v_mes + 20
+              group by 1) x join tecnicos t on t.id = x.tecnico_id);
+  raise notice '[T43] meses com escala dos 2 QA: %',
+    (select string_agg(distinct to_char(data_servico, 'YYYY-MM'), ', ')
+       from escalas where tecnico_id = any(v_ids));
+  raise notice '[T43] demo no mês: %',
+    (select count(*) from escalas e join tecnicos t on t.id = e.tecnico_id
+       join empresas em on em.id = t.empresa_id
+      where em.cnpj = '99999999000191' and e.data_servico between v_mes and v_mes + 20);
+  raise notice '[T43] perfis de teste ativos: %', (select count(*) from tecnicos where perfil_teste);
   -- 5x2: sábado de folga 4 h + domingo (DSR) 3 h = 420; 12x36: plantão de 11 h sem extra, plantão de 13 h = 60
   perform pg_temp.ok((b->>'minutos_hora_extra')::int - (a->>'minutos_hora_extra')::int = 480,
                      '[T43] hora extra pela escala: ' || ((b->>'minutos_hora_extra')::int - (a->>'minutos_hora_extra')::int));
