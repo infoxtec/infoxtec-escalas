@@ -7,8 +7,7 @@ A análise que originou a lista está em [analise-topologia.md](analise-topologi
 
 ## Onde estamos
 
-**Sprint 13 a 23/10: encerrada em 23/10** (revisão T16 e fechamento na tabela do fim). **Próxima, proposta: 26/10 a 06/11**, a confirmar pelo responsável. Histórico da sprint encerrada — fechar a decisão 51 e a 084 entrega 2. *Situação em 11/10, fim do dia: 13 de 18 tarefas concluídas, mais o P1 e, antecipada, a 084 entrega 3 inteira (justificativa de ponto E1 a E3, migrations 66 a 72, painel 3.20.0, na produção). Faltam T09 (troca do token, 14/10, 21h), T12 (chave antiga, 16/10), T14 e T15 (fim do token na URL, 15 e 20/10 — log sem "token pela URL" desde 10/10, 14h49) e T16 (revisão, 22/10). Medidas do Scrum Master aprovadas em 11/10: chave do cofre guardada fora do Supabase (**cumprida em 11/10**: cópia conferida pela impressão digital); teste de PDF de 5 MB na homologação (antes de 15/10); nada publicado em 14 e 16/10 além da T09 e da T12.* Plano, encadeamento e fichas em
-[`sprint-13-23-out.html`](sprint-13-23-out.html).
+**Sprint 02 a 13/11: a sprint da auditoria de 01/11** — 26 achados em oito frentes, 21 em sprint e 5 cortados; planejamento com consultor SaaS, PO, Scrum Master e CTO (Segurança e Arquiteto de dados não responderam). O P0 até 05/11 protege a virada de 06/11. Artefato em [`sprint-02-13-nov.md`](sprint-02-13-nov.md); a sprint 13–23/10 fica no histórico em [`sprint-13-23-out.html`](sprint-13-23-out.html).
 
 | Peça | O que é | Situação |
 |---|---|---|
