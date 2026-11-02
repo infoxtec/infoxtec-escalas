@@ -2513,6 +2513,17 @@ begin
        join empresas em on em.id = t.empresa_id
       where em.cnpj = '99999999000191' and e.data_servico between v_mes and v_mes + 20);
   raise notice '[T43] perfis de teste ativos: %', (select count(*) from tecnicos where perfil_teste);
+  -- prova por dia (decisão do responsável 02/11): os seis dias como o banco os enxerga
+  for r in select t.nome, g::date as dia,
+                    coalesce((interno.fn_ponto_jornada_dia(t.id, g::date)->>'trabalhado_min')::int, 0) as trab,
+                    coalesce((interno.fn_carga_dia(t.id, g::date)->>'minutos')::int, 0) as carga
+             from unnest(v_ids) v join tecnicos t on t.id = v
+             cross join lateral generate_series(v_mes, v_mes + 20, interval '1 day') g
+            where (interno.fn_ponto_jornada_dia(t.id, g::date)->>'trabalhado_min') is not null
+               or coalesce((interno.fn_carga_dia(t.id, g::date)->>'minutos')::int, 0) > 0
+            order by 1, 2 loop
+    raise notice '[T43DIA] % % trab=% carga=%', r.nome, to_char(r.dia, 'YYYY-MM-DD'), r.trab, r.carga;
+  end loop;
   -- 5x2: sábado de folga 4 h + domingo (DSR) 3 h = 420; 12x36: plantão de 11 h sem extra, plantão de 13 h = 60
   perform pg_temp.ok((b->>'minutos_hora_extra')::int - (a->>'minutos_hora_extra')::int = 480,
                      '[T43] hora extra pela escala: ' || ((b->>'minutos_hora_extra')::int - (a->>'minutos_hora_extra')::int));
