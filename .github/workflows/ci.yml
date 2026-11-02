@@ -62,9 +62,51 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          fetch-depth: 0   # o guarda de numeração abaixo compara com a base do PR
       - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb  # v1.7.3
         with:
           version: ${{ env.SUPABASE_CLI }}
+      # Item 15 da auditoria de 01/11. As versões 116 a 143 estão à frente da data real: uma
+      # migration criada com `migration new` nasce abaixo da última, o db push não aplica fora de
+      # ordem e o banco vazio do CI não vê. Verificação de repositório, antes de qualquer banco.
+      - name: Numeração das migrations (acima da última, arquivo aplicado intocado)
+        run: |
+          set -euo pipefail
+          base_pr="${{ github.event.pull_request.base.sha }}"
+          if [ -n "$base_pr" ]; then
+            base="$base_pr"
+            git fetch --no-tags --quiet origin "$base" || true
+          else
+            base="origin/main"
+            git fetch --no-tags --quiet origin "+refs/heads/main:refs/remotes/origin/main" || true
+          fi
+          maior=$(git ls-tree --name-only "$base" supabase/migrations/ | sed 's#.*/##' | cut -d_ -f1 | sort | tail -1)
+          echo "maior versão no main: $maior"
+          falhou=0
+          editadas=$(git diff --name-only --diff-filter=M "$base" HEAD -- supabase/migrations/ || true)
+          if [ -n "$editadas" ]; then
+            echo "::error::Migration já existente foi editada, e isso é proibido (decisão 44). Crie um arquivo novo."
+            echo "$editadas"
+            falhou=1
+          fi
+          adicionadas=$(git diff --name-only --diff-filter=A "$base" HEAD -- supabase/migrations/ || true)
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            nome=$(basename "$f")
+            ver="${nome%%_*}"
+            echo "adicionada: $nome (versão $ver)"
+            if [ "$ver" = "$maior" ] || [ "$ver" \< "$maior" ]; then
+              echo "::error::$nome tem versão $ver, que não é maior que a última do main ($maior). Numere à mão, acima de $maior."
+              falhou=1
+            fi
+            if [ -n "$(git ls-tree --name-only "$base" "supabase/migrations/$nome" || true)" ]; then
+              echo "::error::$nome já existe no main com esse nome."
+              falhou=1
+            fi
+          done <<< "$adicionadas"
+          [ "$falhou" = 0 ] && echo "numeração ok"
+          exit "$falhou"
       - name: Banco vazio com todas as migrations e o seed
         run: supabase db start
       - name: plpgsql_check em todas as funções (exige zero erros)
