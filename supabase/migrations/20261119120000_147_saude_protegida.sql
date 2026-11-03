@@ -55,8 +55,22 @@ create table interno.saude_termo_aceites (
   unique (conta_id, email, versao)
 );
 alter table interno.saude_termo_aceites enable row level security;
+create or replace function interno.fn_saude_aceite_imutavel()
+ returns trigger
+ language plpgsql
+ set search_path to 'interno', 'public', 'extensions', 'pg_temp'
+as $function$
+begin
+  raise exception 'O termo de confidencialidade e os aceites são imutáveis (prova de auditoria). Versão nova é linha nova.';
+end $function$;
 create trigger trg_saude_termo_aceites_imutavel before update or delete on interno.saude_termo_aceites
-  for each row execute function interno.fn_ponto_imutavel();
+  for each row execute function interno.fn_saude_aceite_imutavel();
+create trigger trg_saude_termo_aceites_sem_truncate before truncate on interno.saude_termo_aceites
+  for each statement execute function interno.fn_saude_aceite_imutavel();
+create trigger trg_saude_termos_imutavel before update or delete on interno.saude_termos
+  for each row execute function interno.fn_saude_aceite_imutavel();
+create trigger trg_saude_termos_sem_truncate before truncate on interno.saude_termos
+  for each statement execute function interno.fn_saude_aceite_imutavel();
 
 create table interno.saude_downloads (
   id             uuid primary key default gen_random_uuid(),
@@ -76,7 +90,7 @@ create table interno.saude_downloads (
 );
 alter table interno.saude_downloads enable row level security;
 create index saude_downloads_email_idx on interno.saude_downloads (conta_id, email, criado_em desc);
-create index saude_downloads_estado_idx on interno.saude_downloads (estado, criado_em) where estado in ('gerando', 'pronto', 'expirando');
+create index saude_downloads_estado_idx on interno.saude_downloads (estado, criado_em) where estado in ('gerando', 'pronto', 'falhou', 'expirando');
 
 -- o termo vigente e se a pessoa já aceitou (só administrador com ve_saude)
 create or replace function public.app_saude_termo()
@@ -132,7 +146,7 @@ begin
   if not exists (select 1 from saude_termo_aceites a where a.conta_id = p_conta and a.email = v_email and a.versao = t.versao) then
     raise exception 'Aceite o termo de confidencialidade antes de baixar.';
   end if;
-  perform pg_advisory_xact_lock(hashtext('saude_download:' || v_email));
+  perform pg_advisory_xact_lock(hashtext('saude_download:' || p_conta::text || ':' || v_email));
   if (select count(*) from saude_downloads where conta_id = p_conta and email = v_email and criado_em > now() - interval '24 hours') >= 5 then
     raise exception 'Limite de 5 downloads de saúde em 24 horas atingido.';
   end if;
@@ -205,8 +219,9 @@ as $function$
 begin
   if not fn_exportacao_token_ok(p_token) then raise exception 'token inválido'; end if;
   return query update saude_downloads s set estado = 'expirando'
-    where s.estado in ('pronto', 'expirando') and s.criado_em < now() - interval '15 minutes' and s.arquivo is not null
-    returning s.id, s.arquivo;
+    -- também 'gerando' e 'falhou': o zip pode ter subido sem o resultado gravado; o caminho é previsível
+    where s.estado in ('gerando', 'pronto', 'falhou', 'expirando') and s.criado_em < now() - interval '15 minutes'
+    returning s.id, coalesce(s.arquivo, s.conta_id::text || '/saude/' || s.id::text || '.zip');
 end $function$;
 
 create or replace function interno.fn_saude_apagados(p_token text, p_ids uuid[])
@@ -407,7 +422,7 @@ begin
     if e.origem = 'encerramento' then perform fn_exportacao_final_falhou(e.conta_id, e.erro); end if;
   end loop;
   if exists (select 1 from conta_exportacoes where estado in ('pronta', 'expirando') and expira_em <= now())
-     or exists (select 1 from saude_downloads where estado in ('pronto', 'expirando') and criado_em < now() - interval '15 minutes') then
+     or exists (select 1 from saude_downloads where estado in ('gerando', 'pronto', 'falhou', 'expirando') and criado_em < now() - interval '15 minutes') then
     perform fn_exportacao_chamar(jsonb_build_object('acao', 'limpar'));
   end if;
 end $function$

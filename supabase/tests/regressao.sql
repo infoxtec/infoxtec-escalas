@@ -4924,6 +4924,22 @@ begin
   perform pg_temp.ok(exists (select 1 from fn_saude_vencidos(v_tok) x where x.id = v_d), '[T86] arquivo de saúde vence em 15 min');
   perform fn_saude_apagados(v_tok, array[v_d]);
   perform pg_temp.ok((select estado = 'expirado' from saude_downloads where id = v_d), '[T86] sai da lista depois de apagado');
+  -- zip que subiu sem o resultado gravado (gerando ou falhou): a limpeza apaga pelo caminho previsível
+  update saude_downloads set estado = 'gerando', arquivo = null, criado_em = now() - interval '20 minutes'
+   where id = (select id from saude_downloads where conta_id = v_b and estado = 'gerando' order by criado_em limit 1)
+  returning id into v_d;
+  update saude_downloads set estado = 'falhou', arquivo = null, criado_em = now() - interval '20 minutes'
+   where id = (select id from saude_downloads where conta_id = v_b and estado = 'gerando' and id <> v_d order by criado_em limit 1)
+  returning id into v_anx;
+  perform pg_temp.ok((select count(*) = 2 from fn_saude_vencidos(v_tok) x
+                       where (x.id = v_d and x.arquivo = v_b || '/saude/' || v_d || '.zip')
+                          or (x.id = v_anx and x.arquivo = v_b || '/saude/' || v_anx || '.zip')),
+                     '[T86] zip sem resultado gravado também é apagado');
+  perform fn_saude_apagados(v_tok, array[v_d, v_anx]);
+  perform pg_temp.ok((select count(*) = 2 from saude_downloads where id in (v_d, v_anx) and estado = 'expirado'), '[T86] e sai da lista');
+  -- o texto do termo não muda (versão nova é linha nova)
+  v_ok := false; begin update saude_termos set texto = 'x' where versao = 1; exception when others then v_ok := sqlerrm like 'O termo de confidencialidade%'; end;
+  perform pg_temp.ok(v_ok, '[T86] texto do termo imutável');
 end $$;
 select 'REGRESSÃO OK: T1 a T86' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
