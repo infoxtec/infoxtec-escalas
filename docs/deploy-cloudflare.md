@@ -60,3 +60,5 @@ GitHub ainda ativa (`This Worker does not exist on your account`).
 - Fechar as pré-visualizações com Cloudflare Access e CSP em modo Report-Only.
 - Produção continua na Vercel (decisão 110). Domínio próprio e migração da produção ficam para depois; o projeto da
   Vercel da produção nunca é apagado (QR dos espelhos assinados).
+- **Não renomear nem liberar o subdomínio `david-cerqueira.workers.dev`** enquanto as Edge Functions confiarem nele
+  (`ORIGEM_PAINEL` da produção e `ORIGEM_HOMOLOGACAO_CF`, decisão 133): outra conta poderia registrá-lo.

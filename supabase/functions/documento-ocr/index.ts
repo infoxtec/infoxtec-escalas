@@ -15,10 +15,12 @@ const CORPO_MAX_BYTES = 12 * 1024 * 1024;
 const TIMEOUT_MS = 15_000;
 
 // o painel chama do navegador, em outro domínio: sem estes cabeçalhos o navegador bloqueia. Só os domínios
-// do painel: produção e pré-visualizações da Vercel (web-git-<branch>-infoxtec-escalas, web-<hash>-...); o
+// do painel: os da produção (abaixo, por nome exato); o
 // painel local e o painel publicado da homologação só no projeto da homologação ou no Supabase local (falha
 // fechada: URL desconhecida não abre nada). A sessão (JWT) continua sendo a proteção real
-const ORIGEM_PAINEL = /^https:\/\/(infoxtec-escalas|web-[a-z0-9-]+-infoxtec-escalas)\.vercel\.app$/;
+// produção (A1 da sprint 04–17/11, origem dupla até a virada): o painel oficial na Vercel e o Worker do Cloudflare, por
+// nome exato; pré-visualização não vale na produção (domínio que terceiros podem criar; versões do Worker também não)
+const ORIGEM_PAINEL = /^https:\/\/(infoxtec-escalas\.vercel\.app|trilha\.david-cerqueira\.workers\.dev)$/;
 const ORIGENS_HOMOLOGACAO = ["http://localhost:5173", "https://infoxtec-escalas-homologacao.vercel.app"];
 // painel da homologação no Cloudflare (Worker trilha-homologacao, decisão 110) e as pré-visualizações dele:
 // por versão (<hash>-trilha-homologacao...) e por branch (<nome-da-branch>-trilha-homologacao..., Worker Previews);

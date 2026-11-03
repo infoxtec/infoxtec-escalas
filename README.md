@@ -264,4 +264,5 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Matriz de acesso única: exportação por lista branca, espelho assinado só com acesso às folhas, ASO como saúde, Checklist só da plataforma (migration 145, painel 3.64.0; produção em 03/11)
 - [x] Encerramento de conta desligado até a exclusão automática existir (migration 146, painel 3.65.0; produção em 03/11)
 - [x] Saúde protegida: download de saúde com termo de sigilo, código novo e marca d'água (migration 147, painel 3.66.0; homologação testada e termo aprovado em 03/11)
-- [ ] Exportar dados e saúde em Empresas; Checklist Sistema só da plataforma (painel 3.67.0; homologação)
+- [x] Exportar dados e saúde em Empresas; Checklist Sistema só da plataforma (painel 3.67.0; produção em 03/11)
+- [ ] Produção do painel no Cloudflare em 10/11 (sprint 04–17/11, decisão 133): A1 origem dupla nas Edge Functions

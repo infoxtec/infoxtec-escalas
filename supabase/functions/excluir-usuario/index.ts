@@ -13,7 +13,9 @@ const EMAIL = /^[^@\s]{1,64}@[^@\s]{1,190}\.[^@\s]{2,}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // mesmos domínios do painel que a documento-ocr aceita (produção na Vercel; homologação local, Vercel e Cloudflare)
-const ORIGEM_PAINEL = /^https:\/\/(infoxtec-escalas|web-[a-z0-9-]+-infoxtec-escalas)\.vercel\.app$/;
+// produção (A1 da sprint 04–17/11, origem dupla até a virada): o painel oficial na Vercel e o Worker do Cloudflare, por
+// nome exato; pré-visualização não vale na produção (domínio que terceiros podem criar; versões do Worker também não)
+const ORIGEM_PAINEL = /^https:\/\/(infoxtec-escalas\.vercel\.app|trilha\.david-cerqueira\.workers\.dev)$/;
 const ORIGENS_HOMOLOGACAO = ["http://localhost:5173", "https://infoxtec-escalas-homologacao.vercel.app"];
 const ORIGEM_HOMOLOGACAO_CF = /^https:\/\/([a-z0-9][a-z0-9-]{0,62}-)?trilha-homologacao\.david-cerqueira\.workers\.dev$/;
 const HOMOLOGACAO = /oruwnlxyvznpigbpjjbx|\/\/(127\.0\.0\.1|localhost|kong)[:/]/.test(Deno.env.get("SUPABASE_URL") ?? "");

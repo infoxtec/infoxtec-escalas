@@ -1951,3 +1951,21 @@ pedidos novos do responsável.*
 - O texto do termo (v1) foi redigido pelo `juridico` e precisa da aprovação do responsável antes da produção; versão nova
   do termo pede novo aceite.
 
+## 133. Sprint 04–17/11: produção no Cloudflare e painel só com aprovação
+
+*03/11/2026 — CTO, PO, `seguranca` e `arquiteto-cloud`; aprovada pelo responsável. Detalhe em `docs/sprint-04-17-nov.md`.*
+
+- **Virada da produção do painel para o Cloudflare em 10/11** (confirma as decisões 116 e 131), sozinha, com a Vercel de
+  reserva por uma semana e depois só redirecionando; o projeto da Vercel nunca é apagado (QR dos espelhos).
+- **Origem dupla até a virada (A1):** as Edge Functions da produção aceitam o painel oficial da Vercel e o Worker
+  `trilha.david-cerqueira.workers.dev`, por nome exato. Pré-visualização deixa de valer na produção (domínio que terceiros
+  podem criar na Vercel; versões do Worker também não). A pré-visualização da Vercel também deixa de valer na
+  homologação: essas funções se testam pelo Worker `trilha-homologacao`. O subdomínio `david-cerqueira.workers.dev` não é
+  trocado enquanto as regras de origem dependerem dele (se for liberado, outra conta poderia ficar com ele); domínio
+  próprio fica no backlog, como decisão do responsável.
+- **Painel na produção só com aprovação:** o deploy automático da `main` na Vercel é desligado; no Cloudflare, a produção
+  sai só pelo workflow Aplicar aprovado. Achado de 03/11: o painel 3.67.0 foi ao ar no merge, antes do comando do
+  responsável.
+- **Proposta do DeepSeek avaliada por critério** (lastro, premissa, capacidade, risco real, decisões, cobertura): 6
+  cartões aprovados, 7 no backlog, corte do #13 reprovado pelo `seguranca` (retenção é LGPD).
+

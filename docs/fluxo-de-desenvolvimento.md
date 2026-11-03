@@ -91,11 +91,14 @@ raiz. Ele é lido automaticamente em toda sessão.
    conferência da produção entra no próximo PR que já for abrir.
    **Ritmo (decisão 77):** no máximo 2 pacotes abertos; um pacote por PR; nunca force-push em branch com
    PR aberto; teste que depende do relógio usa stub.
-2. **Revisar.** O Claude Code abre o PR. O CI roda e a Vercel publica um preview.
+2. **Revisar.** O Claude Code abre o PR. O CI roda e o Cloudflare publica a pré-visualização da homologação por branch.
+   Desde a decisão 133, as Edge Functions não aceitam mais a pré-visualização da Vercel: OCR, convite, exclusão,
+   exportação, consulta de cadastro e recuperação do 2FA se testam pelo Worker `trilha-homologacao`.
 3. **Aplicar no dev.** Na máquina Linux, com o projeto dev ligado: `npx supabase db push`.
    Na fase 3 do roteiro isso passa a ser automático.
-4. **Testar.** Abrir o preview da Vercel (que aponta para o dev) e conferir a tela.
-5. **Juntar.** Merge do PR em `main`. A Vercel publica o painel em produção.
+4. **Testar.** Abrir o painel da homologação no Cloudflare e conferir a tela.
+5. **Juntar.** Merge do PR em `main`. Até a virada (A2 da sprint 04–17/11, decisão 133), a Vercel publica o painel em
+   produção no merge; depois, a produção só muda pelo workflow Aplicar aprovado.
 6. **Aplicar na produção.** Só depois de o PR aparecer **"Merged"** no GitHub (decisão 77). Rodar a
    migration na produção. A ordem importa:
    - Mudança de estrutura (tabela, coluna, função nova) **antes** do painel que a usa.
