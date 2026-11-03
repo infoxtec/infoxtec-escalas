@@ -267,7 +267,9 @@ administrador ativo da conta com `ve_saude`, conta ativa, termo vigente aceito e
 CSV (`fn_saude_csv`), os anexos e documentos de saúde. Cada arquivo sai com a marca (nome, e-mail, data e código do
 download); o que não pôde ser marcado fica listado no LEIA-ME. Os anexos são lidos por `fn_saude_anexo` só nos 10 minutos
 seguintes e cada leitura entra em `ponto_anexo_acessos`. O zip fica no Storage com link de 60 s e é apagado em 15 minutos
-(`fn_saude_vencidos`/`fn_saude_apagados`, fase 8 do motor). A exportação deixa de levar o pacote de saúde:
+(`fn_saude_vencidos`/`fn_saude_apagados`, fase 8 do motor), inclusive o que ficou `gerando` ou `falhou` sem o
+resultado gravado (o caminho `conta/saude/id.zip` é previsível). Termo e aceites são imutáveis (gatilhos de update,
+delete e truncate): versão nova do termo é linha nova e pede novo aceite. Tentativa que falha conta no limite de 5. A exportação deixa de levar o pacote de saúde:
 `app_conta_exportar` pede sempre sem saúde e `fn_exportacao_link` recusa o link de saúde antigo. Regressão: T84 e T86.
 
 ### Migration 146 (03/11, versão 20261118120000): encerramento de conta desligado (D6, decisão 131)
