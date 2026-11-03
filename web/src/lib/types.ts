@@ -315,6 +315,7 @@ export interface Documento {
   tipo_documento_id: string | null; documento: string | null
   caminho: string | null; nome_arquivo: string; mime: string | null; tamanho_bytes: number | null
   validade: string | null; ocr_em: string | null; enviado_por: string; created_at: string
+  restrito?: boolean   // documento de saúde (ASO) para quem não tem ve_saude: sem caminho (migration 145)
 }
 
 export const CATEGORIA_LABEL: Record<string, string> = {

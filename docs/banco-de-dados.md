@@ -254,6 +254,19 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 145 (03/11, versão 20261117120000): matriz de acesso única (auditoria de 01/11, itens 1, 4, 6 e 8)
+
+Exportação por lista branca: `fn_exportar_tabelas` só devolve as tabelas listadas nela e ganha a coluna `folha` (em
+`ponto_espelhos`: `conteudo`, `conteudo_texto`, `assinatura_png`, `assinatura_origem`, `assinatura_sha256`), que vai vazia
+no CSV quando o pedido não tem `conta_exportacoes.com_folha` (administrador com `rh_folhas`); sem ela, os PDFs dos
+espelhos também ficam fora. `fn_exportar_pedir(conta, autor, origem, com_saude, com_folha)`: a plataforma e a final do
+encerramento levam só o pacote comum. `tipos_documento.saude` (o ASO é marcado pelo nome, também pelo gatilho
+`tg_tipo_documento_saude`): o arquivo só abre para quem tem `ve_saude` (`app_pode_gerir_documento`, política do bucket
+`documentos`); `app_documentos` devolve a linha sem `caminho` e com `restrito` para quem não tem, e o papel `leitura` nem
+vê; na exportação, o `ocr_texto` do ASO vai vazio e o arquivo sai só no pacote de saúde (`documentos_saude`).
+`app_checklist_saude` e `app_checklist_testar` passam a ser só da plataforma. Os pacotes prontos antes desta correção
+vencem na aplicação. Regressão: T85 (e T22/T26 com login da plataforma).
+
 ### Migration 144 (03/11, versão 20261116120000): arquivos e saúde na exportação, multiempresa F8c-2
 
 O ZIP da exportação passa a levar os espelhos emitidos (`fn_exportar_espelho`, PDF), os documentos dos técnicos (bucket

@@ -1915,3 +1915,26 @@ no Supabase.
 - O e-mail de "esqueci a senha" continua saindo pelo Auth; se o mesmo atraso aparecer nele, ganha o mesmo caminho.
 - Uma pessoa pode ser administradora de mais de uma conta (mesmo e-mail em contas diferentes): é o desenho da
   multiempresa (decisão 117), não erro.
+
+## 131. Reunião de 03/11: a sprint da auditoria revista e a matriz de acesso única
+
+*03/11/2026 — Scrum Master, PO, CTO, `seguranca` e `arquiteto-dados` sobre a sprint 02–13/11 (auditoria de 01/11) e os
+pedidos novos do responsável.*
+
+- **Achado da reunião:** a exportação já na produção (migration 143) entregava o espelho assinado (assinatura, IP e
+  aparelho de quem assinou, conteúdo) a qualquer administrador, sem `rh_folhas`, e à plataforma; a 144 somava o ASO no
+  pacote comum. A causa foi a exportação por lista negra. A sprint também partia de "produção congelada até 05/11",
+  quando 131 a 143 já tinham subido com o congelamento furado a pedido do responsável (30/10) — exceção que não ficou
+  registrada na página da sprint; falha de processo do Claude.
+- **Decisões do responsável (03/11):** (1) contenção: a migration 145 (matriz de acesso única) vai à produção junto com
+  a 144; (2) D6: o encerramento fica desligado até a F8d existir (a promessa de exclusão em 30 dias sai); (3) a virada de
+  infraestrutura de 06/11 passa para 10/11, com ensaio verde e a origem aceitando Vercel e Cloudflare ao mesmo tempo;
+  (7) D1: MFA obrigatório para administrador antes da primeira venda.
+- **Matriz de acesso única (145):** exportação por lista branca; espelho assinado só com `rh_folhas`; ASO é saúde (só com
+  `ve_saude`, o papel `leitura` não vê); plataforma e encerramento só com o pacote comum; Checklist só da plataforma.
+- **Fora desta sprint:** ICP-Brasil por conta (o CTO e o `seguranca` recomendam não guardar o e-CNPJ A1 de cliente;
+  antes, parecer do jurídico sobre o certificado do fornecedor do REP-P), módulo contratado (11), expurgo do texto livre
+  (12), URA assinada (20, URA desligada), F8d.
+- **Em aberto com o responsável:** a plataforma baixar a exportação de cliente (decidido em 30/10; o `seguranca`
+  recomenda proibir — por ora ela leva só o pacote comum); rever o aceite da decisão 128 para quem é membro de mais de
+  uma conta; o desenho da ICP-Brasil.

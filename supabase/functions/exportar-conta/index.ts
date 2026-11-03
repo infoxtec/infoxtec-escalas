@@ -99,7 +99,7 @@ async function sha256(dados: Uint8Array): Promise<string> {
 
 type Dados = { conta: string; origem: string; com_saude: boolean; nome: string; tabelas: { tabela: string; colunas: string[] }[] };
 type Arquivos = { espelhos: { id: string; nome: string }[]; documentos: { caminho: string; nome: string }[]; afd: string[];
-  anexos: { id: string; nome: string }[] };
+  anexos: { id: string; nome: string }[]; documentos_saude?: { caminho: string; nome: string }[] };
 
 const deBase64 = (b: string) => Uint8Array.from(atob(b), (c) => c.charCodeAt(0));
 
@@ -184,15 +184,20 @@ async function gerar(token: string, id: string) {
       const [p] = await sql<{ b: string | null }[]>`select fn_exportar_espelho(${token}, ${id}::uuid, ${e.id}::uuid) as b`;
       if (p?.b) arquivos[e.nome] = somar(deBase64(p.b));
     }
-    for (const doc of lista.documentos) {
-      const resp = await fetch(`${Deno.env.get("SUPABASE_URL")}/storage/v1/object/documentos/${doc.caminho.split("/").map(encodeURIComponent).join("/")}`,
+    // documento do bucket; o tamanho declarado é conferido antes de ler o arquivo inteiro
+    const baixarDocumento = async (caminho: string): Promise<Uint8Array | null> => {
+      const resp = await fetch(`${Deno.env.get("SUPABASE_URL")}/storage/v1/object/documentos/${caminho.split("/").map(encodeURIComponent).join("/")}`,
         { headers: admin, signal: AbortSignal.timeout(60_000) }).catch(() => null);
-      // o tamanho declarado é conferido antes de ler o arquivo inteiro
-      if (resp?.ok && total + Number(resp.headers.get("content-length") ?? 0) > LIMITE_BYTES) {
+      if (!resp?.ok) return null;
+      if (total + Number(resp.headers.get("content-length") ?? 0) > LIMITE_BYTES) {
         await resp.body?.cancel();
         throw new Error("exportação grande demais (mais de 300 MB): fale com o suporte");
       }
-      if (resp?.ok) arquivos[doc.nome] = somar(new Uint8Array(await resp.arrayBuffer()));
+      return somar(new Uint8Array(await resp.arrayBuffer()));
+    };
+    for (const doc of lista.documentos) {
+      const b = await baixarDocumento(doc.caminho);
+      if (b) arquivos[doc.nome] = b;
       else faltando.push(doc.nome);
     }
     for (const emp of lista.afd) {
@@ -209,7 +214,9 @@ async function gerar(token: string, id: string) {
       "esquema.json: as tabelas e os campos de cada uma.",
       "manifesto.sha256: o hash SHA-256 de cada arquivo, para conferir que nada foi alterado.",
       "",
-      "espelhos/: os espelhos de ponto emitidos, em PDF. documentos/: os documentos dos técnicos.",
+      "espelhos/: os espelhos de ponto emitidos, em PDF (só para quem tem acesso às folhas assinadas; sem esse acesso, as",
+      "colunas do espelho assinado em dados/ponto_espelhos.csv vão vazias). documentos/: os documentos dos técnicos, menos os",
+      "de saúde (ASO), que vão no pacote de saúde.",
       "afd/: o Arquivo Fonte de Dados de cada empregadora, do primeiro registro até hoje (ISO 8859-1).",
       "Dados de saúde (justificativas e atestados) saem aqui com o motivo como \"saude\" e os textos vazios; o completo",
       "vem num pacote à parte, só para quem tem permissão de ver saúde.",
@@ -229,10 +236,16 @@ async function gerar(token: string, id: string) {
         const [a] = await sql<{ b: string | null }[]>`select fn_exportar_anexo(${token}, ${id}::uuid, ${x.id}::uuid) as b`;
         if (a?.b) s[x.nome] = somar(deBase64(a.b));
       }
+      // documentos de saúde (ASO), que não vão no pacote comum (migration 145)
+      for (const doc of lista.documentos_saude ?? []) {
+        const b = await baixarDocumento(doc.caminho);
+        if (b) s[doc.nome] = b;
+      }
       s["LEIA-ME.txt"] = enc.encode([
         `Dados de saúde da conta "${d.nome}" no Trilha, gerados em ${gerado} (UTC).`,
         "Dado pessoal sensível (LGPD, art. 11): guarde em local protegido e com acesso restrito.",
         "saude/justificativas_saude.csv: as justificativas de saúde completas. saude/anexos/: os atestados enviados.",
+        "saude/documentos/: os documentos de saúde dos técnicos (ASO).",
       ].join("\r\n"));
       const cs = `${d.conta}/${id}_saude.zip`;
       saude = { caminho: cs, tamanho: (await empacotar(admin, s, cs)).tamanho };

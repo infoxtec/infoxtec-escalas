@@ -122,3 +122,26 @@
 - **Segurança e Arquiteto de dados não responderam** nesta rodada; os dois revisam cada PR de migration e de Edge Function antes do merge.
 - **Credencial de leitura da homologação** não existe: tudo que depende de medir o banco vivo segue sem verificação.
 - **P0 fecha até 05/11**; o 06/11 só sobe com o ensaio do switch verde.
+
+---
+
+## Revisão de 03/11 (reunião com Scrum Master, PO, CTO, segurança e arquiteto de dados; decisão 131)
+
+**A sprint não cabe** como estava: o resto pede ~8 pacotes, os dois pedidos novos (saúde protegida e ICP-Brasil) ~6, e a
+capacidade até 13/11 é de ~7 (o limite é o teste do responsável). A premissa "produção congelada até 05/11" estava
+errada: 131 a 143 subiram com o congelamento furado em 30/10.
+
+| Item | Estado em 03/11 |
+|---|---|
+| 15, 16 | Feitos (#191, #192). O 15 tem furos (renomear/apagar migration, dois PRs com a mesma versão): P1 |
+| 6 | Feito na F8c (máscara de saúde) |
+| 4, 1, 8 | Na migration 145 (matriz de acesso única), que vai à produção junto com a 144 |
+| 5+14 | D6 decidida: encerramento desligado até a F8d (migration 146) |
+| 18, 23 | Com a virada, que passou para 10/11 |
+| 2+7 | Aceite da decisão 128 em revisão com o responsável |
+| 3, 21 | P1 depois da saúde protegida |
+| 11, 12, 20 | Fora (D3, jurídico, URA desligada) |
+| Saúde protegida | P1, depois da 146 |
+| ICP-Brasil por conta | Fora: parecer jurídico até 07/11 |
+
+**Ordem:** 145 (hoje) → 146 → saúde protegida → 21, 3, furos do 15 → virada de 10/11 (18, 23).

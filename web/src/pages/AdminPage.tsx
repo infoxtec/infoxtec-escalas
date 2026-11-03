@@ -6,12 +6,14 @@ import AlertasPlataforma from '../components/AlertasPlataforma'
 import Exportacoes from '../components/Exportacoes'
 import type { ChecklistSaude, EstadoSaude, ItemSaude } from '../lib/types'
 
-// Checklist Sistema: o checklist e a exportação dos dados da conta (F8c, migration 143)
-const SECOES = [{ id: 'checklist', label: 'Checklist' }, { id: 'exportacao', label: 'Exportar dados' }] as const
-type Secao = typeof SECOES[number]['id']
+// Checklist Sistema: o checklist (só da plataforma: mostra a operação de todas as contas, migration 145) e a exportação
+// dos dados da conta (F8c, migration 143)
+const TODAS = [{ id: 'checklist', label: 'Checklist' }, { id: 'exportacao', label: 'Exportar dados' }] as const
+type Secao = typeof TODAS[number]['id']
 
 export default function AdminPage({ plataforma = false }: { plataforma?: boolean }) {
-  const [secao, setSecao] = useState<Secao>('checklist')
+  const SECOES = TODAS.filter(s => plataforma || s.id !== 'checklist')
+  const [secao, setSecao] = useState<Secao>(plataforma ? 'checklist' : 'exportacao')
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
