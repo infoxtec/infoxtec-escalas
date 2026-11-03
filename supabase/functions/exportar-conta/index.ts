@@ -8,11 +8,17 @@
 //    junto os links assinados de 7 dias, que o banco envia por e-mail aos administradores da conta.
 // 2. O painel chama com a sessão e {acao: 'link', id}: o banco confere quem pode (fn_exportacao_link) e a função devolve
 //    um link assinado de 10 minutos.
+// 3. Saúde protegida (migration 147): o painel chama com a sessão, o cabeçalho x-conta e {acao: 'saude'} logo depois de
+//    o administrador digitar o código do autenticador. A função lê no token a hora da verificação TOTP (amr), o banco
+//    confere termo aceito, ve_saude, os 5 minutos e o limite, e registra o download; a função monta o ZIP na hora, com
+//    marca d'água em cada atestado e ASO (quem, quando, código do download), e devolve um link de 60 s. O arquivo é
+//    apagado em 15 minutos pela manutenção.
 // Quem pode, o que entra e os limites ficam no banco. A chave de serviço só existe aqui.
 // Deploy: supabase functions deploy exportar-conta --no-verify-jwt
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import postgres from "npm:postgres@3.4.5";
 import { zipSync } from "npm:fflate@0.8.2";
+import { PDFDocument, StandardFonts, degrees, rgb } from "npm:pdf-lib@1.17.1";
 
 const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, {
   prepare: false, max: 2, idle_timeout: 20,
@@ -79,6 +85,101 @@ function nivelDaSessao(req: Request): string | null {
   }
 }
 
+/** Hora da última verificação TOTP vista no token (amr), já conferido no servidor de autenticação. */
+function horaDoTotp(req: Request): string | null {
+  try {
+    const parte = (req.headers.get("Authorization") ?? "").split(/\s+/)[1]?.split(".")[1] ?? "";
+    const amr = JSON.parse(atob(parte.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(parte.length / 4) * 4, "=")))?.amr;
+    const ts = Array.isArray(amr) ? Math.max(...amr.filter((a: { method?: string }) => a?.method === "totp").map((a: { timestamp?: number }) => Number(a.timestamp) || 0)) : 0;
+    return ts > 0 ? new Date(ts * 1000).toISOString() : null;
+  } catch {
+    return null;
+  }
+}
+
+// a fonte padrão do PDF só tem Latin-1: o que ficar fora vira "?"
+const latino = (t: string) => t.normalize("NFC").replace(/[^\x20-\xff]/g, "?");
+
+/** Marca d'água em todas as páginas; imagem vira PDF de uma página. null se o arquivo não puder ser marcado. */
+async function comMarca(bytes: Uint8Array, mime: string, marca: string): Promise<Uint8Array | null> {
+  try {
+    let doc: PDFDocument;
+    if (mime === "application/pdf") {
+      doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+    } else {
+      doc = await PDFDocument.create();
+      const img = mime === "image/png" ? await doc.embedPng(bytes) : await doc.embedJpg(bytes);
+      const pagina = doc.addPage([img.width, img.height]);
+      pagina.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+    }
+    const fonte = await doc.embedFont(StandardFonts.HelveticaBold);
+    const texto = latino(marca);
+    for (const pagina of doc.getPages()) {
+      const { width, height } = pagina.getSize();
+      const grande = Math.max(10, Math.min(width, height) / 28);
+      pagina.drawText(texto, { x: width * 0.12, y: height * 0.12, size: grande, font: fonte, color: rgb(0.8, 0.1, 0.1),
+        opacity: 0.25, rotate: degrees(Math.atan2(height, width) * 180 / Math.PI), maxWidth: Math.hypot(width, height) * 0.7 });
+      pagina.drawText(texto, { x: 12, y: 8, size: Math.max(6, grande / 3), font: fonte, color: rgb(0.6, 0.1, 0.1), opacity: 0.8 });
+    }
+    return await doc.save();
+  } catch {
+    return null;
+  }
+}
+
+type Saude = { id: string; conta: string; nome: string; quem: string; csv: string; anexos: { id: string; tipo: string; nome: string }[];
+  documentos: { caminho: string; mime: string | null; nome: string }[] };
+
+/** Download protegido de saúde: autorizado e registrado no banco, montado na hora com marca d'água. */
+async function gerarSaude(req: Request, email: string, admin: Record<string, string>): Promise<string> {
+  const conta = req.headers.get("x-conta") ?? "";
+  if (!UUID.test(conta)) throw Object.assign(new Error("Escolha a conta."), { code: "P0001" });
+  const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",").pop()?.trim() ?? null;
+  const [a] = await sql<{ r: Saude }[]>`select fn_saude_download_autorizar(${email}, ${nivelDaSessao(req)}, ${horaDoTotp(req)}::timestamptz, ${conta}::uuid, ${ip}) as r`;
+  const g = a.r;
+  const quando = new Date().toLocaleString("pt-BR", { timeZone: "America/Bahia" });
+  const marca = `CONFIDENCIAL - dado de saude (LGPD, art. 11) - ${g.quem} <${email}> - ${quando} - codigo ${g.id.slice(0, 8)}`;
+  const arquivos: Record<string, Uint8Array> = {};
+  const enc = new TextEncoder();
+  const naoMarcados: string[] = [];
+  try {
+    arquivos["saude/justificativas_saude.csv"] = enc.encode(g.csv);
+    let total = 0;
+    const guardar = (nome: string, b: Uint8Array | null) => {
+      if (!b) return naoMarcados.push(nome);
+      total += b.length;
+      if (total > LIMITE_BYTES) throw new Error("pacote de saúde grande demais (mais de 300 MB): fale com o suporte");
+      arquivos[nome] = b;
+    };
+    for (const x of g.anexos) {
+      const [b] = await sql<{ b: string | null }[]>`select fn_saude_anexo(${g.id}::uuid, ${x.id}::uuid) as b`;
+      if (b?.b) guardar(x.nome, await comMarca(deBase64(b.b), x.tipo, marca));
+    }
+    for (const d of g.documentos) {
+      const resp = await fetch(`${Deno.env.get("SUPABASE_URL")}/storage/v1/object/documentos/${d.caminho.split("/").map(encodeURIComponent).join("/")}`,
+        { headers: admin, signal: AbortSignal.timeout(60_000) }).catch(() => null);
+      if (!resp?.ok) { naoMarcados.push(d.nome); continue; }
+      const mime = (d.mime ?? resp.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+      guardar(d.nome.replace(/\.(png|jpe?g)$/i, ".pdf"), await comMarca(new Uint8Array(await resp.arrayBuffer()), mime, marca));
+    }
+    arquivos["LEIA-ME.txt"] = enc.encode([
+      `Dados de saúde da conta "${g.nome}" no Trilha.`,
+      `Baixado por ${g.quem} <${email}> em ${quando} (horário da Bahia), código do download ${g.id}.`,
+      "Dado pessoal sensível (LGPD, art. 11), sob o termo de sigilo aceito no painel. Cada arquivo leva a marca d'água de quem baixou.",
+      "saude/justificativas_saude.csv: as justificativas de saúde completas. saude/anexos/: os atestados. saude/documentos/: os ASO.",
+      ...(naoMarcados.length ? ["", "Arquivos que não puderam receber a marca d'água e por isso não foram incluídos (peça ao suporte):", ...naoMarcados] : []),
+    ].join("\r\n"));
+    const caminho = `${g.conta}/saude/${g.id}.zip`;
+    const pacote = await empacotar(admin, arquivos, caminho);
+    await sql`select fn_saude_resultado(${g.id}::uuid, true, ${caminho}, ${pacote.tamanho}, ${pacote.sha}, ${Object.keys(arquivos).length}, null)`;
+    return await linkAssinado(admin, caminho, 60);
+  } catch (err) {
+    const msg = (err instanceof Error ? err.message : "falha").slice(0, 200);
+    await sql`select fn_saude_resultado(${g.id}::uuid, false, null, null, null, null, ${msg})`.catch(() => {});
+    throw err;
+  }
+}
+
 /** Link assinado do Storage para o arquivo (validade em segundos). */
 async function linkAssinado(admin: Record<string, string>, arquivo: string, segundos: number): Promise<string> {
   const base = Deno.env.get("SUPABASE_URL");
@@ -135,7 +236,7 @@ async function limpar(token: string) {
   try {
     // só depois de o Storage confirmar a remoção o pacote sai da lista; senão, o motor manda apagar de novo
     const vencidos = await sql<{ id: string; arquivo: string }[]>`select id, arquivo from fn_exportacoes_vencidas(${token})`;
-    if (!admin || !vencidos.length) return;
+    if (!admin || !vencidos.length) throw new Error("nada a apagar");
     const resp = await fetch(`${Deno.env.get("SUPABASE_URL")}/storage/v1/object/${BUCKET}`, {
       method: "DELETE", headers: { ...admin, "Content-Type": "application/json" },
       body: JSON.stringify({ prefixes: vencidos.map((v) => v.arquivo) }), signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -143,7 +244,20 @@ async function limpar(token: string) {
     if (!resp?.ok) throw new Error(`remoção ${resp?.status ?? "sem resposta"}`);
     await sql`select fn_exportacoes_apagadas(${token}, ${[...new Set(vencidos.map((v) => v.id))]}::uuid[])`;
   } catch (err) {
-    console.error("exportar-conta: vencidos", err instanceof Error ? err.message.slice(0, 120) : "erro");
+    if (!(err instanceof Error && err.message === "nada a apagar")) console.error("exportar-conta: vencidos", err instanceof Error ? err.message.slice(0, 120) : "erro");
+  }
+  // downloads de saúde com mais de 15 minutos
+  try {
+    const saude = await sql<{ id: string; arquivo: string }[]>`select id, arquivo from fn_saude_vencidos(${token})`;
+    if (!admin || !saude.length) return;
+    const resp = await fetch(`${Deno.env.get("SUPABASE_URL")}/storage/v1/object/${BUCKET}`, {
+      method: "DELETE", headers: { ...admin, "Content-Type": "application/json" },
+      body: JSON.stringify({ prefixes: saude.map((v) => v.arquivo) }), signal: AbortSignal.timeout(TIMEOUT_MS),
+    }).catch(() => null);
+    if (!resp?.ok) throw new Error(`remoção ${resp?.status ?? "sem resposta"}`);
+    await sql`select fn_saude_apagados(${token}, ${saude.map((v) => v.id)}::uuid[])`;
+  } catch (err) {
+    console.error("exportar-conta: saúde vencida", err instanceof Error ? err.message.slice(0, 120) : "erro");
   }
 }
 
@@ -296,13 +410,14 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true }, 202);
   }
 
-  // 2. painel: link para baixar (o pacote, ou o de saúde com {saude: true})
-  if (corpo.acao !== "link" || !id) return json({ ok: false, erro: "Ação desconhecida." }, 400);
+  // 2. painel: link para baixar o pacote; 3. download protegido de saúde
+  if (!(corpo.acao === "link" && id) && corpo.acao !== "saude") return json({ ok: false, erro: "Ação desconhecida." }, 400);
   const email = await emailVerificado(req);
   if (!email) return json({ ok: false, erro: "Sessão expirada. Entre novamente." }, 401);
   const admin = cabecalhosAdmin();
   if (!admin) return json({ ok: false, erro: "Exportação indisponível: falta a chave de serviço na função." }, 500);
   try {
+    if (corpo.acao === "saude") return json({ ok: true, url: await gerarSaude(req, email, admin) });
     const [l] = await sql<{ a: string }[]>`select fn_exportacao_link(${email}, ${nivelDaSessao(req)}, ${id}::uuid, ${corpo.saude === true}) as a`;
     return json({ ok: true, url: await linkAssinado(admin, l.a, 600) });
   } catch (err) {

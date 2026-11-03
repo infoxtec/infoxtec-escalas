@@ -254,6 +254,24 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 147 (03/11, versão 20261119120000): saúde protegida (decisão 132)
+
+O dado de saúde (ASO e exames do PCMSO, `tipos_documento.saude`) sai da exportação e passa a ter um download próprio,
+pedido do responsável de 03/11: termo de sigilo aceito, código novo da verificação em duas etapas e marca d'água em cada
+arquivo. Tabelas novas em `interno`: `saude_termos` (da plataforma: versão, texto e sha256; v1 do jurídico),
+`saude_termo_aceites` (conta, e-mail, versão, sha256 e IP; imutável) e `saude_downloads` (quem, quando, IP, versão do
+termo, hora do código, estado e o arquivo). Painel: `app_saude_termo()` e `app_saude_aceitar_termo(versao)`, só para
+administrador da conta com `ve_saude`. A Edge Function `exportar-conta` (ação `saude`) chama
+`fn_saude_download_autorizar(email, aal, hora do código, conta, ip)`: exige `aal2` com código de no máximo 5 minutos,
+administrador ativo da conta com `ve_saude`, conta ativa, termo vigente aceito e no máximo 5 downloads em 24 h; devolve o
+CSV (`fn_saude_csv`), os anexos e documentos de saúde. Cada arquivo sai com a marca (nome, e-mail, data e código do
+download); o que não pôde ser marcado fica listado no LEIA-ME. Os anexos são lidos por `fn_saude_anexo` só nos 10 minutos
+seguintes e cada leitura entra em `ponto_anexo_acessos`. O zip fica no Storage com link de 60 s e é apagado em 15 minutos
+(`fn_saude_vencidos`/`fn_saude_apagados`, fase 8 do motor), inclusive o que ficou `gerando` ou `falhou` sem o
+resultado gravado (o caminho `conta/saude/id.zip` é previsível). Termo e aceites são imutáveis (gatilhos de update,
+delete e truncate): versão nova do termo é linha nova e pede novo aceite. Tentativa que falha conta no limite de 5. A exportação deixa de levar o pacote de saúde:
+`app_conta_exportar` pede sempre sem saúde e `fn_exportacao_link` recusa o link de saúde antigo. Regressão: T84 e T86.
+
 ### Migration 146 (03/11, versão 20261118120000): encerramento de conta desligado (D6, decisão 131)
 
 `app_plataforma_encerrar_conta` recusa enquanto a config `encerramento_ativo` não for `true` (a F8d liga): a conta

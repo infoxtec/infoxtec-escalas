@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Download, HeartPulse, Loader2, RefreshCw } from 'lucide-react'
+import { Download, Loader2, RefreshCw } from 'lucide-react'
 import { Button, ErrorBox, useToast } from './ui'
 import { api, erroMsg, linkExportacao } from '../lib/api'
 import type { Exportacao } from '../lib/types'
+import SaudeProtegida from './SaudeProtegida'
 
 const ESTADO: Record<Exportacao['estado'], string> = {
   pendente: 'na fila', gerando: 'gerando', pronta: 'pronta', falhou: 'falhou', expirando: 'vencida', expirada: 'vencida',
@@ -53,7 +54,7 @@ export default function Exportacoes({ conta }: { conta?: string }) {
         <p className="text-xs text-muted-foreground">
           Cópia completa dos dados da conta: uma planilha (CSV) por tabela, os espelhos de ponto emitidos, os documentos dos
           técnicos, o AFD de cada empregadora e o manifesto com o hash de cada arquivo. Fica disponível por 7 dias. Os dados de
-          saúde vêm num pacote à parte, só para quem tem permissão de ver saúde.
+          saúde saem só pelo download protegido abaixo.
         </p>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => void carregar()}><RefreshCw className="h-3.5 w-3.5" /> Atualizar</Button>
@@ -62,6 +63,7 @@ export default function Exportacoes({ conta }: { conta?: string }) {
           </Button>
         </div>
       </div>
+      {!conta && <SaudeProtegida />}
       {erro && <ErrorBox>{erro}</ErrorBox>}
       {!lista ? (erro ? null : <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin" /></div>)
         : lista.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma exportação ainda.</p> : (
@@ -86,8 +88,6 @@ export default function Exportacoes({ conta }: { conta?: string }) {
                   <td className="px-3 py-2 text-right">
                     {e.estado === 'pronta' && <div className="flex justify-end gap-1">
                       {e.pode_baixar !== false && <Button variant="outline" size="sm" onClick={() => void baixar(e.id)}><Download className="h-3.5 w-3.5" /> Baixar</Button>}
-                      {e.saude && <Button variant="outline" size="sm" onClick={() => void baixar(e.id, true)} title="Justificativas de saúde e atestados (dado sensível)">
-                        <HeartPulse className="h-3.5 w-3.5" /> Saúde</Button>}
                     </div>}
                   </td>
                 </tr>
