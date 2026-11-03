@@ -254,6 +254,12 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 146 (03/11, versão 20261118120000): encerramento de conta desligado (D6, decisão 131)
+
+`app_plataforma_encerrar_conta` recusa enquanto a config `encerramento_ativo` não for `true` (a F8d liga): a conta
+encerrada prometia a exclusão dos dados em 30 dias, que não existe. Para parar um cliente, a suspensão (`ativa = false`).
+Reabrir continua valendo. Painel 3.65.0 sem o botão de encerrar e sem a data de exclusão. Regressão: T82.
+
 ### Migration 145 (03/11, versão 20261117120000): matriz de acesso única (auditoria de 01/11, itens 1, 4, 6 e 8)
 
 Exportação por lista branca: `fn_exportar_tabelas` só devolve as tabelas listadas nela e ganha a coluna `folha` (em
