@@ -4807,6 +4807,20 @@ begin
   perform fn_exportacao_dados(v_tok, v_id2);
   v_csv := fn_exportar_csv(v_tok, v_id2, 'ponto_espelhos', 0, 20000);
   perform pg_temp.ok(position(replace(v_txt, '"', '""') in v_csv) > 0, '[T85] com rh_folhas, o espelho vai inteiro');
+  -- e na hora de baixar: o pacote com folha só para quem tem rh_folhas; a plataforma não leva
+  perform fn_exportacao_resultado(v_tok, v_id2, true, v_um || '/' || v_id2 || '.zip', 1, repeat('5', 64), null);
+  update conta_membros set rh_folhas = false where conta_id = v_um and email = 'qa-admin@teste.local';
+  v_ok := false;
+  begin perform fn_exportacao_link('qa-admin@teste.local', 'aal2', v_id2); exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
+  perform pg_temp.ok(v_ok, '[T85] sem rh_folhas não baixa o pacote com folha');
+  update conta_membros set rh_folhas = true where conta_id = v_um and email = 'qa-admin@teste.local';
+  perform pg_temp.ok(fn_exportacao_link('qa-admin@teste.local', 'aal2', v_id2) is not null, '[T85] com rh_folhas baixa');
+  update conta_membros set rh_folhas = false where conta_id = v_um and email = 'qa-admin@teste.local';
+  insert into plataforma_admins (email) values ('qa-plat85@teste.local') on conflict do nothing;
+  v_ok := false;
+  begin perform fn_exportacao_link('qa-plat85@teste.local', 'aal2', v_id2); exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
+  perform pg_temp.ok(v_ok, '[T85] plataforma não baixa o pacote com folha');
+  delete from plataforma_admins where email = 'qa-plat85@teste.local';
   update conta_exportacoes set estado = 'falhou' where id = v_id2;
   -- plataforma: só o pacote comum
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
@@ -4815,8 +4829,10 @@ begin
   perform pg_temp.ok((select not com_folha and not com_saude from conta_exportacoes where id = v_id), '[T85] plataforma sem folha nem saúde');
   -- ASO é saúde (o nome marca sozinho); o NR não
   insert into tipos_documento (nome, conta_id) values ('ASO periódico qa85', v_b) returning id into v_tipo;
+  insert into tipos_documento (nome, conta_id) values ('Exame admissional qa85', v_b);
   perform pg_temp.ok((select saude from tipos_documento where id = v_tipo)
-                     and not (select saude from tipos_documento where nome like 'NR-10%' limit 1), '[T85] ASO marcado como saúde');
+                     and (select saude from tipos_documento where nome = 'Exame admissional qa85')
+                     and not (select saude from tipos_documento where nome like 'NR-10%' limit 1), '[T85] ASO e exame do PCMSO marcados como saúde');
   select id into v_tec from tecnicos where conta_id = v_b limit 1;
   insert into documentos (tecnico_id, caminho, nome_arquivo, enviado_por, tipo_documento_id, ocr_texto, conta_id)
   values (v_tec, v_tec || '/qa85.pdf', 'aso.pdf', 'qa', v_tipo, 'qa85 exame clinico', v_b) returning id into v_doc;

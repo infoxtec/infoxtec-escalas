@@ -656,4 +656,5 @@ export interface Exportacao {
   pedido_por: string; criado_em: string; concluido_em: string | null; expira_em: string | null; tamanho: number | null
   manifesto_sha256: string | null; erro: string | null
   saude?: boolean; tamanho_saude?: number | null; baixas?: number   // F8c-2, migration 144
+  pode_baixar?: boolean   // pacote com o espelho assinado: só quem tem acesso às folhas (migration 145)
 }

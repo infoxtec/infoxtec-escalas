@@ -264,7 +264,7 @@ encerramento levam só o pacote comum. `tipos_documento.saude` (o ASO é marcado
 `tg_tipo_documento_saude`): o arquivo só abre para quem tem `ve_saude` (`app_pode_gerir_documento`, política do bucket
 `documentos`); `app_documentos` devolve a linha sem `caminho` e com `restrito` para quem não tem, e o papel `leitura` nem
 vê; na exportação, o `ocr_texto` do ASO vai vazio e o arquivo sai só no pacote de saúde (`documentos_saude`).
-`app_checklist_saude` e `app_checklist_testar` passam a ser só da plataforma. Os pacotes prontos antes desta correção
+`fn_exportacao_link` confere de novo na hora de baixar: pacote com `com_folha` só para administrador da conta com `rh_folhas`, e a plataforma só baixa o pacote comum; `app_exportacoes` devolve `pode_baixar`. O ASO e os exames do PCMSO (admissional, periódico, demissional, retorno, mudança de função) são marcados pelo nome. `app_checklist_saude` e `app_checklist_testar` passam a ser só da plataforma. Os pacotes prontos antes desta correção
 vencem na aplicação. Regressão: T85 (e T22/T26 com login da plataforma).
 
 ### Migration 144 (03/11, versão 20261116120000): arquivos e saúde na exportação, multiempresa F8c-2

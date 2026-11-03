@@ -10,15 +10,16 @@ set lock_timeout = '5s';
 alter table interno.conta_exportacoes add column com_folha boolean not null default false;
 alter table interno.tipos_documento add column saude boolean not null default false;
 
--- ASO é saúde: os que existem e os que forem cadastrados com esse nome (o painel ainda não tem a opção)
-update interno.tipos_documento set saude = true where nome ~* '(^|[^a-z])aso([^a-z]|$)|atestado de sa[uú]de';
+-- ASO e exames do PCMSO são saúde: os que existem e os que forem cadastrados com esses nomes (a marcação manual pelo
+-- painel vem numa migration seguinte)
+update interno.tipos_documento set saude = true where nome ~* '(^|[^a-z])(aso|pcmso)([^a-z]|$)|atestado (de sa[uú]de|m[eé]dico)|exame (admissional|peri[oó]dico|demissional|de retorno|de mudan[cç]a)|retorno ao trabalho|mudan[cç]a de fun[cç][aã]o';
 create or replace function interno.fn_tipo_documento_saude()
  returns trigger
  language plpgsql
  set search_path to 'interno', 'public', 'extensions', 'pg_temp'
 as $function$
 begin
-  if new.nome ~* '(^|[^a-z])aso([^a-z]|$)|atestado de sa[uú]de' then new.saude := true; end if;
+  if new.nome ~* '(^|[^a-z])(aso|pcmso)([^a-z]|$)|atestado (de sa[uú]de|m[eé]dico)|exame (admissional|peri[oó]dico|demissional|de retorno|de mudan[cç]a)|retorno ao trabalho|mudan[cç]a de fun[cç][aã]o' then new.saude := true; end if;
   return new;
 end $function$;
 create trigger tg_tipo_documento_saude before insert or update of nome on interno.tipos_documento
@@ -581,6 +582,61 @@ begin
   return jsonb_build_object('conta', e.conta_id, 'origem', e.origem, 'com_saude', e.com_saude, 'com_folha', e.com_folha,
     'nome', (select nome from contas where id = e.conta_id),
     'tabelas', (select jsonb_agg(jsonb_build_object('tabela', t.tabela, 'colunas', t.colunas)) from fn_exportar_tabelas() t));
+end $function$
+;
+
+-- o link confere de novo, na hora de baixar, quem pode levar o espelho assinado (revisão do seguranca)
+CREATE OR REPLACE FUNCTION interno.fn_exportacao_link(p_email text, p_aal text, p_id uuid, p_saude boolean DEFAULT false)
+ RETURNS text
+ LANGUAGE plpgsql
+ SET search_path TO 'interno', 'public', 'extensions', 'pg_temp'
+AS $function$
+declare
+  e conta_exportacoes;
+  v_email text := lower(btrim(coalesce(p_email, '')));
+  v_admin boolean;
+  v_plat  boolean;
+begin
+  if coalesce(p_aal, '') <> 'aal2' then raise exception 'Confirme a verificação em duas etapas para baixar.'; end if;
+  select * into e from conta_exportacoes where id = p_id for update;
+  v_plat := exists (select 1 from plataforma_admins where email = v_email);
+  v_admin := e.id is not null and exists (select 1 from conta_membros m join contas c on c.id = m.conta_id
+                                where m.conta_id = e.conta_id and m.email = v_email and m.papel = 'admin' and m.ativo and c.ativa
+                                  and (not coalesce(p_saude, false) or m.ve_saude));
+  -- o pacote com o espelho assinado só para quem tem rh_folhas na conta do pacote; a plataforma, só o pacote comum
+  if e.id is null or not (
+       (v_admin and (not e.com_folha or exists (select 1 from conta_membros m
+          where m.conta_id = e.conta_id and m.email = v_email and m.ativo and m.rh_folhas)))
+    or (v_plat and not coalesce(p_saude, false) and not e.com_folha and not e.com_saude)) then
+    raise exception 'Sem permissão para esta ação.';
+  end if;
+  if e.estado <> 'pronta' or e.expira_em <= now() then raise exception 'Exportação vencida ou ainda não pronta.'; end if;
+  if coalesce(p_saude, false) and e.arquivo_saude is null then raise exception 'Esta exportação não tem o pacote de saúde.'; end if;
+  update conta_exportacoes set baixadas = baixadas + 1 where id = p_id;
+  insert into conta_exportacao_baixas (conta_id, exportacao_id, email, saude) values (e.conta_id, e.id, v_email, coalesce(p_saude, false));
+  return case when coalesce(p_saude, false) then e.arquivo_saude else e.arquivo end;
+end $function$
+;
+
+CREATE OR REPLACE FUNCTION public.app_exportacoes()
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'interno', 'public', 'extensions', 'pg_temp'
+AS $function$
+declare v_email text := app_exigir(array['admin']); v_conta uuid; v_saude boolean; v_folha boolean;
+begin
+  v_conta := interno.fn_conta_atual();
+  v_saude := interno.fn_ve_saude(v_email);
+  v_folha := interno.fn_rh_folhas(v_email);
+  return coalesce((select jsonb_agg(jsonb_build_object('id', e.id, 'origem', e.origem, 'estado', e.estado, 'pedido_por', e.pedido_por,
+      'criado_em', e.criado_em, 'concluido_em', e.concluido_em, 'expira_em', e.expira_em, 'tamanho', e.tamanho,
+      'manifesto_sha256', e.manifesto_sha256, 'erro', e.erro,
+      'pode_baixar', v_folha or not e.com_folha,   -- o pacote com o espelho assinado só para quem tem rh_folhas
+      'saude', v_saude and e.arquivo_saude is not null, 'tamanho_saude', case when v_saude then e.tamanho_saude end,
+      'baixas', (select count(*) from interno.conta_exportacao_baixas b where b.conta_id = e.conta_id and b.exportacao_id = e.id))
+      order by e.criado_em desc)
+    from (select * from interno.conta_exportacoes where conta_id = v_conta order by criado_em desc limit 20) e), '[]'::jsonb);
 end $function$
 ;
 
