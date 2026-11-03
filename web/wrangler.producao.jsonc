@@ -1,0 +1,10 @@
+// Painel da PRODUÇÃO no Cloudflare (A3, decisão 133): igual a ../wrangler.producao.jsonc, com o caminho a partir de web/.
+// Build: npm run build:producao; deploy: npx --yes wrangler@4.151.3 deploy --config wrangler.producao.jsonc
+{
+  "name": "trilha",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
