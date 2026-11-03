@@ -1,0 +1,76 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kanban — priorização da auditoria (02–13/11)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+:root{--tinta:#1b1b1f;--papel:#f7f6f2;--linha:#e3e0d8;--card:#fff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--papel);color:var(--tinta);font:15px/1.5 'Source Sans 3',system-ui,sans-serif}
+header.topo{padding:28px 32px 18px;border-bottom:1px solid var(--linha);background:#fff}
+header.topo h1{margin:0 0 6px;font-size:26px;letter-spacing:-.02em}
+header.topo p{margin:0;color:#5d6d7e;max-width:900px}
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
+.legenda{display:flex;gap:18px;flex-wrap:wrap;padding:12px 32px;background:#fff;border-bottom:1px solid var(--linha);font-size:13px}
+.legenda b{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+.board{display:grid;grid-template-columns:repeat(4,minmax(280px,1fr));gap:18px;padding:24px 32px 40px;align-items:start}
+.col{background:#fff;border:1px solid var(--linha);border-radius:12px;border-top:4px solid var(--cor);overflow:hidden}
+.col>header{padding:14px 16px 10px;border-bottom:1px solid var(--linha)}
+.col h2{margin:0;font-size:15px;letter-spacing:.01em}
+.col .sub{font-size:12px;color:#5d6d7e}
+.cards{display:flex;flex-direction:column;gap:10px;padding:12px;background:#fbfaf7}
+.card{background:var(--card);border:1px solid var(--linha);border-left:3px solid var(--cor);border-radius:8px;padding:11px 12px}
+.card h3{margin:4px 0 5px;font-size:14px;line-height:1.3}
+.card p{margin:0;font-size:12.5px;color:#4a5560}
+.linha1{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.id{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700}
+.dono{font-size:11px;color:#5d6d7e;background:#f1efe9;border-radius:99px;padding:1px 8px}
+.ef{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--cor);border:1px solid var(--cor);border-radius:4px;padding:0 5px}
+footer{padding:20px 32px 40px;border-top:1px solid var(--linha);background:#fff}
+footer h2{font-size:16px;margin:0 0 8px}
+footer ol{margin:0 0 16px;padding-left:20px;font-size:13.5px}
+footer p{margin:0;color:#5d6d7e;font-size:13px}
+@media (max-width:1100px){.board{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:680px){.board{grid-template-columns:1fr}}
+</style></head><body>
+<header class="topo">
+  <h1>Kanban — priorização da auditoria</h1>
+  <p><span class="mono">02–13/11/2026</span> · 23 cartões, 18 em sprint e 5 cortados. Cada cartão traz o dono, o esforço (P/M/G) e a razão em uma linha. Detalhe com o cenário A/B em <a href="sprint-02-13-nov.md">sprint-02-13-nov.md</a>.</p>
+</header>
+<div class="legenda">
+  <span><b style="background:#c0392b"></b>P0 — protege 06/11</span>
+  <span><b style="background:#d68910"></b>P1 — primeira assinatura</span>
+  <span><b style="background:#b7950b"></b>P2 — segundo cliente</span>
+  <span><b style="background:#5d6d7e"></b>Cortado, com motivo</span>
+</div>
+<main class="board"><section class="col" style="--cor:#c0392b"><header><h2>P0 — até 05/11</h2><span class="sub">protege a virada de 06/11 · 7 cartões</span></header><div class="cards"><article class="card"><div class="linha1"><span class="id">#15</span><span class="dono">arquiteto-dados</span><span class="ef">P</span></div><h3>Numeração de migration acima da 143</h3><p>A 143 é 20261115120000 e hoje é 01/11: migration new nasce atrás e o db push recusa.</p></article>
+<article class="card"><div class="linha1"><span class="id">#16</span><span class="dono">scrum-master</span><span class="ef">P</span></div><h3>Congelamento falha fechado</h3><p>Variável apagada ou malformada desliga a trava sem erro, no meio da janela de 01 a 05/11.</p></article>
+<article class="card"><div class="linha1"><span class="id">#18</span><span class="dono">fullstack</span><span class="ef">M</span></div><h3>Funções e ORIGEM_PAINEL no switch</h3><p>No dia 06/11 o OCR, o convite, a exportação e o 2FA caem: o regex só aceita *.vercel.app.</p></article>
+<article class="card"><div class="linha1"><span class="id">#23</span><span class="dono">fullstack</span><span class="ef">M</span></div><h3>CSP em Report-Only no Worker</h3><p>Sem CSP, um XSS leva a sessão do painel e o token do ponto. A virada é a janela.</p></article>
+<article class="card"><div class="linha1"><span class="id">#1</span><span class="dono">dev-banco</span><span class="ef">P</span></div><h3>Checklist só da plataforma</h3><p>Qualquer admin de cliente vê cron, Vault, Evolution e volume de todas as contas.</p></article>
+<article class="card"><div class="linha1"><span class="id">#4+6</span><span class="dono">dev-banco</span><span class="ef">M</span></div><h3>Exportação com cofre e máscara de saúde</h3><p>Admin sem rh_folhas leva folha assinada e texto de saúde no CSV.</p></article>
+<article class="card"><div class="linha1"><span class="id">#5+14</span><span class="dono">PO + dev-banco</span><span class="ef">P</span></div><h3>Encerramento desligado até a F8d</h3><p>O e-mail promete exclusão em 30 dias e ninguém apaga; pior que não prometer.</p></article></div></section><section class="col" style="--cor:#d68910"><header><h2>P1 — até 12/11</h2><span class="sub">a primeira assinatura · 7 cartões</span></header><div class="cards"><article class="card"><div class="linha1"><span class="id">#2+7</span><span class="dono">seguranca + dev-banco</span><span class="ef">M</span></div><h3>2FA: recuperação entre contas e fator na sessão</h3><p>O fator é global e o telefone é por conta: admin de A derruba o 2FA de B.</p></article>
+<article class="card"><div class="linha1"><span class="id">#3</span><span class="dono">dev-banco</span><span class="ef">M</span></div><h3>Teto de códigos e erros por conta</h3><p>300 erros põem todos em modo restrito e o login do ponto de todos os clientes para.</p></article>
+<article class="card"><div class="linha1"><span class="id">#8</span><span class="dono">dev-banco</span><span class="ef">P</span></div><h3>Papel leitura não vê ASO</h3><p>O menor privilégio descobre que o trabalhador fez exame ocupacional.</p></article>
+<article class="card"><div class="linha1"><span class="id">#11</span><span class="dono">dev-banco</span><span class="ef">M</span></div><h3>Módulo contratado aplicado no banco</h3><p>conta_modulos não é lido por nenhuma função: quem comprou escala usa o ponto.</p></article>
+<article class="card"><div class="linha1"><span class="id">#20</span><span class="dono">fullstack</span><span class="ef">M</span></div><h3>URA com assinatura obrigatória</h3><p>Token na URL é a única defesa; a assinatura é calculada e ignorada.</p></article>
+<article class="card"><div class="linha1"><span class="id">#21</span><span class="dono">fullstack</span><span class="ef">P</span></div><h3>Webhook devolve 5xx em falha de infraestrutura</h3><p>Erro de banco vira 200 e a mensagem do técnico some sem retry.</p></article>
+<article class="card"><div class="linha1"><span class="id">#12</span><span class="dono">dev-banco + juridico</span><span class="ef">M</span></div><h3>Expurgo do texto livre</h3><p>O aviso promete 5 anos e respostas.texto_livre nunca expira.</p></article></div></section><section class="col" style="--cor:#b7950b"><header><h2>P2 — segundo cliente</h2><span class="sub">depois da assinatura · 4 cartões</span></header><div class="cards"><article class="card"><div class="linha1"><span class="id">#9</span><span class="dono">fullstack</span><span class="ef">M</span></div><h3>Exportação sem tudo em memória</h3><p>Conta grande mata a Edge Function e a portabilidade falha no encerramento.</p></article>
+<article class="card"><div class="linha1"><span class="id">#17</span><span class="dono">infra-bd</span><span class="ef">P</span></div><h3>Cron × checklist</h3><p>O checklist exige 5 das 6 tarefas; o espelho-pdf pode parar sem ninguém ver.</p></article>
+<article class="card"><div class="linha1"><span class="id">#19</span><span class="dono">scrum-master</span><span class="ef">P</span></div><h3>RLS do Storage no CI</h3><p>Policy reescrita sem filtro de conta passa no CI e vaza documento entre contas.</p></article>
+<article class="card"><div class="linha1"><span class="id">#24</span><span class="dono">fullstack</span><span class="ef">P</span></div><h3>Painel resiste a RPC auxiliar</h3><p>Uma métrica fora do ar apaga a tela inteira do gestor.</p></article></div></section><section class="col" style="--cor:#5d6d7e"><header><h2>Cortados</h2><span class="sub">com motivo · 5 cartões</span></header><div class="cards"><article class="card"><div class="linha1"><span class="id">#10</span></div><h3>Link do pacote de 7 dias</h3><p>Decisão 129 confirmou 7 dias; reabrir é decisão do responsável.</p></article>
+<article class="card"><div class="linha1"><span class="id">#13</span></div><h3>Guarda de 5 anos restaurável</h3><p>Custo e destino da cópia são decisão do responsável.</p></article>
+<article class="card"><div class="linha1"><span class="id">#22</span></div><h3>IP no HMAC</h3><p>Medir a borda antes: pode ser documentação, não defeito.</p></article>
+<article class="card"><div class="linha1"><span class="id">#25</span></div><h3>Bundle do /ponto</h3><p>Otimização; o funcionário bate ponto hoje.</p></article>
+<article class="card"><div class="linha1"><span class="id">#26</span></div><h3>Plano e evidências velhos</h3><p>Chore de documentação, entra no PR do deploy.</p></article></div></section></main>
+<footer>
+  <h2>Decisões que dependem do responsável</h2>
+  <ol>
+    <li>MFA obrigatório para admin e plataforma (decisão 67)</li>
+    <li>URA com assinatura da Twilio obrigatória (decisões 54/109)</li>
+    <li>Módulo aplicado no banco, ou venda só do pacote completo</li>
+    <li>Guarda de 5 anos: custo e destino do arquivo</li>
+    <li>Link do pacote: 7 dias (decisão 129) ou 24 h</li>
+    <li>Exclusão prometida: implementar a F8d ou retirar a promessa agora</li>
+  </ol>
+  <p>Planejamento de 01/11 com consultor SaaS, PO, Scrum Master e CTO. Segurança e Arquiteto de dados não responderam; os dois revisam cada PR de banco e Edge Function antes do merge.</p>
+</footer>
+</body></html>
