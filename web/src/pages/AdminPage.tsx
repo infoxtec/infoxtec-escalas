@@ -3,34 +3,16 @@ import { AlertTriangle, CheckCircle2, ExternalLink, Info, Loader2, RefreshCw, XC
 import { Button, ErrorBox } from '../components/ui'
 import { api, erroMsg } from '../lib/api'
 import AlertasPlataforma from '../components/AlertasPlataforma'
-import Exportacoes from '../components/Exportacoes'
 import type { ChecklistSaude, EstadoSaude, ItemSaude } from '../lib/types'
 
-// Checklist Sistema: o checklist (só da plataforma: mostra a operação de todas as contas, migration 145) e a exportação
-// dos dados da conta (F8c, migration 143)
-const TODAS = [{ id: 'checklist', label: 'Checklist' }, { id: 'exportacao', label: 'Exportar dados' }] as const
-type Secao = typeof TODAS[number]['id']
-
-export default function AdminPage({ plataforma = false }: { plataforma?: boolean }) {
-  const SECOES = TODAS.filter(s => plataforma || s.id !== 'checklist')
-  const [secao, setSecao] = useState<Secao>(plataforma ? 'checklist' : 'exportacao')
+// Checklist Sistema: só da plataforma (mostra a operação de todas as contas, migration 145). A exportação dos dados da
+// conta fica em Empresas, na administração da conta (03/11)
+export default function AdminPage() {
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <h1 className="text-lg font-semibold">Checklist Sistema</h1>
-        {SECOES.length > 1 && <span className="text-muted-foreground">›</span>}
-        {SECOES.length > 1 && <div className="flex gap-1">
-          {SECOES.map(s => (
-            <button key={s.id} onClick={() => setSecao(s.id)}
-              className={`rounded-md px-2.5 py-1 text-sm ${secao === s.id ? 'bg-muted font-medium' : 'text-muted-foreground hover:bg-muted'}`}>
-              {s.label}
-            </button>
-          ))}
-        </div>}
-      </div>
-      {secao === 'checklist' && plataforma && <AlertasPlataforma />}
-      {secao === 'checklist' && <Checklist />}
-      {secao === 'exportacao' && <Exportacoes />}
+      <h1 className="text-lg font-semibold">Checklist Sistema</h1>
+      <AlertasPlataforma />
+      <Checklist />
     </div>
   )
 }

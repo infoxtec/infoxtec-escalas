@@ -182,9 +182,8 @@ function Painel({ email }: { email: string }) {
     ...(papel === 'admin' ? [
       { id: 'usuarios' as Aba, label: 'Usuários', Icone: ShieldCheck },
       { id: 'roadmap' as Aba, label: 'Roadmap', Icone: Rocket },
-      { id: 'admin' as Aba, label: 'Checklist Sistema', Icone: Settings },
     ] : []),
-    ...(acesso.plataforma ? [{ id: 'contas' as Aba, label: 'Contas', Icone: Briefcase }, { id: 'feriados' as Aba, label: 'Feriados', Icone: CalendarDays }] : []),
+    ...(acesso.plataforma ? [{ id: 'admin' as Aba, label: 'Checklist Sistema', Icone: Settings }, { id: 'contas' as Aba, label: 'Contas', Icone: Briefcase }, { id: 'feriados' as Aba, label: 'Feriados', Icone: CalendarDays }] : []),
   ]
 
   return (
@@ -262,7 +261,7 @@ function Painel({ email }: { email: string }) {
         {aba === 'roadmap' && papel === 'admin' && <RoadmapPage podeEditar />}
         {aba === 'contas' && acesso.plataforma && <ContasPage />}
         {aba === 'feriados' && acesso.plataforma && <FeriadosPage />}
-        {aba === 'admin' && papel === 'admin' && <AdminPage plataforma={acesso.plataforma} />}
+        {aba === 'admin' && acesso.plataforma && <AdminPage />}
       </main>
     </div>
   )
