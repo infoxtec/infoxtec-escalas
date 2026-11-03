@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Edit2, Loader2, Plus, RefreshCw } from 'lucide-react'
 import { Button, ErrorBox, Field, Input, Modal, Select, ToggleRow } from '../components/ui'
 import { api, consultarCadastro, erroMsg } from '../lib/api'
+import Exportacoes from '../components/Exportacoes'
 import { LOGOS_EMPRESA, cnpjValido, enderecoDaConsulta, formatCnpj, limparCnpj, logoEmpresa, mascaraCep, mascaraCnpj } from '../lib/types'
 import type { Empresa } from '../lib/types'
 
@@ -101,6 +102,12 @@ export default function EmpresasPage({ podeEditar, ehAdmin }: { podeEditar: bool
           </table>
         </div>
       )}
+
+      {/* exportação dos dados e download protegido de saúde: administração da conta (pedido do responsável, 03/11) */}
+      {ehAdmin && <section className="space-y-2 border-t pt-4">
+        <h2 className="text-base font-semibold">Exportar dados da conta</h2>
+        <Exportacoes />
+      </section>}
 
       <Modal open={!!edit} onClose={() => { if (!salvando) setEdit(null) }} title={edit?.id ? 'Editar empresa' : 'Nova empresa'}
         footer={<>
