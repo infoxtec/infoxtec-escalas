@@ -88,8 +88,14 @@ jobs:
             echo "::error::DB_URL do ambiente $DESTINO não é o Session pooler do projeto $esperado (veja o NÃO acima)"; exit 1
           fi
           echo "REF=$ref" >> "$GITHUB_ENV"
-          if [ "$DESTINO" = producao ] && [ -n "$CONGELADA_ATE" ] && [ "$(date -u +%F)" \< "$(date -u -d "$CONGELADA_ATE + 1 day" +%F)" ]; then
-            echo "::error::Produção congelada até $CONGELADA_ATE (variável CONGELADA_ATE)"; exit 1
+          if [ "$DESTINO" = producao ] && [ -n "$CONGELADA_ATE" ]; then
+            if [[ "$CONGELADA_ATE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] && date -u -d "$CONGELADA_ATE" >/dev/null 2>&1; then
+              if [ "$(date -u +%F)" \< "$(date -u -d "$CONGELADA_ATE + 1 day" +%F)" ]; then
+                echo "::error::Produção congelada até $CONGELADA_ATE (variável CONGELADA_ATE)"; exit 1
+              fi
+            else
+              echo "::error::CONGELADA_ATE precisa ser AAAA-MM-DD (veio '$CONGELADA_ATE')"; exit 1
+            fi
           fi
           if [ -n "$ATE" ]; then
             [[ "$ATE" =~ ^[0-9]{14}$ ]] || { echo "::error::'ate' precisa ter 14 dígitos"; exit 1; }
