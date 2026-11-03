@@ -1,0 +1,13 @@
+// Painel da PRODUÇÃO no Cloudflare (A3 da sprint 04–17/11, decisão 133): Worker `trilha`, só arquivos estáticos.
+// Igual a web/wrangler.producao.jsonc, para quando o Cloudflare roda o build na raiz do repositório. O build é
+// `npm run build:producao`, que aborta se o banco não for o da produção (web/vite.config.ts). Sem bloco `previews`:
+// a produção não tem pré-visualização (as Edge Functions da produção também não aceitam). Endereço:
+// https://trilha.david-cerqueira.workers.dev (nome exato no ORIGEM_PAINEL das Edge Functions).
+{
+  "name": "trilha",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./web/dist",
+    "not_found_handling": "single-page-application"
+  }
+}

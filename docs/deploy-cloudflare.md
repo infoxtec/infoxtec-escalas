@@ -5,6 +5,29 @@
 > (`npm run build:homologacao` lê `web/.env.homologacao` e aborta se a URL for de outro banco): **nenhuma variável de
 > ambiente no Cloudflare**, e a chave da produção nunca entra neste Worker.
 
+## Painel da produção: Worker `trilha` (A3 da sprint 04–17/11, decisão 133)
+
+Dois painéis no Cloudflare: **homologação** em https://trilha-homologacao.david-cerqueira.workers.dev (banco
+`infoxtec-escalas-dev`) e **produção** em https://trilha.david-cerqueira.workers.dev (banco `infoxtec-escalas`). O build
+de cada um só aceita o seu banco (`web/vite.config.ts` aborta se a URL for de outro), e nenhum dos dois tem variável no
+Cloudflare. As Edge Functions da produção aceitam o Worker `trilha` por nome exato desde o A1.
+
+**Criar o Worker (responsável, uma vez):** Workers & Pages → Create → Import a repository → `infoxtec/infoxtec-escalas`.
+
+| Campo | Valor |
+|---|---|
+| Project name | `trilha` (precisa ser exatamente este: é o endereço que as Edge Functions aceitam) |
+| Production branch | `main` até o A2; o A2 troca para `producao`, que só avança pelo workflow Aplicar aprovado |
+| Build command | `cd web && npm ci && npm run build:producao` |
+| Deploy command | `npx --yes wrangler@4.151.3 deploy --config wrangler.producao.jsonc` |
+| Root directory | vazio (raiz; o comando entra em `web/` sozinho) |
+| Non-production branch builds / Previews | **desligado** (a produção não tem pré-visualização) |
+| Variáveis | nenhuma |
+
+**Conferência:** abrir https://trilha.david-cerqueira.workers.dev — a tela de login aparece, o rodapé mostra a mesma
+versão da Vercel, e o login com a conta da produção funciona (o Supabase da produção já tem o endereço nas Redirect
+URLs, A1). Até a virada (A5, 10/11) ninguém usa este endereço: o oficial continua sendo a Vercel.
+
 ## 1. Configuração do Worker (Settings → Build)
 
 | Campo | Valor |
