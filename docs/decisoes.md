@@ -1959,7 +1959,10 @@ pedidos novos do responsável.*
   reserva por uma semana e depois só redirecionando; o projeto da Vercel nunca é apagado (QR dos espelhos).
 - **Origem dupla até a virada (A1):** as Edge Functions da produção aceitam o painel oficial da Vercel e o Worker
   `trilha.david-cerqueira.workers.dev`, por nome exato. Pré-visualização deixa de valer na produção (domínio que terceiros
-  podem criar na Vercel; versões do Worker também não).
+  podem criar na Vercel; versões do Worker também não). A pré-visualização da Vercel também deixa de valer na
+  homologação: essas funções se testam pelo Worker `trilha-homologacao`. O subdomínio `david-cerqueira.workers.dev` não é
+  trocado enquanto as regras de origem dependerem dele (se for liberado, outra conta poderia ficar com ele); domínio
+  próprio fica no backlog, como decisão do responsável.
 - **Painel na produção só com aprovação:** o deploy automático da `main` na Vercel é desligado; no Cloudflare, a produção
   sai só pelo workflow Aplicar aprovado. Achado de 03/11: o painel 3.67.0 foi ao ar no merge, antes do comando do
   responsável.

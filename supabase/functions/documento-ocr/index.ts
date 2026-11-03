@@ -15,7 +15,7 @@ const CORPO_MAX_BYTES = 12 * 1024 * 1024;
 const TIMEOUT_MS = 15_000;
 
 // o painel chama do navegador, em outro domínio: sem estes cabeçalhos o navegador bloqueia. Só os domínios
-// do painel: produção e pré-visualizações da Vercel (web-git-<branch>-infoxtec-escalas, web-<hash>-...); o
+// do painel: os da produção (abaixo, por nome exato); o
 // painel local e o painel publicado da homologação só no projeto da homologação ou no Supabase local (falha
 // fechada: URL desconhecida não abre nada). A sessão (JWT) continua sendo a proteção real
 // produção (A1 da sprint 04–17/11, origem dupla até a virada): o painel oficial na Vercel e o Worker do Cloudflare, por
