@@ -651,7 +651,8 @@ export function enderecoDaConsulta(r: ConsultaCadastro): string {
 
 // exportação completa da conta (F8c, migration 143)
 export interface Exportacao {
-  id: string; origem: 'admin' | 'plataforma' | 'encerramento'; estado: 'pendente' | 'gerando' | 'pronta' | 'falhou' | 'expirada'
+  id: string; origem: 'admin' | 'plataforma' | 'encerramento'; estado: 'pendente' | 'gerando' | 'pronta' | 'falhou' | 'expirando' | 'expirada'
   pedido_por: string; criado_em: string; concluido_em: string | null; expira_em: string | null; tamanho: number | null
   manifesto_sha256: string | null; erro: string | null
+  saude?: boolean; tamanho_saude?: number | null; baixas?: number   // F8c-2, migration 144
 }

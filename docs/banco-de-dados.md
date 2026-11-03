@@ -254,6 +254,22 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 144 (03/11, versão 20261116120000): arquivos e saúde na exportação, multiempresa F8c-2
+
+O ZIP da exportação passa a levar os espelhos emitidos (`fn_exportar_espelho`, PDF), os documentos dos técnicos (bucket
+`documentos`) e o AFD de cada empregadora do primeiro registro até hoje (`fn_exportar_afd`; o corpo do AFD sai de
+`app_ponto_afd` para `fn_afd_gerar`, sem sessão; o painel continua conferindo a conta e registrando a geração), listados
+por `fn_exportar_arquivos`. `conta_exportacoes.com_saude`, `arquivo_saude` e `tamanho_saude`: pedido do administrador com
+`ve_saude`, ou o do encerramento quando algum administrador tem, gera um segundo ZIP com as justificativas de saúde sem
+máscara (`fn_exportar_saude_csv`) e os anexos decifrados (`fn_exportar_anexo`, cada um registrado em
+`ponto_anexo_acessos`); a plataforma nunca pede nem baixa saúde. `fn_exportacao_link(e-mail, aal, id, saúde)`: o de saúde
+só para administrador ativo com `ve_saude`. `conta_exportacao_baixas`: quem baixou, quando e se foi o de saúde.
+`fn_csv_texto`: célula de texto que começa com `=`, `+`, `-`, `@`, tab ou CR ganha um apóstrofo. `conta_canais.url` e
+`instancia` saem da exportação. Vencidos: `fn_exportacoes_vencidas` marca `expirando` e devolve `(id, arquivo)`; só
+`fn_exportacoes_apagadas`, chamada depois de o Storage confirmar, marca `expirada`. Na final do encerramento, o link de
+saúde vai em e-mail à parte só aos administradores com `ve_saude`. Regressão: T84 (e o T42/T43 passam a usar um mês sem
+feriado, `pg_temp.mes_sem_feriado`).
+
 ### Migration 143 (31/10, versão 20261115120000): exportação completa da conta, multiempresa F8c-1
 
 `conta_exportacoes` (pedido, origem `admin`/`plataforma`/`encerramento`, estado, arquivo no bucket privado `exportacoes`,
