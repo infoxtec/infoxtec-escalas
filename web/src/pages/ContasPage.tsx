@@ -9,6 +9,9 @@ const ITENS: Record<string, string> = {
   admin: 'Administrador', login: 'Convite aceito', sede: 'Sede', canal: 'WhatsApp', empresa: 'Empresa', equipe: 'Funcionários',
 }
 
+// encerramento de conta desligado até a exclusão automática (F8d) existir: decisão 131, migration 146
+const ENCERRAMENTO_LIGADO: boolean = false
+
 const MODULOS: { id: 'escala' | 'ponto'; nome: string }[] = [
   { id: 'escala', nome: 'Escala (agenda e WhatsApp)' },
   { id: 'ponto', nome: 'Registro de ponto' },
@@ -158,8 +161,8 @@ export default function ContasPage() {
           <div className="space-y-2">
             <p className="text-sm">Conta encerrada em {contaEdit?.encerrada_em ? new Date(contaEdit.encerrada_em).toLocaleDateString('pt-BR') : '—'}.
               Ninguém dela entra, e o WhatsApp e o app do ponto estão parados.</p>
-            {contaEdit?.apagar_em && <p className="text-sm text-muted-foreground">Os dados serão apagados em {new Date(contaEdit.apagar_em).toLocaleDateString('pt-BR')}.
-              Até lá, "Reabrir conta" volta tudo como estava (os funcionários entram de novo no app do ponto).</p>}
+            <p className="text-sm text-muted-foreground">Os dados ficam guardados: a exclusão automática ainda não existe (decisão 131).
+              "Reabrir conta" volta tudo como estava (os funcionários entram de novo no app do ponto).</p>
             {erro && <ErrorBox>{erro}</ErrorBox>}
             {contaEdit?.estado === 'encerrada' && edit.id && <div className="space-y-2 rounded-md border p-3">
               <p className="text-sm font-medium">Exportação dos dados</p><Exportacoes conta={edit.id} /></div>}
@@ -209,7 +212,8 @@ export default function ContasPage() {
             {edit.id && <details className="rounded-md border p-3">
               <summary className="cursor-pointer text-sm font-medium">Exportação dos dados</summary>
               <div className="pt-2"><Exportacoes conta={edit.id} /></div></details>}
-            {edit.id && !canais.find(k => k.conta_id === edit.id)?.da_instalacao && (motivo === null
+            {/* encerramento desligado até a exclusão (F8d) existir: decisão 131, migration 146 */}
+            {ENCERRAMENTO_LIGADO && edit.id && !canais.find(k => k.conta_id === edit.id)?.da_instalacao && (motivo === null
               ? <button type="button" className="text-xs text-red-600 underline" onClick={() => setMotivo('')} disabled={salvando}>Encerrar a conta (saída do cliente)</button>
               : <div className="space-y-2 rounded-md border border-red-200 p-3">
                   <p className="text-sm font-medium text-red-700">Encerrar a conta</p>

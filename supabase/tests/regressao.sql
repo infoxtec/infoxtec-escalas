@@ -4526,6 +4526,11 @@ begin
   update config set valor = '00:00' where chave = 'janela_envio_inicio';
   update config set valor = '23:59' where chave = 'janela_envio_fim';
   v_tok := fn_segredo((select webhook_segredo from conta_canais where conta_id = v_b));
+  -- desligado até a F8d (migration 146): recusa; o resto do teste liga o interruptor
+  v_ok := false;
+  begin perform app_plataforma_encerrar_conta(v_b, 'teste desligado'); exception when others then v_ok := sqlerrm like 'O encerramento de conta está desligado%'; end;
+  perform pg_temp.ok(v_ok and (select ativa from contas where id = v_b), '[T82] encerramento desligado até a exclusão existir');
+  insert into config (chave, valor) values ('encerramento_ativo', 'true') on conflict (chave) do update set valor = excluded.valor;
   perform set_config('trilha.conta', v_b::text, true);
   perform pg_temp.ok(fn_conta_operante(v_b) and fn_ponto_sessao('qa82-token') = v_tec
                      and fn_evo_destino('/message/sendText/' || fn_config('evolution_instancia'), '5571966660082') is not null

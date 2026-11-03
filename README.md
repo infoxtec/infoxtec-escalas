@@ -260,5 +260,6 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Convite por e-mail mandado pelo nosso SMTP, sem o limite de 10 s do Auth (Edge Function `convidar-usuario`, decisão 130; produção em 31/10)
 - [x] Multiempresa F8b: encerrar e reabrir a conta do cliente (migration 142, painel 3.61.0; produção em 31/10)
 - [x] Multiempresa F8c-1: exportação completa da conta em CSV (migration 143, Edge Function `exportar-conta`, painel 3.62.0; produção em 01/11)
-- [ ] Multiempresa F8c-2: espelhos, documentos e AFD na exportação, com o pacote de saúde à parte (migration 144, painel 3.63.0; homologação)
-- [ ] Matriz de acesso única: exportação por lista branca, espelho assinado só com acesso às folhas, ASO como saúde, Checklist só da plataforma (migration 145, painel 3.64.0; homologação)
+- [x] Multiempresa F8c-2: espelhos, documentos e AFD na exportação, com o pacote de saúde à parte (migration 144, painel 3.63.0; produção em 03/11)
+- [x] Matriz de acesso única: exportação por lista branca, espelho assinado só com acesso às folhas, ASO como saúde, Checklist só da plataforma (migration 145, painel 3.64.0; produção em 03/11)
+- [ ] Encerramento de conta desligado até a exclusão automática existir (migration 146, painel 3.65.0; homologação)
