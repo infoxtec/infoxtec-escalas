@@ -1892,6 +1892,10 @@ no Supabase.
   conta (confirmado pelo responsável). Dividida em F8c-1 (planilhas CSV de todas as tabelas, dicionário, leia-me e
   manifesto SHA-256) e F8c-2 (espelhos em PDF, documentos, AFD e o ZIP à parte dos anexos de saúde). O pacote fica no
   bucket privado `exportacoes`; o link do painel vale 10 minutos e é gerado só para quem pode, com duas etapas.
+- **F8c-2 (03/11):** os arquivos (espelhos, documentos, AFD) entram no mesmo ZIP; a saúde vai num ZIP à parte, gerado
+  só para administrador com permissão de ver saúde e baixado só por ele, nunca pela plataforma (dado sensível do cliente,
+  LGPD art. 11). Cada anexo exportado e cada baixa ficam registrados. Limite de 300 MB por exportação enquanto o ZIP é
+  montado em memória: acima disso, falha com aviso (medir antes do primeiro cliente grande).
 - **Em aberto (antes da F8d e F8e):** prazo da custódia (proposta: cada registro até a data dele + 5 anos, CF art. 7º,
   XXIX, com retenção suspensa por processo avisado pelo cliente; base a conferir com o `juridico`); acesso na custódia
   (proposta: sem login, exportação a pedido); nome da conta apagada e

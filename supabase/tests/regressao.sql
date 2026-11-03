@@ -2415,10 +2415,22 @@ begin
 end $$;
 
 -- T42 espelho de ponto pela escala (migration 97, decisão 91) ------------------------------------------------
+-- mês fechado sem feriado (o feriado vira hora extra e muda as contas do T42 e do T43): a partir de 2 meses atrás,
+-- volta mês a mês até achar um (agosto ou março, no máximo um ano antes)
+create or replace function pg_temp.mes_sem_feriado(p_empresa uuid) returns date language plpgsql as $f$
+declare m date := (date_trunc('month', current_date) - interval '2 months')::date;
+begin
+  for i in 1..12 loop
+    exit when not exists (select 1 from generate_series(m, (m + interval '1 month' - interval '1 day')::date, interval '1 day') d
+                           where interno.fn_feriado_da_empresa(d::date, p_empresa) is not null);
+    m := (m - interval '1 month')::date;
+  end loop;
+  return m;
+end $f$;
 do $$
 declare
   v_emp uuid := (select v::uuid from qa where k = 'emp');
-  v_mes date := (date_trunc('month', current_date) - interval '2 months')::date;  -- mês fechado, antes das escalas do T40
+  v_mes date := pg_temp.mes_sem_feriado((select v::uuid from qa where k = 'emp'));  -- mês fechado, antes das escalas do T40
   v_sab date; v_seg date; v_t uuid; v_t2 uuid; c5 uuid; c12 uuid; c jsonb; d jsonb; v_ok boolean; v_id uuid; n int := 942000;
 begin
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
@@ -2487,7 +2499,7 @@ end $$;
 -- T43 Indicadores pela escala (migration 98, decisão 93) ----------------------------------------------------
 do $$
 declare
-  v_mes date := (date_trunc('month', current_date) - interval '2 months')::date;  -- o mesmo mês do T42
+  v_mes date := pg_temp.mes_sem_feriado((select v::uuid from qa where k = 'emp'));  -- o mesmo mês do T42
   v_ids uuid[] := array(select id from tecnicos where nome in ('QA Espelho 5x2', 'QA Espelho 12x36'));
   a jsonb; b jsonb;
 begin
@@ -4641,8 +4653,11 @@ begin
   begin perform fn_exportacao_link('ninguem@teste.local', 'aal2', v_id); exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
   perform pg_temp.ok(v_ok, '[T83] link para quem não é da conta recusado');
   update conta_exportacoes set expira_em = now() - interval '1 minute' where id = v_id;
-  select count(*) into v_n from fn_exportacoes_vencidas(v_tok) a where a = v_b || '/' || v_id || '.zip';
-  perform pg_temp.ok(v_n = 1 and (select estado = 'expirada' from conta_exportacoes where id = v_id), '[T83] pacote vencido sai');
+  select count(*) into v_n from fn_exportacoes_vencidas(v_tok) a where a.arquivo = v_b || '/' || v_id || '.zip';
+  -- só sai da lista depois de a Edge Function confirmar que apagou o arquivo
+  perform pg_temp.ok(v_n = 1 and (select estado = 'expirando' from conta_exportacoes where id = v_id), '[T83] pacote vencido vai para a remoção');
+  perform fn_exportacoes_apagadas(v_tok, array[v_id]);
+  perform pg_temp.ok((select estado = 'expirada' from conta_exportacoes where id = v_id), '[T83] pacote vencido sai depois de apagado');
   -- encerramento: exportação final e o link por e-mail aos administradores
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
   perform app_plataforma_encerrar_conta(v_b, 'teste da exportação final');
@@ -4695,7 +4710,68 @@ begin
   perform pg_temp.ok(v_ok, '[T83] só a plataforma exporta outra conta');
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
 end $$;
-select 'REGRESSÃO OK: T1 a T83' as resultado,
+-- T84 arquivos e saúde na exportação (migration 144, F8c-2) -----------------------------------------------------
+do $$
+declare
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_id uuid; v_id2 uuid; v_ok boolean; v_a jsonb; v_tok text := repeat('ab', 32); v_jus uuid; v_anx uuid; v_csv text; v_n int;
+begin
+  perform set_config('request.headers', '{}', true);
+  delete from conta_exportacoes where conta_id = v_b;
+  -- planilha: fórmula escapada só no texto; número negativo fica como está
+  perform pg_temp.ok(fn_csv_texto('=1+1') = '''=1+1' and fn_csv_texto('@x') = '''@x' and fn_csv_texto('normal') = 'normal'
+                     and not exists (select 1 from fn_exportar_tabelas() t, unnest(t.colunas) c
+                                      where t.tabela = 'conta_canais' and c in ('url', 'instancia')),
+                     '[T84] fórmula escapada e canal sem endereço');
+  -- administrador com ve_saude: o pedido leva o pacote de saúde
+  update conta_membros set ve_saude = true where conta_id = v_b and email = 'qa-b@teste.local';
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  v_id := app_conta_exportar();
+  perform set_config('request.jwt.claims', '', true);
+  perform pg_temp.ok((select com_saude from conta_exportacoes where id = v_id), '[T84] pedido com saúde para quem tem ve_saude');
+  perform fn_exportacao_dados(v_tok, v_id);
+  select j.id into v_jus from ponto_justificativas j where j.conta_id = v_b and j.observacao = 'qa83 dado de saúde';
+  insert into ponto_justificativa_anexos (justificativa_id, tipo, tamanho, sha256, conteudo, conta_id)
+  values (v_jus, 'image/png', 4, encode(sha256('qa84'::bytea), 'hex'), fn_ponto_cofre_cifrar('qa84'::bytea), v_b) returning id into v_anx;
+  v_a := fn_exportar_arquivos(v_tok, v_id);
+  perform pg_temp.ok((v_a->'anexos'->0->>'id')::uuid = v_anx and jsonb_typeof(v_a->'espelhos') = 'array'
+                     and not exists (select 1 from jsonb_array_elements_text(v_a->'afd') x join empresas m on m.id = x::uuid where m.conta_id <> v_b),
+                     '[T84] arquivos só da conta do pedido');
+  select count(*) into v_n from ponto_anexo_acessos where anexo_id = v_anx;
+  v_csv := fn_exportar_anexo(v_tok, v_id, v_anx);
+  perform pg_temp.ok(decode(v_csv, 'base64') = 'qa84'::bytea
+                     and (select count(*) from ponto_anexo_acessos where anexo_id = v_anx) = v_n + 1,
+                     '[T84] anexo decifrado e o acesso registrado');
+  v_csv := fn_exportar_saude_csv(v_tok, v_id);
+  perform pg_temp.ok(v_csv like '%qa83 dado de saúde%', '[T84] saúde completa só no pacote de saúde');
+  v_ok := false;
+  begin perform fn_exportar_afd(v_tok, v_id, (select v::uuid from qa where k = 'emp')); exception when others then v_ok := sqlerrm like 'empresa fora%'; end;
+  perform pg_temp.ok(v_ok, '[T84] AFD de empresa de outra conta recusado');
+  perform fn_exportacao_resultado(v_tok, v_id, true, v_b || '/' || v_id || '.zip', 10, repeat('2', 64), null, null,
+                                  v_b || '/' || v_id || '_saude.zip', 5, null);
+  -- link de saúde: só administrador com ve_saude; a plataforma baixa o pacote, nunca o de saúde; cada baixa registrada
+  v_ok := fn_exportacao_link('qa-b@teste.local', 'aal2', v_id, true) = v_b || '/' || v_id || '_saude.zip';
+  v_ok := v_ok and fn_exportacao_link('qa-admin@teste.local', 'aal2', v_id) = v_b || '/' || v_id || '.zip';
+  perform pg_temp.ok(v_ok and (select count(*) from conta_exportacao_baixas where exportacao_id = v_id) = 2
+                     and exists (select 1 from conta_exportacao_baixas where exportacao_id = v_id and saude and email = 'qa-b@teste.local'),
+                     '[T84] links e baixas registradas');
+  v_ok := false;
+  begin perform fn_exportacao_link('qa-admin@teste.local', 'aal2', v_id, true); exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
+  perform pg_temp.ok(v_ok, '[T84] plataforma não baixa a saúde');
+  update conta_membros set ve_saude = false where conta_id = v_b and email = 'qa-b@teste.local';
+  v_ok := false;
+  begin perform fn_exportacao_link('qa-b@teste.local', 'aal2', v_id, true); exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
+  perform pg_temp.ok(v_ok, '[T84] sem ve_saude não baixa a saúde');
+  -- pedido da plataforma nunca tem saúde
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  v_id2 := app_plataforma_exportar_conta(v_b);
+  perform fn_exportacao_dados(v_tok, v_id2);
+  v_ok := false;
+  begin perform fn_exportar_anexo(v_tok, v_id2, v_anx); exception when others then v_ok := sqlerrm like 'exportação sem saúde%'; end;
+  perform pg_temp.ok(v_ok and not (select com_saude from conta_exportacoes where id = v_id2)
+                     and fn_exportar_arquivos(v_tok, v_id2)->'anexos' = '[]'::jsonb, '[T84] plataforma sem saúde');
+end $$;
+select 'REGRESSÃO OK: T1 a T84' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

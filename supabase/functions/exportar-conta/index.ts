@@ -1,9 +1,11 @@
 // Exportação completa da conta (migration 143, decisão 129; portabilidade, LGPD art. 18, V). Duas entradas:
 // 1. O banco (pg_net) chama com x-exportacao-token e {id} (ou {acao: 'limpar'}, a manutenção do motor, que só apaga os
 //    pacotes vencidos): a função responde logo e, em segundo plano, lê cada tabela da
-//    conta em CSV (fn_exportar_csv, só as linhas da conta do pedido), monta o ZIP (dados/<tabela>.csv, esquema.json,
-//    LEIA-ME.txt, manifesto.sha256), guarda no bucket privado exportacoes e grava o resultado. Na exportação final do
-//    encerramento, manda junto um link assinado de 7 dias, que o banco envia por e-mail aos administradores da conta.
+//    conta em CSV (fn_exportar_csv, só as linhas da conta do pedido), junta os arquivos (espelhos emitidos, documentos dos
+//    técnicos, AFD de cada empregadora; migration 144), monta o ZIP (dados/, espelhos/, documentos/, afd/, esquema.json,
+//    LEIA-ME.txt, manifesto.sha256), guarda no bucket privado exportacoes e grava o resultado. Pedido com saúde gera um
+//    segundo ZIP (justificativas de saúde sem máscara e anexos decifrados). Na exportação final do encerramento, manda
+//    junto os links assinados de 7 dias, que o banco envia por e-mail aos administradores da conta.
 // 2. O painel chama com a sessão e {acao: 'link', id}: o banco confere quem pode (fn_exportacao_link) e a função devolve
 //    um link assinado de 10 minutos.
 // Quem pode, o que entra e os limites ficam no banco. A chave de serviço só existe aqui.
@@ -21,6 +23,7 @@ const TIMEOUT_MS = 15_000;
 const PAGINA = 5000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const BUCKET = "exportacoes";
+const LIMITE_BYTES = 300 * 1024 * 1024;   // tudo em memória: acima disso, falha com aviso (medir antes de subir)
 
 // mesmos domínios do painel das outras funções (produção na Vercel; homologação local, Vercel e Cloudflare)
 const ORIGEM_PAINEL = /^https:\/\/(infoxtec-escalas|web-[a-z0-9-]+-infoxtec-escalas)\.vercel\.app$/;
@@ -94,20 +97,51 @@ async function sha256(dados: Uint8Array): Promise<string> {
   return Array.from(h, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-type Dados = { conta: string; origem: string; nome: string; tabelas: { tabela: string; colunas: string[] }[] };
+type Dados = { conta: string; origem: string; com_saude: boolean; nome: string; tabelas: { tabela: string; colunas: string[] }[] };
+type Arquivos = { espelhos: { id: string; nome: string }[]; documentos: { caminho: string; nome: string }[]; afd: string[];
+  anexos: { id: string; nome: string }[] };
+
+const deBase64 = (b: string) => Uint8Array.from(atob(b), (c) => c.charCodeAt(0));
+
+/** AFD em ISO 8859-1, como o painel baixa (Portaria 671, Anexo V). */
+function latin1(texto: string): Uint8Array {
+  const b = new Uint8Array(texto.length);
+  for (let i = 0; i < texto.length; i++) {
+    const c = texto.charCodeAt(i);
+    if (c > 255) throw new Error("AFD com caractere fora da ISO 8859-1");
+    b[i] = c;
+  }
+  return b;
+}
+
+/** Manifesto SHA-256 dos arquivos, ZIP e envio ao bucket; devolve o tamanho e o hash do manifesto. */
+async function empacotar(admin: Record<string, string>, arquivos: Record<string, Uint8Array>, caminho: string) {
+  const nomes = Object.keys(arquivos).sort();
+  const manifesto = (await Promise.all(nomes.map(async (n) => `${await sha256(arquivos[n])}  ${n}`))).join("\n") + "\n";
+  arquivos["manifesto.sha256"] = new TextEncoder().encode(manifesto);
+  const sha = await sha256(arquivos["manifesto.sha256"]);
+  const zip = zipSync(arquivos, { level: 6 });
+  const up = await fetch(`${Deno.env.get("SUPABASE_URL")}/storage/v1/object/${BUCKET}/${caminho}`, {
+    method: "POST", headers: { ...admin, "Content-Type": "application/zip", "x-upsert": "true" },
+    body: zip as Uint8Array<ArrayBuffer>, signal: AbortSignal.timeout(120_000),
+  });
+  if (!up.ok) throw new Error(`storage ${up.status}`);
+  return { tamanho: zip.length, sha };
+}
 
 /** Pacotes vencidos (de qualquer conta): o banco tira da lista e o arquivo sai do bucket. */
 async function limpar(token: string) {
   const admin = cabecalhosAdmin();
   try {
-    // pacotes vencidos de qualquer conta: o arquivo sai do bucket
-    const vencidos = await sql<{ a: string }[]>`select fn_exportacoes_vencidas(${token}) as a`;
-    if (admin && vencidos.length) {
-      await fetch(`${Deno.env.get("SUPABASE_URL")}/storage/v1/object/${BUCKET}`, {
-        method: "DELETE", headers: { ...admin, "Content-Type": "application/json" },
-        body: JSON.stringify({ prefixes: vencidos.map((v) => v.a) }), signal: AbortSignal.timeout(TIMEOUT_MS),
-      }).catch(() => console.error("exportar-conta: vencidos não apagados"));
-    }
+    // só depois de o Storage confirmar a remoção o pacote sai da lista; senão, o motor manda apagar de novo
+    const vencidos = await sql<{ id: string; arquivo: string }[]>`select id, arquivo from fn_exportacoes_vencidas(${token})`;
+    if (!admin || !vencidos.length) return;
+    const resp = await fetch(`${Deno.env.get("SUPABASE_URL")}/storage/v1/object/${BUCKET}`, {
+      method: "DELETE", headers: { ...admin, "Content-Type": "application/json" },
+      body: JSON.stringify({ prefixes: vencidos.map((v) => v.arquivo) }), signal: AbortSignal.timeout(TIMEOUT_MS),
+    }).catch(() => null);
+    if (!resp?.ok) throw new Error(`remoção ${resp?.status ?? "sem resposta"}`);
+    await sql`select fn_exportacoes_apagadas(${token}, ${[...new Set(vencidos.map((v) => v.id))]}::uuid[])`;
   } catch (err) {
     console.error("exportar-conta: vencidos", err instanceof Error ? err.message.slice(0, 120) : "erro");
   }
@@ -136,6 +170,35 @@ async function gerar(token: string, id: string) {
         arquivos[`dados/${t.tabela}.csv`] = enc.encode(partes.join("\r\n") + "\r\n");
       }
     });
+    // arquivos: espelhos emitidos, documentos dos técnicos e o AFD de cada empregadora
+    const [la] = await sql<{ a: Arquivos }[]>`select fn_exportar_arquivos(${token}, ${id}::uuid) as a`;
+    const lista = la.a;
+    let total = Object.values(arquivos).reduce((n, b) => n + b.length, 0);
+    const somar = (b: Uint8Array) => {
+      total += b.length;
+      if (total > LIMITE_BYTES) throw new Error("exportação grande demais (mais de 300 MB): fale com o suporte");
+      return b;
+    };
+    const faltando: string[] = [];
+    for (const e of lista.espelhos) {
+      const [p] = await sql<{ b: string | null }[]>`select fn_exportar_espelho(${token}, ${id}::uuid, ${e.id}::uuid) as b`;
+      if (p?.b) arquivos[e.nome] = somar(deBase64(p.b));
+    }
+    for (const doc of lista.documentos) {
+      const resp = await fetch(`${Deno.env.get("SUPABASE_URL")}/storage/v1/object/documentos/${doc.caminho.split("/").map(encodeURIComponent).join("/")}`,
+        { headers: admin, signal: AbortSignal.timeout(60_000) }).catch(() => null);
+      // o tamanho declarado é conferido antes de ler o arquivo inteiro
+      if (resp?.ok && total + Number(resp.headers.get("content-length") ?? 0) > LIMITE_BYTES) {
+        await resp.body?.cancel();
+        throw new Error("exportação grande demais (mais de 300 MB): fale com o suporte");
+      }
+      if (resp?.ok) arquivos[doc.nome] = somar(new Uint8Array(await resp.arrayBuffer()));
+      else faltando.push(doc.nome);
+    }
+    for (const emp of lista.afd) {
+      const [f] = await sql<{ f: { nome: string; conteudo: string } }[]>`select fn_exportar_afd(${token}, ${id}::uuid, ${emp}::uuid) as f`;
+      arquivos[f.f.nome] = somar(latin1(f.f.conteudo));
+    }
     const gerado = new Date().toISOString();
     arquivos["esquema.json"] = enc.encode(JSON.stringify({ conta: d.nome, conta_id: d.conta, gerado_em: gerado, tabelas: d.tabelas }, null, 2));
     arquivos["LEIA-ME.txt"] = enc.encode([
@@ -146,26 +209,49 @@ async function gerar(token: string, id: string) {
       "esquema.json: as tabelas e os campos de cada uma.",
       "manifesto.sha256: o hash SHA-256 de cada arquivo, para conferir que nada foi alterado.",
       "",
-      "Não entram: senhas, chaves, códigos de acesso e identificadores internos de envio. Espelhos em PDF, documentos,",
-      "anexos de atestados e o AFD vêm numa exportação de arquivos à parte.",
+      "espelhos/: os espelhos de ponto emitidos, em PDF. documentos/: os documentos dos técnicos.",
+      "afd/: o Arquivo Fonte de Dados de cada empregadora, do primeiro registro até hoje (ISO 8859-1).",
+      "Dados de saúde (justificativas e atestados) saem aqui com o motivo como \"saude\" e os textos vazios; o completo",
+      "vem num pacote à parte, só para quem tem permissão de ver saúde.",
+      "Não entram: senhas, chaves, códigos de acesso e identificadores internos de envio.",
+      ...(faltando.length ? ["", "Documentos que não puderam ser lidos do armazenamento:", ...faltando] : []),
     ].join("\r\n"));
-    const nomes = Object.keys(arquivos).sort();
-    const manifesto = (await Promise.all(nomes.map(async (n) => `${await sha256(arquivos[n])}  ${n}`))).join("\n") + "\n";
-    arquivos["manifesto.sha256"] = enc.encode(manifesto);
-    const shaManifesto = await sha256(arquivos["manifesto.sha256"]);
-    const zip = zipSync(arquivos, { level: 6 });
-
     const caminho = `${d.conta}/${id}.zip`;
-    const up = await fetch(`${Deno.env.get("SUPABASE_URL")}/storage/v1/object/${BUCKET}/${caminho}`, {
-      method: "POST", headers: { ...admin, "Content-Type": "application/zip", "x-upsert": "true" },
-      body: zip as Uint8Array<ArrayBuffer>, signal: AbortSignal.timeout(120_000),
-    });
-    if (!up.ok) throw new Error(`storage ${up.status}`);
-    const link = d.origem === "encerramento" ? await linkAssinado(admin, caminho, 7 * 24 * 3600) : null;
-    await sql`select fn_exportacao_resultado(${token}, ${id}::uuid, true, ${caminho}, ${zip.length}, ${shaManifesto}, null, ${link})`;
+    const pacote = await empacotar(admin, arquivos, caminho);
+
+    // saúde: justificativas sem máscara e anexos decifrados (cada acesso fica registrado no banco)
+    let saude: { caminho: string; tamanho: number } | null = null;
+    if (d.com_saude) {
+      const s: Record<string, Uint8Array> = {};
+      const [c] = await sql<{ c: string }[]>`select fn_exportar_saude_csv(${token}, ${id}::uuid) as c`;
+      s["saude/justificativas_saude.csv"] = enc.encode(c.c);
+      for (const x of lista.anexos) {
+        const [a] = await sql<{ b: string | null }[]>`select fn_exportar_anexo(${token}, ${id}::uuid, ${x.id}::uuid) as b`;
+        if (a?.b) s[x.nome] = somar(deBase64(a.b));
+      }
+      s["LEIA-ME.txt"] = enc.encode([
+        `Dados de saúde da conta "${d.nome}" no Trilha, gerados em ${gerado} (UTC).`,
+        "Dado pessoal sensível (LGPD, art. 11): guarde em local protegido e com acesso restrito.",
+        "saude/justificativas_saude.csv: as justificativas de saúde completas. saude/anexos/: os atestados enviados.",
+      ].join("\r\n"));
+      const cs = `${d.conta}/${id}_saude.zip`;
+      saude = { caminho: cs, tamanho: (await empacotar(admin, s, cs)).tamanho };
+    }
+    const enc7 = 7 * 24 * 3600;
+    const link = d.origem === "encerramento" ? await linkAssinado(admin, caminho, enc7) : null;
+    const linkSaude = d.origem === "encerramento" && saude ? await linkAssinado(admin, saude.caminho, enc7) : null;
+    await sql`select fn_exportacao_resultado(${token}, ${id}::uuid, true, ${caminho}, ${pacote.tamanho}, ${pacote.sha}, null, ${link},
+                                             ${saude?.caminho ?? null}, ${saude?.tamanho ?? null}, ${linkSaude})`;
   } catch (err) {
     const msg = (err instanceof Error ? err.message : "falha").slice(0, 200);
     console.error("exportar-conta:", msg);
+    // o que já subiu desta tentativa sai do bucket: sem resultado gravado, ninguém apagaria depois
+    if (admin) {
+      await fetch(`${Deno.env.get("SUPABASE_URL")}/storage/v1/object/${BUCKET}`, {
+        method: "DELETE", headers: { ...admin, "Content-Type": "application/json" },
+        body: JSON.stringify({ prefixes: [`${d.conta}/${id}.zip`, `${d.conta}/${id}_saude.zip`] }), signal: AbortSignal.timeout(TIMEOUT_MS),
+      }).catch(() => console.error("exportar-conta: pacote da falha não apagado"));
+    }
     await sql`select fn_exportacao_resultado(${token}, ${id}::uuid, false, null, null, null, ${msg})`.catch(() => {});
   }
 }
@@ -179,7 +265,7 @@ Deno.serve(async (req: Request) => {
   if (Number(req.headers.get("content-length") ?? 0) > 1024) return json({ ok: false, erro: "pedido grande demais" }, 413);
   const texto = await req.text();
   if (texto.length > 1024) return json({ ok: false, erro: "pedido grande demais" }, 413);
-  let corpo: { id?: unknown; acao?: unknown };
+  let corpo: { id?: unknown; acao?: unknown; saude?: unknown };
   try { corpo = JSON.parse(texto); } catch { return json({ ok: false, erro: "pedido inválido" }, 400); }
   const id = typeof corpo.id === "string" && UUID.test(corpo.id) ? corpo.id : "";
 
@@ -197,14 +283,14 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true }, 202);
   }
 
-  // 2. painel: link para baixar
+  // 2. painel: link para baixar (o pacote, ou o de saúde com {saude: true})
   if (corpo.acao !== "link" || !id) return json({ ok: false, erro: "Ação desconhecida." }, 400);
   const email = await emailVerificado(req);
   if (!email) return json({ ok: false, erro: "Sessão expirada. Entre novamente." }, 401);
   const admin = cabecalhosAdmin();
   if (!admin) return json({ ok: false, erro: "Exportação indisponível: falta a chave de serviço na função." }, 500);
   try {
-    const [l] = await sql<{ a: string }[]>`select fn_exportacao_link(${email}, ${nivelDaSessao(req)}, ${id}::uuid) as a`;
+    const [l] = await sql<{ a: string }[]>`select fn_exportacao_link(${email}, ${nivelDaSessao(req)}, ${id}::uuid, ${corpo.saude === true}) as a`;
     return json({ ok: true, url: await linkAssinado(admin, l.a, 600) });
   } catch (err) {
     const e = err as { code?: string; message?: string };

@@ -321,7 +321,7 @@ export async function convidarUsuario(email: string, conta: string): Promise<Res
 }
 
 // Exportação da conta (F8c, migration 143): o link é assinado pela Edge Function, só para quem pode, e vale 10 minutos
-export async function linkExportacao(id: string): Promise<string> {
+export async function linkExportacao(id: string, saude = false): Promise<string> {
   const { data: sessao } = await supabase.auth.getSession()
   const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/exportar-conta`, {
     method: 'POST',
@@ -330,7 +330,7 @@ export async function linkExportacao(id: string): Promise<string> {
       Authorization: `Bearer ${sessao.session?.access_token ?? ''}`,
       apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
     },
-    body: JSON.stringify({ acao: 'link', id }),
+    body: JSON.stringify({ acao: 'link', id, saude }),
     signal: AbortSignal.timeout(20000),
   }).catch(() => null)
   const r = await resp?.json().catch(() => ({})) ?? {}
