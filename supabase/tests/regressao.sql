@@ -1298,8 +1298,11 @@ begin
   -- banco sem a tarefa limpeza-logs: o Checklist aponta a falta (só onde o pg_cron existe)
   if to_regclass('cron.job') is not null and not exists (select 1 from cron.job where jobname = 'limpeza-logs') then
     update config set valor = 'producao' where chave = 'ambiente';
-    perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+    -- o Checklist é só da plataforma (migration 145): qa-admin vira da plataforma só aqui
+    insert into plataforma_admins (email) values ('qa-admin@teste.local') on conflict do nothing;
+    perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
     r := app_checklist_saude();
+    delete from plataforma_admins where email = 'qa-admin@teste.local';
     select e into x from jsonb_array_elements(r->'itens') e where e->>'item' = 'Tarefas agendadas (cron)';
     perform pg_temp.ok(x->>'estado' = 'falha' and x->>'detalhe' like '%limpeza-logs%', '[T22] Checklist sem a tarefa faltando: ' || coalesce(x::text, 'null'));
   else
@@ -1480,8 +1483,14 @@ do $$
 declare r jsonb; x jsonb; v_ok boolean;
 begin
   -- o T25 deixou duas empresas ativas e um supervisor sem empresa (de teste, mas recebe avisos): é falha
-  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated"}', true);
+  -- admin de conta que não é da plataforma não vê o Checklist (auditoria de 01/11, item 1; migration 145)
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  v_ok := false;
+  begin perform app_checklist_saude(); exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
+  perform pg_temp.ok(v_ok, '[T26] Checklist só da plataforma');
+  insert into plataforma_admins (email) values ('qa-admin@teste.local') on conflict do nothing;
   r := app_checklist_saude();
+  delete from plataforma_admins where email = 'qa-admin@teste.local';
   select e into x from jsonb_array_elements(r->'itens') e where e->>'item' = 'Supervisores e técnicos sem empresa';
   perform pg_temp.ok(x->>'estado' = 'falha' and x->>'grupo' = 'Erros em tabelas', '[T26] Checklist sem o cadastro sem empresa: ' || coalesce(x::text, 'null'));
 
@@ -4771,7 +4780,89 @@ begin
   perform pg_temp.ok(v_ok and not (select com_saude from conta_exportacoes where id = v_id2)
                      and fn_exportar_arquivos(v_tok, v_id2)->'anexos' = '[]'::jsonb, '[T84] plataforma sem saúde');
 end $$;
-select 'REGRESSÃO OK: T1 a T84' as resultado,
+-- T85 matriz de acesso única (migration 145; auditoria de 01/11, itens 1, 4, 6 e 8) -----------------------------
+do $$
+declare
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_um uuid := '00000000-0000-0000-0000-000000000001';
+  v_tok text := repeat('ab', 32); v_id uuid; v_id2 uuid; v_csv text; v_txt text; v_tipo uuid; v_doc uuid; v_tec uuid; v_ok boolean; v_l jsonb;
+begin
+  perform set_config('request.headers', '{}', true);
+  perform fn_segredo_gravar('EXPORTACAO_TOKEN', v_tok);
+  -- lista branca: toda tabela de conta está classificada (tabela nova sem classificação faz este teste falhar)
+  perform pg_temp.ok(not exists (select 1 from pg_class c where c.relnamespace = 'interno'::regnamespace and c.relkind in ('r', 'p')
+                                    and exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'conta_id' and not a.attisdropped)
+                                    and c.relname not in (select tabela from fn_exportar_tabelas())),
+                     '[T85] tabela de conta sem classificação na exportação');
+  -- espelho assinado: sem rh_folhas, as colunas vão vazias e o PDF não entra
+  select left(conteudo_texto, 30) into v_txt from ponto_espelhos where conta_id = v_um and conteudo_texto is not null limit 1;
+  delete from conta_exportacoes where conta_id = v_um;
+  v_id := fn_exportar_pedir(v_um, 'qa85', 'admin', false, false);
+  perform fn_exportacao_dados(v_tok, v_id);
+  v_csv := fn_exportar_csv(v_tok, v_id, 'ponto_espelhos', 0, 20000);
+  perform pg_temp.ok(v_txt is not null and position(replace(v_txt, '"', '""') in v_csv) = 0
+                     and fn_exportar_arquivos(v_tok, v_id)->'espelhos' = '[]'::jsonb, '[T85] sem rh_folhas, sem espelho assinado');
+  update conta_exportacoes set estado = 'falhou' where id = v_id;
+  v_id2 := fn_exportar_pedir(v_um, 'qa85', 'admin', false, true);
+  perform fn_exportacao_dados(v_tok, v_id2);
+  v_csv := fn_exportar_csv(v_tok, v_id2, 'ponto_espelhos', 0, 20000);
+  perform pg_temp.ok(position(replace(v_txt, '"', '""') in v_csv) > 0, '[T85] com rh_folhas, o espelho vai inteiro');
+  -- e na hora de baixar: o pacote com folha só para quem tem rh_folhas; a plataforma não leva
+  perform fn_exportacao_resultado(v_tok, v_id2, true, v_um || '/' || v_id2 || '.zip', 1, repeat('5', 64), null);
+  update conta_membros set rh_folhas = false where conta_id = v_um and email = 'qa-admin@teste.local';
+  v_ok := false;
+  begin perform fn_exportacao_link('qa-admin@teste.local', 'aal2', v_id2); exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
+  perform pg_temp.ok(v_ok, '[T85] sem rh_folhas não baixa o pacote com folha');
+  update conta_membros set rh_folhas = true where conta_id = v_um and email = 'qa-admin@teste.local';
+  perform pg_temp.ok(fn_exportacao_link('qa-admin@teste.local', 'aal2', v_id2) is not null, '[T85] com rh_folhas baixa');
+  update conta_membros set rh_folhas = false where conta_id = v_um and email = 'qa-admin@teste.local';
+  insert into plataforma_admins (email) values ('qa-plat85@teste.local') on conflict do nothing;
+  v_ok := false;
+  begin perform fn_exportacao_link('qa-plat85@teste.local', 'aal2', v_id2); exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
+  perform pg_temp.ok(v_ok, '[T85] plataforma não baixa o pacote com folha');
+  delete from plataforma_admins where email = 'qa-plat85@teste.local';
+  update conta_exportacoes set estado = 'falhou' where id = v_id2;
+  -- plataforma: só o pacote comum
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  delete from conta_exportacoes where conta_id = v_b;
+  v_id := app_plataforma_exportar_conta(v_b);
+  perform pg_temp.ok((select not com_folha and not com_saude from conta_exportacoes where id = v_id), '[T85] plataforma sem folha nem saúde');
+  -- ASO é saúde (o nome marca sozinho); o NR não
+  insert into tipos_documento (nome, conta_id) values ('ASO periódico qa85', v_b) returning id into v_tipo;
+  insert into tipos_documento (nome, conta_id) values ('Exame admissional qa85', v_b);
+  perform pg_temp.ok((select saude from tipos_documento where id = v_tipo)
+                     and (select saude from tipos_documento where nome = 'Exame admissional qa85')
+                     and not (select saude from tipos_documento where nome like 'NR-10%' limit 1), '[T85] ASO e exame do PCMSO marcados como saúde');
+  select id into v_tec from tecnicos where conta_id = v_b limit 1;
+  insert into documentos (tecnico_id, caminho, nome_arquivo, enviado_por, tipo_documento_id, ocr_texto, conta_id)
+  values (v_tec, v_tec || '/qa85.pdf', 'aso.pdf', 'qa', v_tipo, 'qa85 exame clinico', v_b) returning id into v_doc;
+  -- admin sem ve_saude: vê a linha sem o caminho e não abre o arquivo; leitura nem vê
+  update conta_membros set ve_saude = false where conta_id = v_b and email = 'qa-b@teste.local';
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  select e into v_l from jsonb_array_elements(app_documentos()) e where (e->>'id')::uuid = v_doc;
+  perform pg_temp.ok(v_l->>'caminho' is null and (v_l->>'restrito')::boolean and not app_pode_gerir_documento(v_tec || '/qa85.pdf'),
+                     '[T85] ASO fechado para quem não vê saúde');
+  update conta_membros set ve_saude = true where conta_id = v_b and email = 'qa-b@teste.local';
+  perform pg_temp.ok(app_pode_gerir_documento(v_tec || '/qa85.pdf'), '[T85] ASO abre com ve_saude');
+  insert into conta_membros (conta_id, email, papel) values (v_b, 'qa-leitura85@teste.local', 'leitura');
+  perform set_config('request.jwt.claims', '{"email":"qa-leitura85@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform pg_temp.ok(not exists (select 1 from jsonb_array_elements(app_documentos()) e where (e->>'id')::uuid = v_doc),
+                     '[T85] leitura não vê ASO');
+  perform set_config('request.jwt.claims', '', true);
+  -- exportação: o ASO sai do pacote comum (arquivo e texto lido) e vai para o de saúde
+  perform fn_exportacao_dados(v_tok, v_id);
+  v_csv := fn_exportar_csv(v_tok, v_id, 'documentos', 0, 20000);
+  v_l := fn_exportar_arquivos(v_tok, v_id);
+  perform pg_temp.ok(v_csv not like '%qa85 exame clinico%'
+                     and not exists (select 1 from jsonb_array_elements(v_l->'documentos') x where x->>'caminho' = v_tec || '/qa85.pdf')
+                     and v_l->'documentos_saude' = '[]'::jsonb, '[T85] ASO fora do pacote comum');
+  update conta_exportacoes set estado = 'falhou' where id = v_id;
+  v_id := fn_exportar_pedir(v_b, 'qa85', 'admin', true, false);
+  perform fn_exportacao_dados(v_tok, v_id);
+  perform pg_temp.ok(exists (select 1 from jsonb_array_elements(fn_exportar_arquivos(v_tok, v_id)->'documentos_saude') x
+                              where x->>'caminho' = v_tec || '/qa85.pdf'), '[T85] ASO no pacote de saúde');
+end $$;
+select 'REGRESSÃO OK: T1 a T85' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

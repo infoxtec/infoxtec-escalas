@@ -85,7 +85,7 @@ export default function Exportacoes({ conta }: { conta?: string }) {
                   <td className="px-3 py-2 text-xs">{e.expira_em ? new Date(e.expira_em).toLocaleDateString('pt-BR') : '—'}</td>
                   <td className="px-3 py-2 text-right">
                     {e.estado === 'pronta' && <div className="flex justify-end gap-1">
-                      <Button variant="outline" size="sm" onClick={() => void baixar(e.id)}><Download className="h-3.5 w-3.5" /> Baixar</Button>
+                      {e.pode_baixar !== false && <Button variant="outline" size="sm" onClick={() => void baixar(e.id)}><Download className="h-3.5 w-3.5" /> Baixar</Button>}
                       {e.saude && <Button variant="outline" size="sm" onClick={() => void baixar(e.id, true)} title="Justificativas de saúde e atestados (dado sensível)">
                         <HeartPulse className="h-3.5 w-3.5" /> Saúde</Button>}
                     </div>}

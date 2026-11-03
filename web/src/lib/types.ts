@@ -315,6 +315,7 @@ export interface Documento {
   tipo_documento_id: string | null; documento: string | null
   caminho: string | null; nome_arquivo: string; mime: string | null; tamanho_bytes: number | null
   validade: string | null; ocr_em: string | null; enviado_por: string; created_at: string
+  restrito?: boolean   // documento de saúde (ASO) para quem não tem ve_saude: sem caminho (migration 145)
 }
 
 export const CATEGORIA_LABEL: Record<string, string> = {
@@ -655,4 +656,5 @@ export interface Exportacao {
   pedido_por: string; criado_em: string; concluido_em: string | null; expira_em: string | null; tamanho: number | null
   manifesto_sha256: string | null; erro: string | null
   saude?: boolean; tamanho_saude?: number | null; baixas?: number   // F8c-2, migration 144
+  pode_baixar?: boolean   // pacote com o espelho assinado: só quem tem acesso às folhas (migration 145)
 }

@@ -89,6 +89,7 @@ export default function DocumentosArquivos({ tecnicos, tiposDoc, podeEditar, aoM
   }
 
   const abrir = async (d: Documento) => {
+    if (d.restrito || !d.caminho) return setErro('Documento de saúde: só abre para quem tem permissão de ver saúde.')
     try {
       const url = await abrirDocumento(d.caminho!)
       window.open(url, '_blank', 'noopener')
@@ -144,7 +145,7 @@ export default function DocumentosArquivos({ tecnicos, tiposDoc, podeEditar, aoM
                   </button>
                 </td>
                 <td className="px-3 py-2.5 text-xs">
-                  <span className="inline-flex items-center gap-1 text-muted-foreground"><HardDrive className="h-3 w-3" /> Privado</span>
+                  <span className="inline-flex items-center gap-1 text-muted-foreground"><HardDrive className="h-3 w-3" /> {d.restrito ? 'Saúde (restrito)' : 'Privado'}</span>
                 </td>
                 <td className="px-3 py-2.5 font-mono text-xs">{d.validade ? formatDate(d.validade) : '—'}</td>
                 <td className="px-3 py-2.5 text-xs text-muted-foreground">{formatDateTime(d.created_at)} · {d.enviado_por}</td>
