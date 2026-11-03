@@ -32,7 +32,9 @@ const BUCKET = "exportacoes";
 const LIMITE_BYTES = 300 * 1024 * 1024;   // tudo em memória: acima disso, falha com aviso (medir antes de subir)
 
 // mesmos domínios do painel das outras funções (produção na Vercel; homologação local, Vercel e Cloudflare)
-const ORIGEM_PAINEL = /^https:\/\/(infoxtec-escalas|web-[a-z0-9-]+-infoxtec-escalas)\.vercel\.app$/;
+// produção (A1 da sprint 04–17/11, origem dupla até a virada): o painel oficial na Vercel e o Worker do Cloudflare, por
+// nome exato; pré-visualização não vale na produção (domínio que terceiros podem criar; versões do Worker também não)
+const ORIGEM_PAINEL = /^https:\/\/(infoxtec-escalas\.vercel\.app|trilha\.david-cerqueira\.workers\.dev)$/;
 const ORIGENS_HOMOLOGACAO = ["http://localhost:5173", "https://infoxtec-escalas-homologacao.vercel.app"];
 const ORIGEM_HOMOLOGACAO_CF = /^https:\/\/([a-z0-9][a-z0-9-]{0,62}-)?trilha-homologacao\.david-cerqueira\.workers\.dev$/;
 const HOMOLOGACAO = /oruwnlxyvznpigbpjjbx|\/\/(127\.0\.0\.1|localhost|kong)[:/]/.test(Deno.env.get("SUPABASE_URL") ?? "");
