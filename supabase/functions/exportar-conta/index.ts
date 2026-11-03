@@ -187,6 +187,11 @@ async function gerar(token: string, id: string) {
     for (const doc of lista.documentos) {
       const resp = await fetch(`${Deno.env.get("SUPABASE_URL")}/storage/v1/object/documentos/${doc.caminho.split("/").map(encodeURIComponent).join("/")}`,
         { headers: admin, signal: AbortSignal.timeout(60_000) }).catch(() => null);
+      // o tamanho declarado é conferido antes de ler o arquivo inteiro
+      if (resp?.ok && total + Number(resp.headers.get("content-length") ?? 0) > LIMITE_BYTES) {
+        await resp.body?.cancel();
+        throw new Error("exportação grande demais (mais de 300 MB): fale com o suporte");
+      }
       if (resp?.ok) arquivos[doc.nome] = somar(new Uint8Array(await resp.arrayBuffer()));
       else faltando.push(doc.nome);
     }
@@ -240,6 +245,13 @@ async function gerar(token: string, id: string) {
   } catch (err) {
     const msg = (err instanceof Error ? err.message : "falha").slice(0, 200);
     console.error("exportar-conta:", msg);
+    // o que já subiu desta tentativa sai do bucket: sem resultado gravado, ninguém apagaria depois
+    if (admin) {
+      await fetch(`${Deno.env.get("SUPABASE_URL")}/storage/v1/object/${BUCKET}`, {
+        method: "DELETE", headers: { ...admin, "Content-Type": "application/json" },
+        body: JSON.stringify({ prefixes: [`${d.conta}/${id}.zip`, `${d.conta}/${id}_saude.zip`] }), signal: AbortSignal.timeout(TIMEOUT_MS),
+      }).catch(() => console.error("exportar-conta: pacote da falha não apagado"));
+    }
     await sql`select fn_exportacao_resultado(${token}, ${id}::uuid, false, null, null, null, ${msg})`.catch(() => {});
   }
 }

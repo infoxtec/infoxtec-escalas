@@ -381,9 +381,9 @@ begin
   if not fn_exportacao_token_ok(p_token) then raise exception 'token inválido'; end if;
   select * into e from conta_exportacoes where id = p_id and estado = 'gerando' and com_saude;
   if not found then raise exception 'exportação sem saúde'; end if;
-  select string_agg(concat_ws(',', fn_csv(j.id::text), fn_csv(j.numero::text), fn_csv(t.nome), fn_csv(j.tecnico_id::text),
-           fn_csv(j.motivo), fn_csv(m.nome), fn_csv(j.data::text), fn_csv(j.data_fim::text), fn_csv(fn_csv_texto(j.observacao)),
-           fn_csv(j.status), fn_csv(fn_csv_texto(j.resposta)), fn_csv(j.decidido_por), fn_csv(j.decidido_em::text),
+  select string_agg(concat_ws(',', fn_csv(j.id::text), fn_csv(j.numero::text), fn_csv(fn_csv_texto(t.nome)), fn_csv(j.tecnico_id::text),
+           fn_csv(j.motivo), fn_csv(fn_csv_texto(m.nome)), fn_csv(j.data::text), fn_csv(j.data_fim::text), fn_csv(fn_csv_texto(j.observacao)),
+           fn_csv(j.status), fn_csv(fn_csv_texto(j.resposta)), fn_csv(fn_csv_texto(j.decidido_por)), fn_csv(j.decidido_em::text),
            fn_csv(j.created_at::text)), E'\r\n' order by j.data, j.numero)
     into v
     from ponto_justificativas j join ponto_motivos m on m.codigo = j.motivo join tecnicos t on t.id = j.tecnico_id
