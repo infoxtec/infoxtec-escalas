@@ -212,7 +212,7 @@ declare
     'app_plataforma_testar_alerta', 'app_plataforma_alertas', 'app_plataforma_monitor', 'app_plataforma_salvar_monitor',
     'app_plataforma_canais', 'app_plataforma_salvar_canal'];
   v_tb_plataforma text[] := array['config', 'backlog_itens', 'motor_estado', 'saude_testes', 'ponto_geo', 'webhook_token_trocas',
-    'plataforma_log', 'feriados', 'ponto_motivos', 'evolution_vigia', 'alertas_email', 'mfa_recuperacoes'];
+    'plataforma_log', 'feriados', 'ponto_motivos', 'evolution_vigia', 'alertas_email', 'mfa_recuperacoes', 'saude_termos'];
   v text; n int; v_ok boolean;
 begin
   -- a lista da plataforma precisa existir (função ou tabela renomeada/removida obriga a revisar a classificação)
@@ -4737,12 +4737,15 @@ begin
                      and not exists (select 1 from fn_exportar_tabelas() t, unnest(t.colunas) c
                                       where t.tabela = 'conta_canais' and c in ('url', 'instancia')),
                      '[T84] fórmula escapada e canal sem endereço');
-  -- administrador com ve_saude: o pedido leva o pacote de saúde
+  -- desde a migration 147 o pedido do administrador nunca leva saúde (só o download protegido); as funções do pacote de
+  -- saúde da exportação seguem testadas com um pedido com saúde feito direto
   update conta_membros set ve_saude = true where conta_id = v_b and email = 'qa-b@teste.local';
   perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
   v_id := app_conta_exportar();
   perform set_config('request.jwt.claims', '', true);
-  perform pg_temp.ok((select com_saude from conta_exportacoes where id = v_id), '[T84] pedido com saúde para quem tem ve_saude');
+  perform pg_temp.ok(not (select com_saude from conta_exportacoes where id = v_id), '[T84] pedido do administrador sem pacote de saúde');
+  update conta_exportacoes set estado = 'falhou' where id = v_id;
+  v_id := fn_exportar_pedir(v_b, 'qa-b@teste.local', 'admin', true, false);
   perform fn_exportacao_dados(v_tok, v_id);
   select j.id into v_jus from ponto_justificativas j where j.conta_id = v_b and j.observacao = 'qa83 dado de saúde';
   insert into ponto_justificativa_anexos (justificativa_id, tipo, tamanho, sha256, conteudo, conta_id)
@@ -4763,19 +4766,13 @@ begin
   perform pg_temp.ok(v_ok, '[T84] AFD de empresa de outra conta recusado');
   perform fn_exportacao_resultado(v_tok, v_id, true, v_b || '/' || v_id || '.zip', 10, repeat('2', 64), null, null,
                                   v_b || '/' || v_id || '_saude.zip', 5, null);
-  -- link de saúde: só administrador com ve_saude; a plataforma baixa o pacote, nunca o de saúde; cada baixa registrada
-  v_ok := fn_exportacao_link('qa-b@teste.local', 'aal2', v_id, true) = v_b || '/' || v_id || '_saude.zip';
-  v_ok := v_ok and fn_exportacao_link('qa-admin@teste.local', 'aal2', v_id) = v_b || '/' || v_id || '.zip';
-  perform pg_temp.ok(v_ok and (select count(*) from conta_exportacao_baixas where exportacao_id = v_id) = 2
-                     and exists (select 1 from conta_exportacao_baixas where exportacao_id = v_id and saude and email = 'qa-b@teste.local'),
-                     '[T84] links e baixas registradas');
+  -- link: o pacote comum baixa e fica registrado; o de saúde guardado não sai mais (migration 147)
+  v_ok := fn_exportacao_link('qa-admin@teste.local', 'aal2', v_id) = v_b || '/' || v_id || '.zip';
+  perform pg_temp.ok(v_ok and (select count(*) from conta_exportacao_baixas where exportacao_id = v_id) = 1, '[T84] link e baixa registrada');
   v_ok := false;
-  begin perform fn_exportacao_link('qa-admin@teste.local', 'aal2', v_id, true); exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
-  perform pg_temp.ok(v_ok, '[T84] plataforma não baixa a saúde');
+  begin perform fn_exportacao_link('qa-b@teste.local', 'aal2', v_id, true); exception when others then v_ok := sqlerrm like 'Os dados de saúde agora saem%'; end;
+  perform pg_temp.ok(v_ok, '[T84] pacote de saúde guardado não baixa mais');
   update conta_membros set ve_saude = false where conta_id = v_b and email = 'qa-b@teste.local';
-  v_ok := false;
-  begin perform fn_exportacao_link('qa-b@teste.local', 'aal2', v_id, true); exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
-  perform pg_temp.ok(v_ok, '[T84] sem ve_saude não baixa a saúde');
   -- pedido da plataforma nunca tem saúde
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
   v_id2 := app_plataforma_exportar_conta(v_b);
@@ -4867,7 +4864,68 @@ begin
   perform pg_temp.ok(exists (select 1 from jsonb_array_elements(fn_exportar_arquivos(v_tok, v_id)->'documentos_saude') x
                               where x->>'caminho' = v_tec || '/qa85.pdf'), '[T85] ASO no pacote de saúde');
 end $$;
-select 'REGRESSÃO OK: T1 a T85' as resultado,
+-- T86 saúde protegida (migration 147): termo, código na hora, download por pessoa, limite e limpeza ------------------
+do $$
+declare
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_tok text := repeat('ab', 32); v_r jsonb; v_ok boolean; v_d uuid; v_anx uuid; i int;
+begin
+  perform set_config('request.headers', '{}', true);
+  perform fn_segredo_gravar('EXPORTACAO_TOKEN', v_tok);
+  update conta_membros set ve_saude = false where conta_id = v_b and email = 'qa-b@teste.local';
+  perform set_config('request.jwt.claims', '{"email":"qa-b@teste.local","role":"authenticated","aal":"aal2"}', true);
+  v_ok := false; begin perform app_saude_termo(); exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
+  perform pg_temp.ok(v_ok, '[T86] sem ve_saude não vê o termo');
+  update conta_membros set ve_saude = true where conta_id = v_b and email = 'qa-b@teste.local';
+  v_r := app_saude_termo();
+  perform pg_temp.ok((v_r->>'versao')::int = 1 and not (v_r->>'aceito')::boolean and v_r->>'texto' like 'Termo de sigilo%', '[T86] termo vigente, ainda não aceito');
+  -- sem aceite, não baixa
+  v_ok := false; begin perform fn_saude_download_autorizar('qa-b@teste.local', 'aal2', now(), v_b, '1.2.3.4'); exception when others then v_ok := sqlerrm like 'Aceite o termo%'; end;
+  perform pg_temp.ok(v_ok, '[T86] sem aceite do termo não baixa');
+  v_ok := false; begin perform app_saude_aceitar_termo(99); exception when others then v_ok := sqlerrm like 'O termo mudou%'; end;
+  perform pg_temp.ok(v_ok, '[T86] aceite de versão que não é a vigente recusado');
+  perform app_saude_aceitar_termo(1);
+  perform pg_temp.ok((app_saude_termo()->>'aceito')::boolean
+                     and (select sha256 = (select sha256 from saude_termos where versao = 1) from saude_termo_aceites where conta_id = v_b and email = 'qa-b@teste.local'),
+                     '[T86] aceite gravado com o hash do texto');
+  v_ok := false; begin update saude_termo_aceites set ip = 'x' where conta_id = v_b; exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T86] aceite não se altera');
+  perform set_config('request.jwt.claims', '', true);
+  -- código do autenticador: precisa ser da hora (no máximo 5 min) e a sessão aal2
+  v_ok := false; begin perform fn_saude_download_autorizar('qa-b@teste.local', 'aal1', now(), v_b, null); exception when others then v_ok := sqlerrm like 'Digite o código%'; end;
+  perform pg_temp.ok(v_ok, '[T86] sem duas etapas recusado');
+  v_ok := false; begin perform fn_saude_download_autorizar('qa-b@teste.local', 'aal2', now() - interval '10 minutes', v_b, null); exception when others then v_ok := sqlerrm like 'Digite o código%'; end;
+  perform pg_temp.ok(v_ok, '[T86] código antigo (10 min) recusado');
+  -- plataforma e leitura nunca
+  v_ok := false; begin perform fn_saude_download_autorizar('qa-admin@teste.local', 'aal2', now(), v_b, null); exception when others then v_ok := sqlerrm like 'Sem permissão%'; end;
+  perform pg_temp.ok(v_ok, '[T86] plataforma não baixa saúde');
+  -- autorizado: registro, CSV completo e anexos da conta
+  v_r := fn_saude_download_autorizar('qa-b@teste.local', 'aal2', now() - interval '1 minute', v_b, '1.2.3.4');
+  v_d := (v_r->>'id')::uuid;
+  select id into v_anx from ponto_justificativa_anexos where conta_id = v_b limit 1;
+  perform pg_temp.ok(v_r->>'csv' like '%qa83 dado de saúde%' and exists (select 1 from jsonb_array_elements(v_r->'anexos') x where (x->>'id')::uuid = v_anx)
+                     and exists (select 1 from saude_downloads where id = v_d and email = 'qa-b@teste.local' and ip = '1.2.3.4' and termo_versao = 1),
+                     '[T86] download autorizado e registrado');
+  v_ok := decode(fn_saude_anexo(v_d, v_anx), 'base64') = 'qa84'::bytea;
+  perform pg_temp.ok(v_ok
+                     and exists (select 1 from ponto_anexo_acessos where anexo_id = v_anx and email like 'download de saúde qa-b@teste.local%'),
+                     '[T86] anexo decifrado e o acesso registrado');
+  -- o download só vale 10 minutos
+  update saude_downloads set criado_em = now() - interval '11 minutes' where id = v_d;
+  v_ok := false; begin perform fn_saude_anexo(v_d, v_anx); exception when others then v_ok := sqlerrm like 'download fora%'; end;
+  perform pg_temp.ok(v_ok, '[T86] download vencido não decifra');
+  -- limite de 5 em 24 h
+  for i in 1..4 loop perform fn_saude_download_autorizar('qa-b@teste.local', 'aal2', now(), v_b, null); end loop;
+  v_ok := false; begin perform fn_saude_download_autorizar('qa-b@teste.local', 'aal2', now(), v_b, null); exception when others then v_ok := sqlerrm like 'Limite de 5%'; end;
+  perform pg_temp.ok(v_ok, '[T86] limite de 5 downloads em 24 h');
+  -- arquivo pronto vence em 15 min e só sai da lista depois de apagado
+  perform fn_saude_resultado(v_d, true, v_b || '/saude/' || v_d || '.zip', 10, repeat('3', 64), 1, null);
+  update saude_downloads set estado = 'pronto', criado_em = now() - interval '20 minutes' where id = v_d;
+  perform pg_temp.ok(exists (select 1 from fn_saude_vencidos(v_tok) x where x.id = v_d), '[T86] arquivo de saúde vence em 15 min');
+  perform fn_saude_apagados(v_tok, array[v_d]);
+  perform pg_temp.ok((select estado = 'expirado' from saude_downloads where id = v_d), '[T86] sai da lista depois de apagado');
+end $$;
+select 'REGRESSÃO OK: T1 a T86' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

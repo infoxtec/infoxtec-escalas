@@ -76,6 +76,8 @@ export const api = {
   plataformaExportacoes: (id: string) => rpc<Exportacao[]>('app_plataforma_exportacoes', { p_conta: id }),
   contaExportar: () => rpc<string>('app_conta_exportar'),
   exportacoes: () => rpc<Exportacao[]>('app_exportacoes'),
+  saudeTermo: () => rpc<{ versao: number; texto: string; aceito: boolean }>('app_saude_termo'),
+  saudeAceitarTermo: (versao: number) => rpc<void>('app_saude_aceitar_termo', { p_versao: versao }),
   plataformaFeriados: (ano: number) => rpc<Feriado[]>('app_plataforma_feriados', { p_ano: ano }),
   plataformaSalvarFeriado: (f: Partial<Feriado>) => rpc<number>('app_plataforma_salvar_feriado', { p: f }),
   plataformaRemoverFeriado: (id: number) => rpc<void>('app_plataforma_remover_feriado', { p_id: id }),
@@ -335,6 +337,25 @@ export async function linkExportacao(id: string, saude = false): Promise<string>
   }).catch(() => null)
   const r = await resp?.json().catch(() => ({})) ?? {}
   if (!r.ok || typeof r.url !== 'string') throw new Error(r.erro ?? 'Não foi possível gerar o link agora.')
+  return r.url
+}
+
+// Download protegido de saúde (migration 147): logo depois de o código do autenticador ser conferido; a conta vai no
+// cabeçalho x-conta e o servidor confere termo, permissão e a hora do código. Devolve um link de 60 s
+export async function baixarSaude(): Promise<string> {
+  const { data: sessao } = await supabase.auth.getSession()
+  const resp = await fetchComConta(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/exportar-conta`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${sessao.session?.access_token ?? ''}`,
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ acao: 'saude' }),
+    signal: AbortSignal.timeout(120000),
+  }).catch(() => null)
+  const r = await resp?.json().catch(() => ({})) ?? {}
+  if (!r.ok || typeof r.url !== 'string') throw new Error(r.erro ?? 'Não foi possível gerar o pacote de saúde agora.')
   return r.url
 }
 

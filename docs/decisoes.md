@@ -1938,3 +1938,16 @@ pedidos novos do responsável.*
 - **Em aberto com o responsável:** a plataforma baixar a exportação de cliente (decidido em 30/10; o `seguranca`
   recomenda proibir — por ora ela leva só o pacote comum); rever o aceite da decisão 128 para quem é membro de mais de
   uma conta; o desenho da ICP-Brasil.
+
+## 132. Saúde protegida: download com termo, código novo e marca d'água
+
+*03/11/2026 — pedido do responsável no teste da F8c-2; substitui a decisão de 12/10 que só permitia ver o dado de saúde.*
+
+- O dado de saúde (ASO e exames do PCMSO) sai da exportação da conta e ganha um download próprio, só do administrador da
+  conta com `ve_saude` (migration 147). A plataforma não baixa.
+- Cada download exige: o termo de sigilo vigente aceito (versão e hash guardados, aceite imutável), um código novo da
+  verificação em duas etapas (no máximo 5 minutos) e gera arquivos com marca d'água de quem baixou, quando e o código do
+  download. No máximo 5 por 24 h; o arquivo dura 15 minutos e o link 60 s.
+- O texto do termo (v1) foi redigido pelo `juridico` e precisa da aprovação do responsável antes da produção; versão nova
+  do termo pede novo aceite.
+
