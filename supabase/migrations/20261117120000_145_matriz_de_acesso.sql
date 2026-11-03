@@ -27,6 +27,9 @@ create trigger tg_tipo_documento_saude before insert or update of nome on intern
 
 -- pacotes gerados antes da matriz: vencem agora (o motor manda apagar)
 update interno.conta_exportacoes set expira_em = now() where estado = 'pronta';
+-- em andamento na aplicação: pode ter gravado páginas sem a matriz; falha e o administrador pede de novo
+update interno.conta_exportacoes set estado = 'falhou', concluido_em = now(), erro = 'interrompida pela correção de acesso de 03/11; peça de novo'
+ where estado in ('pendente', 'gerando');
 
 CREATE OR REPLACE FUNCTION public.app_checklist_saude()
  RETURNS jsonb
@@ -605,7 +608,7 @@ begin
                                   and (not coalesce(p_saude, false) or m.ve_saude));
   -- o pacote com o espelho assinado só para quem tem rh_folhas na conta do pacote; a plataforma, só o pacote comum
   if e.id is null or not (
-       (v_admin and (not e.com_folha or exists (select 1 from conta_membros m
+       (v_admin and (coalesce(p_saude, false) or not e.com_folha or exists (select 1 from conta_membros m
           where m.conta_id = e.conta_id and m.email = v_email and m.ativo and m.rh_folhas)))
     or (v_plat and not coalesce(p_saude, false) and not e.com_folha and not e.com_saude)) then
     raise exception 'Sem permissão para esta ação.';
@@ -637,6 +640,24 @@ begin
       'baixas', (select count(*) from interno.conta_exportacao_baixas b where b.conta_id = e.conta_id and b.exportacao_id = e.id))
       order by e.criado_em desc)
     from (select * from interno.conta_exportacoes where conta_id = v_conta order by criado_em desc limit 20) e), '[]'::jsonb);
+end $function$
+;
+
+CREATE OR REPLACE FUNCTION public.app_plataforma_exportacoes(p_conta uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'interno', 'public', 'extensions', 'pg_temp'
+AS $function$
+begin
+  perform interno.fn_exigir_plataforma();
+  return coalesce((select jsonb_agg(jsonb_build_object('id', e.id, 'origem', e.origem, 'estado', e.estado, 'pedido_por', e.pedido_por,
+      'criado_em', e.criado_em, 'concluido_em', e.concluido_em, 'expira_em', e.expira_em, 'tamanho', e.tamanho,
+      'manifesto_sha256', e.manifesto_sha256, 'erro', e.erro, 'saude', false,
+      'pode_baixar', not e.com_folha and not e.com_saude,   -- a plataforma só baixa o pacote comum
+      'baixas', (select count(*) from interno.conta_exportacao_baixas b where b.conta_id = e.conta_id and b.exportacao_id = e.id))
+      order by e.criado_em desc)
+    from (select * from interno.conta_exportacoes where conta_id = p_conta order by criado_em desc limit 20) e), '[]'::jsonb);
 end $function$
 ;
 
