@@ -1968,4 +1968,8 @@ pedidos novos do responsável.*
   responsável.
 - **Proposta do DeepSeek avaliada por critério** (lastro, premissa, capacidade, risco real, decisões, cobertura): 6
   cartões aprovados, 7 no backlog, corte do #13 reprovado pelo `seguranca` (retenção é LGPD).
+- **Como (A2, 04/11):** o workflow Aplicar ganhou a entrada `painel` (`nao` por padrão) e o job `painel`, que só roda
+  depois do job `aplicar` aprovado e verde e avança a branch `producao` para o commit da `main` em avanço rápido (nunca
+  reescreve). O Worker `trilha` publica a partir de `producao`. A Vercel está sem deploy automático
+  (`git.deploymentEnabled: false`, 04/11). Publicar o painel é sempre um disparo com `painel = sim`, aprovado.
 

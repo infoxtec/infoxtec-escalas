@@ -9,6 +9,8 @@
 #   DB_URL                  (segredo, nos dois) conexão do banco (Session pooler, porta 5432), com a senha
 #   SUPABASE_ACCESS_TOKEN   (segredo, SÓ na produção) token da conta do Supabase, para publicar Edge Functions
 #   CONGELADA_ATE           (variável, só na produção, opcional) AAAA-MM-DD: recusa aplicar até essa data
+# Painel da produção (A2, decisão 133): o Worker `trilha` do Cloudflare publica a branch `producao`, e só o job `painel`
+# avança essa branch, depois do job `aplicar` aprovado e verde. Nada de merge na main muda a produção do painel.
 # O repositório é público: nada de dado do banco no log, só versões e nomes de função.
 name: Aplicar
 
@@ -33,6 +35,12 @@ on:
         description: 'Só na produção: Edge Functions a publicar, separadas por espaço (ex.: documento-ocr espelho-pdf). Vazio = nenhuma'
         required: false
         default: ''
+      painel:
+        description: 'Só na produção: publicar o painel (avança a branch producao para este commit; o Worker trilha do Cloudflare publica a partir dela)'
+        required: false
+        type: choice
+        options: [nao, sim]
+        default: nao
 
 concurrency:
   group: aplicar-${{ github.event.inputs.destino || 'homologacao' }}
@@ -166,3 +174,28 @@ jobs:
         run: |
           v=$(psql "$DB_URL" -X -At -c "select max(version) from supabase_migrations.schema_migrations")
           echo "### $DESTINO: migration $v aplicada, plpgsql_check zero" >> "$GITHUB_STEP_SUMMARY"
+
+  # Painel da produção (A2, decisão 133): só depois do job `aplicar` aprovado no ambiente producao e verde. Avança a
+  # branch `producao` para o commit deste disparo (sempre da main), só em avanço rápido: nunca reescreve nem volta a
+  # branch (a volta é um disparo novo a partir de um commit que reverte). O Worker `trilha` publica a partir dela.
+  painel:
+    needs: aplicar
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.destino == 'producao' && github.event.inputs.painel == 'sim'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          fetch-depth: 0
+      - name: Avançar a branch producao
+        run: |
+          [ "$GITHUB_REF" = "refs/heads/main" ] || { echo "::error::Só a partir da main"; exit 1; }
+          if git ls-remote --exit-code --heads origin producao >/dev/null; then
+            git fetch --no-tags origin producao
+            git merge-base --is-ancestor FETCH_HEAD "$GITHUB_SHA" \
+              || { echo "::error::A branch producao tem commit que não está na main: nada foi publicado"; exit 1; }
+          fi
+          git push origin "$GITHUB_SHA:refs/heads/producao"
+          echo "### painel: branch producao em ${GITHUB_SHA:0:7} (o Worker trilha publica a partir dela)" >> "$GITHUB_STEP_SUMMARY"
