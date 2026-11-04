@@ -17,7 +17,7 @@ Cloudflare. As Edge Functions da produção aceitam o Worker `trilha` por nome e
 | Campo | Valor |
 |---|---|
 | Project name | `trilha` (precisa ser exatamente este: é o endereço que as Edge Functions aceitam) |
-| Production branch | `main` até o A2; o A2 troca para `producao`, que só avança pelo workflow Aplicar aprovado |
+| Production branch | `main` (sem efeito: **Disable builds ligado**, A2). Quem publica é o workflow Aplicar, com destino `producao` e painel `sim`, depois da aprovação, usando o segredo `CLOUDFLARE_API_TOKEN` do ambiente `producao` |
 | Build command | `cd web && npm ci && npm run build:producao` |
 | Deploy command | `npx --yes wrangler@4.151.3 deploy --config wrangler.producao.jsonc` |
 | Root directory | vazio (raiz; o comando entra em `web/` sozinho) |

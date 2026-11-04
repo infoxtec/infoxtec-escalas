@@ -9,6 +9,10 @@
 #   DB_URL                  (segredo, nos dois) conexão do banco (Session pooler, porta 5432), com a senha
 #   SUPABASE_ACCESS_TOKEN   (segredo, SÓ na produção) token da conta do Supabase, para publicar Edge Functions
 #   CONGELADA_ATE           (variável, só na produção, opcional) AAAA-MM-DD: recusa aplicar até essa data
+#   CLOUDFLARE_API_TOKEN    (segredo, SÓ na produção) token do Cloudflare só com Workers Scripts: Edit, para o painel
+#   CLOUDFLARE_ACCOUNT_ID   (variável, só na produção) a conta do Cloudflare (não é segredo)
+# Painel da produção (A2, decisão 133): o Worker `trilha` não faz build sozinho (Disable builds ligado no Cloudflare);
+# só este workflow publica, com painel = sim, depois da aprovação no ambiente producao. Merge na main não muda o painel.
 # O repositório é público: nada de dado do banco no log, só versões e nomes de função.
 name: Aplicar
 
@@ -33,6 +37,12 @@ on:
         description: 'Só na produção: Edge Functions a publicar, separadas por espaço (ex.: documento-ocr espelho-pdf). Vazio = nenhuma'
         required: false
         default: ''
+      painel:
+        description: 'Só na produção: publicar o painel no Worker trilha do Cloudflare (build e deploy feitos aqui, depois da aprovação)'
+        required: false
+        type: choice
+        options: [nao, sim]
+        default: nao
 
 concurrency:
   group: aplicar-${{ github.event.inputs.destino || 'homologacao' }}
@@ -57,6 +67,7 @@ jobs:
       DESTINO: ${{ github.event.inputs.destino || 'homologacao' }}
       ATE: ${{ github.event.inputs.ate }}
       FUNCOES: ${{ github.event.inputs.funcoes }}
+      PAINEL: ${{ github.event.inputs.painel || 'nao' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
         with:
@@ -69,9 +80,18 @@ jobs:
         env:
           DB_URL: ${{ secrets.DB_URL }}
           CONGELADA_ATE: ${{ vars.CONGELADA_ATE }}
+          CF_TOKEN_OK: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && 'sim' || '' }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           [ "$GITHUB_REF" = "refs/heads/main" ] || { echo "::error::Só a partir da main"; exit 1; }
           [ -n "$DB_URL" ] || { echo "::error::Cadastre o segredo DB_URL no ambiente $DESTINO"; exit 1; }
+          # painel = sim: confere antes de mexer no banco (o painel é o da ponta da main; com 'ate', o banco ficaria atrás dele)
+          if [ "$PAINEL" = sim ]; then
+            [ "$DESTINO" = producao ] || { echo "::error::painel = sim só vale na produção"; exit 1; }
+            [ -z "$ATE" ] || { echo "::error::painel = sim exige 'ate' vazio"; exit 1; }
+            [ -n "$CF_TOKEN_OK" ] || { echo "::error::Cadastre o segredo CLOUDFLARE_API_TOKEN no ambiente producao"; exit 1; }
+            [ -n "$CLOUDFLARE_ACCOUNT_ID" ] || { echo "::error::Cadastre a variável CLOUDFLARE_ACCOUNT_ID no ambiente producao"; exit 1; }
+          fi
           # o segredo precisa ser do projeto do destino (segredo trocado entre ambientes não aplica nada)
           esperado=$([ "$DESTINO" = producao ] && echo zpckrxydqqmmcrphrkxz || echo oruwnlxyvznpigbpjjbx)
           echo "::add-mask::$(echo "$DB_URL" | sed -nE 's#^[^:]+://[^:]+:([^@]+)@.*#\1#p')"
@@ -166,3 +186,27 @@ jobs:
         run: |
           v=$(psql "$DB_URL" -X -At -c "select max(version) from supabase_migrations.schema_migrations")
           echo "### $DESTINO: migration $v aplicada, plpgsql_check zero" >> "$GITHUB_STEP_SUMMARY"
+
+      # Painel da produção (A2, decisão 133): por último, depois de todo passo com segredo do banco ou do Supabase
+      # (revisão do seguranca): o código das dependências do npm nunca roda antes de um passo que use o DB_URL.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        if: env.DESTINO == 'producao' && env.PAINEL == 'sim'
+        with:
+          node-version: 22
+
+      - name: Painel, build (sem segredo; dependências sem scripts de instalação)
+        if: env.DESTINO == 'producao' && env.PAINEL == 'sim'
+        run: |
+          cd web
+          npm ci --ignore-scripts
+          npm run build:producao   # aborta se o banco não for o da produção (vite.config.ts)
+
+      - name: Painel, deploy no Worker trilha do Cloudflare
+        if: env.DESTINO == 'producao' && env.PAINEL == 'sim'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          cd web
+          npx --no-install wrangler deploy --config wrangler.producao.jsonc   # o wrangler do package-lock (integridade conferida)
+          echo "publicado: painel $(node -p "require('./package.json').version") no Worker trilha (${GITHUB_SHA:0:7})" >> "$GITHUB_STEP_SUMMARY"

@@ -1968,4 +1968,14 @@ pedidos novos do responsável.*
   responsável.
 - **Proposta do DeepSeek avaliada por critério** (lastro, premissa, capacidade, risco real, decisões, cobertura): 6
   cartões aprovados, 7 no backlog, corte do #13 reprovado pelo `seguranca` (retenção é LGPD).
-
+- **Como (A2, 04/11):** o workflow Aplicar ganhou a entrada `painel` (`nao` por padrão). Com `painel = sim` e destino
+  `producao`, depois da aprovação, o próprio workflow faz o build (`build:producao`) e o deploy do Worker `trilha` com o
+  segredo `CLOUDFLARE_API_TOKEN` (token só com Workers Scripts: Edit), que existe só no ambiente `producao`. O Worker
+  fica com **Disable builds** ligado no Cloudflare: nenhum push publica. Primeiro desenho (branch `producao` avançada
+  pelo workflow) trocado na revisão do `seguranca`: a branch aceitaria push de quem tem escrita no repositório e só se
+  protegeria com chave SSH. Ordem do job (segunda revisão): o painel é o último passo, depois de todo passo com
+  segredo do banco; o build roda sem segredo e com `npm ci --ignore-scripts`; só o deploy recebe o token; o wrangler é
+  `devDependency` exata no `package-lock` (integridade conferida pelo `npm ci`). Risco aceito (opção a do `seguranca`):
+  build e deploy no mesmo job (um job separado exigiria uma segunda aprovação). O token do Cloudflare alcança todos os
+  Workers da conta (o Cloudflare não restringe Workers Scripts: Edit a um Worker): validade de 90 dias, troca no plano. `painel = sim` recusa a entrada `ate` (o painel é o da ponta da `main`). A Vercel está sem
+  deploy automático (`git.deploymentEnabled: false`, 04/11).
