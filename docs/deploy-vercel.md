@@ -105,6 +105,6 @@ O painel saiu da Vercel. O projeto `web` continua existindo **só para redirecio
 mantendo caminho e parâmetros: os QR dos espelhos já emitidos (`/v?c=...`, `/?verificar=...`) e os links já enviados pelo
 WhatsApp continuam abrindo. O `web/vercel.json` não instala dependências nem faz build do painel: só uma página vazia e o
 redirecionamento. **Nunca apagar o projeto:** o nome `infoxtec-escalas.vercel.app` ficaria livre para outra conta, e os QR
-impressos levariam para lá. O deploy é ligado só no merge deste PR (para publicar o redirecionamento) e desligado de novo
-no PR seguinte.
+impressos levariam para lá. O deploy fica desligado (`git.deploymentEnabled: false`); para mudar o redirecionamento, um PR
+liga, publica e o seguinte desliga.
 
