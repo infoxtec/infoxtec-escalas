@@ -99,3 +99,12 @@ Motivo: em 03/11 o painel 3.67.0 foi ao ar no merge, antes do comando do respons
 `trilha` no Cloudflare, publicado só pelo workflow Aplicar aprovado (A2). **Plano de volta (A4):** um PR que tira essa
 linha religa o deploy da `main` na Vercel.
 
+## Vercel só redireciona (B7, 04/11, decisão 133)
+
+O painel saiu da Vercel. O projeto `web` continua existindo **só para redirecionar** (308) tudo para o Worker `trilha`,
+mantendo caminho e parâmetros: os QR dos espelhos já emitidos (`/v?c=...`, `/?verificar=...`) e os links já enviados pelo
+WhatsApp continuam abrindo. O `web/vercel.json` não instala dependências nem faz build do painel: só uma página vazia e o
+redirecionamento. **Nunca apagar o projeto:** o nome `infoxtec-escalas.vercel.app` ficaria livre para outra conta, e os QR
+impressos levariam para lá. O deploy é ligado só no merge deste PR (para publicar o redirecionamento) e desligado de novo
+no PR seguinte.
+
