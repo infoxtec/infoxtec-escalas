@@ -119,7 +119,7 @@ export default function DocumentosArquivos({ tecnicos, tiposDoc, podeEditar, aoM
 
       {erro && <ErrorBox>{erro}</ErrorBox>}
 
-      <div className="overflow-hidden rounded-md border">
+      <div className="overflow-x-auto rounded-md border">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50 text-left text-xs font-semibold text-muted-foreground">

@@ -143,7 +143,7 @@ export default function LocaisPage({ locais, recarregar, podeEditar }: {
                 <Button variant="outline" size="sm" onClick={doLink} disabled={salvando || !edit.link_maps}><Crosshair className="h-3.5 w-3.5" /> Pegar do link</Button>
               </div>
               <p className="text-xs text-muted-foreground">A marcação feita fora deste raio é sinalizada ao gestor, nunca bloqueada.</p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <Field label="Latitude"><Input value={edit.latitude ?? ''} placeholder="-12.977749" disabled={salvando} onChange={e => set('latitude', num(e.target.value))} /></Field>
                 <Field label="Longitude"><Input value={edit.longitude ?? ''} placeholder="-38.501630" disabled={salvando} onChange={e => set('longitude', num(e.target.value))} /></Field>
                 <Field label="Raio (m)"><Input type="number" min={20} max={5000} value={edit.raio_m ?? 200} disabled={salvando} onChange={e => set('raio_m', Number(e.target.value) || 200)} /></Field>

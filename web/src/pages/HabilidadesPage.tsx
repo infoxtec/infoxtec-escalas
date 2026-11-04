@@ -129,7 +129,7 @@ function Documentos({ porTecnico, tiposDoc, tecnicos, podeEditar, recarregar }: 
         </label>
       </div>
 
-      <div className="overflow-hidden rounded-md border">
+      <div className="overflow-x-auto rounded-md border">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50 text-left text-xs font-semibold text-muted-foreground">
@@ -193,7 +193,7 @@ function Documentos({ porTecnico, tiposDoc, tecnicos, podeEditar, recarregar }: 
                             Nenhum documento cadastrado.{podeEditar && ' Use os botões à direita para enviar arquivos ou informar a validade.'}
                           </p>
                         ) : (
-                          <table className="w-full text-xs">
+                          <div className="overflow-x-auto"><table className="w-full text-xs">
                             <thead>
                               <tr className="text-left text-muted-foreground">
                                 <th className="py-1 pr-3">Documento</th><th className="py-1 pr-3">Validade</th>
@@ -230,7 +230,7 @@ function Documentos({ porTecnico, tiposDoc, tecnicos, podeEditar, recarregar }: 
                                 )
                               })}
                             </tbody>
-                          </table>
+                          </table></div>
                         )}
                       </td>
                     </tr>
@@ -317,7 +317,7 @@ function Catalogo({ catalogo, podeEditar, recarregar }: { catalogo: Habilidade[]
         {podeEditar && <Button size="sm" onClick={() => { setEdit({ nome: '', categoria: 'tecnica', ativo: true }); setErro(null) }}><Plus className="h-4 w-4" /> Nova habilidade</Button>}
       </div>
 
-      <div className="overflow-hidden rounded-md border">
+      <div className="overflow-x-auto rounded-md border">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50 text-left text-xs font-semibold text-muted-foreground">

@@ -56,3 +56,8 @@ body { @apply bg-background text-foreground antialiased; }
 @keyframes tl-risca { to { stroke-dashoffset: 0; } }
 @keyframes tl-surge { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .tl.anima * { animation: none !important; stroke-dashoffset: 0 !important; } }
+
+/* Celular (PWA): campo com letra menor que 16px faz o iPhone dar zoom ao tocar; no celular, os campos ficam com 16px */
+@media (max-width: 640px) {
+  input, select, textarea { font-size: 16px !important; }
+}

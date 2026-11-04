@@ -85,3 +85,7 @@ GitHub ainda ativa (`This Worker does not exist on your account`).
   Vercel da produção nunca é apagado (QR dos espelhos assinados).
 - **Não renomear nem liberar o subdomínio `david-cerqueira.workers.dev`** enquanto as Edge Functions confiarem nele
   (`ORIGEM_PAINEL` da produção e `ORIGEM_HOMOLOGACAO_CF`, decisão 133): outra conta poderia registrá-lo.
+- **PWA (painel 3.68.0):** `manifest.webmanifest` (painel) e `manifest-ponto.webmanifest` (app do ponto, início em
+  `/ponto`), trocados por um script curto no `index.html`. Sem service worker (o painel confere a versão publicada e
+  um cache local esconderia a versão nova). A CSP do B1 precisa permitir esse script (hash) e `manifest-src 'self'`.
+

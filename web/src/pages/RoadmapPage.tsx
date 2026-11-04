@@ -192,7 +192,7 @@ export default function RoadmapPage({ podeEditar }: { podeEditar: boolean }) {
         </>}>
         {edit && (
           <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Field label="Nº"><Input value={edit.id ? numeroBacklog(edit.numero ?? null) : 'automático'} disabled
                 title="Numerado pelo banco, em sequência" /></Field>
               <Field label="Grupo">

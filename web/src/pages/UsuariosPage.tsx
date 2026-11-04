@@ -111,7 +111,7 @@ export default function UsuariosPage() {
 
       {erro && <ErrorBox>{erro}</ErrorBox>}
 
-      <div className="overflow-hidden rounded-md border">
+      <div className="overflow-x-auto rounded-md border">
         <table className="table-fixed text-sm" style={{ width: total, minWidth: '100%' }}>
           <thead>
             <tr className="border-b bg-muted/50">
