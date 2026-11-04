@@ -31,6 +31,15 @@ aprovada pelo responsável em 03/11. Artefato da reunião com a votação comple
 
 Veto do CTO: nada vai junto com a virada; se o A1 não estiver validado na produção até 07/11, a data muda.
 
+### Etapa 1 do celular (pedido do responsável, 04/11, antes do B1)
+
+| Ordem | Item | Dono | Esf. | Aceite |
+|---|---|---|---|---|
+| C1 | Trilha instalável no celular (PWA) e responsivo | fullstack | M | Painel e app do ponto instaláveis pela tela de início (iPhone e Android), com ícone próprio; telas públicas sem rolagem lateral em 360 e 390 px; tabelas do gestor roláveis dentro do quadro; sem zoom do iPhone ao tocar num campo |
+
+App nativo na loja (Capacitor, mesmo código) fica para depois, só se a venda exigir (CTO e PO decidem; Apple US$ 99/ano,
+Google US$ 25). O xtool foi avaliado e descartado: só iPhone, só Swift.
+
 ### Bloco B — primeira venda (11 a 17/11)
 
 | Ordem | Item | Dono | Esf. | Aceite |

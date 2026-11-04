@@ -116,7 +116,7 @@ export default function EspelhoDocumento({ e, previa }: { e: EspelhoCompleto; pr
         </div>}
       </div>
 
-      <table className="w-full border-collapse text-[11px]">
+      <div className="overflow-x-auto"><table className="w-full border-collapse text-[11px]">
         <thead><tr className="border-b border-gray-400 text-left">
           <th className="py-1 pr-2">Dia</th><th className="pr-2">Entrada</th><th className="pr-2">Saída almoço</th><th className="pr-2">Volta</th>
           <th className="pr-2">Saída</th><th className="pr-2">Trabalhado</th>
@@ -147,7 +147,7 @@ export default function EspelhoDocumento({ e, previa }: { e: EspelhoCompleto; pr
               </tr>
             ))}
         </tbody>
-      </table>
+      </table></div>
       {duracao && <p className="text-[10px] text-gray-600">* Duração da jornada com a hora noturna reduzida (52'30" entre 22 h e 5 h valem 1 hora).</p>}
 
       {c.resumo ? <Resumo r={c.resumo} /> : (
