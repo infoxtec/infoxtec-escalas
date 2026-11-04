@@ -27,7 +27,7 @@ aprovada pelo responsável em 03/11. Artefato da reunião com a votação comple
 | A2 | Produção só pelo Aplicar, com aprovação (entrada `painel`: o próprio Aplicar aprovado faz o build e o deploy do Worker `trilha` com o token do Cloudflare do ambiente `producao`; Disable builds ligado no Worker) | fullstack (merge do responsável) | M | Merge na `main` não muda a produção; só o disparo aprovado |
 | A3 | Worker de produção `trilha` (https://trilha.david-cerqueira.workers.dev, banco da produção; o da homologação continua em `trilha-homologacao`) | fullstack | M | Build aponta só para o banco da produção; `_headers` com HSTS; sem pré-visualização; versão igual à da Vercel |
 | A4 | Ensaio da virada e da volta, aviso aos usuários | infra-bd | P | Ensaio verde; volta para a Vercel em menos de 15 min; gestores e técnicos avisados |
-| A5 | Virada em 10/11, sozinha | dev-banco + responsável | P | `app_url`, Site URL e redirects na produção apontam para o Worker; convite, senha e espelho abrem lá |
+| A5 | Virada antecipada para 04/11 a pedido do responsável (migration 148 da `app_url`; Site URL já no Worker), sozinha | dev-banco + responsável | P | `app_url`, Site URL e redirects na produção apontam para o Worker; convite, senha e espelho abrem lá |
 
 Veto do CTO: nada vai junto com a virada; se o A1 não estiver validado na produção até 07/11, a data muda.
 

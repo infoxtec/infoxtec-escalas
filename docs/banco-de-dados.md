@@ -254,6 +254,13 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 148 (04/11, versão 20261120120000): painel da produção no Cloudflare (A5, decisão 133)
+
+A config `app_url` (links de ponto e de espelho enviados pelo WhatsApp) passa da Vercel para o Worker `trilha`
+(https://trilha.david-cerqueira.workers.dev), só onde ainda era o endereço da Vercel. A homologação não muda. Os QR dos
+espelhos já emitidos guardam o endereço da Vercel: ela fica só como redirecionamento (B7). O reserva escrito nas funções
+das migrations 111 e 121 (quando `app_url` está vazia) continua na Vercel até a próxima recriação delas.
+
 ### Migration 147 (03/11, versão 20261119120000): saúde protegida (decisão 132)
 
 O dado de saúde (ASO e exames do PCMSO, `tipos_documento.saude`) sai da exportação e passa a ter um download próprio,
