@@ -24,7 +24,7 @@ aprovada pelo responsável em 03/11. Artefato da reunião com a votação comple
 | Ordem | Item | Dono | Esf. | Aceite |
 |---|---|---|---|---|
 | A1 | #18 Origem dupla nas 6 Edge Functions e no convite | fullstack + seguranca | M | `OPTIONS` aceita a Vercel e o Worker por nome exato e nega pré-visualização; publicação pelo Aplicar verde; na produção até 07/11, junto com o Worker por nome exato nas Redirect URLs do Auth da produção (nunca curinga) e um convite saído do Worker testado |
-| A2 | Produção só pelo Aplicar, com aprovação (entrada `painel` e job `painel` que avança a branch `producao`; Production branch do Worker `trilha` = `producao`) | fullstack (merge do responsável) | M | Merge na `main` não muda a produção; só o disparo aprovado |
+| A2 | Produção só pelo Aplicar, com aprovação (entrada `painel`: o próprio Aplicar aprovado faz o build e o deploy do Worker `trilha` com o token do Cloudflare do ambiente `producao`; Disable builds ligado no Worker) | fullstack (merge do responsável) | M | Merge na `main` não muda a produção; só o disparo aprovado |
 | A3 | Worker de produção `trilha` (https://trilha.david-cerqueira.workers.dev, banco da produção; o da homologação continua em `trilha-homologacao`) | fullstack | M | Build aponta só para o banco da produção; `_headers` com HSTS; sem pré-visualização; versão igual à da Vercel |
 | A4 | Ensaio da virada e da volta, aviso aos usuários | infra-bd | P | Ensaio verde; volta para a Vercel em menos de 15 min; gestores e técnicos avisados |
 | A5 | Virada em 10/11, sozinha | dev-banco + responsável | P | `app_url`, Site URL e redirects na produção apontam para o Worker; convite, senha e espelho abrem lá |

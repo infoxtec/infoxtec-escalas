@@ -9,8 +9,10 @@
 #   DB_URL                  (segredo, nos dois) conexão do banco (Session pooler, porta 5432), com a senha
 #   SUPABASE_ACCESS_TOKEN   (segredo, SÓ na produção) token da conta do Supabase, para publicar Edge Functions
 #   CONGELADA_ATE           (variável, só na produção, opcional) AAAA-MM-DD: recusa aplicar até essa data
-# Painel da produção (A2, decisão 133): o Worker `trilha` do Cloudflare publica a branch `producao`, e só o job `painel`
-# avança essa branch, depois do job `aplicar` aprovado e verde. Nada de merge na main muda a produção do painel.
+#   CLOUDFLARE_API_TOKEN    (segredo, SÓ na produção) token do Cloudflare só com Workers Scripts: Edit, para o painel
+#   CLOUDFLARE_ACCOUNT_ID   (variável, só na produção) a conta do Cloudflare (não é segredo)
+# Painel da produção (A2, decisão 133): o Worker `trilha` não faz build sozinho (Disable builds ligado no Cloudflare);
+# só este workflow publica, com painel = sim, depois da aprovação no ambiente producao. Merge na main não muda o painel.
 # O repositório é público: nada de dado do banco no log, só versões e nomes de função.
 name: Aplicar
 
@@ -36,7 +38,7 @@ on:
         required: false
         default: ''
       painel:
-        description: 'Só na produção: publicar o painel (avança a branch producao para este commit; o Worker trilha do Cloudflare publica a partir dela)'
+        description: 'Só na produção: publicar o painel no Worker trilha do Cloudflare (build e deploy feitos aqui, depois da aprovação)'
         required: false
         type: choice
         options: [nao, sim]
@@ -65,6 +67,7 @@ jobs:
       DESTINO: ${{ github.event.inputs.destino || 'homologacao' }}
       ATE: ${{ github.event.inputs.ate }}
       FUNCOES: ${{ github.event.inputs.funcoes }}
+      PAINEL: ${{ github.event.inputs.painel || 'nao' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
         with:
@@ -168,34 +171,30 @@ jobs:
             echo "publicada: $f" >> "$GITHUB_STEP_SUMMARY"
           done
 
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        if: env.DESTINO == 'producao' && env.PAINEL == 'sim'
+        with:
+          node-version: 22
+
+      - name: Painel no Cloudflare (só na produção, com painel = sim)
+        if: env.DESTINO == 'producao' && env.PAINEL == 'sim'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          # o painel publicado chama as funções da ponta da main: com 'ate', o banco pode ficar atrás dele
+          [ -z "$ATE" ] || { echo "::error::painel = sim exige 'ate' vazio (o painel é o da ponta da main)"; exit 1; }
+          [ -n "$CLOUDFLARE_API_TOKEN" ] || { echo "::error::Cadastre o segredo CLOUDFLARE_API_TOKEN no ambiente producao"; exit 1; }
+          [ -n "$CLOUDFLARE_ACCOUNT_ID" ] || { echo "::error::Cadastre a variável CLOUDFLARE_ACCOUNT_ID no ambiente producao"; exit 1; }
+          cd web
+          npm ci
+          npm run build:producao   # aborta se o banco não for o da produção (vite.config.ts)
+          npx --yes wrangler@4.151.3 deploy --config wrangler.producao.jsonc
+          echo "publicado: painel $(node -p "require('./package.json').version") no Worker trilha (${GITHUB_SHA:0:7})" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Resumo
         env:
           DB_URL: ${{ secrets.DB_URL }}
         run: |
           v=$(psql "$DB_URL" -X -At -c "select max(version) from supabase_migrations.schema_migrations")
           echo "### $DESTINO: migration $v aplicada, plpgsql_check zero" >> "$GITHUB_STEP_SUMMARY"
-
-  # Painel da produção (A2, decisão 133): só depois do job `aplicar` aprovado no ambiente producao e verde. Avança a
-  # branch `producao` para o commit deste disparo (sempre da main), só em avanço rápido: nunca reescreve nem volta a
-  # branch (a volta é um disparo novo a partir de um commit que reverte). O Worker `trilha` publica a partir dela.
-  painel:
-    needs: aplicar
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.destino == 'producao' && github.event.inputs.painel == 'sim'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
-        with:
-          fetch-depth: 0
-      - name: Avançar a branch producao
-        run: |
-          [ "$GITHUB_REF" = "refs/heads/main" ] || { echo "::error::Só a partir da main"; exit 1; }
-          if git ls-remote --exit-code --heads origin producao >/dev/null; then
-            git fetch --no-tags origin producao
-            git merge-base --is-ancestor FETCH_HEAD "$GITHUB_SHA" \
-              || { echo "::error::A branch producao tem commit que não está na main: nada foi publicado"; exit 1; }
-          fi
-          git push origin "$GITHUB_SHA:refs/heads/producao"
-          echo "### painel: branch producao em ${GITHUB_SHA:0:7} (o Worker trilha publica a partir dela)" >> "$GITHUB_STEP_SUMMARY"
