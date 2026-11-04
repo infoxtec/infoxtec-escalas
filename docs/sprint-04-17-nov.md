@@ -10,7 +10,7 @@ aprovada pelo responsável em 03/11. Artefato da reunião com a votação comple
 
 | Prazo | Decisão | Recomendação do time |
 |---|---|---|
-| 03/11 | Painel só vai ao ar com aprovação | Opção A (CTO, `seguranca`, `arquiteto-cloud`; PO depois da virada): desligar o deploy automático da Vercel já (Ignored Build Step `exit 0`) e, na virada, publicar o Worker só pelo Aplicar |
+| 03/11 | Painel só vai ao ar com aprovação | Opção A (CTO, `seguranca`, `arquiteto-cloud`; PO depois da virada): desligar o deploy automático da Vercel já (feito em 04/11 por `git.deploymentEnabled: false` no `web/vercel.json`; a opção Ignored Build Step não existe mais no painel da Vercel) e, na virada, publicar o Worker só pelo Aplicar |
 | 07/11 | Domínio próprio na virada ou depois | Na virada só se o DNS estiver no Cloudflare até 07/11; senão, obrigatório antes da 1ª venda (custo do responsável) |
 | 05/11 | Revisão da decisão 128 (bloqueia B3) | Membro de mais de uma conta recupera o 2FA só por e-mail |
 | 04/11 | D3, módulo contratado | Vender só o pacote completo na 1ª venda |

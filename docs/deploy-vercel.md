@@ -90,3 +90,12 @@ projeto `web`, `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` da produção fica
 ficam as três da homologação (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` e `VITE_AMBIENTE=homologacao`). Ajustado
 em 14/10 por script de uma vez só (PR #123), já removido. Variável nova do painel: cadastrar nos dois projetos e, no
 `web`, separada por ambiente.
+
+## Deploy automático desligado (04/11, decisão 133)
+
+`web/vercel.json` tem `"git": { "deploymentEnabled": false }`: nenhum push ou merge publica mais na Vercel, em nenhuma
+branch. A produção atual continua no ar (QR dos espelhos) até virar redirecionamento (B7); o projeto nunca é apagado.
+Motivo: em 03/11 o painel 3.67.0 foi ao ar no merge, antes do comando do responsável. A produção passa a ser o Worker
+`trilha` no Cloudflare, publicado só pelo workflow Aplicar aprovado (A2). **Plano de volta (A4):** um PR que tira essa
+linha religa o deploy da `main` na Vercel.
+
