@@ -86,7 +86,7 @@ Nenhum item ganha `[x]` no plano até a produção ser conferida pelo responsáv
 ### Ações corretivas (daily de 04/11: Scrum Master e gestor de pedidos)
 | # | Ação | Dono | Prazo |
 |---|---|---|---|
-| 1 | Inventário de todo caminho automático até a produção (Supabase, Vercel, Cloudflare, Aplicar, tokens) com dono, estado esperado e validade; conferido em todo PR de infraestrutura | Claude + `arquiteto-cloud` | 05/11 |
+| 1 | Inventário de todo caminho automático até a produção (Supabase, Vercel, Cloudflare, Aplicar, tokens) com dono, estado esperado e validade; conferido em todo PR de infraestrutura | Claude + `arquiteto-cloud` | **Feito em 04/11** (`docs/caminhos-de-producao.md`); 6 pendências do responsável |
 | 2 | Checklist de virada com condição de entrada (ensaio, roteiro de volta, aviso enviado); sem ela, a virada não sai; mudança fora dela só com o risco registrado | Scrum Master | 05/11 |
 | 3 | Roteiro fixo de teste pós-produção com todas as entradas de usuário (login, link do WhatsApp, convite, QR, raiz) | Claude (roteiro), responsável (testes 2 e 4) | 04/11 |
 | 4 | Usuário de QA na homologação para o Claude testar telas | Responsável decide | 05/11 |

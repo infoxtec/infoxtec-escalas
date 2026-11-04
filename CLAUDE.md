@@ -29,6 +29,8 @@ arquitetura e decisões em `docs/arquitetura.md` e `docs/decisoes.md`; fluxo de 
   testa. Para a produção, o responsável manda; o Claude dispara o workflow com o destino `producao` e o responsável
   aprova no GitHub. Ninguém roda comando. Os scripts
   `scripts/aplicar-*.sh` ficam só como contingência (antes de um `db push` à mão, conferir `supabase/.temp/project-ref`).
+- **Caminhos até a produção** (decisão 133): `docs/caminhos-de-producao.md`. Só o Aplicar aprovado muda a produção;
+  todo PR de infraestrutura confere a tabela 1 e diz se algo mudou.
 - A lista de trabalho pendente, em ordem, está em `docs/plano-de-trabalho.md`. Ao concluir uma
   etapa, marcar `[x]` e registrar na tabela do fim do arquivo.
 
