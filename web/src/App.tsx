@@ -6,8 +6,10 @@ import type { LucideIcon } from 'lucide-react'
 import { Button, ErrorBox } from './components/ui'
 import { configurado, contaAtual, escolherConta, supabase, tipoDoLink } from './lib/supabase'
 
-// Definido só nos modos locais (npm run dev:homologacao / dev:producao); vazio no painel publicado
-const AMBIENTE_LOCAL = import.meta.env.VITE_AMBIENTE as 'homologacao' | 'producao' | undefined
+// Tarja de ambiente: amarela na homologação (local e publicada); vermelha só no painel LOCAL apontando para a produção
+// (npm run dev:producao). O painel publicado da produção (build:producao, Worker trilha) não mostra tarja.
+const AMBIENTE = import.meta.env.VITE_AMBIENTE as 'homologacao' | 'producao' | undefined
+const AMBIENTE_LOCAL = AMBIENTE === 'homologacao' || (AMBIENTE === 'producao' && import.meta.env.DEV) ? AMBIENTE : undefined
 import { MINUTOS_INATIVIDADE, registrarAtividade, useInatividade, useVersaoPublicada } from './lib/sessao'
 import { api, erroMsg } from './lib/api'
 import { PAPEL_LABEL } from './lib/types'
