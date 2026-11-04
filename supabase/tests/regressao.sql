@@ -4941,7 +4941,12 @@ begin
   v_ok := false; begin update saude_termos set texto = 'x' where versao = 1; exception when others then v_ok := sqlerrm like 'O termo de confidencialidade%'; end;
   perform pg_temp.ok(v_ok, '[T86] texto do termo imutável');
 end $$;
-select 'REGRESSÃO OK: T1 a T86' as resultado,
+-- T87 painel da produção no Cloudflare (migration 148): o banco vazio nasce com a app_url da Vercel (migration 89) e a 148 troca
+do $$
+begin
+  perform pg_temp.ok(fn_config('app_url') = 'https://trilha.david-cerqueira.workers.dev', '[T87] app_url no Worker trilha: ' || coalesce(fn_config('app_url'), '-'));
+end $$;
+select 'REGRESSÃO OK: T1 a T87' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
