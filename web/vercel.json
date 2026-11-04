@@ -1,10 +1,21 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "git": { "deploymentEnabled": true },
+  "git": {
+    "deploymentEnabled": true
+  },
   "installCommand": "echo sem dependencias: a Vercel so redireciona",
-  "buildCommand": "mkdir -p dist && printf '<!doctype html><title>Trilha</title>' > dist/index.html",
+  "buildCommand": "mkdir -p dist && printf '<!doctype html><title>Trilha</title><script>location.replace(\"https://trilha.david-cerqueira.workers.dev\"+location.pathname+location.search+location.hash)</script>' > dist/index.html",
   "outputDirectory": "dist",
   "redirects": [
-    { "source": "/:path*", "destination": "https://trilha.david-cerqueira.workers.dev/:path*", "permanent": true }
+    {
+      "source": "/",
+      "destination": "https://trilha.david-cerqueira.workers.dev/",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "destination": "https://trilha.david-cerqueira.workers.dev/:path*",
+      "permanent": true
+    }
   ]
 }
