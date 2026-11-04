@@ -3,6 +3,9 @@
 {
   "name": "trilha",
   "compatibility_date": "2026-10-01",
+  // endereço oficial em workers.dev ligado; URLs de pré-visualização por versão desligadas (só o endereço exato, A1)
+  "workers_dev": true,
+  "preview_urls": false,
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"
