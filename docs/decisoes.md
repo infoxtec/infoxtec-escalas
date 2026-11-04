@@ -1979,3 +1979,9 @@ pedidos novos do responsável.*
   build e deploy no mesmo job (um job separado exigiria uma segunda aprovação). O token do Cloudflare alcança todos os
   Workers da conta (o Cloudflare não restringe Workers Scripts: Edit a um Worker): validade de 90 dias, troca no plano. `painel = sim` recusa a entrada `ate` (o painel é o da ponta da `main`). A Vercel está sem
   deploy automático (`git.deploymentEnabled: false`, 04/11).
+- **Achado de 04/11:** a integração GitHub do Supabase da produção tinha "Deploy to production" ligado: todo merge na
+  `main` aplicava as migrations e publicava as Edge Functions do `config.toml` sem a aprovação do ambiente `producao`
+  (explica o congelamento furado de 30/10). Desligado pelo responsável em 04/11. Regra: **a produção só muda pelo
+  workflow Aplicar aprovado**; nenhuma integração de fornecedor publica sozinha (inventário na sprint, ação 1).
+- **Virada antecipada (04/11):** a pedido do responsável, a A5 e o B7 foram ao ar em 04/11 sem o ensaio A4 (risco aceito).
+
