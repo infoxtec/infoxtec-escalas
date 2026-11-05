@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Button, ErrorBox, Field, Input, SuccessBox } from '../components/ui'
 import { supabase } from '../lib/supabase'
 import MarcaAnimada from '../components/MarcaAnimada'
+import { MfaVerificar } from '../components/Mfa'
 import { REGRA_SENHA, problemaNaSenha, senhaVazada } from '../lib/senha'
 
 function Moldura({ titulo, children }: { titulo: string; children: React.ReactNode }) {
@@ -91,6 +92,13 @@ export function Login() {
 }
 
 export function DefinirSenha({ convite, onPronto }: { convite: boolean; onPronto: () => void }) {
+  // com a verificação em duas etapas ligada, o Supabase só troca a senha numa sessão aal2: o link do e-mail abre uma
+  // sessão aal1, então pede o código do autenticador antes (ou "Perdi meu autenticador", que tira o fator)
+  const [pedeCodigo, setPedeCodigo] = useState<boolean | null>(null)
+  useEffect(() => {
+    void supabase.auth.mfa.getAuthenticatorAssuranceLevel().then(({ data }) =>
+      setPedeCodigo(data?.nextLevel === 'aal2' && data.currentLevel !== 'aal2'))
+  }, [])
   const [senha, setSenha] = useState('')
   const [confirma, setConfirma] = useState('')
   const [erro, setErro] = useState<string | null>(null)
@@ -109,10 +117,12 @@ export function DefinirSenha({ convite, onPronto }: { convite: boolean; onPronto
     }
     const { error } = await supabase.auth.updateUser({ password: senha })
     setBusy(false)
-    if (error) setErro(error.message)
+    if (error && /aal2/i.test(error.message)) { setPedeCodigo(true); setErro(null) }
+    else if (error) setErro(error.message)
     else { window.history.replaceState(null, '', window.location.pathname); onPronto() }
   }
 
+  if (pedeCodigo) return <MfaVerificar onOk={() => setPedeCodigo(false)} />
   return (
     <Moldura titulo={convite ? 'Bem-vindo! Crie sua senha' : 'Crie uma nova senha'}>
       <form onSubmit={salvar} className="space-y-3">
