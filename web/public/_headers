@@ -7,3 +7,7 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(self), camera=(self), microphone=(), payment=(), usb=()
   X-Robots-Tag: noindex
+  # B1 (decisão 133): CSP só observando (Report-Only), sem bloquear; os avisos aparecem no console do navegador.
+  # Passa a valer de fato (Content-Security-Policy) depois de 7 dias sem aviso. OCR: tesseract.js baixa o motor
+  # e o idioma do jsDelivr e do projectnaptha; supabase.co dos dois bancos (o mesmo arquivo serve os dois Workers).
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://oruwnlxyvznpigbpjjbx.supabase.co https://zpckrxydqqmmcrphrkxz.supabase.co; font-src 'self'; connect-src 'self' https://oruwnlxyvznpigbpjjbx.supabase.co https://zpckrxydqqmmcrphrkxz.supabase.co https://api.pwnedpasswords.com https://cdn.jsdelivr.net https://tessdata.projectnaptha.com; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'

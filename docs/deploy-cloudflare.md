@@ -87,5 +87,10 @@ GitHub ainda ativa (`This Worker does not exist on your account`).
   (`ORIGEM_PAINEL` da produção e `ORIGEM_HOMOLOGACAO_CF`, decisão 133): outra conta poderia registrá-lo.
 - **PWA (painel 3.68.0):** `manifest.webmanifest` (painel) e `manifest-ponto.webmanifest` (app do ponto, início em
   `/ponto`), trocados por um script curto no `index.html`. Sem service worker (o painel confere a versão publicada e
-  um cache local esconderia a versão nova). A CSP do B1 precisa permitir esse script (hash) e `manifest-src 'self'`.
+  um cache local esconderia a versão nova). O script fica em `public/manifesto.js` (B1), para a CSP aceitar só scripts do próprio site.
+- **CSP em observação (B1, painel 3.69.0, decisão 133):** `Content-Security-Policy-Report-Only` no `web/public/_headers`
+  (os dois Workers). Só registra no console do navegador, não bloqueia. Libera: scripts e estilos do próprio site; os
+  dois bancos do Supabase (`connect-src`, `img-src`); o verificador de senha vazada (`api.pwnedpasswords.com`); o OCR
+  no navegador (tesseract.js: `cdn.jsdelivr.net` e `tessdata.projectnaptha.com`, WebAssembly e worker `blob:`). Passa a
+  valer de fato (troca para `Content-Security-Policy`) depois de 7 dias sem aviso no uso real.
 

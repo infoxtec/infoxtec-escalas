@@ -75,7 +75,9 @@ observa), e não viu o deploy automático da Vercel nem o token da produção in
 | A5 Virada | **Na produção, pendente de teste**: antecipada de 10/11 para 04/11 (migration 148, Site URL) | Testes do responsável: link do WhatsApp e convite; aviso aos usuários |
 | B7 Vercel só redireciona | **Na produção, pendente de teste** (#206–#208): `/`, `/?verificar=`, `/v?c=`, `/ponto?espelho=` conferidos por fora | QR de um espelho real escaneado |
 | Painel 3.67.1 | Na produção: sem a tarja vermelha | — |
-| B1–B6 | A fazer | — |
+| C1 PWA e responsivo | Na produção (3.68.0, 05/11), testado pelo responsável no celular | — |
+| B1 CSP em observação | Homologação (3.69.0) | Teste do responsável com o console aberto; 7 dias sem aviso para valer |
+| B2–B6 | A fazer | — |
 
 Nenhum item ganha `[x]` no plano até a produção ser conferida pelo responsável.
 
