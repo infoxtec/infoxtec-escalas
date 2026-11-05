@@ -53,6 +53,8 @@ export function escolherValidade(datas: string[]): string | null {
 async function ocrDeImagem(fonte: File | HTMLCanvasElement, onProgresso?: (f: number) => void): Promise<string> {
   const { default: Tesseract } = await import('tesseract.js')
   const { data } = await Tesseract.recognize(fonte, 'por', {
+    // motor, worker e idioma servidos pelo próprio site (scripts/copiar-ocr.mjs; CSP sem CDN, B1)
+    workerPath: '/ocr/worker.min.js', corePath: '/ocr', langPath: '/ocr', workerBlobURL: false,
     logger: (m: { status: string; progress: number }) => {
       if (m.status === 'recognizing text') onProgresso?.(0.2 + m.progress * 0.8)
       else onProgresso?.(Math.min(0.2, m.progress * 0.2)) // baixando motor e idioma

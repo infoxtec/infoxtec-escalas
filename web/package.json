@@ -1,19 +1,20 @@
 {
   "name": "infoxtec-escalas-web",
   "private": true,
-  "version": "3.68.1",
+  "version": "3.69.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "dev:homologacao": "vite --mode homologacao --host",
     "dev:producao": "vite --mode producao --host",
-    "build": "tsc --noEmit && vite build",
-    "build:homologacao": "tsc --noEmit && vite build --mode homologacao",
-    "build:producao": "tsc --noEmit && vite build --mode producao",
+    "build": "tsc --noEmit && node scripts/copiar-ocr.mjs && vite build",
+    "build:homologacao": "tsc --noEmit && node scripts/copiar-ocr.mjs && vite build --mode homologacao",
+    "build:producao": "tsc --noEmit && node scripts/copiar-ocr.mjs && vite build --mode producao",
     "preview": "vite preview"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
+    "@tesseract.js-data/por": "1.0.0",
     "lucide-react": "^0.400.0",
     "pdf-lib": "1.17.1",
     "pdfjs-dist": "^6.3.289",
