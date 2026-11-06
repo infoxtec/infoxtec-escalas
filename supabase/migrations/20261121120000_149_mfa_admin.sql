@@ -15,7 +15,8 @@ insert into interno.config (chave, valor, descricao) values
 on conflict (chave) do nothing;
 
 -- quem precisa da sessão confirmada (aal2): todos, se o global estiver ligado; a plataforma, sempre; o administrador ativo
--- de qualquer conta ativa, enquanto o interruptor estiver ligado. Chaves primárias de plataforma_admins e conta_membros.
+-- de qualquer conta ativa, enquanto o interruptor estiver ligado. Chave primária de plataforma_admins e índice por
+-- e-mail de conta_membros (migration 116).
 create or replace function interno.fn_mfa_exigido(p_email text)
  returns boolean
  language sql

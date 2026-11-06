@@ -4985,6 +4985,26 @@ begin
   v_ok := false; begin perform fn_usuario_excluir('qa-mfa-admin@teste.local', 'aal1', v_b, 'qa-mfa-alvo@teste.local');
   exception when others then v_ok := sqlerrm like 'Confirme o código%'; end;
   perform pg_temp.ok(v_ok, '[T88] exclusão de admin em aal1 recusada');
+  -- a regra é da pessoa: admin da conta B e gestor da conta A, entrando em A em aal1, também é recusado
+  insert into conta_membros (conta_id, email, nome, papel, ativo)
+  values ('00000000-0000-0000-0000-000000000001', 'qa-mfa-admin@teste.local', 'QA MFA admin', 'gestor', true)
+  on conflict (conta_id, email) do update set papel = 'gestor', ativo = true;
+  perform set_config('request.headers', '{"x-conta":"00000000-0000-0000-0000-000000000001"}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-mfa-admin@teste.local","role":"authenticated","aal":"aal1"}', true);
+  v_ok := false; begin perform app_exigir(array['gestor']); exception when sqlstate 'TRMFA' then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T88] admin de B entrando como gestor de A sem a segunda etapa é recusado');
+  perform pg_temp.ok(not app_pode_gerir_documento('qualquer/arquivo.pdf'), '[T88] documento (Storage) fechado para ele em aal1');
+  -- conta B inativa: deixa de ser admin ativo e a regra não o alcança mais
+  update contas set ativa = false where id = v_b;
+  perform pg_temp.ok(not fn_mfa_exigido('qa-mfa-admin@teste.local'), '[T88] admin só de conta inativa não é obrigado');
+  update contas set ativa = true where id = v_b;
+  perform set_config('request.headers', json_build_object('x-conta', v_b)::text, true);
+  -- plataforma convidando em aal1: recusada
+  insert into plataforma_admins (email) values ('qa-mfa-plat@teste.local') on conflict do nothing;
+  v_ok := false; begin perform fn_convite_autorizar('qa-mfa-plat@teste.local', 'aal1', v_b, 'qa-mfa-alvo@teste.local');
+  exception when others then v_ok := sqlerrm like 'Ative e confirme%'; end;
+  perform pg_temp.ok(v_ok, '[T88] plataforma convidando sem a segunda etapa é recusada');
+  delete from plataforma_admins where email = 'qa-mfa-plat@teste.local';
   -- interruptor desligado: libera o admin de conta, mas não a plataforma
   update interno.config set valor = 'false' where chave = 'mfa_obrigatorio_admin';
   perform set_config('request.jwt.claims', '{"email":"qa-mfa-admin@teste.local","role":"authenticated","aal":"aal1"}', true);

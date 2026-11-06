@@ -116,7 +116,12 @@ function Painel({ email }: { email: string }) {
 
   // o banco recusou por falta da segunda etapa (TRMFA, migration 149): relê o acesso e abre a tela do código
   useEffect(() => {
-    const pedir = () => { void api.meuAcesso().then(a => { setAcesso(a); return conferirMfa(a) }).catch(() => {}) }
+    let emCurso = false
+    const pedir = () => {
+      if (emCurso) return
+      emCurso = true
+      void api.meuAcesso().then(a => { setAcesso(a); return conferirMfa(a) }).catch(() => {}).finally(() => { emCurso = false })
+    }
     window.addEventListener('trilha:mfa', pedir)
     return () => window.removeEventListener('trilha:mfa', pedir)
   }, [conferirMfa])
