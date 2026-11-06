@@ -69,7 +69,8 @@ iniciar_harness() {
   mkdir -p "$ESTADO"
   cd "$RAIZ"
   # setsid + nohup: sobrevive ao fechamento da janela do terminal, igual ao painel
-  setsid nohup npm exec @deepseek-ai/dsh web >"$log_harness" 2>&1 < /dev/null &
+  # versão fixada, a mesma do infra/dev/dsh-web.service (o pacote só publica pré-lançamentos: sem versão, ETARGET)
+  setsid nohup npm exec --yes @deepseek-ai/dsh@0.2.2-rc.1 web >"$log_harness" 2>&1 < /dev/null &
   echo $! > "$pidfile_harness"
   for _ in $(seq 1 15); do
     porta_aberta 3080 && break
