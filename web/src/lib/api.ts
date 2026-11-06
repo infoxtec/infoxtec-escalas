@@ -11,6 +11,8 @@ function traduzir(msg: string): string {
 
 async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.rpc(fn, args)
+  // sessão sem a segunda etapa numa conta que exige (migration 149): o App pede o código na hora
+  if (error?.code === 'TRMFA') window.dispatchEvent(new Event('trilha:mfa'))
   if (error) throw new Error(traduzir(error.message))
   return data as T
 }

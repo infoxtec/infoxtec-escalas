@@ -9,7 +9,7 @@
 -- T2 escala exige local               T7 jornada e avisos da CLT
 -- T3 login do funcionário e app       T8 webhook recusa token inválido
 -- T4 marcações imutáveis              T9 funções do painel (gestor)
--- T5 carga: 2.000 marcações, NSR e cadeia de hash íntegros
+-- T5 carga: 2.000 marcações, NSR e cadeia de hash íntegros     T88 MFA obrigatório para administrador
 -- T10 URA só em dia útil, das 08:00 às 20:00, fora de feriado
 -- T11 ajustes de ponto com justificativa (incluir, desconsiderar, papéis, imutável)
 -- T12 fuso do motor: fila do WhatsApp na hora local, não em UTC nem no fuso da sessão
@@ -68,6 +68,10 @@ begin
 end $$;
 
 create temp table qa (k text primary key, v text) on commit drop;
+
+-- MFA obrigatório para administrador (migration 149): os testes antigos usam sessões de admin sem aal2; o interruptor fica
+-- desligado aqui e o T88 liga e mede (tudo é desfeito no rollback do fim)
+update interno.config set valor = 'false' where chave = 'mfa_obrigatorio_admin';
 
 create function pg_temp.ok(p_cond boolean, p_msg text) returns void language plpgsql as $$
 begin
@@ -4946,7 +4950,53 @@ do $$
 begin
   perform pg_temp.ok(fn_config('app_url') = 'https://trilha.david-cerqueira.workers.dev', '[T87] app_url no Worker trilha: ' || coalesce(fn_config('app_url'), '-'));
 end $$;
-select 'REGRESSÃO OK: T1 a T87' as resultado,
+-- T88 MFA obrigatório para administrador (migration 149): da pessoa, plataforma sempre, gestor livre, interruptor -------
+do $$
+declare
+  v_b uuid := (select v::uuid from qa where k = 'conta_b');
+  v_ok boolean; v_r jsonb;
+begin
+  update contas set ativa = true where id = v_b;
+  insert into conta_membros (conta_id, email, nome, papel, ativo) values
+    (v_b, 'qa-mfa-admin@teste.local', 'QA MFA admin', 'admin', true),
+    (v_b, 'qa-mfa-gestor@teste.local', 'QA MFA gestor', 'gestor', true),
+    (v_b, 'qa-mfa-alvo@teste.local', 'QA MFA alvo', 'leitura', true)
+  on conflict (conta_id, email) do update set papel = excluded.papel, ativo = true;
+  update interno.config set valor = 'true' where chave = 'mfa_obrigatorio_admin';
+  perform set_config('request.headers', json_build_object('x-conta', v_b)::text, true);
+  -- admin em aal1: recusado com o código TRMFA; o painel recebe mfa_obrigatorio = true
+  perform set_config('request.jwt.claims', '{"email":"qa-mfa-admin@teste.local","role":"authenticated","aal":"aal1"}', true);
+  v_ok := false; begin perform app_exigir(array['admin']); exception when sqlstate 'TRMFA' then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T88] admin sem a segunda etapa recusado (TRMFA)');
+  v_r := app_meu_acesso();
+  perform pg_temp.ok((v_r->>'mfa_obrigatorio')::boolean, '[T88] painel do admin recebe mfa_obrigatorio');
+  perform pg_temp.ok(not app_pode_gerir_documentos(), '[T88] admin em aal1 não gere documentos');
+  -- admin em aal2: passa
+  perform set_config('request.jwt.claims', '{"email":"qa-mfa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform pg_temp.ok(app_exigir(array['admin']) = 'qa-mfa-admin@teste.local', '[T88] admin com a segunda etapa passa');
+  -- gestor em aal1: não muda
+  perform set_config('request.jwt.claims', '{"email":"qa-mfa-gestor@teste.local","role":"authenticated","aal":"aal1"}', true);
+  perform pg_temp.ok(app_exigir(array['gestor']) = 'qa-mfa-gestor@teste.local'
+                     and not (app_meu_acesso()->>'mfa_obrigatorio')::boolean, '[T88] gestor sem a segunda etapa continua');
+  -- Edge Functions de convite e exclusão (p_aal)
+  v_ok := false; begin perform fn_convite_autorizar('qa-mfa-admin@teste.local', 'aal1', v_b, 'qa-mfa-alvo@teste.local');
+  exception when others then v_ok := sqlerrm like 'Confirme o código%'; end;
+  perform pg_temp.ok(v_ok, '[T88] convite de admin em aal1 recusado');
+  v_ok := false; begin perform fn_usuario_excluir('qa-mfa-admin@teste.local', 'aal1', v_b, 'qa-mfa-alvo@teste.local');
+  exception when others then v_ok := sqlerrm like 'Confirme o código%'; end;
+  perform pg_temp.ok(v_ok, '[T88] exclusão de admin em aal1 recusada');
+  -- interruptor desligado: libera o admin de conta, mas não a plataforma
+  update interno.config set valor = 'false' where chave = 'mfa_obrigatorio_admin';
+  perform set_config('request.jwt.claims', '{"email":"qa-mfa-admin@teste.local","role":"authenticated","aal":"aal1"}', true);
+  perform pg_temp.ok(app_exigir(array['admin']) = 'qa-mfa-admin@teste.local', '[T88] interruptor desligado libera o admin de conta');
+  insert into plataforma_admins (email) values ('qa-mfa-admin@teste.local') on conflict do nothing;
+  v_ok := false; begin perform app_exigir(array['admin']); exception when sqlstate 'TRMFA' then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T88] plataforma continua obrigada com o interruptor desligado');
+  delete from plataforma_admins where email = 'qa-mfa-admin@teste.local';
+  perform set_config('request.jwt.claims', '', true);
+  perform set_config('request.headers', '{}', true);
+end $$;
+select 'REGRESSÃO OK: T1 a T88' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

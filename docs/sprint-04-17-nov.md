@@ -77,7 +77,8 @@ observa), e não viu o deploy automático da Vercel nem o token da produção in
 | Painel 3.67.1 | Na produção: sem a tarja vermelha | — |
 | C1 PWA e responsivo | Na produção (3.68.0, 05/11), testado pelo responsável no celular | — |
 | B1 CSP em observação | Homologação (3.69.0) | Teste do responsável com o console aberto; 7 dias sem aviso para valer |
-| B2–B6 | A fazer | — |
+| B2 MFA para administrador | Em revisão (migration 149, painel 3.70.0) | Teste do responsável; aviso aos administradores |
+| B3–B6 | A fazer | — |
 
 Nenhum item ganha `[x]` no plano até a produção ser conferida pelo responsável.
 
