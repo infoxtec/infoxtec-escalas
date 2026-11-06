@@ -7,7 +7,9 @@ After=network-online.target
 Type=simple
 # Roda de dentro do repositório para carregar AGENTS.md e CLAUDE.md do projeto
 WorkingDirectory=%h/infoxtec-escalas
-ExecStart=/bin/bash -lc 'exec npm exec @deepseek-ai/dsh web'
+# Versão fixada (06/11): o pacote só publica pré-lançamentos (-rc, -alpha); sem versão, o npm procura uma estável,
+# não acha (ETARGET) e o serviço cai em laço. Trocar a versão aqui e no scripts/ambiente-dev.sh juntos. Exige Node >= 24.9.
+ExecStart=/bin/bash -lc 'exec npm exec --yes @deepseek-ai/dsh@0.2.2-rc.1 web'
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal

@@ -241,6 +241,11 @@ versão antiga do `node_modules`. O caminho:
 cd ~/infoxtec-escalas/web && npm ci && systemctl --user restart painel-dev
 ```
 
+**Se o `dsh-web` cair em laço com `npm error code ETARGET` / `No matching version found for @deepseek-ai/dsh@*`:**
+o pacote só publica pré-lançamentos, e sem versão o npm procura uma estável. A versão fica fixada em
+`infra/dev/dsh-web.service` e no `scripts/ambiente-dev.sh` (06/11: `0.2.2-rc.1`, exige Node 24.9 ou mais novo). Depois do
+`git pull`: `systemctl --user daemon-reload && systemctl --user restart dsh-web`.
+
 **Se você rodar `instalar` com um harness já aberto à mão**, o `dsh-web` falha com *address already in
 use*: a porta 3080 está ocupada. Ou reinicie a máquina, ou pare o manual antes
 (`./scripts/ambiente-dev.sh parar harness` — ele pede a palavra `HARNESS`, porque isso encerra a sessão).
