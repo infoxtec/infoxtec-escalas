@@ -254,6 +254,17 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 149 (06/11, versão 20261121120000): MFA obrigatório para administrador (B2, decisão 134)
+
+`interno.fn_mfa_exigido(email)`: a sessão precisa ser aal2 se o `mfa_obrigatorio` global estiver ligado, se a pessoa for
+da plataforma (sempre) ou se for administrador ativo de **qualquer** conta ativa enquanto a config nova
+`mfa_obrigatorio_admin` = `'true'` (interruptor de emergência, só por migration; não alcança a plataforma). Usada em
+`app_exigir` (recusa com o código `TRMFA`, que o painel reconhece para pedir o autenticador na hora), `app_meu_acesso`
+(`mfa_obrigatorio` da pessoa), `app_pode_gerir_documento(s)` (políticas do Storage; aal conferido antes), e
+`fn_convite_autorizar`/`fn_usuario_excluir` (comparando com o `p_aal` das Edge Functions). A Edge Function
+`documento-ocr` passa a usar a mesma regra. Gestor e leitura não mudam. Regressão: T88 (o arquivo desliga o
+interruptor no começo e o T88 liga e mede).
+
 ### Migration 148 (04/11, versão 20261120120000): painel da produção no Cloudflare (A5, decisão 133)
 
 A config `app_url` (links de ponto e de espelho enviados pelo WhatsApp) passa da Vercel para o Worker `trilha`

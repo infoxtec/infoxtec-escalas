@@ -108,7 +108,7 @@ Deno.serve(async (req: Request) => {
   let acesso: { papel: string | null; mfa: boolean } | undefined;
   try {
     [acesso] = await sql<{ papel: string | null; mfa: boolean }[]>`
-      select fn_papel_na_conta_de(${email}, ${conta}) as papel, coalesce(fn_config('mfa_obrigatorio'), 'false') = 'true' as mfa`;
+      select fn_papel_na_conta_de(${email}, ${conta}) as papel, fn_mfa_exigido(${email}) as mfa`;
   } catch (err) {
     // conta inválida, de que não é membro ou não escolhida: recusa sem detalhe (o log só diz o tipo do erro)
     console.error("documento-ocr: papel", err instanceof Error ? err.name : "erro");
@@ -117,7 +117,7 @@ Deno.serve(async (req: Request) => {
   if (!acesso?.papel || !["admin", "gestor"].includes(acesso.papel)) {
     return json({ ok: false, erro: "sem permissao" }, 403);
   }
-  // MFA obrigatório (decisão 67): o token já foi conferido no servidor de autenticação; o nível vem dele
+  // MFA obrigatório (decisão 67; da pessoa desde a migration 149: admin e plataforma): o nível vem do token conferido
   if (acesso.mfa && nivelDaSessao(req) !== "aal2") {
     return json({ ok: false, erro: "confirme o codigo do aplicativo autenticador" }, 403);
   }

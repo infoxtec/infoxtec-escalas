@@ -1985,3 +1985,18 @@ pedidos novos do responsável.*
   workflow Aplicar aprovado**; nenhuma integração de fornecedor publica sozinha (inventário na sprint, ação 1).
 - **Virada antecipada (04/11):** a pedido do responsável, a A5 e o B7 foram ao ar em 04/11 sem o ensaio A4 (risco aceito).
 
+## 134. Verificação em duas etapas obrigatória para administrador
+
+*06/11/2026 — D1 da sprint 02–13/11 e item 7 da decisão 131 (decidido pelo responsável); B2 da sprint 04–17/11. Desenho
+revisado antes do código pelo `seguranca` e pelo `arquiteto-dados`.*
+
+- **Da pessoa, não da conta:** quem é administrador ativo de qualquer conta ativa, ou da plataforma, só usa o painel com
+  a sessão confirmada (aal2), em todas as contas. Uma senha roubada de admin não vale nem como gestor de outra conta.
+- **Gestor e leitura** continuam pelo `mfa_obrigatorio` global (desligado).
+- **Interruptor de emergência** `mfa_obrigatorio_admin`: só por migration aprovada; não alcança a plataforma.
+- **No painel:** sem autenticador, o administrador cai no cadastro no próximo acesso; com autenticador e sessão aal1, no
+  código. Recusa no meio do uso (código `TRMFA`) abre a tela do código na hora. Quem perdeu o autenticador recupera pela
+  decisão 128; a troca de senha com duas etapas pede o código (painel 3.68.1).
+- **Em aberto (revisão da decisão 128, pendência 5 do responsável):** o administrador de conta recupera por um canal só
+  (e-mail ou WhatsApp); a plataforma exige os dois. O `seguranca` recomenda rever.
+
