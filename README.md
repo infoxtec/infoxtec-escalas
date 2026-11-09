@@ -266,4 +266,7 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Saúde protegida: download de saúde com termo de sigilo, código novo e marca d'água (migration 147, painel 3.66.0; homologação testada e termo aprovado em 03/11)
 - [x] Exportar dados e saúde em Empresas; Checklist Sistema só da plataforma (painel 3.67.0; produção em 03/11)
 - [x] Produção do painel no Cloudflare (antecipada para 04/11, sprint 04–17/11, decisão 133); Vercel só redireciona
-- [ ] Trilha instalável no celular (PWA) e responsivo (painel 3.68.0; homologação)
+- [x] Trilha instalável no celular (PWA) e responsivo (painel 3.68.0; produção em 05/11, testado no celular)
+- [ ] CSP em observação e OCR servido pelo próprio site (painel 3.69.0; homologação)
+- [ ] Verificação em duas etapas obrigatória para administrador (migration 149, painel 3.70.0; homologação)
+- [ ] Sábado de 4h e régua de avisos: +1h lembrete, +2h uma ligação, +3h último e aviso ao gestor, nada depois das 18h (migration 150, painel 3.71.0)

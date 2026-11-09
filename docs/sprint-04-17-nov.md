@@ -51,6 +51,7 @@ Google US$ 25). O xtool foi avaliado e descartado: só iPhone, só Swift.
 | B5 | #3 Teto de códigos e erros por conta | dev-banco | M | 300 erros na conta A não bloqueiam o ponto da conta B |
 | B6 | Furos do #15 e testes da 147 | dev-banco | P | CI recusa migration renomeada, apagada ou repetida; T86 com conta inativa e gestor; T49 à meia-noite |
 | B7 | Vercel vira redirecionamento (nunca apagada), antecipado para 04/11 a pedido do responsável | fullstack | P | Com a semana estável, 301 para o Worker; QR antigo abre a verificação |
+| B8 | Pedido do responsável (09/11): sábado de 4h e régua de avisos (decisão 135) | dev-banco + fullstack | M | Sábado 08:00–12:00; +1h lembrete, +2h uma ligação, +3h último e aviso ao gestor; nada depois das 18h |
 
 ### Backlog, em ordem
 #12 + #13 (expurgo e guarda de 5 anos, com o jurídico; o `seguranca` reprovou cortar o 13), #19 (RLS do Storage no CI),
@@ -77,7 +78,8 @@ observa), e não viu o deploy automático da Vercel nem o token da produção in
 | Painel 3.67.1 | Na produção: sem a tarja vermelha | — |
 | C1 PWA e responsivo | Na produção (3.68.0, 05/11), testado pelo responsável no celular | — |
 | B1 CSP em observação | Homologação (3.69.0) | Teste do responsável com o console aberto; 7 dias sem aviso para valer |
-| B2 MFA para administrador | Em revisão (migration 149, painel 3.70.0) | Teste do responsável; aviso aos administradores |
+| B2 MFA para administrador | Homologação (migration 149, painel 3.70.0) | Teste do responsável; aviso aos administradores |
+| Pedido 09/11: sábado 4h e régua de avisos | Em revisão (migration 150, painel 3.71.0, decisão 135) | Teste do responsável na homologação |
 | B3–B6 | A fazer | — |
 
 Nenhum item ganha `[x]` no plano até a produção ser conferida pelo responsável.

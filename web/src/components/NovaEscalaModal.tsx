@@ -41,9 +41,9 @@ export default function NovaEscalaModal({ open, onClose, onSuccess, tecnicos, lo
   // Jornada calculada pelo banco (mesma regra que vai na mensagem do WhatsApp)
   useEffect(() => {
     if (!open || !/^\d{2}:\d{2}$/.test(hora)) return
-    const t = setTimeout(() => { api.simularJornada(hora).then(setJornada).catch(() => setJornada(null)) }, 250)
+    const t = setTimeout(() => { api.simularJornada(hora, data).then(setJornada).catch(() => setJornada(null)) }, 250)
     return () => clearTimeout(t)
-  }, [hora, open])
+  }, [hora, data, open])
 
   // Aptidão: quem não tem a habilidade exigida pelo tipo de atividade
   useEffect(() => {

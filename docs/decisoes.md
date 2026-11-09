@@ -1985,6 +1985,33 @@ pedidos novos do responsável.*
   workflow Aplicar aprovado**; nenhuma integração de fornecedor publica sozinha (inventário na sprint, ação 1).
 - **Virada antecipada (04/11):** a pedido do responsável, a A5 e o B7 foram ao ar em 04/11 sem o ensaio A4 (risco aceito).
 
+## 135. Sábado de 4h e régua de avisos depois do envio
+
+*09/11/2026 — pedido do responsável. Desenho revisado antes do código pelo `arquiteto-dados` e pelo `seguranca` (aprovado
+com ajustes, incorporados). Migration 150.*
+
+- **Sábado:** a escala de sábado leva só as 4h que completam as 44h semanais (08:00–12:00), pela carga do funcionário.
+- **Régua** (contada da entrega da escala; lida ou não, a mesma regra): +1h lembrete pelo WhatsApp; +2h **uma** ligação
+  (dia útil, 08:00–18:00); +3h último lembrete e aviso ao **gestor que criou a escala**. **Nada novo a partir das 18:00**,
+  nem no dia seguinte: escala entregue depois das 15h não gera aviso ao gestor (aceito pelo responsável); o alerta de
+  prazo das 16h/18h aos supervisores continua. Saem o reenvio de 30 em 30 min, a 2ª ligação e o aviso na 2ª tentativa.
+- **URA:** estava ligada na produção (183 ligações em 30 dias até 06/11; o inventário de 04/11 dizia "desligada" por
+  engano). Agora só da conta da operadora até existir Twilio por conta (decisão 108), nunca de escala de teste (nem pelo
+  "Ligar agora"), e no máximo **20 ligações automáticas por dia** (decisão de custo do responsável, cerca de R$ 4,80/dia);
+  o "Ligar agora" conta no teto, mas não é barrado por ele. Ao estourar, um aviso técnico por dia.
+- **Editar com nova confirmação** (data, hora ou local) recomeça a régua do novo envio; a ligação continua uma por
+  escala. A falha de entrega reenvia até 2 vezes e depois avisa, mesmo à noite (como antes).
+- **Assinatura da Twilio:** o responsável manteve a observação (opção b): o risco das decisões 54 e 109 fica aceito de
+  novo — quem tiver o `VOZ_TOKEN` poderia registrar confirmação ou recusa em nome do funcionário. Revisar junto com a
+  Twilio por cliente.
+- **LGPD:** o WhatsApp do usuário (criado para a recuperação das duas etapas, migration 140) passa a servir também ao
+  aviso de programação. Finalidade nova informada na tela Usuários ("WhatsApp de recuperação e avisos"), com a opção
+  "Receber avisos de programação" (ligada por padrão; desligada, o aviso vai aos supervisores). Base legal: execução do
+  contrato e legítimo interesse do empregador. O conteúdo é o mesmo que o gestor da conta já vê no painel.
+  O dono do número recebe e-mail quando o WhatsApp é trocado (texto com as duas finalidades) e quando os avisos são
+  ligados ou desligados, com quem mudou. Pendências (`seguranca`, baixos): o próprio gestor desligar os avisos sem pedir ao
+  administrador; o `VOZ_TOKEN` num cabeçalho em vez da URL e o nome do técnico fora do log de erro da ligação.
+
 ## 134. Verificação em duas etapas obrigatória para administrador
 
 *06/11/2026 — D1 da sprint 02–13/11 e item 7 da decisão 131 (decidido pelo responsável); B2 da sprint 04–17/11. Desenho

@@ -158,7 +158,8 @@ export function coordenadasDoLink(link: string): { latitude: number; longitude: 
 export interface UsuarioPainel {
   email: string; nome: string | null; papel: Papel; ativo: boolean
   criado_por: string | null; created_at: string; ve_saude: boolean; rh_folhas?: boolean
-  telefone_e164?: string | null   // WhatsApp de recuperação das duas etapas (migration 140)
+  telefone_e164?: string | null   // WhatsApp de recuperação das duas etapas (migration 140) e dos avisos de programação (150)
+  recebe_avisos?: boolean         // aviso de programação sem confirmação, para quem criou (migration 150)
 }
 
 export interface ResultadoLote { tecnico_id: string; tecnico: string | null; escala_id: string | null; resultado: string }
