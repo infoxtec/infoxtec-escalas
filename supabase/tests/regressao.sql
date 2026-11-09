@@ -10,7 +10,8 @@
 -- T3 login do funcionário e app       T8 webhook recusa token inválido
 -- T4 marcações imutáveis              T9 funções do painel (gestor)
 -- T5 carga: 2.000 marcações, NSR e cadeia de hash íntegros     T88 MFA obrigatório para administrador
--- T10 URA só em dia útil, das 08:00 às 20:00, fora de feriado
+--                                                               T89 sábado de 4h; T90 régua de avisos depois do envio
+-- T10 URA só em dia útil, das 08:00 às 20:00 (18:00 desde a 150), fora de feriado
 -- T11 ajustes de ponto com justificativa (incluir, desconsiderar, papéis, imutável)
 -- T12 fuso do motor: fila do WhatsApp na hora local, não em UTC nem no fuso da sessão
 -- T13 habilidades exigidas pelo tipo de atividade (apto, nível abaixo, faltando)
@@ -5016,7 +5017,205 @@ begin
   perform set_config('request.jwt.claims', '', true);
   perform set_config('request.headers', '{}', true);
 end $$;
-select 'REGRESSÃO OK: T1 a T88' as resultado,
+
+-- T89 sábado de 4h (migration 150): a carga do dia decide; sem carga, ponto_jornada_sabado_min (240) -----------------
+do $$
+declare
+  v_tec uuid := (select v::uuid from qa where k = 'tec7');
+  v_loc uuid := (select v::uuid from qa where k = 'loc');
+  v_sab date := date '2031-03-08';   -- sábado
+  v_sex date := date '2031-03-07';   -- sexta
+  v_id uuid; r record; v_j jsonb; v_lim jsonb;
+begin
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform set_config('request.headers', '{"x-conta":"00000000-0000-0000-0000-000000000001"}', true);
+  perform pg_temp.ok(extract(isodow from v_sab) = 6 and extract(isodow from v_sex) = 5, '[T89] datas do teste');
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, v_sab, time '08:00', 'QA T89 sábado', 'rascunho', 'qa') returning id into v_id;
+  select duracao_prevista_min, intervalo_min, hora_fim_prevista into r from escalas where id = v_id;
+  perform pg_temp.ok(r.duracao_prevista_min = 240 and r.intervalo_min = 0 and r.hora_fim_prevista = time '12:00',
+                     '[T89] sábado sai 08:00–12:00, 4h, sem intervalo: ' || r::text);
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, v_sex, time '08:00', 'QA T89 sexta', 'rascunho', 'qa') returning id into v_id;
+  select duracao_prevista_min, intervalo_min, hora_fim_prevista into r from escalas where id = v_id;
+  perform pg_temp.ok(r.duracao_prevista_min = 480 and r.intervalo_min = 60 and r.hora_fim_prevista = time '17:00',
+                     '[T89] dia útil continua 8h: ' || r::text);
+  -- mover de sexta para sábado recalcula (o gatilho olha o dia)
+  delete from escalas where tecnico_id = v_tec and data_servico = v_sab;
+  update escalas set data_servico = v_sab where id = v_id;
+  select duracao_prevista_min, hora_fim_prevista into r from escalas where id = v_id;
+  perform pg_temp.ok(r.duracao_prevista_min = 240 and r.hora_fim_prevista = time '12:00', '[T89] mover para o sábado recalcula: ' || r::text);
+  -- Programação de sábado: o previsto é o mesmo da escala e não pede aceite de risco
+  delete from escalas where id = v_id;
+  v_lim := fn_programacao_limite(v_tec, v_sab, time '08:00');
+  perform pg_temp.ok((v_lim->>'previsto_min')::int = 240 and (v_lim->>'excedente_min')::int = 0,
+                     '[T89] Programação de sábado sem excedente: ' || v_lim::text);
+  -- prévia do painel: com a data, o sábado; sem a data, a regra de sempre
+  v_j := app_simular_jornada(time '08:00', v_sab);
+  perform pg_temp.ok((v_j->>'trabalho_min')::int = 240 and v_j->>'hora_fim' = '12:00:00', '[T89] prévia do sábado: ' || v_j::text);
+  v_j := app_simular_jornada(time '08:00');
+  perform pg_temp.ok((v_j->>'trabalho_min')::int = 480, '[T89] prévia sem data continua 8h');
+  perform pg_temp.ok((select pg_get_triggerdef(oid) ~ 'UPDATE OF hora_inicio, data_servico, tecnico_id'
+                        from pg_trigger where tgname = 'trg_escalas_jornada'), '[T89] gatilho olha o dia e o técnico');
+  perform set_config('request.headers', '{}', true);
+end $$;
+
+-- T90 régua de avisos (migration 150): +1h lembrete, +2h uma ligação, +3h último e gestor; nada a partir do fim ------
+create or replace function fn_evo_post(p_path text, p_body jsonb) returns bigint language sql as $$
+  insert into qa values ('r90:' || coalesce(p_body->>'number', ''), coalesce(current_setting('trilha.conta', true), ''))
+  on conflict (k) do update set v = excluded.v;
+  select 0::bigint $$;
+do $$
+declare
+  v_tec uuid;
+  v_loc uuid := (select v::uuid from qa where k = 'loc');
+  v_a   uuid := '00000000-0000-0000-0000-000000000001';
+  v_local time := (now() at time zone 'America/Bahia')::time;
+  v_dow int := extract(isodow from now() at time zone 'America/Bahia')::int;
+  v_e59 uuid; v_e60 uuid; v_e180 uuid; v_ontem uuid; v_lig uuid; v_tec_lig uuid; v_n int; v_ok boolean;
+  v_gestor text := '5571955559001';
+  v_sup text;
+  r record;
+begin
+  if v_local < time '00:05' or v_local > time '23:50' then
+    raise notice 'T90: perto da meia-noite local, régua não conferida';
+    return;
+  end if;
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform set_config('request.headers', '{"x-conta":"00000000-0000-0000-0000-000000000001"}', true);
+  update config set valor = 'America/Bahia' where chave = 'fuso';
+  update config set valor = '00:00' where chave = 'janela_envio_inicio';
+  update config set valor = '23:59' where chave = 'janela_envio_fim';
+  update config set valor = '23:59' where chave = 'regua_fim';
+  update config set valor = 'true' where chave = 'webhook_ativo';
+  update config set valor = '1000' where chave in ('envios_por_execucao', 'envios_por_conta_por_execucao', 'supervisor_avisos_por_execucao');
+  insert into config (chave, valor) values ('evolution_url', 'https://evo.teste'), ('evolution_instancia', 'qa-operadora')
+  on conflict (chave) do update set valor = excluded.valor;
+  perform pg_temp.ok(fn_config('max_tentativas') = '5' and fn_config('ligacao_max_por_escala') = '1'
+                     and fn_config('ligacao_janela_fim') = '18:00' and fn_config('ligacao_max_por_dia') = '20',
+                     '[T90] configs da régua');
+  begin update config set valor = '0' where chave = 'regua_lembrete_min'; v_ok := false;
+  exception when others then v_ok := sqlerrm like 'Valor inválido%'; end;
+  perform pg_temp.ok(v_ok, '[T90] passo da régua não aceita zero');
+
+  -- funcionário próprio (os da carga podem ter sido afastados ou desligados por testes anteriores)
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste)
+  values ('QA T90 Régua', '5571955559004', true, true, pg_temp.cpf('790000004'), (select v::uuid from qa where k = 'emp'), true)
+  returning id into v_tec;
+  -- uma escala por cenário, cada uma com a escala entregue há N minutos
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, date '2031-05-05', time '09:00', 'QA T90 59', 'notificada', 'qa-gestor90@teste.local') returning id into v_e59;
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, date '2031-05-06', time '09:00', 'QA T90 60', 'notificada', 'qa-gestor90@teste.local') returning id into v_e60;
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, date '2031-05-07', time '09:00', 'QA T90 180', 'notificada', 'qa-gestor90@teste.local') returning id into v_e180;
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, date '2031-05-08', time '09:00', 'QA T90 ontem', 'notificada', 'qa-gestor90@teste.local') returning id into v_ontem;
+  insert into notificacoes (escala_id, tipo, tentativa, template_nome, status_envio, enviada_em, entregue_em, passo) values
+    (v_e59,  'primeira', 1, 'texto_evolution', 'entregue', now() - interval '59 minutes',  now() - interval '59 minutes', 0),
+    (v_e60,  'primeira', 1, 'texto_evolution', 'lida',     now() - interval '61 minutes',  now() - interval '61 minutes', 0),
+    (v_e180, 'primeira', 1, 'texto_evolution', 'entregue', now() - interval '181 minutes', now() - interval '181 minutes', 0);
+  -- enviada ontem: o passo vencido não sai hoje
+  insert into notificacoes (escala_id, tipo, tentativa, template_nome, status_envio, enviada_em, entregue_em, passo, created_at)
+  values (v_ontem, 'primeira', 1, 'texto_evolution', 'lida', now() - interval '1 day', now() - interval '1 day', 0, now() - interval '1 day');
+
+  perform pg_temp.ok(not exists (select 1 from vw_acoes_pendentes where escala_id = v_e59 and acao is not null), '[T90] +59 min: nada');
+  select acao, passo into r from vw_acoes_pendentes where escala_id = v_e60;
+  perform pg_temp.ok(r.acao = 'reenviar' and r.passo = 1, '[T90] +60 min (lida): lembrete, passo 1: ' || coalesce(r::text, 'nada'));
+  select acao, passo into r from vw_acoes_pendentes where escala_id = v_e180;
+  perform pg_temp.ok(r.acao = 'reenviar' and r.passo = 3, '[T90] +180 min sem lembrete: vai direto ao último (não lido igual ao lido): ' || coalesce(r::text, 'nada'));
+  perform pg_temp.ok(not exists (select 1 from vw_acoes_pendentes where escala_id = v_ontem and acao is not null), '[T90] passo de ontem não sai hoje');
+
+  -- corte das 18h (aqui: o fim já passou) — nada sai
+  update config set valor = to_char(v_local - interval '2 minutes', 'HH24:MI') where chave = 'regua_fim';
+  perform pg_temp.ok(not exists (select 1 from vw_acoes_pendentes where escala_id in (v_e60, v_e180) and acao is not null), '[T90] depois do fim: nada');
+  update config set valor = '23:59' where chave = 'regua_fim';
+
+  -- falha de entrega repete o passo, não avança
+  update notificacoes set status_envio = 'enviada', entregue_em = null, enviada_em = now() - interval '70 minutes' where escala_id = v_e60;
+  select acao, passo into r from vw_acoes_pendentes where escala_id = v_e60;
+  perform pg_temp.ok(r.acao = 'nao_recebeu' and r.passo = 0, '[T90] sem entrega: reenvia a escala, sem avançar: ' || coalesce(r::text, 'nada'));
+  update notificacoes set status_envio = 'lida', entregue_em = now() - interval '61 minutes', enviada_em = now() - interval '61 minutes' where escala_id = v_e60;
+
+  -- gestor que criou: membro ativo da conta da escala, com WhatsApp
+  insert into conta_membros (conta_id, email, nome, papel, ativo, telefone_e164) values (v_a, 'qa-gestor90@teste.local', 'QA Gestor 90', 'gestor', true, v_gestor);
+  select telefone_e164 into v_sup from tecnicos where is_supervisor and ativo and conta_id = v_a
+     and (empresa_id is null or empresa_id = (select empresa_id from tecnicos where id = v_tec)) limit 1;
+  update escalas set supervisor_avisado_em = now() where supervisor_avisado_em is null and not (id = any(array[v_e59, v_e60, v_e180, v_ontem]));
+  delete from qa where k like 'r90:%';
+
+  -- duas execuções seguidas: um envio por passo; o último avisa o gestor uma vez, pelo canal da conta
+  perform fn_dispatcher_whatsapp();
+  perform fn_dispatcher_whatsapp();
+  select count(*) into v_n from notificacoes where escala_id = v_e60 and passo = 1;
+  perform pg_temp.ok(v_n = 1, '[T90] lembrete saiu ' || v_n || ' vez(es)');
+  select count(*) into v_n from notificacoes where escala_id = v_e180 and passo = 3;
+  perform pg_temp.ok(v_n = 1, '[T90] último saiu ' || v_n || ' vez(es)');
+  perform pg_temp.ok(not exists (select 1 from notificacoes where escala_id = v_e180 and passo = 1), '[T90] último não manda o lembrete atrasado junto');
+  perform pg_temp.ok((select supervisor_avisado_em is not null from escalas where id = v_e180)
+                     and (select supervisor_avisado_em is null from escalas where id = v_e60), '[T90] só o último avisa');
+  perform pg_temp.ok((select v from qa where k = 'r90:' || v_gestor) = v_a::text, '[T90] gestor recebeu pelo canal da conta da escala');
+  perform pg_temp.ok(v_sup is null or not exists (select 1 from qa where k = 'r90:' || v_sup), '[T90] com gestor, supervisores não recebem');
+  perform pg_temp.ok((select detalhe->>'destino' = 'gestor' and not (detalhe ? 'telefone') from escala_eventos
+                       where escala_id = v_e180 and evento = 'supervisor_acionado'), '[T90] histórico sem contato do gestor');
+  v_ok := false;
+  begin
+    insert into notificacoes (escala_id, tipo, tentativa, template_nome, status_envio, enviada_em, passo)
+    values (v_e60, 'lembrete', 9, 'texto_evolution', 'enviada', now(), 1);
+  exception when unique_violation then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T90] o banco recusa o mesmo passo duas vezes');
+
+  -- gestor que desligou os avisos, ou só com telefone em outra conta: supervisores
+  update conta_membros set recebe_avisos = false where conta_id = v_a and email = 'qa-gestor90@teste.local';
+  update escalas set supervisor_avisado_em = null where id = v_e180;
+  delete from qa where k like 'r90:%';
+  perform fn_dispatcher_whatsapp();
+  perform pg_temp.ok(not exists (select 1 from qa where k = 'r90:' || v_gestor), '[T90] gestor sem avisos não recebe');
+  perform pg_temp.ok(exists (select 1 from escala_eventos where escala_id = v_e180 and evento = 'supervisor_acionado'
+                               and detalhe->>'destino' = 'supervisores'), '[T90] sem gestor, vai aos supervisores');
+  update conta_membros set recebe_avisos = true, telefone_e164 = null where conta_id = v_a and email = 'qa-gestor90@teste.local';
+  insert into conta_membros (conta_id, email, nome, papel, ativo, telefone_e164)
+  values ((select v::uuid from qa where k = 'conta_b'), 'qa-gestor90@teste.local', 'QA Gestor 90 B', 'gestor', true, '5571955559002');
+  update escalas set supervisor_avisado_em = null where id = v_e180;
+  delete from qa where k like 'r90:%';
+  perform fn_dispatcher_whatsapp();
+  perform pg_temp.ok(not exists (select 1 from qa where k = 'r90:5571955559002'), '[T90] telefone do mesmo gestor em outra conta não recebe');
+
+  -- ligação: uma, 2h depois da entrega, só da conta da operadora, nunca de escala de teste
+  if v_dow > 5 or fn_feriado_da_escala((now() at time zone 'America/Bahia')::date, v_e60) is not null then
+    raise notice 'T90: fim de semana ou feriado, ligação não conferida';
+    return;
+  end if;
+  update config set valor = '00:00' where chave = 'ligacao_janela_inicio';
+  update config set valor = '23:59' where chave = 'ligacao_janela_fim';
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste)
+  values ('QA T90 Ligação', '5571955559003', true, true, pg_temp.cpf('790000003'), (select empresa_id from tecnicos where id = v_tec), false)
+  returning id into v_tec_lig;
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec_lig, v_loc, date '2031-05-09', time '09:00', 'QA T90 ligação', 'notificada', 'qa') returning id into v_lig;
+  insert into notificacoes (escala_id, tipo, tentativa, template_nome, status_envio, enviada_em, entregue_em, passo)
+  values (v_lig, 'primeira', 1, 'texto_evolution', 'entregue', now() - interval '119 minutes', now() - interval '119 minutes', 0);
+  perform pg_temp.ok(not exists (select 1 from vw_ligacoes_pendentes where escala_id = v_lig), '[T90] ligação antes de 2h');
+  update notificacoes set enviada_em = now() - interval '121 minutes', entregue_em = now() - interval '121 minutes' where escala_id = v_lig;
+  perform pg_temp.ok(exists (select 1 from vw_ligacoes_pendentes where escala_id = v_lig), '[T90] ligação com 2h');
+  update escalas set teste = true where id = v_lig;
+  perform pg_temp.ok(not exists (select 1 from vw_ligacoes_pendentes where escala_id = v_lig), '[T90] escala de teste não liga');
+  update escalas set teste = false where id = v_lig;
+  insert into ligacoes (escala_id, tecnico_id, telefone, tentativa, status) values (v_lig, v_tec_lig, '5571955559003', 1, 'encerrada');
+  update ligacoes set criada_em = now() - interval '2 hours' where escala_id = v_lig;
+  perform pg_temp.ok(not exists (select 1 from vw_ligacoes_pendentes where escala_id = v_lig), '[T90] uma ligação por escala');
+  delete from ligacoes where escala_id = v_lig;
+  update config set valor = to_char(v_local - interval '2 minutes', 'HH24:MI') where chave = 'ligacao_janela_fim';
+  perform pg_temp.ok(not exists (select 1 from vw_ligacoes_pendentes where escala_id = v_lig), '[T90] ligação vencida depois do fim da janela não sai');
+  update config set valor = '23:59' where chave = 'ligacao_janela_fim';
+  perform pg_temp.ok((select prosrc ~ 'A ligação pela URA ainda não está disponível para esta conta' from pg_proc where proname = 'fn_preparar_ligacao')
+                     and (select prosrc ~ 'ligacao_max_por_dia' from pg_proc where proname = 'fn_disparar_ligacoes')
+                     and (select prosrc ~ 'fn_evo_post_na_conta\(v_conta' from pg_proc where proname = 'fn_dispatcher_whatsapp'),
+                     '[T90] URA só da operadora, teto diário e gestor pelo canal da conta');
+  perform pg_temp.ok(pg_get_viewdef('interno.vw_ligacoes_pendentes'::regclass) ~ '00000000-0000-0000-0000-000000000001',
+                     '[T90] fila de ligações só da conta da operadora');
+end $$;
+select 'REGRESSÃO OK: T1 a T90' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

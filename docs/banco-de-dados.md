@@ -254,6 +254,34 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 150 (09/11, versão 20261122120000): sábado de 4h e a régua de avisos depois do envio (decisão 135)
+
+- **Sábado:** `interno.fn_jornada_alvo_min(técnico, data)` devolve os minutos da carga do dia no sábado
+  (`fn_carga_minutos_dia`; sem carga, `ponto_jornada_sabado_min` = 240) e nulo nos outros dias. O gatilho
+  `trg_escalas_jornada` (agora `insert or update of hora_inicio, data_servico, tecnico_id`) e `fn_programacao_limite` usam
+  `fn_calcular_jornada(início, alvo)` (versão nova; a de um argumento repassa com o alvo nulo = `jornada_min`). Sábado
+  das 08:00 sai 08:00–12:00, sem intervalo. `app_simular_jornada(início, data default null)` mostra o mesmo na prévia. As
+  escalas de sábado futuras em rascunho ou agendada foram recalculadas na migration; as enviadas ficaram.
+- **Régua** (`vw_acoes_pendentes`): âncora = entrega da 1ª notificação que não falhou (`coalesce(entregue_em, lida_em,
+  enviada_em)`; lida ou não, a mesma regra). `regua_lembrete_min` (60) lembrete, `regua_final_min` (180) último lembrete
+  e aviso; só no mesmo dia da escala enviada e antes de `regua_fim` (18:00): o passo vencido depois disso é perdido.
+  Coluna nova `notificacoes.passo` (0 escala, 1 lembrete, 3 último) e índice único `notificacoes_passo_uk (escala_id,
+  passo)` fora as falhas e os reenvios por falha (`reenvio_falha`, que repetem o passo). `max_tentativas` 3 → 5 (3 envios
+  + 2 reenvios por falha). Coluna nova `passo` na view; `avisar_supervisor` fica sempre falso (o aviso da 2ª tentativa
+  saiu). Índice `notificacoes (escala_id, created_at)` no lugar de `idx_notif_escala`.
+- **Ligação** (`vw_ligacoes_pendentes`): uma (`ligacao_max_por_escala` 2 → 1), `regua_ligacao_min` (120) depois da
+  entrega, no mesmo dia e antes de `ligacao_janela_fim` (20:00 → 18:00); só da conta da operadora (a Twilio é da
+  Infoxtec, decisão 108; `fn_preparar_ligacao` recusa outra conta, inclusive no "Ligar agora") e nunca de escala de teste.
+  `fn_disparar_ligacoes` respeita `ligacao_max_por_dia` (20, contando todas as do dia) e, ao estourar, avisa uma vez por
+  dia (`alertas_enviados` tipo `ligacao_teto_dia`, `fn_avisar_tecnico`, sem nome nem telefone).
+- **Aviso** (fase 3 de `fn_dispatcher_whatsapp`): ao gestor que criou a escala — `conta_membros` da mesma conta, e-mail
+  igual a `criado_por`, ativo, admin ou gestor, com `telefone_e164` e `recebe_avisos` (coluna nova, padrão `true`) —, pelo
+  canal da conta (`fn_evo_post_na_conta`). Sem ele, os supervisores, como antes. `escala_eventos` grava só
+  `destino`, diagnóstico e tentativa. `app_usuarios` devolve `recebe_avisos`; `app_definir_avisos_usuario(e-mail, recebe)`
+  (admin) muda. Configs novas validadas em `fn_validar_config` (passos ≥ 1; `regua_fim` em HH:MM).
+- Regressão: T89 (sábado, mover de sexta, Programação e prévia) e T90 (régua, corte, falha de entrega, duplicidade,
+  gestor, outra conta, ligação única, escala de teste, janela).
+
 ### Migration 149 (06/11, versão 20261121120000): MFA obrigatório para administrador (B2, decisão 134)
 
 `interno.fn_mfa_exigido(email)`: a sessão precisa ser aal2 se o `mfa_obrigatorio` global estiver ligado, se a pessoa for

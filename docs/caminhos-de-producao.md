@@ -30,7 +30,7 @@ pelos checks do GitHub.
 | 12 | `scripts/rotacionar-evolution.sh --aplicar` | Vault da produção (token da Evolution) | Só na rotação, pelo responsável, com `~/.infoxtec/producao.env` | Uso registrado em `docs/rotacao-de-segredos.md` | Contingência |
 | 13 | Painel local apontando para a produção (`ambiente-dev.sh iniciar producao`, porta 5174) | **Dados** reais (não código) | Só o responsável, com a tarja vermelha | — | Uso eventual |
 | 14 | Manager da Evolution e SSH do servidor da Oracle; DNS do `{$DOMINIO}` do `infra/evolution/Caddyfile` | WhatsApp: webhook e token da instância `infoxtec`; quem mexe no DNS desvia o WhatsApp | Só o responsável | `docs/evolution-propria.md` | — |
-| 15 | Console da Twilio (URL de voz do número); conta do Cloudflare dona do subdomínio `david-cerqueira.workers.dev` (alvo do painel e do redirecionamento da Vercel) | URA; endereço do painel | Só o responsável; subdomínio nunca renomeado (decisão 133) | — | URA desligada |
+| 15 | Console da Twilio (URL de voz do número); conta do Cloudflare dona do subdomínio `david-cerqueira.workers.dev` (alvo do painel e do redirecionamento da Vercel) | URA; endereço do painel | Só o responsável; subdomínio nunca renomeado (decisão 133) | — | URA **ligada** (183 ligações em 30 dias até 06/11; o "desligada" de 04/11 estava errado). Desde a migration 150: só da conta da operadora, teto de 20 por dia |
 
 **Caminhos que só leem a produção:** os workflows `backup.yml` (diário, transação só de leitura) e `desastre.yml`
 (diário), com o segredo `PRODUCAO_DB_URL` dos ambientes `producao-backup` e `producao-desastre`; o `desastre.yml` lê o
@@ -39,7 +39,7 @@ e restaura num banco temporário do próprio runner. O DeepSeek lê para diagnó
 transação só de leitura (decisão 47).
 
 **O que roda dentro da produção sem deploy** (não é caminho de mudança de código): `pg_cron`, com o motor de envio, a
-limpeza e o vigia (`supabase/setup/cron.sql`); o webhook da Evolution; a URA da Twilio (desligada).
+limpeza e o vigia (`supabase/setup/cron.sql`); o webhook da Evolution; a URA da Twilio (ligada; ver linha 15).
 
 ## 2. Credenciais que abrem esses caminhos
 

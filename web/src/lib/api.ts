@@ -219,7 +219,8 @@ export const api = {
     rpc<{ integra: boolean; conferidas: number; nsr?: number; motivo?: string }>('app_ponto_verificar', { p_empresa: empresa }),
 
   pendencias: (data: string) => rpc<Pendencias>('app_pendencias', { p_data: data }),
-  simularJornada: (hora: string) => rpc<Jornada>('app_simular_jornada', { p_inicio: hora }),
+  // com a data, o sábado sai pela jornada do dia (4h, migration 150)
+  simularJornada: (hora: string, data?: string) => rpc<Jornada>('app_simular_jornada', { p_inicio: hora, p_data: data || null }),
 
   painelLocais: (data: string) => rpc<PainelLocal[]>('app_painel_locais', { p_data: data }),
 
@@ -262,6 +263,7 @@ export const api = {
   definirRhFolhas: (email: string, valor: boolean) => rpc<void>('app_definir_rh_folhas', { p_email: email, p_valor: valor }),
   rhFolhasHistorico: () => rpc<{ email: string; valor: boolean; autor: string; em: string }[]>('app_rh_folhas_historico'),
   definirTelefoneUsuario: (email: string, telefone: string) => rpc<void>('app_definir_telefone_usuario', { p_email: email, p_telefone: telefone }),
+  definirAvisosUsuario: (email: string, recebe: boolean) => rpc<void>('app_definir_avisos_usuario', { p_email: email, p_recebe: recebe }),
   salvarUsuario: (u: { email: string; nome: string; papel: Papel; ativo: boolean }) =>
     rpc<string>('app_salvar_usuario', { p_email: u.email, p_nome: u.nome, p_papel: u.papel, p_ativo: u.ativo }),
 }
