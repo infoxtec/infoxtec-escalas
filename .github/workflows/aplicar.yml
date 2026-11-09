@@ -131,6 +131,33 @@ jobs:
           DB_URL: ${{ secrets.DB_URL }}
         run: supabase migration list --db-url "$DB_URL"
 
+      # Trava (incidente de 09/11, decisão 133): toda migration da produção precisa ter sido aplicada por este
+      # workflow. O registro fica no próprio banco (supabase_migrations.aplicar_registro); na 1ª execução, o estado
+      # atual vira a base. Migration que apareceu por outro caminho (integração do Supabase, SQL Editor, CLI) para a
+      # produção aqui, antes de mexer em qualquer coisa. Na homologação, só avisa.
+      - name: Trava, migration aplicada fora do Aplicar
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+        run: |
+          fora=$(psql "$DB_URL" -X -v ON_ERROR_STOP=1 -q -At <<'SQL'
+          create table if not exists supabase_migrations.aplicar_registro (
+            version text primary key, registrado_em timestamptz not null default now(), origem text not null);
+          insert into supabase_migrations.aplicar_registro (version, origem)
+          select version, 'base' from supabase_migrations.schema_migrations
+           where not exists (select 1 from supabase_migrations.aplicar_registro)
+          on conflict do nothing;
+          select string_agg(s.version, ' ' order by s.version) from supabase_migrations.schema_migrations s
+           where not exists (select 1 from supabase_migrations.aplicar_registro r where r.version = s.version);
+          SQL
+          )
+          if [ -n "$fora" ]; then
+            if [ "$DESTINO" = producao ]; then
+              echo "::error::Migration na produção que o Aplicar não aplicou: $fora. Algum caminho fora do Aplicar mexeu na produção (docs/caminhos-de-producao.md). O responsável investiga antes de seguir."
+              exit 1
+            fi
+            echo "::warning::Migration na homologação aplicada fora do Aplicar: $fora (integração do Supabase da homologação ligada?)"
+          fi
+
       - name: 'Aplicar migrations (até 3 tentativas; o Supabase às vezes responde 502)'
         env:
           DB_URL: ${{ secrets.DB_URL }}
@@ -140,6 +167,17 @@ jobs:
             echo "tentativa $i falhou"; sleep $((i * 15))
           done
           exit 1
+
+      - name: Registrar o que o Aplicar aplicou
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+          RUN: ${{ github.run_id }}
+        run: |
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -q -v run="aplicar $RUN" <<'SQL'
+          insert into supabase_migrations.aplicar_registro (version, origem)
+          select version, :'run' from supabase_migrations.schema_migrations
+          on conflict do nothing;
+          SQL
 
       - name: plpgsql_check em todas as funções (transação desfeita, exige zero erros)
         env:
