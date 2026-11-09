@@ -1996,8 +1996,9 @@ com ajustes, incorporados). Migration 150.*
   nem no dia seguinte: escala entregue depois das 15h não gera aviso ao gestor (aceito pelo responsável); o alerta de
   prazo das 16h/18h aos supervisores continua. Saem o reenvio de 30 em 30 min, a 2ª ligação e o aviso na 2ª tentativa.
 - **URA:** estava ligada na produção (183 ligações em 30 dias até 06/11; o inventário de 04/11 dizia "desligada" por
-  engano). Agora só da conta da operadora até existir Twilio por conta (decisão 108), nunca de escala de teste, e no
-  máximo **20 ligações por dia** (decisão de custo do responsável, cerca de R$ 4,80/dia).
+  engano). Agora só da conta da operadora até existir Twilio por conta (decisão 108), nunca de escala de teste (nem pelo
+  "Ligar agora"), e no máximo **20 ligações automáticas por dia** (decisão de custo do responsável, cerca de R$ 4,80/dia);
+  o "Ligar agora" conta no teto, mas não é barrado por ele. Ao estourar, um aviso técnico por dia.
 - **Assinatura da Twilio:** o responsável manteve a observação (opção b): o risco das decisões 54 e 109 fica aceito de
   novo — quem tiver o `VOZ_TOKEN` poderia registrar confirmação ou recusa em nome do funcionário. Revisar junto com a
   Twilio por cliente.
@@ -2005,6 +2006,9 @@ com ajustes, incorporados). Migration 150.*
   aviso de programação. Finalidade nova informada na tela Usuários ("WhatsApp de recuperação e avisos"), com a opção
   "Receber avisos de programação" (ligada por padrão; desligada, o aviso vai aos supervisores). Base legal: execução do
   contrato e legítimo interesse do empregador. O conteúdo é o mesmo que o gestor da conta já vê no painel.
+  O dono do número recebe e-mail quando o WhatsApp é trocado (texto com as duas finalidades) e quando os avisos são
+  ligados ou desligados, com quem mudou. Pendências (`seguranca`, baixos): o próprio gestor desligar os avisos sem pedir ao
+  administrador; o `VOZ_TOKEN` num cabeçalho em vez da URL e o nome do técnico fora do log de erro da ligação.
 
 ## 134. Verificação em duas etapas obrigatória para administrador
 

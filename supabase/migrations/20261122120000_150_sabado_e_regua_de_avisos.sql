@@ -422,7 +422,7 @@ begin
     raise exception 'Ligações só em dias úteis, das % às %, fora de sábado, domingo e feriado.',
       fn_config('ligacao_janela_inicio'), fn_config('ligacao_janela_fim');
   end if;
-  select e.id, e.tecnico_id, t.nome, t.telefone_e164, t.ativo, t.opt_in, e.status, e.local_id, e.conta_id into v_esc
+  select e.id, e.tecnico_id, t.nome, t.telefone_e164, t.ativo, t.opt_in, e.status, e.local_id, e.conta_id, e.teste into v_esc
   from escalas e join tecnicos t on t.id = e.tecnico_id where e.id = p_escala;
   if not found then raise exception 'Programação não encontrada.'; end if;
   -- a Twilio é da Infoxtec (decisão 108): cliente só liga quando tiver telefonia própria
@@ -430,6 +430,8 @@ begin
     raise exception 'A ligação pela URA ainda não está disponível para esta conta.';
   end if;
   if not v_esc.ativo or not v_esc.opt_in then raise exception 'Técnico inativo ou sem autorização de contato.'; end if;
+  -- escala de teste nunca vira ligação real (nem pelo "Ligar agora")
+  if v_esc.teste then raise exception 'Programação de teste não recebe ligação.'; end if;
   if v_esc.status not in ('agendada','notificada') then raise exception 'A programação já foi respondida (%).', v_esc.status; end if;
   if v_esc.local_id is null then
     raise exception 'Programação sem local não é enviada nem ligada. Escolha o local.';
@@ -531,14 +533,58 @@ create or replace function public.app_definir_avisos_usuario(p_email text, p_rec
  set search_path to 'interno', 'public', 'extensions', 'pg_temp'
 as $function$
 declare
+  v_ator  text;
   v_conta uuid;
   v_email text := lower(btrim(coalesce(p_email, '')));
+  v_novo  boolean := coalesce(p_recebe, true);
+  v_antes boolean;
 begin
-  perform app_exigir(array['admin']);
+  v_ator := app_exigir(array['admin']);
   v_conta := fn_conta_atual();
-  update conta_membros set recebe_avisos = coalesce(p_recebe, true), atualizado_em = now()
-   where conta_id = v_conta and email = v_email;
+  select recebe_avisos into v_antes from conta_membros where conta_id = v_conta and email = v_email for update;
   if not found then raise exception 'Usuário não encontrado nesta conta.'; end if;
+  if v_antes = v_novo then return; end if;
+  update conta_membros set recebe_avisos = v_novo, atualizado_em = now() where conta_id = v_conta and email = v_email;
+  -- o dono do número fica sabendo (LGPD, art. 9º): quem mudou e o que muda
+  perform fn_alerta_email('Trilha: avisos de programação no seu WhatsApp',
+    'Os avisos de programação sem confirmação no seu WhatsApp (' || v_email || ') foram '
+    || case when v_novo then 'ligados' else 'desligados' end || ' por ' || v_ator || '. '
+    || case when v_novo then 'Quando uma programação criada por você ficar 3 horas sem confirmação do funcionário, até as 18h, o aviso chega no WhatsApp cadastrado.'
+            else 'Os avisos das programações criadas por você passam a ir aos supervisores.' end
+    || ' Se você não esperava essa mudança, avise o administrador da sua conta.',
+    array[v_email]);
+end $function$;
+
+-- o e-mail da troca de número passa a dizer as duas finalidades (recuperação e avisos de programação)
+create or replace function public.app_definir_telefone_usuario(p_email text, p_telefone text)
+ returns void
+ language plpgsql
+ security definer
+ set search_path to 'interno', 'public', 'extensions', 'pg_temp'
+as $function$
+declare
+  v_ator  text;
+  v_conta uuid;
+  v_email text := lower(btrim(coalesce(p_email, '')));
+  v_tel   text := nullif(regexp_replace(coalesce(p_telefone, ''), '\D', '', 'g'), '');
+  v_antes text;
+begin
+  v_ator := app_exigir(array['admin']);
+  v_conta := fn_conta_atual();
+  if v_tel is not null and v_tel !~ '^[0-9]{12,13}$' then
+    raise exception 'WhatsApp inválido: use DDI e DDD, só números. Ex: 5571981776307';
+  end if;
+  select telefone_e164 into v_antes from conta_membros where conta_id = v_conta and email = v_email for update;
+  if not found then raise exception 'Usuário não encontrado nesta conta.'; end if;
+  if v_antes is not distinct from v_tel then return; end if;
+  update conta_membros set telefone_e164 = v_tel, atualizado_em = now() where conta_id = v_conta and email = v_email;
+  perform fn_alerta_email('Trilha: WhatsApp de recuperação e avisos alterado',
+    'O WhatsApp de recuperação da verificação em duas etapas e dos avisos de programação do seu login (' || v_email || ') foi '
+    || case when v_tel is null then 'removido' else 'alterado para o final ' || right(v_tel, 4) end
+    || ' por ' || v_ator || '. Esse número recebe o código se você perder o aplicativo autenticador e, se os avisos '
+    || 'estiverem ligados, o aviso das programações criadas por você que ficarem sem confirmação. '
+    || 'Se você não esperava essa mudança, avise o suporte.',
+    array[v_email]);
 end $function$;
 
 -- ---------------------------------------------------------------------------------------------------------------

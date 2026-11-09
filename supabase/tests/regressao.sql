@@ -5180,6 +5180,16 @@ begin
   delete from qa where k like 'r90:%';
   perform fn_dispatcher_whatsapp();
   perform pg_temp.ok(not exists (select 1 from qa where k = 'r90:5571955559002'), '[T90] telefone do mesmo gestor em outra conta não recebe');
+  -- a opção de avisos avisa o dono do número por e-mail, só quando muda
+  select count(*) into v_n from alertas_email where assunto = 'Trilha: avisos de programação no seu WhatsApp';
+  perform app_definir_avisos_usuario('qa-gestor90@teste.local', true);
+  perform pg_temp.ok((select count(*) from alertas_email where assunto = 'Trilha: avisos de programação no seu WhatsApp') = v_n, '[T90] sem mudança, sem e-mail');
+  perform app_definir_avisos_usuario('QA-Gestor90@teste.local ', false);
+  perform app_definir_avisos_usuario('qa-gestor90@teste.local', false);
+  perform pg_temp.ok((select count(*) from alertas_email where assunto = 'Trilha: avisos de programação no seu WhatsApp') = v_n + 1
+                     and not (select recebe_avisos from conta_membros where conta_id = v_a and email = 'qa-gestor90@teste.local'),
+                     '[T90] desligar avisa o dono do número uma vez');
+  perform app_definir_avisos_usuario('qa-gestor90@teste.local', true);
 
   -- ligação: uma, 2h depois da entrega, só da conta da operadora, nunca de escala de teste
   if v_dow > 5 or fn_feriado_da_escala((now() at time zone 'America/Bahia')::date, v_e60) is not null then
@@ -5208,6 +5218,24 @@ begin
   update config set valor = to_char(v_local - interval '2 minutes', 'HH24:MI') where chave = 'ligacao_janela_fim';
   perform pg_temp.ok(not exists (select 1 from vw_ligacoes_pendentes where escala_id = v_lig), '[T90] ligação vencida depois do fim da janela não sai');
   update config set valor = '23:59' where chave = 'ligacao_janela_fim';
+  -- teto diário: com 20 ligações hoje, a fila não liga e avisa uma vez só
+  perform pg_temp.ok(exists (select 1 from vw_ligacoes_pendentes where escala_id = v_lig), '[T90] escala na fila antes do teto');
+  insert into config (chave, valor) values ('twilio_caller_id', '5571900000001') on conflict (chave) do update set valor = excluded.valor;
+  update config set valor = 'true' where chave = 'ligacao_ativa';
+  insert into ligacoes (escala_id, tecnico_id, telefone, tentativa, status)
+  select v_e60, v_tec, '5571955559004', 1, 'encerrada' from generate_series(1, 20);
+  delete from alertas_enviados where tipo = 'ligacao_teto_dia';
+  perform pg_temp.ok(fn_disparar_ligacoes() = 0 and fn_disparar_ligacoes() = 0, '[T90] teto diário segura a fila');
+  perform pg_temp.ok((select count(*) from alertas_enviados where tipo = 'ligacao_teto_dia') = 1, '[T90] aviso do teto uma vez por dia');
+  perform pg_temp.ok(not exists (select 1 from ligacoes where escala_id = v_lig), '[T90] nenhuma ligação acima do teto');
+  update config set valor = 'false' where chave = 'ligacao_ativa';
+  delete from ligacoes where escala_id = v_e60;
+  -- "Ligar agora" também recusa escala de teste
+  update escalas set teste = true where id = v_lig;
+  v_ok := false;
+  begin perform fn_preparar_ligacao(v_lig); exception when others then v_ok := sqlerrm = 'Programação de teste não recebe ligação.'; end;
+  perform pg_temp.ok(v_ok, '[T90] Ligar agora recusa escala de teste');
+  update escalas set teste = false where id = v_lig;
   perform pg_temp.ok((select prosrc ~ 'A ligação pela URA ainda não está disponível para esta conta' from pg_proc where proname = 'fn_preparar_ligacao')
                      and (select prosrc ~ 'ligacao_max_por_dia' from pg_proc where proname = 'fn_disparar_ligacoes')
                      and (select prosrc ~ 'fn_evo_post_na_conta\(v_conta' from pg_proc where proname = 'fn_dispatcher_whatsapp'),
