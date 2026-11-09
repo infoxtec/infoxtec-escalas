@@ -288,8 +288,8 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   repetido (índice único) é só um aviso no log, sem virar falha.
 - **Jornada:** `fn_calcular_jornada` passa a dar 15 min de pausa entre mais de 4h e 6h (CLT art. 71, § 1º); 8h segue com
   `intervalo_min`; até 4h, nenhuma.
-- `avisar_supervisor_na` e `ligacao_apos_tentativas` ficaram sem uso (mantidas só para a volta). A migration trava
-  `notificacoes`, `escalas` e `conta_membros` na mesma ordem do motor; aplicar na produção **depois das 18h** (escalas em
+- `avisar_supervisor_na` e `ligacao_apos_tentativas` ficaram sem uso (mantidas só para a volta). A migration altera
+  `notificacoes` antes de `escalas`, a mesma ordem de travas do motor; aplicar na produção **depois das 18h** (escalas em
   andamento com a regra antiga não recebem um passo 3 extra no mesmo dia). Freio sem deploy: `regua_fim = '00:00'` fecha
   a régua; `ligacao_ativa = false` para as ligações.
 - Regressão: T89 (sábado, mover de sexta, Programação, prévia, pausa da CLT) e T90 (régua, corte, falha de entrega e

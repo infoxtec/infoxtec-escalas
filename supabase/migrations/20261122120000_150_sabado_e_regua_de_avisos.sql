@@ -12,9 +12,22 @@
 -- 4. Gestor: o aviso sai pelo canal da conta da escala; quem desligar "receber avisos de programação"
 --    (conta_membros.recebe_avisos) não recebe, e o aviso vai aos supervisores, como antes.
 
-set local lock_timeout = '5s';
--- mesma ordem do motor para não cruzar travas (a migration troca gatilho de escalas e índice de notificacoes)
-lock table interno.notificacoes, interno.escalas, interno.conta_membros in access exclusive mode;
+set lock_timeout = '5s';
+
+-- notificacoes antes de escalas: a mesma ordem de travas do motor (fase 1), para não cruzar com ele
+-- passo da régua de cada envio: 0 a escala, 1 o lembrete, 3 o último (nulo nos registros anteriores à 150)
+alter table interno.notificacoes add column if not exists passo smallint;
+-- ciclo de confirmação: a edição que pede nova confirmação (data, hora ou local) abre outro e a régua recomeça
+alter table interno.notificacoes add column if not exists ciclo smallint not null default 1;
+
+-- o mesmo passo não sai duas vezes; reenvio por falha de entrega (reenvio_falha) repete o passo e fica fora
+create unique index if not exists notificacoes_passo_uk on interno.notificacoes (escala_id, ciclo, passo)
+  where passo is not null and status_envio <> 'falha' and tipo <> 'reenvio_falha';
+
+-- a view do motor lê a escala com a última e a primeira notificação: índice composto no lugar do simples
+create index if not exists notificacoes_escala_criada_idx on interno.notificacoes (escala_id, created_at);
+drop index if exists interno.idx_notif_escala;
+
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- Configurações
@@ -262,19 +275,6 @@ end $$;
 -- ---------------------------------------------------------------------------------------------------------------
 -- 2. Régua de avisos
 -- ---------------------------------------------------------------------------------------------------------------
--- passo da régua de cada envio: 0 a escala, 1 o lembrete, 3 o último (nulo nos registros anteriores à 150)
-alter table interno.notificacoes add column if not exists passo smallint;
--- ciclo de confirmação: a edição que pede nova confirmação (data, hora ou local) abre outro e a régua recomeça
-alter table interno.notificacoes add column if not exists ciclo smallint not null default 1;
-
--- o mesmo passo não sai duas vezes; reenvio por falha de entrega (reenvio_falha) repete o passo e fica fora
-create unique index if not exists notificacoes_passo_uk on interno.notificacoes (escala_id, ciclo, passo)
-  where passo is not null and status_envio <> 'falha' and tipo <> 'reenvio_falha';
-
--- a view do motor lê a escala com a última e a primeira notificação: índice composto no lugar do simples
-create index if not exists notificacoes_escala_criada_idx on interno.notificacoes (escala_id, created_at);
-drop index if exists interno.idx_notif_escala;
-
 create or replace view interno.vw_acoes_pendentes as
  with agora as materialized (
    select (now() at time zone coalesce(nullif(interno.fn_config('fuso'), ''), 'America/Bahia')) as local_ts,
