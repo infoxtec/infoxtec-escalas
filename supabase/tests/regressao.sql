@@ -5055,6 +5055,11 @@ begin
   perform pg_temp.ok((v_j->>'trabalho_min')::int = 240 and v_j->>'hora_fim' = '12:00:00', '[T89] prévia do sábado: ' || v_j::text);
   v_j := app_simular_jornada(time '08:00');
   perform pg_temp.ok((v_j->>'trabalho_min')::int = 480, '[T89] prévia sem data continua 8h');
+  -- CLT art. 71: de mais de 4h até 6h, 15 minutos de pausa; até 4h, nenhuma; 8h continua com 1h
+  select * into r from fn_calcular_jornada(time '08:00', 300);
+  perform pg_temp.ok(r.trabalho_min = 300 and r.intervalo_min = 15 and r.hora_fim = time '13:15', '[T89] 5h com 15 min de pausa: ' || r::text);
+  select * into r from fn_calcular_jornada(time '08:00', 240);
+  perform pg_temp.ok(r.intervalo_min = 0, '[T89] 4h sem pausa');
   perform pg_temp.ok((select pg_get_triggerdef(oid) ~ 'UPDATE OF hora_inicio, data_servico, tecnico_id'
                         from pg_trigger where tgname = 'trg_escalas_jornada'), '[T89] gatilho olha o dia e o técnico');
   perform set_config('request.headers', '{}', true);
@@ -5073,6 +5078,7 @@ declare
   v_local time := (now() at time zone 'America/Bahia')::time;
   v_dow int := extract(isodow from now() at time zone 'America/Bahia')::int;
   v_e59 uuid; v_e60 uuid; v_e180 uuid; v_ontem uuid; v_lig uuid; v_tec_lig uuid; v_n int; v_ok boolean;
+  v_old uuid; v_fal uuid; v_rec uuid;
   v_gestor text := '5571955559001';
   v_sup text;
   r record;
@@ -5164,6 +5170,58 @@ begin
     values (v_e60, 'lembrete', 9, 'texto_evolution', 'enviada', now(), 1);
   exception when unique_violation then v_ok := true; end;
   perform pg_temp.ok(v_ok, '[T90] o banco recusa o mesmo passo duas vezes');
+  perform pg_temp.ok((select prosrc ~ 'when unique_violation then' from pg_proc where oid = 'interno.fn_dispatcher_whatsapp()'::regprocedure),
+                     '[T90] passo repetido no motor não vira falha');
+
+  -- registros anteriores à 150 (sem passo): o lembrete conta como passo 1, então em +61 min nada sai
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, date '2031-05-10', time '09:00', 'QA T90 antiga', 'notificada', 'qa') returning id into v_old;
+  insert into notificacoes (escala_id, tipo, tentativa, template_nome, status_envio, enviada_em, entregue_em, created_at) values
+    (v_old, 'primeira', 1, 'texto_evolution', 'entregue', now() - interval '61 minutes', now() - interval '61 minutes', now() - interval '61 minutes'),
+    (v_old, 'lembrete', 2, 'texto_evolution', 'entregue', now() - interval '31 minutes', now() - interval '31 minutes', now() - interval '31 minutes');
+  perform pg_temp.ok(not exists (select 1 from vw_acoes_pendentes where escala_id = v_old and acao is not null), '[T90] lembrete antigo sem passo conta como passo 1');
+
+  -- dois reenvios por falha de entrega e falhou de novo: para de reenviar e avisa
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por)
+  values (v_tec, v_loc, date '2031-05-11', time '09:00', 'QA T90 falhas', 'notificada', 'qa') returning id into v_fal;
+  insert into notificacoes (escala_id, tipo, tentativa, template_nome, status_envio, enviada_em, passo, created_at) values
+    (v_fal, 'primeira',      1, 'texto_evolution', 'falha',   now() - interval '50 minutes', 0, now() - interval '50 minutes'),
+    (v_fal, 'reenvio_falha', 2, 'texto_evolution', 'enviada', now() - interval '35 minutes', 0, now() - interval '35 minutes');
+  select acao into r from vw_acoes_pendentes where escala_id = v_fal;
+  perform pg_temp.ok(r.acao = 'nao_recebeu', '[T90] 1 reenvio sem entrega: reenvia de novo: ' || coalesce(r::text, 'nada'));
+  insert into notificacoes (escala_id, tipo, tentativa, template_nome, status_envio, enviada_em, passo, created_at)
+  values (v_fal, 'reenvio_falha', 3, 'texto_evolution', 'falha', now() - interval '20 minutes', 0, now() - interval '20 minutes');
+  select acao into r from vw_acoes_pendentes where escala_id = v_fal;
+  perform pg_temp.ok(r.acao = 'escalonar', '[T90] 2 reenvios e falhou de novo: avisa, sem 4ª cópia: ' || coalesce(r::text, 'nada'));
+  -- com a régua fechada (depois das 18h), a falha esgotada ainda avisa (como antes da 150)
+  update config set valor = to_char(v_local - interval '2 minutes', 'HH24:MI') where chave = 'regua_fim';
+  select acao into r from vw_acoes_pendentes where escala_id = v_fal;
+  perform pg_temp.ok(r.acao = 'escalonar', '[T90] falha esgotada avisa mesmo depois do fim da régua: ' || coalesce(r::text, 'nada'));
+  update config set valor = '23:59' where chave = 'regua_fim';
+
+  -- editar com nova confirmação abre outro ciclo: a régua recomeça e o gestor não é avisado na hora
+  -- (funcionário sem a marca de teste: escala de teste não manda nada ao editar)
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste)
+  values ('QA T90 Reconfirma', '5571955559005', true, true, pg_temp.cpf('790000005'), (select v::uuid from qa where k = 'emp'), false)
+  returning id into v_rec;
+  insert into escalas (tecnico_id, local_id, data_servico, hora_inicio, descricao_tarefa, status, criado_por, supervisor_avisado_em)
+  values (v_rec, v_loc, date '2031-05-12', time '09:00', 'QA T90 reconfirma', 'notificada', 'qa', now()) returning id into v_rec;
+  insert into notificacoes (escala_id, tipo, tentativa, template_nome, status_envio, enviada_em, entregue_em, passo, created_at) values
+    (v_rec, 'primeira', 1, 'texto_evolution', 'lida', now() - interval '200 minutes', now() - interval '200 minutes', 0, now() - interval '200 minutes'),
+    (v_rec, 'lembrete', 2, 'texto_evolution', 'lida', now() - interval '140 minutes', now() - interval '140 minutes', 1, now() - interval '140 minutes'),
+    (v_rec, 'lembrete', 3, 'texto_evolution', 'lida', now() - interval '20 minutes',  now() - interval '20 minutes',  3, now() - interval '20 minutes');
+  perform app_editar_escala(jsonb_build_object('id', v_rec, 'hora_inicio', '10:00'));
+  select acao, ciclo into r from vw_acoes_pendentes where escala_id = v_rec;
+  perform pg_temp.ok(r.acao is null and r.ciclo = 2, '[T90] reconfirmação: ciclo 2, sem aviso imediato: ' || coalesce(r::text, 'nada'));
+  update notificacoes set status_envio = 'entregue', entregue_em = now() - interval '61 minutes', created_at = now() - interval '61 minutes'
+   where escala_id = v_rec and ciclo = 2;
+  select acao, passo, ciclo into r from vw_acoes_pendentes where escala_id = v_rec;
+  perform pg_temp.ok(r.acao = 'reenviar' and r.passo = 1 and r.ciclo = 2, '[T90] reconfirmação: lembrete 1h depois do novo envio: ' || coalesce(r::text, 'nada'));
+  -- reenvio manual repete o passo do ciclo, sem avançar
+  update notificacoes set status_envio = 'lida' where escala_id = v_rec and ciclo = 2;
+  perform app_reenviar_escala(v_rec);
+  perform pg_temp.ok((select passo = 0 and ciclo = 2 and tipo = 'reenvio_falha' from notificacoes where escala_id = v_rec
+                       order by created_at desc, tentativa desc limit 1), '[T90] reenvio manual repete o passo');
 
   -- gestor que desligou os avisos, ou só com telefone em outra conta: supervisores
   update conta_membros set recebe_avisos = false where conta_id = v_a and email = 'qa-gestor90@teste.local';

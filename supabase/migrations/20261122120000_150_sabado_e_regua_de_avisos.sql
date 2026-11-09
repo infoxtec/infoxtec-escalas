@@ -13,6 +13,8 @@
 --    (conta_membros.recebe_avisos) não recebe, e o aviso vai aos supervisores, como antes.
 
 set local lock_timeout = '5s';
+-- mesma ordem do motor para não cruzar travas (a migration troca gatilho de escalas e índice de notificacoes)
+lock table interno.notificacoes, interno.escalas, interno.conta_membros in access exclusive mode;
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- Configurações
@@ -105,6 +107,8 @@ declare
                               else coalesce(fn_config_int('jornada_min'), 480) end;
   v_interv    int     := coalesce(fn_config_int('intervalo_min'), 60);
   v_apos      int     := coalesce(fn_config_int('intervalo_apos_min'), 240);
+  -- CLT art. 71: acima de 6h, o intervalo configurado; de mais de 4h até 6h, 15 minutos; até 4h, nenhum
+  v_pausa     int;
   v_n_ini     int     := extract(hour from fn_config('noturno_inicio')::time)::int * 60
                          + extract(minute from fn_config('noturno_inicio')::time)::int;
   v_n_fim     int     := extract(hour from fn_config('noturno_fim')::time)::int * 60
@@ -121,9 +125,10 @@ declare
   v_m         int;
   v_noite     boolean;
 begin
+  v_pausa := case when v_alvo > 360 then v_interv when v_alvo > 240 then 15 else 0 end;
   while v_legal < v_alvo and v_t < 1440 loop
-    if not v_pausou and v_alvo > 360 and v_trab >= v_apos then
-      v_t := v_t + v_interv;
+    if not v_pausou and v_pausa > 0 and v_trab >= v_apos then
+      v_t := v_t + v_pausa;
       v_pausou := true;
       continue;
     end if;
@@ -137,7 +142,7 @@ begin
 
   turno := case when v_not = 0 then 'diurno' when v_not = v_trab then 'noturno' else 'misto' end;
   trabalho_min := v_trab;
-  intervalo_min := case when v_pausou then v_interv else 0 end;
+  intervalo_min := case when v_pausou then v_pausa else 0 end;
   minutos_noturnos := v_not;
   hora_fim := (p_inicio + make_interval(mins => v_t))::time;
   return next;
@@ -259,9 +264,11 @@ end $$;
 -- ---------------------------------------------------------------------------------------------------------------
 -- passo da régua de cada envio: 0 a escala, 1 o lembrete, 3 o último (nulo nos registros anteriores à 150)
 alter table interno.notificacoes add column if not exists passo smallint;
+-- ciclo de confirmação: a edição que pede nova confirmação (data, hora ou local) abre outro e a régua recomeça
+alter table interno.notificacoes add column if not exists ciclo smallint not null default 1;
 
 -- o mesmo passo não sai duas vezes; reenvio por falha de entrega (reenvio_falha) repete o passo e fica fora
-create unique index if not exists notificacoes_passo_uk on interno.notificacoes (escala_id, passo)
+create unique index if not exists notificacoes_passo_uk on interno.notificacoes (escala_id, ciclo, passo)
   where passo is not null and status_envio <> 'falha' and tipo <> 'reenvio_falha';
 
 -- a view do motor lê a escala com a última e a primeira notificação: índice composto no lugar do simples
@@ -269,7 +276,7 @@ create index if not exists notificacoes_escala_criada_idx on interno.notificacoe
 drop index if exists interno.idx_notif_escala;
 
 create or replace view interno.vw_acoes_pendentes as
- with agora as (
+ with agora as materialized (
    select (now() at time zone coalesce(nullif(interno.fn_config('fuso'), ''), 'America/Bahia')) as local_ts,
           coalesce(nullif(interno.fn_config('fuso'), ''), 'America/Bahia') as fuso,
           interno.fn_config_int('max_tentativas') as max_tent,
@@ -289,34 +296,47 @@ create or replace view interno.vw_acoes_pendentes as
           n.tentativa,
           n.status_envio,
           n.enviada_em,
+          n.ciclo,
           n.passo_ultimo,
           n.passo_feito,
+          n.reenvios,
           (n.ancora at time zone g.fuso) as ancora_local,
           (n.primeira_em at time zone g.fuso)::date as dia_primeira
      from interno.escalas e
      join interno.tecnicos t on t.id = e.tecnico_id and t.ativo and t.opt_in
      join interno.contas c on c.id = e.conta_id and c.ativa
      cross join agora g
+     -- só o ciclo atual (a reconfirmação depois de editar abre outro)
      left join lateral (
        select (array_agg(x.id order by x.created_at desc))[1] as id,
               (array_agg(x.tentativa order by x.created_at desc))[1] as tentativa,
               (array_agg(x.status_envio order by x.created_at desc))[1] as status_envio,
               (array_agg(x.enviada_em order by x.created_at desc))[1] as enviada_em,
               (array_agg(x.passo_eff order by x.created_at desc))[1] as passo_ultimo,
+              max(x.ciclo) as ciclo,
               max(x.passo_eff) filter (where x.status_envio <> 'falha') as passo_feito,
-              -- âncora: a entrega da escala (lida ou não); sem entrega, o envio; envio que falhou não conta
-              min(coalesce(x.entregue_em, x.lida_em, x.enviada_em)) filter (where x.status_envio in ('enviada', 'entregue', 'lida')) as ancora,
+              count(*) filter (where x.tipo = 'reenvio_falha') as reenvios,
+              -- âncora: a entrega do 1º envio do ciclo que não falhou (lido ou não); sem entrega, o envio
+              (array_agg(coalesce(x.entregue_em, x.lida_em, x.enviada_em) order by x.created_at)
+                 filter (where x.status_envio in ('enviada', 'entregue', 'lida')))[1] as ancora,
               min(x.created_at) as primeira_em
-         from (select nn.*, coalesce(nn.passo, case when nn.tipo = 'lembrete' then 1 else 0 end) as passo_eff
+         from (select nn.*,
+                      -- registros anteriores à 150 não têm passo: o lembrete conta como o passo 1
+                      coalesce(nn.passo, case when nn.tipo = 'lembrete' then 1 else 0 end) as passo_eff,
+                      max(nn.ciclo) over () as ciclo_atual
                  from interno.notificacoes nn where nn.escala_id = e.id) x
+        where x.ciclo = x.ciclo_atual
      ) n on true
     where e.status in ('agendada', 'notificada')
       and (e.data_servico + e.hora_inicio) > g.local_ts
       and interno.fn_ponto_afastado_ate(e.tecnico_id, e.data_servico) is null
  ), regua as (
    select a.*,
-          -- a régua só anda no mesmo dia da escala enviada, antes do fim (nada vira aviso no dia seguinte)
+          -- a régua só anda no mesmo dia do ciclo, antes do fim (nada vira lembrete no dia seguinte)
           (g.local_ts::time < g.fim and a.dia_primeira = g.local_ts::date) as regua_aberta,
+          -- a entrega falhou de novo depois de 2 reenvios: para de reenviar e avisa
+          (a.reenvios >= 2 and (a.status_envio = 'falha'
+                                or (a.status_envio = 'enviada' and a.enviada_em < now() - g.timeout_entrega))) as falhas_esgotadas,
           case
             when a.ancora_local is null then null
             when coalesce(a.passo_feito, 0) < 3 and g.local_ts >= a.ancora_local + g.final
@@ -336,8 +356,8 @@ create or replace view interno.vw_acoes_pendentes as
         r.enviada_em,
         case
           when r.notificacao_id is null then 'enviar_primeira'
-          when (r.tentativa >= g.max_tent or coalesce(r.passo_feito, 0) >= 3) and r.regua_aberta then 'escalonar'
-          when r.tentativa >= g.max_tent or coalesce(r.passo_feito, 0) >= 3 then null
+          -- último passo saiu, falhas esgotadas ou teto de segurança: aviso (falha de canal avisa como antes, na janela)
+          when coalesce(r.passo_feito, 0) >= 3 or r.falhas_esgotadas or r.tentativa >= g.max_tent then 'escalonar'
           -- falha de entrega: repete o mesmo passo (a escala em si sai na janela de envio; lembretes, só com a régua aberta)
           when r.status_envio = 'falha' and r.enviada_em < now() - g.timeout_entrega
                and (r.passo_ultimo = 0 or r.regua_aberta) then 'reenviar_falha'
@@ -359,12 +379,13 @@ create or replace view interno.vw_acoes_pendentes as
           when r.notificacao_id is null then 0
           when r.status_envio in ('falha', 'enviada') and r.enviada_em < now() - g.timeout_entrega then r.passo_ultimo
           else r.passo_vencido
-        end::smallint as passo
+        end::smallint as passo,
+        coalesce(r.ciclo, 1)::smallint as ciclo
    from regua r cross join agora g
   where g.local_ts::time >= g.janela_ini and g.local_ts::time <= g.janela_fim;
 
 create or replace view interno.vw_ligacoes_pendentes as
- with agora as (
+ with agora as materialized (
    select (now() at time zone coalesce(nullif(interno.fn_config('fuso'), ''), 'America/Bahia')) as local_ts,
           coalesce(nullif(interno.fn_config('fuso'), ''), 'America/Bahia') as fuso,
           make_interval(mins => coalesce(interno.fn_config_int('regua_ligacao_min'), 120)) as espera,
@@ -382,10 +403,14 @@ create or replace view interno.vw_ligacoes_pendentes as
    join interno.tecnicos t on t.id = e.tecnico_id and t.ativo and t.opt_in and not t.perfil_teste
    join interno.contas c on c.id = e.conta_id and c.ativa
    cross join agora g
+   -- âncora do ciclo atual, a mesma da régua (a ligação continua uma por escala, em qualquer ciclo)
    join lateral (
      select max(x.tentativa) as tentativa,
-            min(coalesce(x.entregue_em, x.lida_em, x.enviada_em)) filter (where x.status_envio in ('enviada', 'entregue', 'lida')) as ancora
-       from interno.notificacoes x where x.escala_id = e.id
+            (array_agg(coalesce(x.entregue_em, x.lida_em, x.enviada_em) order by x.created_at)
+               filter (where x.status_envio in ('enviada', 'entregue', 'lida')))[1] as ancora
+       from (select nn.*, max(nn.ciclo) over () as ciclo_atual
+               from interno.notificacoes nn where nn.escala_id = e.id) x
+      where x.ciclo = x.ciclo_atual
    ) n on true
   where e.status = 'notificada'
     and e.local_id is not null
@@ -587,6 +612,165 @@ begin
     array[v_email]);
 end $function$;
 
+-- Painel: editar com nova confirmação abre outro ciclo; reenviar à mão repete o passo (a partir da homologação)
+create or replace function public.app_editar_escala(p jsonb)
+ returns jsonb
+ language plpgsql
+ security definer
+ set search_path to 'interno', 'public', 'extensions', 'pg_temp'
+as $function$
+declare
+  v_email   text := app_exigir(array['admin','gestor']);
+  v_conta   uuid := fn_conta_atual();
+  e         escalas;
+  v_data    date;
+  v_hora    time;
+  v_local   uuid;
+  v_tarefa  text;
+  v_mudou   boolean;
+  v_reconf  boolean;
+  v_tec     record;
+  v_tent    int;
+  v_ciclo   int;
+  v_botoes  boolean := coalesce(fn_config('usar_botoes'), 'false')::boolean;
+  v_payload jsonb;
+  v_req     bigint;
+  v_lim     jsonb;
+begin
+  select * into e from escalas where id = (p->>'id')::uuid and conta_id = v_conta for update;
+  if not found then raise exception 'Programação não encontrada.'; end if;
+  if e.status not in ('rascunho', 'agendada', 'notificada', 'confirmada') then
+    raise exception 'Só dá para editar programação em rascunho, agendada, aguardando resposta ou confirmada.';
+  end if;
+  perform fn_edicao_permitida(e.id);
+
+  v_data   := coalesce(nullif(p->>'data_servico', '')::date, e.data_servico);
+  v_hora   := coalesce(nullif(p->>'hora_inicio', '')::time, e.hora_inicio);
+  v_local  := case when p ? 'local_id' then nullif(p->>'local_id', '')::uuid else e.local_id end;
+  v_tarefa := coalesce(nullif(trim(p->>'descricao_tarefa'), ''), e.descricao_tarefa);
+  v_mudou  := v_data <> e.data_servico or v_hora <> e.hora_inicio or v_local is distinct from e.local_id;
+  if v_local is distinct from e.local_id and v_local is not null
+     and not exists (select 1 from locais where id = v_local and conta_id = v_conta) then
+    raise exception 'Local não encontrado.';
+  end if;
+
+  if not v_mudou and v_tarefa = e.descricao_tarefa then
+    return jsonb_build_object('alterada', false);
+  end if;
+  if v_data <> e.data_servico or v_hora <> e.hora_inicio then
+    perform fn_validar_inicio(v_data, v_hora);
+    -- limite de 2 h extras no novo dia (decisão 90)
+    perform pg_advisory_xact_lock(hashtext(e.tecnico_id::text || v_data::text));
+    v_lim := fn_programacao_limite(e.tecnico_id, v_data, v_hora, e.id);
+    if (v_lim->>'excedente_min')::int > 0 then
+      perform fn_programacao_conferir_aceite(p->'aceite', e.tecnico_id, v_lim, (select nome from tecnicos where id = e.tecnico_id));
+      if e.teste then v_lim := null; end if;  -- teste não gera termo
+    else
+      v_lim := null;
+    end if;
+  end if;
+
+  -- decisao do responsavel (27/09): so data, hora ou local pedem nova confirmacao
+  v_reconf := v_mudou and e.status in ('notificada', 'confirmada');
+  perform set_config('app.ator', v_email, true);
+  begin
+    update escalas
+       set data_servico = v_data, hora_inicio = v_hora, local_id = v_local, descricao_tarefa = v_tarefa,
+           status = case when v_reconf then 'notificada'::escala_status else status end,
+           confirmada_em = case when v_reconf then null else confirmada_em end,
+           supervisor_avisado_em = case when v_mudou then null else supervisor_avisado_em end
+     where id = e.id;
+  exception when unique_violation then
+    raise exception 'O técnico já tem outra programação ativa nesse dia e horário.';
+  end;
+  if v_lim is not null then
+    perform fn_programacao_registrar_aceite(e.id, p->'aceite', v_lim, v_email);
+  end if;
+
+  insert into escala_eventos (escala_id, evento, ator, detalhe)
+  values (e.id, 'escala_editada', v_email, jsonb_build_object(
+    'antes', jsonb_build_object('data', e.data_servico, 'hora', e.hora_inicio, 'local_id', e.local_id, 'tarefa', e.descricao_tarefa),
+    'depois', jsonb_build_object('data', v_data, 'hora', v_hora, 'local_id', v_local, 'tarefa', v_tarefa),
+    'nova_confirmacao', v_reconf));
+
+  -- aviso ao tecnico quando a escala ja tinha saido
+  if e.status in ('notificada', 'confirmada') and not e.teste then
+    select telefone_e164, ativo, opt_in into v_tec from tecnicos where id = e.tecnico_id;
+    if v_tec.ativo and v_tec.opt_in then
+      if v_reconf then
+        perform fn_wa_texto(v_tec.telefone_e164,
+          '⚠️ *PROGRAMAÇÃO ALTERADA*' || E'\n\n' || 'Sua programação mudou. Confira os novos dados na mensagem a seguir e responda de novo.');
+        -- nova confirmação = novo ciclo: a régua (lembrete, ligação, último e aviso) recomeça deste envio (migration 150)
+        select coalesce(max(tentativa), 0) + 1, coalesce(max(ciclo), 0) + 1 into v_tent, v_ciclo from notificacoes where escala_id = e.id;
+        v_payload := fn_payload_escala(e.id, v_tec.telefone_e164, false, v_botoes);
+        v_req := fn_evo_post(v_payload ->> 'path', v_payload -> 'body');
+        insert into notificacoes (escala_id, tipo, tentativa, template_nome, status_envio, payload_envio, enviada_em, http_req_id, passo, ciclo)
+        values (e.id, (case when v_tent = 1 then 'primeira' else 'lembrete' end)::notificacao_tipo, 1,
+                case when v_botoes then 'botoes_evolution' else 'texto_evolution' end, 'enfileirada', v_payload, now(), v_req, 0, v_ciclo);
+      else
+        perform fn_wa_texto(v_tec.telefone_e164,
+          '📝 A tarefa da sua programação de ' || to_char(v_data, 'DD/MM') || ' às ' || to_char(v_hora, 'HH24:MI')
+          || ' foi atualizada: ' || left(v_tarefa, 500));
+      end if;
+    end if;
+  end if;
+
+  return jsonb_build_object('alterada', true, 'nova_confirmacao', v_reconf);
+end $function$;
+
+create or replace function public.app_reenviar_escala(p_escala uuid)
+ returns jsonb
+ language plpgsql
+ security definer
+ set search_path to 'interno', 'public', 'extensions', 'pg_temp'
+as $function$
+declare
+  v_email   text := app_exigir(array['admin','gestor']);
+  v_esc     record;
+  v_tent    int;
+  v_ciclo   int;
+  v_passo   int;
+  v_botoes  boolean := coalesce(fn_config('usar_botoes'), 'false')::boolean;
+  v_payload jsonb;
+  v_req     bigint;
+begin
+  select e.id, e.status, t.telefone_e164, t.ativo, t.opt_in
+    into v_esc
+  from escalas e join tecnicos t on t.id = e.tecnico_id
+  where e.id = p_escala and e.conta_id = fn_conta_atual();
+
+  if not found then raise exception 'Programação não encontrada.'; end if;
+  if v_esc.status not in ('agendada', 'notificada') then
+    raise exception 'Só é possível reenviar programações agendadas ou aguardando resposta.';
+  end if;
+  if not v_esc.ativo or not v_esc.opt_in then
+    raise exception 'O técnico está inativo ou sem autorização para mensagens.';
+  end if;
+  if exists (select 1 from notificacoes where escala_id = p_escala and status_envio = 'enfileirada') then
+    raise exception 'Já existe um envio em andamento para esta programação. Aguarde um minuto.';
+  end if;
+
+  -- reenvio manual repete o passo atual do ciclo, sem avançar a régua (migration 150)
+  select coalesce(max(ciclo), 1) into v_ciclo from notificacoes where escala_id = p_escala;
+  select coalesce(max(tentativa), 0) + 1 into v_tent from notificacoes where escala_id = p_escala and ciclo = v_ciclo;
+  select coalesce(n.passo, case when n.tipo = 'lembrete' then 1 else 0 end) into v_passo
+    from notificacoes n where n.escala_id = p_escala and n.ciclo = v_ciclo order by n.created_at desc limit 1;
+  v_payload := fn_payload_escala(p_escala, v_esc.telefone_e164, coalesce(v_passo, 0) > 0, v_botoes);
+  v_req := fn_evo_post(v_payload ->> 'path', v_payload -> 'body');
+
+  insert into notificacoes
+    (escala_id, tipo, tentativa, template_nome, status_envio, payload_envio, enviada_em, http_req_id, passo, ciclo)
+  values
+    (p_escala, (case when v_tent = 1 then 'primeira' else 'reenvio_falha' end)::notificacao_tipo,
+     v_tent, case when v_botoes then 'botoes_evolution' else 'texto_evolution' end,
+     'enfileirada', v_payload, now(), v_req, coalesce(v_passo, 0), v_ciclo);
+
+  insert into escala_eventos (escala_id, evento, ator, detalhe)
+  values (p_escala, 'reenvio_manual', v_email, jsonb_build_object('tentativa', v_tent));
+
+  return jsonb_build_object('reenviada', true, 'tentativa', v_tent);
+end $function$;
+
 -- ---------------------------------------------------------------------------------------------------------------
 -- Motor: passo gravado no envio; aviso ao gestor que criou a escala, pelo canal da conta dela
 -- ---------------------------------------------------------------------------------------------------------------
@@ -672,19 +856,23 @@ begin
         raise exception 'A conta do técnico não tem canal de WhatsApp ativo.';
       end if;
       v_req := fn_evo_post(v_payload ->> 'path', v_payload -> 'body');
-      insert into notificacoes (escala_id, tipo, tentativa, template_nome, status_envio, payload_envio, enviada_em, http_req_id, passo)
+      insert into notificacoes (escala_id, tipo, tentativa, template_nome, status_envio, payload_envio, enviada_em, http_req_id, passo, ciclo)
       values (a.escala_id,
         (case when v_tent = 1 then 'primeira' when a.acao in ('reenviar_falha','nao_recebeu') then 'reenvio_falha' else 'lembrete' end)::notificacao_tipo,
         v_tent, case when v_botoes then 'botoes_evolution' else 'texto_evolution' end,
-        'enfileirada', v_payload, now(), v_req, a.passo);
-    exception when others then
+        'enfileirada', v_payload, now(), v_req, a.passo, a.ciclo);
+    exception
+    when unique_violation then
+      -- o mesmo passo já saiu: o pedido à Evolution é desfeito junto e nada vira falha (que seria reenviada depois)
+      raise warning 'fase 2, escala %: passo % já enviado', a.escala_id, a.passo;
+    when others then
       -- registra a falha na propria escala: o motor tenta de novo e, esgotadas as tentativas,
       -- aciona o gestor. As outras escalas seguem normalmente.
       begin
-        insert into notificacoes (escala_id, tipo, tentativa, template_nome, status_envio, erro_codigo, erro_mensagem, enviada_em, passo)
+        insert into notificacoes (escala_id, tipo, tentativa, template_nome, status_envio, erro_codigo, erro_mensagem, enviada_em, passo, ciclo)
         values (a.escala_id,
           (case when v_tent = 1 then 'primeira' when a.acao in ('reenviar_falha','nao_recebeu') then 'reenvio_falha' else 'lembrete' end)::notificacao_tipo,
-          v_tent, 'erro_interno', 'falha', 'interno', left(sqlerrm, 500), now(), a.passo);
+          v_tent, 'erro_interno', 'falha', 'interno', left(sqlerrm, 500), now(), a.passo, a.ciclo);
       exception when others then
         raise warning 'fase 2, escala %: %', a.escala_id, sqlerrm;
       end;

@@ -1999,6 +1999,8 @@ com ajustes, incorporados). Migration 150.*
   engano). Agora só da conta da operadora até existir Twilio por conta (decisão 108), nunca de escala de teste (nem pelo
   "Ligar agora"), e no máximo **20 ligações automáticas por dia** (decisão de custo do responsável, cerca de R$ 4,80/dia);
   o "Ligar agora" conta no teto, mas não é barrado por ele. Ao estourar, um aviso técnico por dia.
+- **Editar com nova confirmação** (data, hora ou local) recomeça a régua do novo envio; a ligação continua uma por
+  escala. A falha de entrega reenvia até 2 vezes e depois avisa, mesmo à noite (como antes).
 - **Assinatura da Twilio:** o responsável manteve a observação (opção b): o risco das decisões 54 e 109 fica aceito de
   novo — quem tiver o `VOZ_TOKEN` poderia registrar confirmação ou recusa em nome do funcionário. Revisar junto com a
   Twilio por cliente.

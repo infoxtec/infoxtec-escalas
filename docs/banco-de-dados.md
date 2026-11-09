@@ -279,8 +279,22 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   canal da conta (`fn_evo_post_na_conta`). Sem ele, os supervisores, como antes. `escala_eventos` grava só
   `destino`, diagnóstico e tentativa. `app_usuarios` devolve `recebe_avisos`; `app_definir_avisos_usuario(e-mail, recebe)`
   (admin) muda. Configs novas validadas em `fn_validar_config` (passos ≥ 1; `regua_fim` em HH:MM).
-- Regressão: T89 (sábado, mover de sexta, Programação e prévia) e T90 (régua, corte, falha de entrega, duplicidade,
-  gestor, outra conta, ligação única, escala de teste, janela).
+- **Ciclo** (`notificacoes.ciclo`, padrão 1): a edição que pede nova confirmação (`app_editar_escala`, data, hora ou
+  local) grava o envio com `ciclo` + 1, `passo` 0 e `tentativa` 1, e a régua recomeça dele; a view e a fila de ligações
+  olham só o ciclo atual (a ligação continua uma por escala). `app_reenviar_escala` (à mão) repete o passo atual como
+  `reenvio_falha`. O índice único é `(escala_id, ciclo, passo)`.
+- **Falha de entrega:** até 2 reenvios por ciclo; falhou de novo, a ação vira `escalonar` (aviso), mesmo depois do fim da
+  régua, dentro da janela de envio, como antes da 150. `max_tentativas` (5) fica como teto de segurança. No motor, o passo
+  repetido (índice único) é só um aviso no log, sem virar falha.
+- **Jornada:** `fn_calcular_jornada` passa a dar 15 min de pausa entre mais de 4h e 6h (CLT art. 71, § 1º); 8h segue com
+  `intervalo_min`; até 4h, nenhuma.
+- `avisar_supervisor_na` e `ligacao_apos_tentativas` ficaram sem uso (mantidas só para a volta). A migration trava
+  `notificacoes`, `escalas` e `conta_membros` na mesma ordem do motor; aplicar na produção **depois das 18h** (escalas em
+  andamento com a regra antiga não recebem um passo 3 extra no mesmo dia). Freio sem deploy: `regua_fim = '00:00'` fecha
+  a régua; `ligacao_ativa = false` para as ligações.
+- Regressão: T89 (sábado, mover de sexta, Programação, prévia, pausa da CLT) e T90 (régua, corte, falha de entrega e
+  teto de reenvios, duplicidade, gestor, outra conta, e-mail da opção, reconfirmação e reenvio manual, registros sem
+  passo, ligação única, escala de teste, janela, teto diário).
 
 ### Migration 149 (06/11, versão 20261121120000): MFA obrigatório para administrador (B2, decisão 134)
 
