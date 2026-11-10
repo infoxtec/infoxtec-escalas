@@ -17,7 +17,7 @@ pelos checks do GitHub.
 | # | Caminho | O que muda | Estado esperado | Como conferir | Situação em 04/11 |
 |---|---|---|---|---|---|
 | 1 | Workflow **Aplicar**, destino `producao` (`.github/workflows/aplicar.yml`) | Migrations, Edge Functions (`funcoes`), painel (`painel = sim`) | **Único caminho.** Só roda depois da aprovação do responsável no ambiente `producao` | GitHub → Settings → Environments → `producao`: Required reviewers = responsável; restrito à branch `main`; sem bypass para administrador | Em uso |
-| 2 | **Integração GitHub do Supabase** no projeto da produção (Project Settings → Integrations → GitHub) | Migrations e as Edge Functions do `config.toml`, a cada push na `main` | **Deploy to production desligado.** Automatic branching desligado | No painel do Supabase. No GitHub, o check "Supabase Preview" dos merges não pode mais aplicar nada: no **próximo Aplicar com destino `producao`** que tiver migration nova, o log deve mostrar `Applying migration` (e não `Remote database is up to date`) | Desligado em 04/11 pelo responsável. Estava ligado desde antes de 30/10 |
+| 2 | **Integração GitHub do Supabase** no projeto da produção (Project Settings → Integrations → GitHub) | Migrations e as Edge Functions do `config.toml`, a cada push na `main` | **Deploy to production desligado.** Automatic branching desligado | No painel do Supabase. No GitHub, o check "Supabase Preview" dos merges não pode mais aplicar nada: no **próximo Aplicar com destino `producao`** que tiver migration nova, o log deve mostrar `Applying migration` (e não `Remote database is up to date`) | Desligado em 04/11 pelo responsável. Estava ligado desde antes de 30/10. **Ligado de novo em algum momento entre 04/11 e 06/11: aplicou a 149 (06/11) e a 150 (09/11) sem aprovação; desligado de novo em 09/11.** Desde 09/11 o próximo Aplicar para se achar migration que ele não aplicou (trava `aplicar_registro`: detecta, não impede; não cobre Edge Functions) |
 | 3 | Integração GitHub do Supabase no projeto da **homologação** | Homologação (não a produção) | Se estiver ligada, a homologação recebe migration antes do `plpgsql_check` do Aplicar. Preferível desligada | No painel do Supabase da homologação | **A conferir pelo responsável** |
 | 4 | **Vercel**, projeto `web` | Só o redirecionamento para o Worker (B7) | `git.deploymentEnabled: false` no `web/vercel.json`. Projeto **nunca apagado** (os QR dos espelhos apontam para ele) | Nenhum status "Vercel – web" nos merges da `main` | Desligado (#201, #208) |
 | 5 | Vercel, projeto `infoxtec-escalas-homologacao` | Reserva da homologação | Pausado. Se for despausado, redirecionaria para a produção, porque usa o mesmo `vercel.json` | No painel da Vercel | Pausado |
@@ -81,3 +81,28 @@ preencher pelo responsável**, uma linha por conta (membro, papel, duas etapas s
 6. Responsável: preencher a seção 3 (contas e duas etapas).
 4. Responsável: informar a validade do `SUPABASE_ACCESS_TOKEN` (tabela 2).
 5. Claude: ver se o conector do Supabase pode ser limitado ao projeto da homologação (linha 9).
+
+## 5. Trava do Aplicar (desde 09/11)
+
+O Aplicar guarda em `supabase_migrations.aplicar_registro` as versões do repositório presentes no banco ao fim de cada
+execução, mais a base de 09/11 (até a 150). Se a produção tiver uma migration que não está lá, o **próximo** Aplicar para
+com o erro "Migration na produção que o Aplicar não aplicou". Isso quer dizer que algum caminho da tabela 1 mudou a
+produção. A trava detecta, não impede (a integração ligada aplica no merge do mesmo jeito), e não cobre Edge Functions
+nem o painel. O responsável investiga (integração do Supabase, SQL Editor, CLI) e só
+então libera a versão, no SQL Editor da **produção**:
+
+```sql
+-- PRODUÇÃO. Conferir antes: a versão é mesmo a do repositório e o caminho por onde entrou já foi fechado.
+select s.version, s.name from supabase_migrations.schema_migrations s
+ where not exists (select 1 from supabase_migrations.aplicar_registro r where r.version = s.version);
+-- Liberar (troque a versão; uma linha por versão investigada):
+insert into supabase_migrations.aplicar_registro (version, origem)
+values ('AAAAMMDDHHMMSS', 'aceita pelo responsável em DD/MM: <motivo>');
+-- Esperado depois: a primeira consulta volta vazia.
+```
+
+Esse insert manual é a única exceção ao "só pelo Aplicar" e vale só para esta tabela.
+
+A primeira execução depois desta trava registra o estado da produção como base (a 149 e a 150, que entraram pela
+integração em 06/11 e 09/11, já conferidas).
+

@@ -85,6 +85,9 @@ observa), e não viu o deploy automático da Vercel nem o token da produção in
 Nenhum item ganha `[x]` no plano até a produção ser conferida pelo responsável.
 
 ### Incidentes do dia
+0. **(09/11) Reincidência:** o "Deploy to production" da integração do Supabase estava ligado de novo e aplicou a 149
+   (06/11) e a 150 (09/11) na produção sem aprovação. Desligado em 09/11; trava nova no Aplicar (`aplicar_registro`).
+   No mesmo dia, o deploy do painel 3.71.0 falhou no Cloudflare ("No access to the specified service").
 1. **A integração GitHub do Supabase publicava na produção sem aprovação** ("Deploy to production" ligado): todo merge
    na `main` aplicava migrations e publicava as Edge Functions do `config.toml`. Achado em 04/11 pelo log do Aplicar;
    explica o congelamento furado de 30/10. **Desligado pelo responsável em 04/11.**

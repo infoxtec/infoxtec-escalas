@@ -1983,6 +1983,18 @@ pedidos novos do responsável.*
   `main` aplicava as migrations e publicava as Edge Functions do `config.toml` sem a aprovação do ambiente `producao`
   (explica o congelamento furado de 30/10). Desligado pelo responsável em 04/11. Regra: **a produção só muda pelo
   workflow Aplicar aprovado**; nenhuma integração de fornecedor publica sozinha (inventário na sprint, ação 1).
+- **Reincidência (09/11):** o "Deploy to production" da mesma integração estava **ligado de novo** (o responsável
+  desligou em 09/11, ~01h40). A migration 149 (duas etapas para administrador) entrou na produção no merge de 06/11 e a
+  150 no merge de 09/11, sem a aprovação do ambiente `producao` e sem o aviso aos administradores; a Edge Function
+  `documento-ocr` provavelmente também em 06/11. Achado pela conferência da linha 2 do inventário: o Aplicar aprovado
+  de 09/11 mostrou `Remote database is up to date` em vez de `Applying migration`. Sem dano de dado (as mesmas
+  migrations testadas na homologação), mas a regra falhou duas vezes sem ninguém ver. **Trava nova no Aplicar:** a tabela
+  `supabase_migrations.aplicar_registro` guarda, no próprio banco, as versões do repositório presentes ao fim de cada
+  Aplicar, mais a base de 09/11 (até a 150). Migration da produção fora dela **para o próximo Aplicar** antes de mexer
+  em qualquer coisa (na homologação, só avisa). A trava **detecta, não impede**: a prevenção continua sendo a linha 2 do
+  inventário desligada. Ela também **não cobre Edge Functions nem o painel** (pendência: conferir as funções publicadas
+  no passo da produção). Liberar uma versão depois de investigar é decisão do responsável, com o comando em
+  `docs/caminhos-de-producao.md`.
 - **Virada antecipada (04/11):** a pedido do responsável, a A5 e o B7 foram ao ar em 04/11 sem o ensaio A4 (risco aceito).
 
 ## 135. Sábado de 4h e régua de avisos depois do envio
