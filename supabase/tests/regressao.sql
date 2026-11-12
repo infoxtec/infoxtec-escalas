@@ -5390,6 +5390,29 @@ begin
   select substring(texto from '([0-9]{6})') into v_cod_e from alertas_email where para = array['qa91-admin@teste.local'] and sensivel order by id desc limit 1;
   v_r := fn_mfa_recuperacao_confirmar('qa91-admin@teste.local', v_cod_e, v_cod);
   perform pg_temp.ok((v_r->>'email_ok')::boolean and (v_r->>'whatsapp_ok')::boolean, '[T91] admin com os dois códigos: ' || v_r::text);
+  -- cota de 6 pedidos por dia por canal: o e-mail esgotado não trava o WhatsApp
+  insert into mfa_recuperacoes (email, canal, codigo_hash, expira_em, criado_em)
+  select 'qa91-admin@teste.local', 'email', 'x', now(), now() - interval '2 hours' from generate_series(1, 6);
+  update mfa_recuperacoes set criado_em = criado_em - interval '2 minutes' where email = 'qa91-admin@teste.local' and canal = 'whatsapp';
+  v_r := fn_mfa_recuperacao_pedir('qa91-admin@teste.local', 'whatsapp');
+  perform pg_temp.ok(v_r->>'enviado' = 'whatsapp', '[T91] cota por canal: e-mail esgotado não trava o WhatsApp');
+  v_ok := false;
+  begin perform fn_mfa_recuperacao_pedir('qa91-admin@teste.local', 'email'); exception when others then v_ok := sqlerrm like 'Muitos pedidos hoje%'; end;
+  perform pg_temp.ok(v_ok, '[T91] cota do e-mail esgotada');
+  -- admin de duas empresas com números diferentes: recusa com texto próprio
+  update conta_membros set papel = 'admin' where conta_id = v_x and email = 'qa91-admin@teste.local';
+  update mfa_recuperacoes set criado_em = criado_em - interval '2 minutes' where email = 'qa91-admin@teste.local' and canal = 'whatsapp';
+  v_ok := false;
+  begin perform fn_mfa_recuperacao_pedir('qa91-admin@teste.local', 'whatsapp');
+  exception when others then v_ok := sqlerrm like 'Seu WhatsApp de recuperação está diferente entre as empresas que você administra%'; end;
+  perform pg_temp.ok(v_ok, '[T91] admin com números diferentes nas empresas que administra');
+  update conta_membros set papel = 'gestor' where conta_id = v_x and email = 'qa91-admin@teste.local';
+  -- plataforma: pelo número da conta da operadora
+  update conta_membros set telefone_e164 = '5571955559106' where conta_id = v_a and email = 'qa-admin@teste.local';
+  update mfa_recuperacoes set criado_em = criado_em - interval '2 minutes' where email = 'qa-admin@teste.local';
+  v_r := fn_mfa_recuperacao_pedir('qa-admin@teste.local', 'whatsapp');
+  perform pg_temp.ok(fn_mfa_recuperacao_regra('qa-admin@teste.local') = 'dois' and v_r->>'destino' = '***9106',
+                     '[T91] plataforma pelo número da conta da operadora: ' || v_r::text);
   -- admin desativado ou de empresa suspensa não é 'dois'
   update conta_membros set ativo = false where conta_id = v_z and email = 'qa91-admin@teste.local';
   perform pg_temp.ok(fn_mfa_recuperacao_regra('qa91-admin@teste.local') <> 'dois', '[T91] admin desativado deixa de ser dois');

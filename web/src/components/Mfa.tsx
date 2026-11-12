@@ -66,7 +66,8 @@ function MfaRecuperar({ onOk, onVoltar }: { onOk: () => void; onVoltar: () => vo
       <p className="text-sm text-muted-foreground">
         {regra === 'dois' ? 'Como administrador, você precisa dos dois códigos: o do e-mail e o do WhatsApp. Perdeu o celular? O número volta com um chip novo do mesmo número; sem isso, fale com o suporte.'
           : regra === 'email' ? 'Como você usa o Trilha em mais de uma empresa, a troca do autenticador é só pelo e-mail do login.'
-          : 'Receba um código para trocar o aplicativo autenticador, por e-mail ou WhatsApp.'}
+          : regra === 'qualquer' ? 'Receba um código para trocar o aplicativo autenticador, por e-mail ou WhatsApp.'
+          : 'Peça o código para trocar o aplicativo autenticador. Alguns acessos precisam dos dois códigos (e-mail e WhatsApp).'}
       </p>
       {(enviados.email || enviados.whatsapp) && (
         <p className="text-xs text-muted-foreground">Vale só o último código de cada canal: pedir de novo anula o anterior.</p>
