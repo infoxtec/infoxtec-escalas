@@ -275,5 +275,11 @@ saída dele não é fixo. Ou seja, a restrição é por caminho, não por servid
 | Atualizar a Evolution | trocar `EVOLUTION_IMAGEM` no `.env` por outra versão fixa, `docker compose pull && docker compose up -d` |
 | Atualizações do Ubuntu | `sudo apt update && sudo apt upgrade -y`, uma vez por mês |
 
+**Reenvio do webhook (decisão 136, desde 12/11):** o Trilha responde 503 quando o banco falha, e a Evolution reenvia.
+O compose fixa `WEBHOOK_RETRY_MAX_ATTEMPTS=5` e `WEBHOOK_RETRY_MAX_DELAY_SECONDS=120` (padrão da v2: 10 e 300). Para
+conferir no servidor: `docker exec $(docker ps --filter ancestor=evoapicloud/evolution-api -q | head -1) env | grep
+WEBHOOK_RETRY` (sem saída: vale o padrão). Os reenvios ficam na memória da Evolution: reiniciar o contêiner durante uma
+queda do banco perde as mensagens pendentes.
+
 O monitor externo (`INF-02`, healthchecks.io) passa a ser ainda mais importante: ele avisa se este
 servidor cair.

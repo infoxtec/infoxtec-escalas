@@ -5430,7 +5430,142 @@ begin
   perform pg_temp.ok(v_e is null, '[T91] regra dois diferente do fn_mfa_exigido em: ' || coalesce(v_e, ''));
   update interno.config set valor = 'false' where chave = 'mfa_obrigatorio_admin';
 end $$;
-select 'REGRESSÃO OK: T1 a T91' as resultado,
+
+create or replace function pg_temp.t92(p_id text, p_quando timestamptz, p_tel text default '5571966669292') returns jsonb language sql as $$
+  select interno.fn_webhook_evolution(repeat('a', 64), jsonb_build_object('event', 'messages.upsert', 'instance', 'qa-operadora',
+    'data', jsonb_build_object('key', jsonb_build_object('id', p_id, 'remoteJid', p_tel || '@s.whatsapp.net', 'fromMe', false),
+      'message', jsonb_build_object('conversation', 'oi'),
+      'messageTimestamp', extract(epoch from coalesce(p_quando, now()))::bigint))) $$;
+
+-- T92 webhook com reenvio seguro (migration 152, B4): falha de infraestrutura pede reenvio, o reenvio não processa
+-- duas vezes, erro de regra não pede reenvio, 3ª falha desiste e avisa o técnico, reenvio atrasado não processa
+-- (o aviso cai no stub de fn_wa_texto do T62, chave w62:<telefone>)
+create or replace function interno.qa_t92_falhar() returns trigger language plpgsql as $$
+declare v_st text := (select v from qa where k = 't92_falhar');
+begin
+  if v_st is not null and new.resultado is not null and new.resultado not like 'ERRO%' then
+    if v_st = 'P0001' then raise exception 'regra QA T92'; end if;
+    raise exception 'falha QA T92' using errcode = v_st;
+  end if;
+  return new;
+end $$;
+create trigger qa_t92 before update on interno.webhook_eventos for each row execute function interno.qa_t92_falhar();
+create or replace function interno.qa_t92_ponto() returns trigger language plpgsql as $$
+begin
+  if exists (select 1 from qa where k = 't92_ponto') then raise exception 'lock QA T92' using errcode = '55P03'; end if;
+  return new;
+end $$;
+create trigger qa_t92_ponto before insert or update on interno.ponto_conversas for each row execute function interno.qa_t92_ponto();
+do $$
+declare
+  v_tok text := repeat('a', 64);
+  v_r jsonb; v_r2 jsonb; v_ok boolean; v_n int;
+  v_outra uuid := gen_random_uuid();
+begin
+  perform set_config('request.jwt.claims', '', true);
+  perform set_config('trilha.conta', '', true);
+  delete from qa where k in ('t92_falhar', 'w62:5571966669292', 'w62:5571966669293');
+  -- o aviso de perda só vai a técnico ativo da conta
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, conta_id)
+  values ('QA T92', '5571966669292', true, true, pg_temp.cpf('920000001'),
+          (select id from empresas where conta_id = '00000000-0000-0000-0000-000000000001' order by id limit 1), false,
+          '00000000-0000-0000-0000-000000000001');
+  perform pg_temp.ok(fn_erro_infra('55P03') and fn_erro_infra('40P01') and fn_erro_infra('08006') and fn_erro_infra('53300')
+                     and not fn_erro_infra('P0001') and not fn_erro_infra('23505') and not fn_erro_infra('XX000')
+                     and not fn_erro_infra('57014') and not fn_erro_infra(null), '[T92] classificação de infraestrutura');
+
+  -- a) processada uma vez; o reenvio é ignorado e o log dele não guarda outra cópia do conteúdo
+  v_r := pg_temp.t92('QA-T92-A', null);
+  v_r2 := pg_temp.t92('QA-T92-A', null);
+  perform pg_temp.ok(coalesce(v_r->>'reprocessar', '') = '' and v_r2->>'ignorado' = 'reenvio'
+                     and (select resultado = 'reenvio ignorado' and payload->'data'->'message' is null
+                            from webhook_eventos order by id desc limit 1), '[T92] reenvio ignorado: ' || v_r2::text);
+
+  -- b) infraestrutura (lock): pede reenvio, solta a chave; o reenvio depois processa
+  insert into qa values ('t92_falhar', '55P03');
+  v_r := pg_temp.t92('QA-T92-B', null);
+  perform pg_temp.ok((v_r->>'reprocessar')::boolean
+                     and (select resultado like 'ERRO (reprocessar) 55P03%' and wa_msg_id is null and wa_msg_ref = 'QA-T92-B'
+                            from webhook_eventos order by id desc limit 1), '[T92] lock pede reenvio: ' || v_r::text);
+  delete from qa where k = 't92_falhar';
+  v_r := pg_temp.t92('QA-T92-B', null);
+  perform pg_temp.ok(coalesce(v_r->>'reprocessar', '') = '' and coalesce(v_r->>'ignorado', '') <> 'reenvio'
+                     and (select count(*) from webhook_eventos where wa_msg_id = 'QA-T92-B') = 1, '[T92] reenvio processa: ' || v_r::text);
+
+  -- c) deadlock também; erro de regra (P0001) não pede reenvio e conta como processada
+  insert into qa values ('t92_falhar', '40P01');
+  perform pg_temp.ok((pg_temp.t92('QA-T92-C', null)->>'reprocessar')::boolean, '[T92] deadlock pede reenvio');
+  update qa set v = 'P0001' where k = 't92_falhar';
+  v_r := pg_temp.t92('QA-T92-D', null);
+  delete from qa where k = 't92_falhar';
+  perform pg_temp.ok(coalesce(v_r->>'reprocessar', '') = '' and v_r->>'erro' = 'regra QA T92'
+                     and pg_temp.t92('QA-T92-D', null)->>'ignorado' = 'reenvio', '[T92] regra sem reenvio: ' || v_r::text);
+
+  -- d) sem key.id e evento de sistema: sem controle, processam como antes
+  v_r := fn_webhook_evolution(v_tok, '{"event":"messages.upsert","instance":"qa-operadora","data":{"key":{"remoteJid":"5571966669292@s.whatsapp.net","fromMe":false},"message":{"conversation":"oi"}}}');
+  v_r2 := fn_webhook_evolution(v_tok, '{"event":"messages.upsert","instance":"qa-operadora","data":{"key":{"remoteJid":"5571966669292@s.whatsapp.net","fromMe":false},"message":{"conversation":"oi"}}}');
+  perform pg_temp.ok(coalesce(v_r2->>'ignorado', '') <> 'reenvio', '[T92] sem id processa sempre');
+  perform fn_webhook_evolution(v_tok, '{"event":"messages.upsert","instance":"qa-operadora","data":{"key":{"id":"QA-T92-S","remoteJid":"5571966669292@s.whatsapp.net"},"messageStubType":1,"message":{"conversation":"x"}}}');
+  perform pg_temp.ok((select wa_msg_id is null from webhook_eventos order by id desc limit 1), '[T92] evento de sistema sem chave');
+
+  -- e) o mesmo id em outra conta é outra mensagem
+  insert into contas (id, nome) values (v_outra, 'QA T92');
+  v_ok := true;
+  begin insert into webhook_eventos (conta_id, evento, payload, wa_msg_id) values (v_outra, 'messages.upsert', '{}', 'QA-T92-A');
+  exception when unique_violation then v_ok := false; end;
+  perform pg_temp.ok(v_ok, '[T92] chave por conta');
+
+  -- f) 3ª falha seguida da mesma mensagem: desiste, avisa o técnico, e o reenvio seguinte é ignorado
+  insert into qa values ('t92_falhar', '55P03');
+  perform pg_temp.t92('QA-T92-F', null); perform pg_temp.t92('QA-T92-F', null);
+  v_r := pg_temp.t92('QA-T92-F', null);
+  delete from qa where k = 't92_falhar';
+  perform pg_temp.ok(v_r->>'erro' = 'desistiu' and coalesce(v_r->>'reprocessar', '') = ''
+                     and (select v like '%Não consegui processar sua mensagem%' from qa where k = 'w62:5571966669292')
+                     and pg_temp.t92('QA-T92-F', null)->>'ignorado' = 'reenvio', '[T92] desiste na 3ª: ' || v_r::text
+                     || ' / ' || coalesce((select v from qa where k = 'w62:5571966669292'), '-'));
+
+  -- desconhecido (não é técnico) não recebe o aviso
+  insert into qa values ('t92_falhar', '55P03');
+  perform pg_temp.t92('QA-T92-F2', null, '5571966669293'); perform pg_temp.t92('QA-T92-F2', null, '5571966669293');
+  v_r := pg_temp.t92('QA-T92-F2', null, '5571966669293');
+  delete from qa where k = 't92_falhar';
+  perform pg_temp.ok(v_r->>'erro' = 'desistiu' and not exists (select 1 from qa where k = 'w62:5571966669293'),
+                     '[T92] desconhecido sem aviso');
+
+  -- g) reenvio que chega mais de 10 min depois da mensagem não processa e avisa; a 1ª entrega atrasada processa
+  delete from qa where k = 'w62:5571966669292';
+  v_r := pg_temp.t92('QA-T92-G0', now() - interval '30 minutes');
+  perform pg_temp.ok(coalesce(v_r->>'ignorado', '') <> 'reenvio atrasado', '[T92] 1ª entrega atrasada processa');
+  insert into qa values ('t92_falhar', '55P03');
+  perform pg_temp.t92('QA-T92-G', now() - interval '20 minutes');
+  delete from qa where k = 't92_falhar';
+  v_r := pg_temp.t92('QA-T92-G', now() - interval '20 minutes');
+  perform pg_temp.ok(v_r->>'ignorado' = 'reenvio atrasado'
+                     and (select v like '%Não consegui processar sua mensagem das %' from qa where k = 'w62:5571966669292'),
+                     '[T92] reenvio atrasado: ' || v_r::text);
+
+  -- h) ponto e hora extra devolvem a infraestrutura para o reenvio; ao gestor, só a mensagem de regra
+  insert into qa values ('t92_ponto', '1');
+  v_r := fn_webhook_evolution(v_tok, '{"event":"messages.upsert","instance":"qa-operadora","data":{"key":{"id":"QA-T92-P","remoteJid":"5571966669292@s.whatsapp.net","fromMe":false},"message":{"conversation":"ponto"}}}');
+  delete from qa where k = 't92_ponto';
+  perform pg_temp.ok((v_r->>'reprocessar')::boolean, '[T92] lock no ponto pede reenvio: ' || coalesce(v_r::text, '-'));
+  -- JSON null no messageStubType não desliga o controle
+  perform fn_webhook_evolution(v_tok, '{"event":"messages.upsert","instance":"qa-operadora","data":{"key":{"id":"QA-T92-N","remoteJid":"5571966669292@s.whatsapp.net"},"messageStubType":null,"message":{"conversation":"x"}}}');
+  perform pg_temp.ok((select wa_msg_id = 'QA-T92-N' from webhook_eventos order by id desc limit 1), '[T92] stub nulo com chave');
+  perform pg_temp.ok((select count(*) from pg_proc where proname in ('fn_ponto_wh', 'fn_ponto_he_resposta', 'fn_webhook_evolution')
+                        and prosrc ~ 'if fn_erro_infra\(sqlstate\) then raise; end if;') = 3
+                     and (select prosrc !~ 'hora extra: '' \|\| sqlerrm\)' from pg_proc where proname = 'fn_ponto_he_resposta'),
+                     '[T92] ponto e hora extra sobem a infraestrutura');
+
+  -- i) retenção do log no mínimo 1 dia (é o controle de reenvio)
+  v_ok := false;
+  begin update config set valor = '0' where chave = 'retencao_webhook_dias'; exception when others then v_ok := sqlerrm like 'Valor inválido%'; end;
+  perform pg_temp.ok(v_ok, '[T92] retenção zero recusada');
+end $$;
+drop trigger qa_t92 on interno.webhook_eventos;
+drop trigger qa_t92_ponto on interno.ponto_conversas;
+select 'REGRESSÃO OK: T1 a T92' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

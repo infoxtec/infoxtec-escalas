@@ -60,6 +60,10 @@ services:
       CACHE_LOCAL_ENABLED: "true"
       DEL_INSTANCE: "false"
       WEBHOOK_GLOBAL_ENABLED: "false"
+      # reenvio do webhook (decisão 136, migration 152): o Trilha responde 503 quando o banco falha e 200 no resto;
+      # 5 tentativas com teto de 2 min cobrem uma queda curta sem segurar a fila. Versão sem suporte ignora.
+      WEBHOOK_RETRY_MAX_ATTEMPTS: "5"
+      WEBHOOK_RETRY_MAX_DELAY_SECONDS: "120"
       LOG_LEVEL: ERROR,WARN
       LANGUAGE: pt-BR
       CONFIG_SESSION_PHONE_CLIENT: Infoxtec Escalas
