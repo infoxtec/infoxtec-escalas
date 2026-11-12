@@ -23,7 +23,7 @@ pelos checks do GitHub.
 | 5 | Vercel, projeto `infoxtec-escalas-homologacao` | Reserva da homologação | Pausado. Se for despausado, redirecionaria para a produção, porque usa o mesmo `vercel.json` | No painel da Vercel | Pausado |
 | 6 | **Cloudflare**, Worker `trilha` (painel da produção) | Painel da produção | **Disable builds ligado.** Só o Aplicar publica, com o `CLOUDFLARE_API_TOKEN`. `preview_urls: false` | No GitHub, o check "Workers Builds: trilha" não deveria aparecer | **Divergência:** o check ainda aparece nos PRs (#205–#209). São versões sem endereço público e o endereço oficial não muda, mas o build automático continua ligado em algum nível. A conferir no painel |
 | 7 | Cloudflare, Worker `trilha-homologacao` | Painel da homologação | Build da `main` e pré-visualização por branch: é o fluxo da homologação | Check "Workers Builds: trilha-homologacao" | Em uso, sem efeito na produção |
-| 8 | **Painel do Supabase da produção** (SQL Editor, deploy de função, Storage, Auth) | Tudo | Só o responsável, e só para o que o Aplicar não faz: Site URL e Redirect URLs, segredos, backlog (exceção de 26/09) | Sem conferência automática | Usado em 04/11 para a Site URL e a integração |
+| 8 | **Painel do Supabase da produção** (SQL Editor, deploy de função, Storage, Auth) | Tudo | Só o responsável, e só para o que o Aplicar não faz: Site URL e Redirect URLs, segredos, backlog (exceção de 26/09) e a contingência da verificação em duas etapas (seção 6) | Sem conferência automática | Usado em 04/11 para a Site URL e a integração |
 | 9 | **Conector do Supabase do Claude** (MCP) | Tudo: o conector alcança a produção | Proibido pelo CLAUDE.md. O Claude só usa na homologação | Cada chamada pede confirmação do responsável | **Risco:** restringir o conector ao projeto da homologação, se o Supabase permitir |
 | 10 | `scripts/aplicar-producao.sh` | Migrations | Contingência, com o motivo registrado. Conferir `supabase/.temp/project-ref` antes | Uso registrado no plano | Não usado |
 | 11 | Conector do Cloudflare e da Vercel do Claude (MCP) | Workers e projetos da conta | Não usados para publicar | Sem conferência | Não usados |
@@ -106,4 +106,42 @@ Esse insert manual é a única exceção ao "só pelo Aplicar" e vale só para e
 
 A primeira execução depois desta trava registra o estado da produção como base (a 149 e a 150, que entraram pela
 integração em 06/11 e 09/11, já conferidas).
+
+## 6. Contingência: tirar o autenticador de quem ficou sem acesso (desde o B3, migration 151)
+
+Só quando a pessoa não consegue recuperar pela tela "Perdi meu autenticador" (por exemplo, administrador sem o WhatsApp
+de recuperação, ou com números diferentes nas empresas que administra). Quem faz é o responsável, no SQL Editor da
+**produção**. É um uso da linha 8 da tabela 1 e só vale para isto.
+
+**Antes de rodar:** conferir a identidade da pessoa por um canal **já conhecido** (ligação para o telefone que você já
+tinha, ou conversa presencial), nunca pelo canal que a própria pessoa indicou agora. Anotar como conferiu.
+
+**1. Conferência antes** (PRODUÇÃO, só leitura; troque o e-mail):
+```sql
+select u.id, u.email,
+       (select count(*) from auth.mfa_factors f where f.user_id = u.id) as autenticadores,
+       interno.fn_mfa_recuperacao_regra(u.email) as regra
+  from auth.users u
+ where lower(u.email) = lower('pessoa@empresa.com.br');
+```
+Esperado: uma linha, com `autenticadores` 1 ou mais.
+
+**2. Remoção e avisos** (PRODUÇÃO; troque o e-mail, a forma de conferência e o seu nome nas três linhas marcadas):
+```sql
+begin;
+delete from auth.mfa_factors
+ where user_id = (select id from auth.users where lower(email) = lower('pessoa@empresa.com.br'));       -- e-mail
+select interno.fn_alerta_email('Trilha: sua verificação em duas etapas foi trocada',
+  'A verificação em duas etapas do seu login no Trilha foi removida pelo suporte. Cadastre o aplicativo autenticador novo '
+  || 'no próximo acesso. Se não foi você quem pediu, troque a senha e avise o suporte agora.',
+  array[lower('pessoa@empresa.com.br')]);                                                                  -- e-mail
+select interno.fn_alerta_email('Trilha: verificação em duas etapas removida pelo suporte (pessoa@empresa.com.br)',
+  'Removida pelo suporte. Identidade conferida por: LIGAÇÃO PARA O NÚMERO JÁ CONHECIDO. Responsável: SEU NOME.');  -- conferência e nome
+commit;
+```
+Esperado: `DELETE 1` (ou mais) e dois `fn_alerta_email` com um número cada. O e-mail à plataforma é o registro (90 dias
+em `alertas_email`).
+
+**3. Conferência depois** (PRODUÇÃO): rode de novo a consulta do passo 1. Esperado: `autenticadores` = 0. No próximo
+acesso, o painel pede o cadastro do autenticador novo.
 
