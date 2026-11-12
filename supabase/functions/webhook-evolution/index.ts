@@ -6,6 +6,9 @@
 // quando o banco pede (acao ponto_baixar_midia, so na etapa do documento do pedido de ajuste), baixa o
 // arquivo da Evolution e entrega a fn_ponto_midia_receber, que confere e cifra no cofre (migration 70).
 // O arquivo nao passa pelo log nem fica guardado aqui.
+// Reenvio (migration 152, decisao 136): falha de infraestrutura (banco fora, travado, conexao perdida) responde 503
+// para a Evolution reenviar; o banco garante que a mesma mensagem nao e processada duas vezes. Erro de regra ou de
+// dado responde 200 (reenviar daria o mesmo erro). A resposta nunca leva o resultado nem o detalhe do erro.
 // Deploy: supabase functions deploy webhook-evolution --no-verify-jwt
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import postgres from "npm:postgres@3.4.5";
@@ -19,6 +22,13 @@ const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { connection: { search_pa
 
 // mensagens de texto e botões têm poucos KB; mídia em base64 pode chegar a alguns MB
 const CORPO_MAX_BYTES = 5 * 1024 * 1024;
+
+// mesma lista de interno.fn_erro_infra (migration 152), mais XX000 (erro interno que chega de fora do bloco):
+// 08 conexao, 53 recursos, 40001/40P01 serializacao e deadlock, 55P03/55006 lock, 57P01-57P05 desligamento,
+// 58 sistema, 72000 snapshot, 25006 replica so leitura. 57014 (statement_timeout) nao: funcao lenta estouraria sempre.
+const SQLSTATE = /^[0-9A-Z]{5}$/;
+const INFRA = /^(08|53)[0-9A-Z]{3}$|^(40001|40P01|55P03|55006|57P0[1-5]|58000|58030|72000|25006|XX000)$/;
+const TEMPO_MAX = "20s"; // por chamada: a Evolution espera a resposta; o resto vira 503 e reenvio
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -38,7 +48,7 @@ Deno.serve(async (req: Request) => {
     payload = JSON.parse(await lerComTeto(req, CORPO_MAX_BYTES));
   } catch (e) {
     if (e instanceof Error && e.message === "grande demais") {
-      return json({ ok: false, erro: "payload grande demais" }, 413);
+      return json({ ok: false, erro: "payload grande demais" }, 422); // 422: a Evolution nao reenvia
     }
     return json({ ok: false, erro: "json invalido" }, 400);
   }
@@ -47,11 +57,18 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // sql.json envia o objeto como jsonb uma unica vez (sem dupla serializacao)
-    const rows = await sql`
-      select fn_webhook_evolution(${token}, ${sql.json(payload as Parameters<typeof sql.json>[0])}) as resultado
-    `;
+    // transacao curta com teto de tempo; sql.json envia o objeto como jsonb uma unica vez (sem dupla serializacao)
+    const rows = await sql.begin(async (tx) => {
+      await tx.unsafe(`set local statement_timeout = '${TEMPO_MAX}'`);
+      return await tx`
+        select fn_webhook_evolution(${token}, ${sql.json(payload as Parameters<typeof sql.json>[0])}) as resultado
+      `;
+    });
     const resultado = rows[0]?.resultado ?? null;
+    if (resultado?.reprocessar === true) {
+      console.error("webhook evolution: infraestrutura, pedido reenvio");
+      return json({ ok: false, erro: "indisponivel" }, 503);
+    }
     if (resultado?.acao === "ponto_baixar_midia") {
       // responde já à Evolution; o download segue em segundo plano (sem o runtime, espera aqui)
       const tarefa = receberMidia(resultado.tecnico, resultado.midia_id, payload.data);
@@ -59,12 +76,17 @@ Deno.serve(async (req: Request) => {
       if (runtime) runtime.waitUntil(tarefa);
       else await tarefa;
     }
-    return json({ ok: true, resultado });
+    return json({ ok: true });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const e = err as { code?: unknown; message?: unknown };
+    const codigo = typeof e?.code === "string" ? e.code : "";
+    const msg = typeof e?.message === "string" ? e.message : String(err);
     if (msg.includes("token invalido")) return json({ ok: false, erro: "nao autorizado" }, 401);
-    console.error("webhook evolution:", msg);
-    // 200 para a Evolution nao reenviar em loop; o erro fica no log da funcao
+    // so o codigo e o comeco da mensagem vao ao log, nunca o payload
+    console.error("webhook evolution:", codigo || "sem codigo", msg.slice(0, 120));
+    // sem SQLSTATE (ECONNREFUSED, CONNECT_TIMEOUT, CONNECTION_CLOSED...) o banco nem respondeu: reenviar
+    if (!SQLSTATE.test(codigo) || INFRA.test(codigo)) return json({ ok: false, erro: "indisponivel" }, 503);
+    // erro de regra ou de dado: reenviar daria o mesmo erro
     return json({ ok: false, erro: "falha interna" });
   }
 });

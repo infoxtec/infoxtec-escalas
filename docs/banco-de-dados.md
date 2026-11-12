@@ -254,6 +254,24 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 152 (12/11, versão 20261124120000): webhook com reenvio seguro (B4, decisão 136)
+
+- `interno.fn_erro_infra(sqlstate)` (imutável): a lista única de erro de infraestrutura (08, 53, 40001, 40P01, 55P03,
+  55006, 57P01–57P05, 58000, 58030, 72000, 25006).
+- `webhook_eventos.wa_msg_id` (chave do reenvio, índice único parcial `(conta_id, wa_msg_id)`) e `wa_msg_ref` (o mesmo
+  id, sempre gravado, índice parcial para contar tentativas). Só `messages.upsert` com `message` e sem
+  `messageStubType`.
+- `fn_webhook_evolution`: `insert … on conflict do nothing`; sem linha → grava `reenvio ignorado` (payload só com o id) e
+  devolve `{ignorado: 'reenvio'}`. Infraestrutura no bloco → `ERRO (reprocessar) <sqlstate>`, chave solta e
+  `{reprocessar: true}` (a Edge responde 503); na 3ª → `ERRO (desistiu)`; reenvio com `messageTimestamp` mais de 10 min
+  atrás → `reenvio atrasado`. Os dois últimos avisam o técnico (`interno.fn_webhook_avisar_perda`, só número
+  `@s.whatsapp.net`). Regra ou dado → `ERRO: …`, como antes.
+- `fn_ponto_wh`, `fn_ponto_he_resposta` e o bloco do ponto no webhook sobem a infraestrutura (`raise`); o gestor só
+  recebe a mensagem de regra (P0001) da hora extra, nunca o detalhe técnico.
+- `fn_validar_config`: `retencao_webhook_dias` ≥ 1. Regressão T92.
+- **Volta:** voltar primeiro a Edge (aceita o resultado antigo); depois recriar as quatro funções com a definição
+  anterior à 152. As colunas e os índices podem ficar. Sem perda de dado.
+
 ### Migration 151 (10/11, versão 20261123120000): recuperação das duas etapas entre empresas (B3, decisão 128 revista)
 
 - `interno.fn_mfa_recuperacao_regra(e-mail)` → `'dois'` (plataforma ou admin ativo de conta ativa, o mesmo predicado do
