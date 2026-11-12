@@ -270,4 +270,4 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] CSP em observação e OCR servido pelo próprio site (painel 3.69.0; produção em 10/11)
 - [x] Verificação em duas etapas obrigatória para administrador (migration 149, painel 3.70.0; produção em 10/11)
 - [x] Sábado de 4h e régua de avisos: +1h lembrete, +2h uma ligação, +3h último e aviso ao gestor, nada depois das 18h (migration 150, painel 3.71.0; produção em 10/11)
-- [ ] Recuperação das duas etapas entre empresas: admin com os dois códigos, quem está em mais de uma empresa só pelo e-mail (migration 151, painel 3.72.0)
+- [x] Recuperação das duas etapas entre empresas: admin com os dois códigos, quem está em mais de uma empresa só pelo e-mail (migration 151, painel 3.72.0; produção em 12/11; procedimento em `docs/procedimentos/recuperar-duas-etapas.md`)
