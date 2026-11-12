@@ -5214,7 +5214,8 @@ begin
   perform app_editar_escala(jsonb_build_object('id', v_rec, 'hora_inicio', '10:00'));
   select acao, ciclo into r from vw_acoes_pendentes where escala_id = v_rec;
   perform pg_temp.ok(r.acao is null and r.ciclo = 2, '[T90] reconfirmação: ciclo 2, sem aviso imediato: ' || coalesce(r::text, 'nada'));
-  update notificacoes set status_envio = 'entregue', entregue_em = now() - interval '61 minutes', created_at = now() - interval '61 minutes'
+  -- só a entrega recua (a criação fica hoje): perto da meia-noite, recuar a criação poria o ciclo no dia anterior
+  update notificacoes set status_envio = 'entregue', entregue_em = now() - interval '61 minutes'
    where escala_id = v_rec and ciclo = 2;
   select acao, passo, ciclo into r from vw_acoes_pendentes where escala_id = v_rec;
   perform pg_temp.ok(r.acao = 'reenviar' and r.passo = 1 and r.ciclo = 2, '[T90] reconfirmação: lembrete 1h depois do novo envio: ' || coalesce(r::text, 'nada'));
