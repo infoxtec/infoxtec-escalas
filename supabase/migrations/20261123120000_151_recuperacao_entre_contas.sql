@@ -31,6 +31,19 @@ as $function$
   end
 $function$;
 
+-- o que a tela do código mostra (Edge, ação 'regra'): só informa; quem decide é o confirmar
+create or replace function interno.fn_mfa_recuperacao_tela(p_email text)
+ returns jsonb
+ language sql
+ stable
+ set search_path to 'interno', 'public', 'extensions', 'pg_temp'
+as $function$
+  select jsonb_build_object(
+    'acesso', exists (select 1 from interno.conta_membros where email = lower(btrim(p_email)) and ativo)
+              or exists (select 1 from interno.plataforma_admins where email = lower(btrim(p_email))),
+    'regra', interno.fn_mfa_recuperacao_regra(p_email))
+$function$;
+
 create or replace function interno.fn_mfa_recuperacao_pedir(p_email text, p_canal text)
  returns jsonb
  language plpgsql

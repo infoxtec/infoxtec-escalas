@@ -265,7 +265,10 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
 - `fn_mfa_recuperacao_confirmar`: recalcula a regra depois da trava; `'dois'` exige os dois códigos; `'email'` nem
   confere o do WhatsApp (não gasta tentativa nem o marca como usado); devolve `regra`. `fn_mfa_recuperacao_concluir`
   diz a regra no aviso à plataforma.
-- Edge `recuperar-duas-etapas`: ação `regra` (só informa a tela). Regressão T91.
+- Edge `recuperar-duas-etapas`: ação `regra`, que chama `interno.fn_mfa_recuperacao_tela(e-mail)` → `{acesso, regra}` (só
+  informa a tela). Regressão T91.
+- **Volta:** voltar primeiro a Edge (a ação `regra` depende da função nova) e depois recriar `pedir`, `confirmar` e
+  `concluir` com a definição anterior à 151; `fn_mfa_recuperacao_regra` e `_tela` podem ficar. Sem perda de dado.
 
 ### Migration 150 (09/11, versão 20261122120000): sábado de 4h e a régua de avisos depois do envio (decisão 135)
 

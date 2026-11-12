@@ -86,12 +86,9 @@ Deno.serve(async (req: Request) => {
   try {
     // quais canais a tela mostra (migration 151): só informa; quem decide é sempre o confirmar, no banco
     if (corpo.acao === "regra") {
-      const [linha] = await sql<{ acesso: boolean; regra: string }[]>`
-        select (exists (select 1 from conta_membros where email = lower(${email}) and ativo)
-                or exists (select 1 from plataforma_admins where email = lower(${email}))) as acesso,
-               fn_mfa_recuperacao_regra(${email}) as regra`;
-      if (!linha.acesso) return json({ ok: false, erro: "Usuário sem acesso ao painel." }, 400);
-      return json({ ok: true, regra: linha.regra });
+      const [linha] = await sql<{ r: { acesso?: boolean; regra?: string } }[]>`select fn_mfa_recuperacao_tela(${email}) as r`;
+      if (!linha.r.acesso) return json({ ok: false, erro: "Usuário sem acesso ao painel." }, 400);
+      return json({ ok: true, regra: linha.r.regra });
     }
     if (corpo.acao === "pedir") {
       const canal = corpo.canal === "whatsapp" ? "whatsapp" : corpo.canal === "email" ? "email" : "";
