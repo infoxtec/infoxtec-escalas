@@ -79,7 +79,7 @@ observa), e não viu o deploy automático da Vercel nem o token da produção in
 | C1 PWA e responsivo | Na produção (3.68.0, 05/11), testado pelo responsável no celular | — |
 | B1 CSP em observação e B2 MFA para administrador | Na produção (painel 3.71.0, 10/11); a 149 entrou antes pela integração do Supabase (incidente de 09/11) | — |
 | Pedido 09/11: sábado 4h e régua de avisos | Na produção (migration 150, painel 3.71.0, 10/11), testado pelo responsável | — |
-| B3 2FA entre contas | Homologação testada pelo responsável em 12/11; produção pedida (migration 151, Edge `recuperar-duas-etapas`, painel 3.72.0) | Conferência na produção |
+| B3 2FA entre contas | Na produção em 12/11 (migration 151, Edge `recuperar-duas-etapas`, painel 3.72.0); procedimento com telas em `docs/procedimentos/recuperar-duas-etapas.md` | Teste com login real do responsável |
 | B4–B6 | A fazer | — |
 
 Nenhum item ganha `[x]` no plano até a produção ser conferida pelo responsável.
