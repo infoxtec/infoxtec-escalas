@@ -214,6 +214,9 @@ export default function UsuariosPage() {
             <Field label="WhatsApp de recuperação e avisos" hint="Opcional. Recebe o código se a pessoa perder o aplicativo autenticador e, se ligado abaixo, o aviso das programações que ela criou e ficaram sem confirmação. Só números, com DDI e DDD: 5571981776307.">
               <Input inputMode="numeric" value={edit.telefone} disabled={salvando} onChange={e => setEdit({ ...edit, telefone: e.target.value.replace(/[^\d]/g, '').slice(0, 13) })} />
             </Field>
+            {edit.papel === 'admin' && edit.telefone.replace(/\D/g, '').length < 12 && (
+              <p className="-mt-1 text-xs text-amber-700 dark:text-amber-400">Administrador precisa do código do e-mail e do WhatsApp para trocar o autenticador: sem WhatsApp cadastrado, só pelo suporte.</p>
+            )}
             <Field label="Papel" hint={DESCRICAO[edit.papel]}>
               <Select className="w-full" value={edit.papel} disabled={salvando} onChange={e => setEdit({ ...edit, papel: e.target.value as Papel })}>
                 <option value="admin">Administrador</option><option value="gestor">Gestor</option><option value="leitura">Somente leitura</option>

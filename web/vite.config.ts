@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => {
     },
   ],
   define: {
-    __APP_VERSION__: JSON.stringify('3.71.0'),
+    __APP_VERSION__: JSON.stringify('3.72.0'),
     __APP_BUILD__: JSON.stringify(build),
   },
   }
