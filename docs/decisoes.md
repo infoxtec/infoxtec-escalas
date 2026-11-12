@@ -1868,6 +1868,21 @@ no Supabase.
   anula os códigos anteriores do mesmo canal. O código só é dado como usado depois que o Auth apaga os fatores
   (`fn_mfa_recuperacao_concluir`): se a remoção falhar, a pessoa tenta de novo com o mesmo código.
 
+**Revisão de 10/11 (B3, cenário A do responsável; migration 151, painel 3.72.0).** A recuperação passa a depender de quem
+é a pessoa (`interno.fn_mfa_recuperacao_regra`):
+- **plataforma e administrador ativo de conta ativa:** e-mail **e** WhatsApp (o do administrador só das contas que ele
+  administra; o da plataforma só da conta da operadora). A regra não depende do interruptor `mfa_obrigatorio_admin`;
+- **quem está em 2 ou mais empresas** (contando vínculo desativado e empresa suspensa, para uma desativação temporária
+  não abrir a janela): **só e-mail**;
+- **os demais:** e-mail ou WhatsApp, como antes. O WhatsApp só sai de conta ativa.
+O risco aceito em 30/10 fica **encerrado para quem já tem autenticador e está em mais de uma empresa ou é administrador**.
+Continuam aceitos (pendências com prazo no plano): quem só tem uma empresa e depois entra numa segunda com o autenticador
+trocado antes pelo WhatsApp (aviso quando isso acontecer); rebaixar, recuperar e promover de novo dentro da mesma conta
+(carência de 72h para número novo e para papel de admin retirado, já no backlog); gestor ou leitura sem autenticador pode
+ter um cadastrado por quem tem só a senha (aviso por e-mail quando um fator novo aparecer). A cota diária de pedidos
+passou a ser por canal. Contingência de quem ficar trancado: SQL do responsável, com conferência de identidade por canal já
+conhecido e os mesmos avisos.
+
 ## 129. Multiempresa F8: entrada e saída do cliente
 
 *30/10/2026 — decisões do responsável sobre o desenho do `arquiteto-dados` (migration 141 em diante).*

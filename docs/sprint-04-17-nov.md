@@ -77,10 +77,10 @@ observa), e não viu o deploy automático da Vercel nem o token da produção in
 | B7 Vercel só redireciona | **Na produção, pendente de teste** (#206–#208): `/`, `/?verificar=`, `/v?c=`, `/ponto?espelho=` conferidos por fora | QR de um espelho real escaneado |
 | Painel 3.67.1 | Na produção: sem a tarja vermelha | — |
 | C1 PWA e responsivo | Na produção (3.68.0, 05/11), testado pelo responsável no celular | — |
-| B1 CSP em observação | Homologação (3.69.0) | Teste do responsável com o console aberto; 7 dias sem aviso para valer |
-| B2 MFA para administrador | Homologação (migration 149, painel 3.70.0) | Teste do responsável; aviso aos administradores |
-| Pedido 09/11: sábado 4h e régua de avisos | Em revisão (migration 150, painel 3.71.0, decisão 135) | Teste do responsável na homologação |
-| B3–B6 | A fazer | — |
+| B1 CSP em observação e B2 MFA para administrador | Na produção (painel 3.71.0, 10/11); a 149 entrou antes pela integração do Supabase (incidente de 09/11) | — |
+| Pedido 09/11: sábado 4h e régua de avisos | Na produção (migration 150, painel 3.71.0, 10/11), testado pelo responsável | — |
+| B3 2FA entre contas | Em revisão (migration 151, painel 3.72.0, decisão 128 revista) | Teste do responsável na homologação |
+| B4–B6 | A fazer | — |
 
 Nenhum item ganha `[x]` no plano até a produção ser conferida pelo responsável.
 

@@ -1,5 +1,6 @@
 // Recuperação da verificação em duas etapas (migration 140, decisão 128). Quem perdeu o autenticador entra com a senha
-// (sessão aal1) e pede um código por e-mail ou WhatsApp; com o código certo (os dois, se for da plataforma), esta função
+// (sessão aal1) e pede um código por e-mail ou WhatsApp; com o código certo (os dois para plataforma e administrador; só o
+// do e-mail para quem está em mais de uma empresa — migration 151), esta função
 // apaga os fatores do login no Supabase Auth e o painel pede o autenticador novo. Quem pode, limites, códigos e avisos:
 // tudo no banco (fn_mfa_recuperacao_pedir, _confirmar e _concluir). A chave de serviço só existe aqui.
 // Deploy: supabase functions deploy recuperar-duas-etapas
@@ -83,6 +84,12 @@ Deno.serve(async (req: Request) => {
   try { corpo = JSON.parse(texto); } catch { return json({ ok: false, erro: "pedido inválido" }, 400); }
 
   try {
+    // quais canais a tela mostra (migration 151): só informa; quem decide é sempre o confirmar, no banco
+    if (corpo.acao === "regra") {
+      const [linha] = await sql<{ r: { acesso?: boolean; regra?: string } }[]>`select fn_mfa_recuperacao_tela(${email}) as r`;
+      if (!linha.r.acesso) return json({ ok: false, erro: "Usuário sem acesso ao painel." }, 400);
+      return json({ ok: true, regra: linha.r.regra });
+    }
     if (corpo.acao === "pedir") {
       const canal = corpo.canal === "whatsapp" ? "whatsapp" : corpo.canal === "email" ? "email" : "";
       if (!canal) return json({ ok: false, erro: "Escolha e-mail ou WhatsApp." }, 400);

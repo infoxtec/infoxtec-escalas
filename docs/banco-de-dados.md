@@ -254,6 +254,22 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 151 (10/11, versão 20261123120000): recuperação das duas etapas entre empresas (B3, decisão 128 revista)
+
+- `interno.fn_mfa_recuperacao_regra(e-mail)` → `'dois'` (plataforma ou admin ativo de conta ativa, o mesmo predicado do
+  `fn_mfa_exigido` sem o interruptor), `'email'` (2 ou mais vínculos em contas com `estado = 'ativa'`, ativos ou não,
+  mesmo suspensas) ou `'qualquer'`.
+- `fn_mfa_recuperacao_pedir`: WhatsApp recusado na regra `'email'` antes de gravar o pedido; números só de conta ativa; na
+  `'dois'`, só das contas em que a pessoa é admin (plataforma: só da conta da operadora); textos próprios para admin; cota
+  de 6 pedidos por dia **por canal**.
+- `fn_mfa_recuperacao_confirmar`: recalcula a regra depois da trava; `'dois'` exige os dois códigos; `'email'` nem
+  confere o do WhatsApp (não gasta tentativa nem o marca como usado); devolve `regra`. `fn_mfa_recuperacao_concluir`
+  diz a regra no aviso à plataforma.
+- Edge `recuperar-duas-etapas`: ação `regra`, que chama `interno.fn_mfa_recuperacao_tela(e-mail)` → `{acesso, regra}` (só
+  informa a tela). Regressão T91.
+- **Volta:** voltar primeiro a Edge (a ação `regra` depende da função nova) e depois recriar `pedir`, `confirmar` e
+  `concluir` com a definição anterior à 151; `fn_mfa_recuperacao_regra` e `_tela` podem ficar. Sem perda de dado.
+
 ### Migration 150 (09/11, versão 20261122120000): sábado de 4h e a régua de avisos depois do envio (decisão 135)
 
 - **Sábado:** `interno.fn_jornada_alvo_min(técnico, data)` devolve os minutos da carga do dia no sábado

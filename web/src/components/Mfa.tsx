@@ -31,9 +31,12 @@ function Codigo({ valor, onChange, onEnter }: { valor: string; onChange: (v: str
 
 const sair = () => { void supabase.auth.signOut({ scope: 'local' }) }
 
-// "Perdi meu autenticador" (migration 140, decisão 128): código por e-mail ou WhatsApp; administrador da plataforma
-// precisa dos dois. Com o código certo, o autenticador antigo sai e o painel pede o novo.
+// "Perdi meu autenticador" (migration 140, decisão 128; regra por pessoa na 151): plataforma e administrador precisam dos
+// dois códigos; quem está em mais de uma empresa, só do e-mail; os demais, de um. Com o código certo, o autenticador
+// antigo sai e o painel pede o novo. A tela só mostra a regra; quem decide é o banco.
 function MfaRecuperar({ onOk, onVoltar }: { onOk: () => void; onVoltar: () => void }) {
+  const [regra, setRegra] = useState<'dois' | 'email' | 'qualquer' | null>(null)
+  useEffect(() => { void recuperarDuasEtapas({ acao: 'regra' }).then(r => { if (r.ok && r.regra) setRegra(r.regra) }) }, [])
   const [cEmail, setCEmail] = useState('')
   const [cWhats, setCWhats] = useState('')
   const [enviados, setEnviados] = useState<{ email?: string; whatsapp?: string }>({})
@@ -61,14 +64,17 @@ function MfaRecuperar({ onOk, onVoltar }: { onOk: () => void; onVoltar: () => vo
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Receba um código para trocar o aplicativo autenticador. Quem é administrador da plataforma precisa dos dois códigos.
+        {regra === 'dois' ? 'Como administrador, você precisa dos dois códigos: o do e-mail e o do WhatsApp. Perdeu o celular? O número volta com um chip novo do mesmo número; sem isso, fale com o suporte.'
+          : regra === 'email' ? 'Como você usa o Trilha em mais de uma empresa, a troca do autenticador é só pelo e-mail do login.'
+          : regra === 'qualquer' ? 'Receba um código para trocar o aplicativo autenticador, por e-mail ou WhatsApp.'
+          : 'Peça o código para trocar o aplicativo autenticador. Alguns acessos precisam dos dois códigos (e-mail e WhatsApp).'}
       </p>
       {(enviados.email || enviados.whatsapp) && (
         <p className="text-xs text-muted-foreground">Vale só o último código de cada canal: pedir de novo anula o anterior.</p>
       )}
-      <div className="grid grid-cols-2 gap-2">
+      <div className={regra === 'email' ? 'grid grid-cols-1 gap-2' : 'grid grid-cols-2 gap-2'}>
         <Button variant="outline" disabled={ocupado} onClick={() => void pedir('email')}><Mail className="h-4 w-4" /> Por e-mail</Button>
-        <Button variant="outline" disabled={ocupado} onClick={() => void pedir('whatsapp')}><MessageCircle className="h-4 w-4" /> Por WhatsApp</Button>
+        {regra !== 'email' && <Button variant="outline" disabled={ocupado} onClick={() => void pedir('whatsapp')}><MessageCircle className="h-4 w-4" /> Por WhatsApp</Button>}
       </div>
       {enviados.email && (<div className="space-y-1"><p className="text-xs text-muted-foreground">Código do e-mail (enviado para {enviados.email}):</p>
         <Codigo valor={cEmail} onChange={setCEmail} onEnter={() => void confirmar()} /></div>)}
@@ -76,7 +82,8 @@ function MfaRecuperar({ onOk, onVoltar }: { onOk: () => void; onVoltar: () => vo
         <Codigo valor={cWhats} onChange={setCWhats} onEnter={() => void confirmar()} /></div>)}
       {erro && <ErrorBox>{erro}</ErrorBox>}
       <div className="flex gap-2">
-        <Button className="flex-1" disabled={ocupado || (cEmail.length !== 6 && cWhats.length !== 6)} onClick={() => void confirmar()}>
+        <Button className="flex-1" disabled={ocupado || (regra === 'dois' ? (cEmail.length !== 6 || cWhats.length !== 6)
+          : regra === 'email' ? cEmail.length !== 6 : (cEmail.length !== 6 && cWhats.length !== 6))} onClick={() => void confirmar()}>
           {ocupado && <Loader2 className="h-4 w-4 animate-spin" />} Trocar o autenticador
         </Button>
         <Button variant="outline" onClick={onVoltar} disabled={ocupado}>Voltar</Button>

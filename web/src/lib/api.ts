@@ -407,8 +407,9 @@ export async function excluirUsuario(email: string, conta: string): Promise<{ ok
 }
 
 // Recuperação das duas etapas (Edge Function recuperar-duas-etapas, migration 140): sessão só com a senha (aal1)
-export async function recuperarDuasEtapas(corpo: { acao: 'pedir'; canal: 'email' | 'whatsapp' } | { acao: 'confirmar'; codigo_email: string; codigo_whatsapp: string })
-  : Promise<{ ok: boolean; erro?: string; destino?: string; removidos?: number }> {
+// acao 'regra' (migration 151): 'dois' (e-mail e WhatsApp), 'email' (só e-mail) ou 'qualquer'
+export async function recuperarDuasEtapas(corpo: { acao: 'regra' } | { acao: 'pedir'; canal: 'email' | 'whatsapp' } | { acao: 'confirmar'; codigo_email: string; codigo_whatsapp: string })
+  : Promise<{ ok: boolean; erro?: string; destino?: string; removidos?: number; regra?: 'dois' | 'email' | 'qualquer' }> {
   const { data: sessao } = await supabase.auth.getSession()
   try {
     const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/recuperar-duas-etapas`, {

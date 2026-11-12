@@ -11,6 +11,7 @@
 -- T4 marcações imutáveis              T9 funções do painel (gestor)
 -- T5 carga: 2.000 marcações, NSR e cadeia de hash íntegros     T88 MFA obrigatório para administrador
 --                                                               T89 sábado de 4h; T90 régua de avisos depois do envio
+--                                                               T91 recuperação das duas etapas entre empresas
 -- T10 URA só em dia útil, das 08:00 às 20:00 (18:00 desde a 150), fora de feriado
 -- T11 ajustes de ponto com justificativa (incluir, desconsiderar, papéis, imutável)
 -- T12 fuso do motor: fila do WhatsApp na hora local, não em UTC nem no fuso da sessão
@@ -5213,7 +5214,8 @@ begin
   perform app_editar_escala(jsonb_build_object('id', v_rec, 'hora_inicio', '10:00'));
   select acao, ciclo into r from vw_acoes_pendentes where escala_id = v_rec;
   perform pg_temp.ok(r.acao is null and r.ciclo = 2, '[T90] reconfirmação: ciclo 2, sem aviso imediato: ' || coalesce(r::text, 'nada'));
-  update notificacoes set status_envio = 'entregue', entregue_em = now() - interval '61 minutes', created_at = now() - interval '61 minutes'
+  -- só a entrega recua (a criação fica hoje): perto da meia-noite, recuar a criação poria o ciclo no dia anterior
+  update notificacoes set status_envio = 'entregue', entregue_em = now() - interval '61 minutes'
    where escala_id = v_rec and ciclo = 2;
   select acao, passo, ciclo into r from vw_acoes_pendentes where escala_id = v_rec;
   perform pg_temp.ok(r.acao = 'reenviar' and r.passo = 1 and r.ciclo = 2, '[T90] reconfirmação: lembrete 1h depois do novo envio: ' || coalesce(r::text, 'nada'));
@@ -5301,7 +5303,134 @@ begin
   perform pg_temp.ok(pg_get_viewdef('interno.vw_ligacoes_pendentes'::regclass) ~ '00000000-0000-0000-0000-000000000001',
                      '[T90] fila de ligações só da conta da operadora');
 end $$;
-select 'REGRESSÃO OK: T1 a T90' as resultado,
+-- T91 recuperação das duas etapas entre empresas (migration 151, B3): admin e plataforma com os dois códigos; quem
+-- está em mais de uma empresa só pelo e-mail; WhatsApp só de conta ativa e, do admin, só das contas que ele administra
+create or replace function fn_evo_post(p_path text, p_body jsonb) returns bigint language sql as $$
+  insert into qa values ('ultimo_wa', p_body->>'number' || ':' || coalesce(p_body->>'text', '')) on conflict (k) do update set v = excluded.v;
+  select 0::bigint $$;
+do $$
+declare
+  v_a uuid := '00000000-0000-0000-0000-000000000001';
+  v_x uuid := gen_random_uuid();
+  v_y uuid := gen_random_uuid();
+  v_z uuid := gen_random_uuid();
+  v_r jsonb; v_ok boolean; v_cod text; v_cod_e text; v_e text;
+begin
+  perform set_config('request.jwt.claims', '', true);
+  perform set_config('request.headers', '{}', true);
+  update interno.config set valor = 'true' where chave = 'mfa_obrigatorio_admin';
+  insert into config (chave, valor) values ('alerta_email_url', 'http://127.0.0.1:9/alerta-email'), ('evolution_instancia', 'qa-operadora')
+    on conflict (chave) do update set valor = excluded.valor;
+  insert into contas (id, nome) values (v_x, 'QA T91 X'), (v_y, 'QA T91 Y'), (v_z, 'QA T91 Z');
+  insert into auth.users (id, email, aud, role) values
+    ('00000000-0000-0000-0000-0000000009a1', 'qa91-um@teste.local', 'authenticated', 'authenticated'),
+    ('00000000-0000-0000-0000-0000000009a2', 'qa91-dois@teste.local', 'authenticated', 'authenticated'),
+    ('00000000-0000-0000-0000-0000000009a3', 'qa91-admin@teste.local', 'authenticated', 'authenticated');
+
+  -- membro de uma empresa: qualquer um dos canais (como antes)
+  insert into conta_membros (conta_id, email, papel, telefone_e164) values (v_x, 'qa91-um@teste.local', 'gestor', '5571955559101');
+  perform pg_temp.ok(fn_mfa_recuperacao_regra('qa91-um@teste.local') = 'qualquer', '[T91] uma empresa: qualquer canal');
+  v_r := fn_mfa_recuperacao_pedir('qa91-um@teste.local', 'whatsapp');
+  v_cod := substring((select v from qa where k = 'ultimo_wa') from ':.*([0-9]{6})');
+  perform pg_temp.ok(v_r->>'destino' = '***9101', '[T91] uma empresa: WhatsApp enviado');
+  -- ganhou a segunda empresa entre o pedido e a confirmação: o código do WhatsApp não vale nem gasta tentativa
+  insert into conta_membros (conta_id, email, papel) values (v_y, 'qa91-um@teste.local', 'leitura');
+  v_r := fn_mfa_recuperacao_confirmar('qa91-um@teste.local', null, v_cod);
+  perform pg_temp.ok(v_r->>'erro' like 'Como você usa o Trilha em mais de uma empresa%'
+                     and (select usado_em is null and tentativas = 0 from mfa_recuperacoes where email = 'qa91-um@teste.local' and canal = 'whatsapp'),
+                     '[T91] regra recalculada no confirmar: ' || v_r::text);
+
+  -- duas empresas: WhatsApp recusado no pedido; e-mail vale; com os dois códigos, só o do e-mail conta
+  insert into conta_membros (conta_id, email, papel, telefone_e164) values
+    (v_x, 'qa91-dois@teste.local', 'gestor', '5571955559102'), (v_y, 'qa91-dois@teste.local', 'leitura', null);
+  perform pg_temp.ok(fn_mfa_recuperacao_regra('qa91-dois@teste.local') = 'email', '[T91] duas empresas: só e-mail');
+  v_ok := false;
+  begin perform fn_mfa_recuperacao_pedir('qa91-dois@teste.local', 'whatsapp');
+  exception when others then v_ok := sqlerrm like 'Como você usa o Trilha em mais de uma empresa%'; end;
+  perform pg_temp.ok(v_ok and not exists (select 1 from mfa_recuperacoes where email = 'qa91-dois@teste.local'),
+                     '[T91] WhatsApp recusado antes de gravar o pedido');
+  v_r := fn_mfa_recuperacao_pedir('qa91-dois@teste.local', 'email');
+  select substring(texto from '([0-9]{6})') into v_cod_e from alertas_email where para = array['qa91-dois@teste.local'] and sensivel order by id desc limit 1;
+  v_r := fn_mfa_recuperacao_confirmar('qa91-dois@teste.local', v_cod_e, '123456');
+  perform pg_temp.ok((v_r->>'email_ok')::boolean and not (v_r->>'whatsapp_ok')::boolean and v_r->>'regra' = 'email',
+                     '[T91] duas empresas: e-mail aceito, WhatsApp ignorado: ' || v_r::text);
+  -- vínculo desativado e empresa suspensa continuam contando; empresa encerrada não
+  update conta_membros set ativo = false where conta_id = v_y and email = 'qa91-dois@teste.local';
+  perform pg_temp.ok(fn_mfa_recuperacao_regra('qa91-dois@teste.local') = 'email', '[T91] vínculo desativado ainda conta');
+  update conta_membros set ativo = true where conta_id = v_y and email = 'qa91-dois@teste.local';
+  update contas set ativa = false where id = v_y;
+  perform pg_temp.ok(fn_mfa_recuperacao_regra('qa91-dois@teste.local') = 'email', '[T91] empresa suspensa ainda conta');
+  update contas set estado = 'encerrada', encerrada_em = now(), apagar_em = now() + interval '30 days' where id = v_y;
+  perform pg_temp.ok(fn_mfa_recuperacao_regra('qa91-dois@teste.local') = 'qualquer', '[T91] empresa encerrada não conta');
+  -- o número de uma empresa encerrada não é usado
+  update conta_membros set telefone_e164 = null where conta_id = v_x and email = 'qa91-dois@teste.local';
+  update conta_membros set telefone_e164 = '5571955559103' where conta_id = v_y and email = 'qa91-dois@teste.local';
+  v_ok := false;
+  begin perform fn_mfa_recuperacao_pedir('qa91-dois@teste.local', 'whatsapp');
+  exception when others then v_ok := sqlerrm like 'Nenhum WhatsApp cadastrado%'; end;
+  perform pg_temp.ok(v_ok, '[T91] número de empresa encerrada não serve');
+
+  -- administrador: os dois códigos, mesmo com o interruptor da 149 desligado; WhatsApp só da empresa que administra
+  insert into conta_membros (conta_id, email, papel, telefone_e164) values
+    (v_z, 'qa91-admin@teste.local', 'admin', null), (v_x, 'qa91-admin@teste.local', 'gestor', '5571955559104');
+  perform pg_temp.ok(fn_mfa_recuperacao_regra('qa91-admin@teste.local') = 'dois', '[T91] admin: os dois códigos');
+  update interno.config set valor = 'false' where chave = 'mfa_obrigatorio_admin';
+  perform pg_temp.ok(fn_mfa_recuperacao_regra('qa91-admin@teste.local') = 'dois', '[T91] interruptor da 149 não afrouxa a recuperação');
+  update interno.config set valor = 'true' where chave = 'mfa_obrigatorio_admin';
+  v_ok := false;
+  begin perform fn_mfa_recuperacao_pedir('qa91-admin@teste.local', 'whatsapp');
+  exception when others then v_ok := sqlerrm like 'Administrador precisa também do código pelo WhatsApp%'; end;
+  perform pg_temp.ok(v_ok, '[T91] admin: o número de outra empresa (onde não é admin) não serve');
+  update conta_membros set telefone_e164 = '5571955559105' where conta_id = v_z and email = 'qa91-admin@teste.local';
+  v_r := fn_mfa_recuperacao_pedir('qa91-admin@teste.local', 'whatsapp');
+  v_cod := substring((select v from qa where k = 'ultimo_wa') from ':.*([0-9]{6})');
+  perform pg_temp.ok(v_r->>'destino' = '***9105', '[T91] admin: número da empresa que administra, mesmo com outro número em outra empresa');
+  v_r := fn_mfa_recuperacao_confirmar('qa91-admin@teste.local', null, v_cod);
+  perform pg_temp.ok(v_r->>'erro' = 'Confirme os códigos do e-mail e do WhatsApp.', '[T91] admin com só um código recusado');
+  v_r := fn_mfa_recuperacao_pedir('qa91-admin@teste.local', 'email');
+  select substring(texto from '([0-9]{6})') into v_cod_e from alertas_email where para = array['qa91-admin@teste.local'] and sensivel order by id desc limit 1;
+  v_r := fn_mfa_recuperacao_confirmar('qa91-admin@teste.local', v_cod_e, v_cod);
+  perform pg_temp.ok((v_r->>'email_ok')::boolean and (v_r->>'whatsapp_ok')::boolean, '[T91] admin com os dois códigos: ' || v_r::text);
+  -- cota de 6 pedidos por dia por canal: o e-mail esgotado não trava o WhatsApp
+  insert into mfa_recuperacoes (email, canal, codigo_hash, expira_em, criado_em)
+  select 'qa91-admin@teste.local', 'email', 'x', now(), now() - interval '2 hours' from generate_series(1, 6);
+  update mfa_recuperacoes set criado_em = criado_em - interval '2 minutes' where email = 'qa91-admin@teste.local' and canal = 'whatsapp';
+  v_r := fn_mfa_recuperacao_pedir('qa91-admin@teste.local', 'whatsapp');
+  perform pg_temp.ok(v_r->>'enviado' = 'whatsapp', '[T91] cota por canal: e-mail esgotado não trava o WhatsApp');
+  v_ok := false;
+  begin perform fn_mfa_recuperacao_pedir('qa91-admin@teste.local', 'email'); exception when others then v_ok := sqlerrm like 'Muitos pedidos hoje%'; end;
+  perform pg_temp.ok(v_ok, '[T91] cota do e-mail esgotada');
+  -- admin de duas empresas com números diferentes: recusa com texto próprio
+  update conta_membros set papel = 'admin' where conta_id = v_x and email = 'qa91-admin@teste.local';
+  update mfa_recuperacoes set criado_em = criado_em - interval '2 minutes' where email = 'qa91-admin@teste.local' and canal = 'whatsapp';
+  v_ok := false;
+  begin perform fn_mfa_recuperacao_pedir('qa91-admin@teste.local', 'whatsapp');
+  exception when others then v_ok := sqlerrm like 'Seu WhatsApp de recuperação está diferente entre as empresas que você administra%'; end;
+  perform pg_temp.ok(v_ok, '[T91] admin com números diferentes nas empresas que administra');
+  update conta_membros set papel = 'gestor' where conta_id = v_x and email = 'qa91-admin@teste.local';
+  -- plataforma: pelo número da conta da operadora
+  update conta_membros set telefone_e164 = '5571955559106' where conta_id = v_a and email = 'qa-admin@teste.local';
+  update mfa_recuperacoes set criado_em = criado_em - interval '2 minutes' where email = 'qa-admin@teste.local';
+  v_r := fn_mfa_recuperacao_pedir('qa-admin@teste.local', 'whatsapp');
+  perform pg_temp.ok(fn_mfa_recuperacao_regra('qa-admin@teste.local') = 'dois' and v_r->>'destino' = '***9106',
+                     '[T91] plataforma pelo número da conta da operadora: ' || v_r::text);
+  -- admin desativado ou de empresa suspensa não é 'dois'
+  update conta_membros set ativo = false where conta_id = v_z and email = 'qa91-admin@teste.local';
+  perform pg_temp.ok(fn_mfa_recuperacao_regra('qa91-admin@teste.local') <> 'dois', '[T91] admin desativado deixa de ser dois');
+  update conta_membros set ativo = true where conta_id = v_z and email = 'qa91-admin@teste.local';
+  update contas set ativa = false where id = v_z;
+  perform pg_temp.ok(fn_mfa_recuperacao_regra('qa91-admin@teste.local') <> 'dois', '[T91] admin de empresa suspensa deixa de ser dois');
+  update contas set ativa = true where id = v_z;
+
+  -- a regra 'dois' bate com o fn_mfa_exigido (interruptor ligado, global desligado) para todos os e-mails de membros
+  update interno.config set valor = 'false' where chave = 'mfa_obrigatorio';
+  select string_agg(email, ', ') into v_e from (select distinct email from conta_membros
+    union select email from plataforma_admins) m
+   where (fn_mfa_recuperacao_regra(m.email) = 'dois') is distinct from fn_mfa_exigido(m.email);
+  perform pg_temp.ok(v_e is null, '[T91] regra dois diferente do fn_mfa_exigido em: ' || coalesce(v_e, ''));
+  update interno.config set valor = 'false' where chave = 'mfa_obrigatorio_admin';
+end $$;
+select 'REGRESSÃO OK: T1 a T91' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
