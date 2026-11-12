@@ -23,12 +23,14 @@ const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { connection: { search_pa
 // mensagens de texto e botões têm poucos KB; mídia em base64 pode chegar a alguns MB
 const CORPO_MAX_BYTES = 5 * 1024 * 1024;
 
-// mesma lista de interno.fn_erro_infra (migration 152), mais XX000 (erro interno que chega de fora do bloco):
-// 08 conexao, 53 recursos, 40001/40P01 serializacao e deadlock, 55P03/55006 lock, 57P01-57P05 desligamento,
-// 58 sistema, 72000 snapshot, 25006 replica so leitura. 57014 (statement_timeout) nao: funcao lenta estouraria sempre.
+// mesma lista de interno.fn_erro_infra (migration 152): 08 conexao, 53 recursos, 40001/40P01 serializacao e
+// deadlock, 55P03/55006 lock, 57P01-57P05 desligamento, 58 sistema, 72000 snapshot, 25006 replica so leitura.
+// 57014 (statement_timeout) e XX (corrupcao) nao: reenviar daria o mesmo erro.
 const SQLSTATE = /^[0-9A-Z]{5}$/;
-const INFRA = /^(08|53)[0-9A-Z]{3}$|^(40001|40P01|55P03|55006|57P0[1-5]|58000|58030|72000|25006|XX000)$/;
-const TEMPO_MAX = "20s"; // por chamada: a Evolution espera a resposta; o resto vira 503 e reenvio
+const INFRA = /^(08|53)[0-9A-Z]{3}$|^(40001|40P01|55P03|55006|57P0[1-5]|58000|58030|72000|25006)$/;
+const TEMPO_MAX = "20s"; // por chamada: a Evolution espera a resposta
+// espera por linha travada abaixo do teto: vira 55P03 dentro do banco, que conta a tentativa e pede o reenvio
+const LOCK_MAX = "5s";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -60,6 +62,7 @@ Deno.serve(async (req: Request) => {
     // transacao curta com teto de tempo; sql.json envia o objeto como jsonb uma unica vez (sem dupla serializacao)
     const rows = await sql.begin(async (tx) => {
       await tx.unsafe(`set local statement_timeout = '${TEMPO_MAX}'`);
+      await tx.unsafe(`set local lock_timeout = '${LOCK_MAX}'`);
       return await tx`
         select fn_webhook_evolution(${token}, ${sql.json(payload as Parameters<typeof sql.json>[0])}) as resultado
       `;
@@ -82,8 +85,8 @@ Deno.serve(async (req: Request) => {
     const codigo = typeof e?.code === "string" ? e.code : "";
     const msg = typeof e?.message === "string" ? e.message : String(err);
     if (msg.includes("token invalido")) return json({ ok: false, erro: "nao autorizado" }, 401);
-    // so o codigo e o comeco da mensagem vao ao log, nunca o payload
-    console.error("webhook evolution:", codigo || "sem codigo", msg.slice(0, 120));
+    // ao log so o codigo SQL (a mensagem do banco pode citar valor do payload); sem codigo, o erro de rede do driver
+    console.error("webhook evolution:", SQLSTATE.test(codigo) ? codigo : `rede ${codigo} ${msg.slice(0, 80)}`);
     // sem SQLSTATE (ECONNREFUSED, CONNECT_TIMEOUT, CONNECTION_CLOSED...) o banco nem respondeu: reenviar
     if (!SQLSTATE.test(codigo) || INFRA.test(codigo)) return json({ ok: false, erro: "indisponivel" }, 503);
     // erro de regra ou de dado: reenviar daria o mesmo erro

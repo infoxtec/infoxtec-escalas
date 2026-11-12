@@ -2070,9 +2070,10 @@ pelo `arquiteto-dados`; migration 152 e Edge `webhook-evolution`.*
   (`webhook_eventos.wa_msg_id`, índice único parcial); a entrega simultânea espera a primeira e cai no conflito. Só a
   tentativa que falhou por infraestrutura solta a chave. Evento sem id ou de sistema segue como antes.
 - **Limite:** na 3ª falha da mesma mensagem, ou num reenvio que chega mais de 10 min depois dela, o banco desiste,
-  responde 200 e avisa o técnico pelo WhatsApp ("Não consegui processar sua mensagem das HH:MM. Por favor, envie de
+  responde 200 e avisa o técnico pelo WhatsApp (só técnico ativo da conta; desconhecido não recebe) ("Não consegui processar sua mensagem das HH:MM. Por favor, envie de
   novo."). A 1ª entrega atrasada (celular sem rede) processa normalmente.
-- **Teto por chamada:** 20 s (`statement_timeout` local na Edge). A resposta nunca leva o resultado nem o erro; 503 com
+- **Teto por chamada:** 20 s (`statement_timeout` local na Edge) e espera por lock de 5 s (`lock_timeout`): banco
+  travado vira `55P03` dentro do bloco (conta a tentativa) em vez de `57014`, que não é capturável e se perderia. A resposta nunca leva o resultado nem o erro; 503 com
   corpo fixo; payload grande demais passa de 413 para 422 (a Evolution não reenvia 4xx da lista dela).
 - **Evolution:** `WEBHOOK_RETRY_MAX_ATTEMPTS=5` e `WEBHOOK_RETRY_MAX_DELAY_SECONDS=120` no compose (padrão da v2: 10
   tentativas, teto de 300 s; nomes do código-fonte da Evolution, versão sem suporte ignora). Aplicar no servidor é do
@@ -2080,5 +2081,6 @@ pelo `arquiteto-dados`; migration 152 e Edge `webhook-evolution`.*
 - **Risco residual:** os reenvios ficam na memória da Evolution; se ela reiniciar durante a queda do banco, a mensagem
   se perde como antes. Retenção do log (`retencao_webhook_dias`) passa a ter mínimo de 1 dia, porque é o controle de
   reenvio.
-- **Pendências (P2):** item de saúde no painel separando "reprocessar" de erro de regra; log do `fn_evo_post` com o
+- **Pendências (P2):** `fn_ponto_wh_ajuste` ainda engole a infraestrutura no `when others` em volta de
+  `fn_ponto_justificativa_criar` (fecha a conversa e avisa o funcionário, sem reenvio; `arquiteto-dados`); item de saúde no painel separando "reprocessar" de erro de regra; log do `fn_evo_post` com o
   telefone inteiro na homologação.

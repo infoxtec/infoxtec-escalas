@@ -263,9 +263,9 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `messageStubType`.
 - `fn_webhook_evolution`: `insert … on conflict do nothing`; sem linha → grava `reenvio ignorado` (payload só com o id) e
   devolve `{ignorado: 'reenvio'}`. Infraestrutura no bloco → `ERRO (reprocessar) <sqlstate>`, chave solta e
-  `{reprocessar: true}` (a Edge responde 503); na 3ª → `ERRO (desistiu)`; reenvio com `messageTimestamp` mais de 10 min
-  atrás → `reenvio atrasado`. Os dois últimos avisam o técnico (`interno.fn_webhook_avisar_perda`, só número
-  `@s.whatsapp.net`). Regra ou dado → `ERRO: …`, como antes.
+  `{reprocessar: true}` (a Edge responde 503; ela põe `lock_timeout` 5 s e `statement_timeout` 20 s); na 3ª → `ERRO (desistiu)`; reenvio com `messageTimestamp` mais de 10 min
+  atrás → `reenvio atrasado`. Os dois últimos avisam o técnico (`interno.fn_webhook_avisar_perda`, só técnico ativo
+  da conta). Regra ou dado → `ERRO: …`, como antes.
 - `fn_ponto_wh`, `fn_ponto_he_resposta` e o bloco do ponto no webhook sobem a infraestrutura (`raise`); o gestor só
   recebe a mensagem de regra (P0001) da hora extra, nunca o detalhe técnico.
 - `fn_validar_config`: `retencao_webhook_dias` ≥ 1. Regressão T92.

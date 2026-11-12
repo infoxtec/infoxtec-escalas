@@ -7,14 +7,16 @@
 -- Na 3ª falha da mesma mensagem, ou num reenvio que chega mais de 10 min depois, o banco desiste e avisa o técnico.
 -- Erro de regra (P0001, dado) segue como hoje: 200, sem reenvio (reenviar não muda o resultado).
 --
--- O Supabase CLI não abre transação para a migration: lock_timeout de sessão, para não enfileirar o webhook.
+-- lock_timeout de sessão, para não enfileirar o webhook (vale com ou sem a transação implícita do CLI; o arquivo
+-- inteiro roda num pipeline só, por isso nada de concurrently). Os "if not exists" deixam rodar de novo.
 set lock_timeout = '5s';
 
 -- 1. Classificação única de erro de infraestrutura (usada no banco; a Edge repete a lista para o que vem de fora)
 --    08 conexão, 40001/40P01 serialização e deadlock, 53 recursos, 55P03/55006 lock e objeto em uso,
 --    57P01-57P05 desligamento e conexão perdida, 58 sistema, 72000 snapshot, 25006 réplica só leitura (failover).
 --    Fora de propósito: XX (corrupção, reenviar não conserta), 54 (limite de programa), 57014 (statement_timeout de
---    função lenta estouraria sempre; nem é capturável por "when others").
+--    função lenta estouraria sempre; nem é capturável por "when others"). A Edge põe lock_timeout de 5 s abaixo do
+--    statement_timeout de 20 s: a espera por linha travada vira 55P03 dentro do bloco, conta a tentativa e desiste na 3ª.
 create or replace function interno.fn_erro_infra(p_sqlstate text)
 returns boolean
 language sql
@@ -29,7 +31,8 @@ $$;
 -- 2. Controle de reenvio no próprio log
 --    wa_msg_id: a chave única (conta + id da mensagem); fica nula na tentativa que falhou por infraestrutura.
 --    wa_msg_ref: o mesmo id, sempre gravado, para contar as tentativas.
---    O log é pequeno (retenção retencao_webhook_dias): índice comum, sem concurrently.
+--    O log é pequeno (retenção retencao_webhook_dias): índice comum, sem concurrently. Medido pelo arquiteto-dados com
+--    330 mil linhas (30 dias): 190 ms por índice, 8,8 MB cada; messages.update (a maioria) fica fora dos dois.
 alter table interno.webhook_eventos add column if not exists wa_msg_id text;
 alter table interno.webhook_eventos add column if not exists wa_msg_ref text;
 create unique index if not exists webhook_eventos_msg_uk on interno.webhook_eventos (conta_id, wa_msg_id)
@@ -67,16 +70,21 @@ begin
   -- mensagem com conteúdo e id (migration 152): é ela que o reenvio poderia processar duas vezes. Evento de
   -- sistema (messageStubType) ou sem message não tem controle: segue como antes.
   if v_evento = 'messages.upsert' and jsonb_typeof(p_payload->'data'->'message') = 'object'
-     and p_payload->'data'->'messageStubType' is null then
+     and p_payload->'data'->>'messageStubType' is null then   -- ->>: o JSON null também conta como ausente
     v_id := nullif(left(p_payload->'data'->'key'->>'id', 128), '');
   end if;
   begin
     v_ts := to_timestamp((p_payload->'data'->>'messageTimestamp')::bigint);
   exception when others then v_ts := null;   -- carimbo ausente ou fora do formato: sem controle de atraso
   end;
-  v_tel := case when p_payload->'data'->'key'->>'remoteJid' ~ '^\d{10,15}@s\.whatsapp\.net$'
-                 and coalesce((p_payload->'data'->'key'->>'fromMe')::boolean, false) is false
-                then split_part(p_payload->'data'->'key'->>'remoteJid', '@', 1) end;
+  -- número do remetente para o aviso de perda: a mesma busca do ponto (o endereço pode chegar como LID)
+  if not coalesce((p_payload->'data'->'key'->>'fromMe')::boolean, false)
+     and coalesce(p_payload->'data'->'key'->>'remoteJid', '') !~ '@(g\.us|broadcast|newsletter)$' then
+    select split_part(j, '@', 1) into v_tel
+      from unnest(array[p_payload->'data'->'key'->>'remoteJid', p_payload->'data'->'key'->>'remoteJidAlt',
+                        p_payload->'data'->'key'->>'senderPn', p_payload->'data'->>'sender']) as j
+     where j ~ '^\d{10,15}@s\.whatsapp\.net$' limit 1;
+  end if;
 
   -- LGPD: a localização do ponto já fica na marcação; o log do webhook não guarda outra cópia
   if v_pl->'data'->'message' ?| array['locationMessage', 'liveLocationMessage'] then
@@ -168,15 +176,19 @@ begin
   return v_res;
 end $function$;
 
--- Aviso ao técnico de que a mensagem dele não foi processada (desistência ou reenvio atrasado). Só para número de
--- telefone de verdade (@s.whatsapp.net); falha no aviso não derruba o registro.
+-- Aviso ao técnico de que a mensagem dele não foi processada (desistência ou reenvio atrasado). Só para técnico ativo
+-- da conta (número de telefone de verdade, @s.whatsapp.net): desconhecido não recebe resposta. Falha no aviso não
+-- derruba o registro.
 create or replace function interno.fn_webhook_avisar_perda(p_conta uuid, p_telefone text, p_quando timestamptz)
 returns void
 language plpgsql
 set search_path = interno, public, extensions, pg_temp
 as $function$
 begin
-  if p_telefone is null then return; end if;
+  if p_telefone is null or not exists (select 1 from tecnicos t where t.conta_id = p_conta and t.ativo
+                                         and fn_tel_canonico(t.telefone_e164) = fn_tel_canonico(p_telefone)) then
+    return;
+  end if;
   perform fn_wa_texto_na_conta(p_conta, p_telefone,
     'Não consegui processar sua mensagem'
     || coalesce(' das ' || to_char(p_quando at time zone coalesce(fn_config('fuso'), 'America/Bahia'), 'HH24:MI'), '')

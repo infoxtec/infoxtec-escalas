@@ -5431,9 +5431,9 @@ begin
   update interno.config set valor = 'false' where chave = 'mfa_obrigatorio_admin';
 end $$;
 
-create or replace function pg_temp.t92(p_id text, p_quando timestamptz) returns jsonb language sql as $$
+create or replace function pg_temp.t92(p_id text, p_quando timestamptz, p_tel text default '5571966669292') returns jsonb language sql as $$
   select interno.fn_webhook_evolution(repeat('a', 64), jsonb_build_object('event', 'messages.upsert', 'instance', 'qa-operadora',
-    'data', jsonb_build_object('key', jsonb_build_object('id', p_id, 'remoteJid', '5571966669292@s.whatsapp.net', 'fromMe', false),
+    'data', jsonb_build_object('key', jsonb_build_object('id', p_id, 'remoteJid', p_tel || '@s.whatsapp.net', 'fromMe', false),
       'message', jsonb_build_object('conversation', 'oi'),
       'messageTimestamp', extract(epoch from coalesce(p_quando, now()))::bigint))) $$;
 
@@ -5450,6 +5450,12 @@ begin
   return new;
 end $$;
 create trigger qa_t92 before update on interno.webhook_eventos for each row execute function interno.qa_t92_falhar();
+create or replace function interno.qa_t92_ponto() returns trigger language plpgsql as $$
+begin
+  if exists (select 1 from qa where k = 't92_ponto') then raise exception 'lock QA T92' using errcode = '55P03'; end if;
+  return new;
+end $$;
+create trigger qa_t92_ponto before insert or update on interno.ponto_conversas for each row execute function interno.qa_t92_ponto();
 do $$
 declare
   v_tok text := repeat('a', 64);
@@ -5458,7 +5464,12 @@ declare
 begin
   perform set_config('request.jwt.claims', '', true);
   perform set_config('trilha.conta', '', true);
-  delete from qa where k in ('t92_falhar', 'w62:5571966669292');
+  delete from qa where k in ('t92_falhar', 'w62:5571966669292', 'w62:5571966669293');
+  -- o aviso de perda só vai a técnico ativo da conta
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, conta_id)
+  values ('QA T92', '5571966669292', true, true, pg_temp.cpf('920000001'),
+          (select id from empresas where conta_id = '00000000-0000-0000-0000-000000000001' order by id limit 1), false,
+          '00000000-0000-0000-0000-000000000001');
   perform pg_temp.ok(fn_erro_infra('55P03') and fn_erro_infra('40P01') and fn_erro_infra('08006') and fn_erro_infra('53300')
                      and not fn_erro_infra('P0001') and not fn_erro_infra('23505') and not fn_erro_infra('XX000')
                      and not fn_erro_infra('57014') and not fn_erro_infra(null), '[T92] classificação de infraestrutura');
@@ -5510,9 +5521,17 @@ begin
   v_r := pg_temp.t92('QA-T92-F', null);
   delete from qa where k = 't92_falhar';
   perform pg_temp.ok(v_r->>'erro' = 'desistiu' and coalesce(v_r->>'reprocessar', '') = ''
-                     and (select v like 'Não consegui processar sua mensagem%' from qa where k = 'w62:5571966669292')
+                     and (select v like '%Não consegui processar sua mensagem%' from qa where k = 'w62:5571966669292')
                      and pg_temp.t92('QA-T92-F', null)->>'ignorado' = 'reenvio', '[T92] desiste na 3ª: ' || v_r::text
                      || ' / ' || coalesce((select v from qa where k = 'w62:5571966669292'), '-'));
+
+  -- desconhecido (não é técnico) não recebe o aviso
+  insert into qa values ('t92_falhar', '55P03');
+  perform pg_temp.t92('QA-T92-F2', null, '5571966669293'); perform pg_temp.t92('QA-T92-F2', null, '5571966669293');
+  v_r := pg_temp.t92('QA-T92-F2', null, '5571966669293');
+  delete from qa where k = 't92_falhar';
+  perform pg_temp.ok(v_r->>'erro' = 'desistiu' and not exists (select 1 from qa where k = 'w62:5571966669293'),
+                     '[T92] desconhecido sem aviso');
 
   -- g) reenvio que chega mais de 10 min depois da mensagem não processa e avisa; a 1ª entrega atrasada processa
   delete from qa where k = 'w62:5571966669292';
@@ -5523,10 +5542,17 @@ begin
   delete from qa where k = 't92_falhar';
   v_r := pg_temp.t92('QA-T92-G', now() - interval '20 minutes');
   perform pg_temp.ok(v_r->>'ignorado' = 'reenvio atrasado'
-                     and (select v like 'Não consegui processar sua mensagem das %' from qa where k = 'w62:5571966669292'),
+                     and (select v like '%Não consegui processar sua mensagem das %' from qa where k = 'w62:5571966669292'),
                      '[T92] reenvio atrasado: ' || v_r::text);
 
   -- h) ponto e hora extra devolvem a infraestrutura para o reenvio; ao gestor, só a mensagem de regra
+  insert into qa values ('t92_ponto', '1');
+  v_r := fn_webhook_evolution(v_tok, '{"event":"messages.upsert","instance":"qa-operadora","data":{"key":{"id":"QA-T92-P","remoteJid":"5571966669292@s.whatsapp.net","fromMe":false},"message":{"conversation":"ponto"}}}');
+  delete from qa where k = 't92_ponto';
+  perform pg_temp.ok((v_r->>'reprocessar')::boolean, '[T92] lock no ponto pede reenvio: ' || coalesce(v_r::text, '-'));
+  -- JSON null no messageStubType não desliga o controle
+  perform fn_webhook_evolution(v_tok, '{"event":"messages.upsert","instance":"qa-operadora","data":{"key":{"id":"QA-T92-N","remoteJid":"5571966669292@s.whatsapp.net"},"messageStubType":null,"message":{"conversation":"x"}}}');
+  perform pg_temp.ok((select wa_msg_id = 'QA-T92-N' from webhook_eventos order by id desc limit 1), '[T92] stub nulo com chave');
   perform pg_temp.ok((select count(*) from pg_proc where proname in ('fn_ponto_wh', 'fn_ponto_he_resposta', 'fn_webhook_evolution')
                         and prosrc ~ 'if fn_erro_infra\(sqlstate\) then raise; end if;') = 3
                      and (select prosrc !~ 'hora extra: '' \|\| sqlerrm\)' from pg_proc where proname = 'fn_ponto_he_resposta'),
@@ -5538,6 +5564,7 @@ begin
   perform pg_temp.ok(v_ok, '[T92] retenção zero recusada');
 end $$;
 drop trigger qa_t92 on interno.webhook_eventos;
+drop trigger qa_t92_ponto on interno.ponto_conversas;
 select 'REGRESSÃO OK: T1 a T92' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
