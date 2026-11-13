@@ -254,6 +254,13 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 156 (13/11, versão 20261128120000): executa o reinício do ponto e remove a função (decisão 138)
+
+- Só com `ambiente = producao`, instância `infoxtec` e antes de 01/12/2026 chama `fn_ponto_reiniciar_modulo`; fora
+  disso (CI, homologação, prazo vencido) só avisa. Sempre `drop function if exists interno.fn_ponto_reiniciar_modulo`.
+  Fica `interno.ponto_reinicios`. Regressão T94 reescrita: função ausente, nenhuma função com `disable trigger` ou
+  `session_replication_role`, as 14 travas de truncate ligadas, truncate e delete recusados, empresa nova no NSR 1 e 2.
+
 ### Migration 155 (13/11, versão 20261127120000): reinício do módulo de ponto (decisão 138)
 
 - `interno.ponto_reinicios` (plataforma, RLS, sem privilégio; imutável por gatilho de linha e de truncate): feito_em,
