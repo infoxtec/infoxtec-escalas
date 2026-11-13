@@ -5760,6 +5760,14 @@ begin
   exception when others then v_ok := sqlerrm like '%Portaria%' or sqlerrm = 'apagou' and not exists (select 1 from interno.ponto_marcacoes); end;
   perform pg_temp.ok(v_ok, '[T94] delete de marcação recusado');
   v_ok := false;
+  begin update interno.ponto_marcacoes set tipo = tipo where nsr = (select min(nsr) from interno.ponto_marcacoes); raise exception 'alterou';
+  exception when others then v_ok := sqlerrm like '%Portaria%' or sqlerrm = 'alterou' and not exists (select 1 from interno.ponto_marcacoes); end;
+  perform pg_temp.ok(v_ok, '[T94] update de marcação recusado');
+  v_ok := false;
+  begin update interno.ponto_reinicios set motivo = motivo || '.'; raise exception 'alterou';
+  exception when others then v_ok := sqlerrm like '%Portaria%' or sqlerrm = 'alterou' and not exists (select 1 from interno.ponto_reinicios); end;
+  perform pg_temp.ok(v_ok, '[T94] update do registro de reinício recusado');
+  v_ok := false;
   begin truncate interno.ponto_reinicios; exception when others then v_ok := sqlerrm like '%Portaria%'; end;
   perform pg_temp.ok(v_ok, '[T94] truncate do registro de reinício recusado');
   -- empresa nova: a cadeia começa no NSR 1 com hash anterior zerado e segue para o 2
