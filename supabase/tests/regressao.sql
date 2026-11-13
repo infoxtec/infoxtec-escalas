@@ -218,7 +218,8 @@ declare
     'app_plataforma_testar_alerta', 'app_plataforma_alertas', 'app_plataforma_monitor', 'app_plataforma_salvar_monitor',
     'app_plataforma_canais', 'app_plataforma_salvar_canal'];
   v_tb_plataforma text[] := array['config', 'backlog_itens', 'motor_estado', 'saude_testes', 'ponto_geo', 'webhook_token_trocas',
-    'plataforma_log', 'feriados', 'ponto_motivos', 'evolution_vigia', 'alertas_email', 'mfa_recuperacoes', 'saude_termos'];
+    'plataforma_log', 'feriados', 'ponto_motivos', 'evolution_vigia', 'alertas_email', 'mfa_recuperacoes', 'saude_termos',
+    'ponto_reinicios'];
   v text; n int; v_ok boolean;
 begin
   -- a lista da plataforma precisa existir (função ou tabela renomeada/removida obriga a revisar a classificação)
@@ -5726,7 +5727,85 @@ begin
   perform pg_temp.ok((select prosrc ~ 'if fn_erro_infra\(sqlstate\) then raise; end if;' from pg_proc where proname = 'fn_ponto_wh_ajuste'),
                      '[T93] ajuste sobe a infraestrutura');
 end $$;
-select 'REGRESSÃO OK: T1 a T93' as resultado,
+
+-- T94 reinício do módulo de ponto (migration 155, decisão 138): só com a frase, o motivo e antes de 01/12/2026; apaga
+-- todo o ponto de todas as contas num truncate só; técnicos, escalas, motivos e configurações ficam; travas religadas;
+-- a cadeia recomeça no NSR 1; o registro do reinício é imutável; ninguém além do dono executa
+do $$
+declare
+  c_frase text := 'APAGAR TODOS OS REGISTROS DE PONTO DE TODAS AS CONTAS';
+  v_mantidas text[] := array['ponto_motivos', 'ponto_reinicios'];
+  v text; v_ok boolean; v_r jsonb; v_tec bigint; v_esc bigint; v_mot bigint; v_t uuid; c jsonb; v_n bigint; t record;
+begin
+  perform set_config('request.jwt.claims', '', true);
+  perform pg_temp.ok(not has_function_privilege('authenticated', 'interno.fn_ponto_reiniciar_modulo(text,text)', 'execute')
+                     and not has_function_privilege('anon', 'interno.fn_ponto_reiniciar_modulo(text,text)', 'execute')
+                     and not has_function_privilege('service_role', 'interno.fn_ponto_reiniciar_modulo(text,text)', 'execute')
+                     and not (select prosecdef from pg_proc where proname = 'fn_ponto_reiniciar_modulo'),
+                     '[T94] só o dono executa (security invoker)');
+  v_ok := false;
+  begin perform interno.fn_ponto_reiniciar_modulo('apagar', 'Motivo com mais de vinte caracteres'); exception when others then v_ok := sqlerrm like '%frase%'; end;
+  perform pg_temp.ok(v_ok, '[T94] frase errada recusada');
+  v_ok := false;
+  begin perform interno.fn_ponto_reiniciar_modulo(c_frase, 'curto'); exception when others then v_ok := sqlerrm like '%motivo%'; end;
+  perform pg_temp.ok(v_ok, '[T94] motivo curto recusado');
+  -- as travas da Portaria valem antes (o truncate comum é recusado)
+  v_ok := false;
+  begin truncate interno.ponto_marcacoes cascade; exception when others then v_ok := sqlerrm like '%Portaria%'; end;
+  perform pg_temp.ok(v_ok, '[T94] truncate comum recusado pela trava');
+  if now() >= '2026-12-01 00:00:00 America/Sao_Paulo'::timestamptz then
+    v_ok := false;
+    begin perform interno.fn_ponto_reiniciar_modulo(c_frase, 'Reinício de teste da regressão T94'); exception when others then v_ok := sqlerrm like '%01/12/2026%'; end;
+    perform pg_temp.ok(v_ok, '[T94] depois de 01/12/2026 o reinício é recusado');
+    return;
+  end if;
+  -- marcação a partir de 01/12 trava o reinício (o bloco desfaz a alteração de teste)
+  v_ok := false;
+  begin
+    alter table interno.ponto_marcacoes disable trigger trg_ponto_marcacoes_imutavel;
+    update interno.ponto_marcacoes set momento = '2026-12-02 12:00+00' where nsr = (select min(nsr) from interno.ponto_marcacoes);
+    perform interno.fn_ponto_reiniciar_modulo(c_frase, 'Reinício de teste da regressão T94');
+  exception when others then v_ok := sqlerrm like '%a partir de 01/12/2026%';
+  end;
+  perform pg_temp.ok(v_ok, '[T94] marcação de dezembro trava o reinício');
+
+  select count(*) into v_tec from tecnicos;
+  select count(*) into v_esc from escalas;
+  select count(*) into v_mot from ponto_motivos;
+  perform pg_temp.ok((select count(*) from ponto_marcacoes) > 0, '[T94] há ponto para apagar');
+  v_r := interno.fn_ponto_reiniciar_modulo(c_frase, 'Reinício de teste da regressão T94');
+  perform pg_temp.ok((v_r->>'reinicio') is not null and (v_r->'apagadas'->>'ponto_marcacoes')::bigint > 0, '[T94] devolve as contagens');
+  -- toda tabela ponto_* fora das que ficam está vazia (tabela nova do ponto obriga a classificar)
+  v := null;
+  for t in select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+            where n.nspname = 'interno' and c.relkind = 'r' and c.relname like 'ponto\_%' and c.relname <> all (v_mantidas) loop
+    execute format('select count(*) from interno.%I', t.relname) into v_n;
+    if v_n <> 0 then v := concat_ws(', ', v, t.relname); end if;
+  end loop;
+  perform pg_temp.ok(v is null, '[T94] tabelas do ponto vazias (ou classificar no reinício): ' || coalesce(v, ''));
+  perform pg_temp.ok((select count(*) from tecnicos) = v_tec and (select count(*) from escalas) = v_esc
+                     and (select count(*) from ponto_motivos) = v_mot, '[T94] técnicos, escalas e motivos intactos');
+  perform pg_temp.ok(not exists (select 1 from pg_trigger g join pg_class c on c.oid = g.tgrelid join pg_namespace n on n.oid = c.relnamespace
+                                  where n.nspname = 'interno' and c.relname like 'ponto\_%' and not g.tgisinternal and g.tgenabled = 'D'),
+                     '[T94] travas religadas');
+  v_ok := false;
+  begin truncate interno.ponto_marcacoes cascade; exception when others then v_ok := sqlerrm like '%Portaria%'; end;
+  perform pg_temp.ok(v_ok, '[T94] trava vale de novo depois do reinício');
+  -- registro imutável, com a âncora por empresa e sem dado de pessoa
+  perform pg_temp.ok((select jsonb_array_length(empresas) >= 1 and empresas::text !~ 'cpf|nome|telefone'
+                        from ponto_reinicios order by id desc limit 1), '[T94] registro com a âncora por empresa');
+  v_ok := false;
+  begin update ponto_reinicios set motivo = motivo || '.'; exception when others then v_ok := sqlerrm like '%Portaria%'; end;
+  perform pg_temp.ok(v_ok, '[T94] registro do reinício imutável');
+  -- a cadeia recomeça: NSR 1 com hash anterior zerado, depois NSR 2
+  select tc.id into v_t from tecnicos tc where tc.ativo and tc.cpf is not null and tc.empresa_id is not null order by tc.id limit 1;
+  c := fn_ponto_registrar(v_t, 'entrada', 'app', -12.930101, -38.450101, 10, '{"qa":"T94-1"}');
+  perform pg_temp.ok((c->>'nsr')::bigint = 1 and (select hash_anterior = repeat('0', 64) from ponto_marcacoes m
+                        where m.nsr = 1 and m.tecnico_id = v_t), '[T94] NSR recomeça em 1: ' || c::text);
+  c := fn_ponto_registrar(v_t, 'saida', 'app', -12.930101, -38.450101, 10, '{"qa":"T94-2"}');
+  perform pg_temp.ok((c->>'nsr')::bigint = 2, '[T94] e segue para 2: ' || c::text);
+end $$;
+select 'REGRESSÃO OK: T1 a T94' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

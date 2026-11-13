@@ -2124,3 +2124,32 @@ revisado antes do código pelo `seguranca` e pelo `arquiteto-dados`; migration 1
   `opt_in` também em `fn_wh_mensagem` (técnico sem cadastro de ponto ainda recebe resposta das escalas; o PO decide);
   na homologação, status sem número reconhecível (só LID) ainda entra (id e status); a saúde do painel contar só o
   que foi processado e avisar recusa por número errado nas últimas 24 h (`arquiteto-dados`).
+
+## 138. Reinício do módulo de ponto antes do uso oficial (01/12/2026)
+
+*13/11/2026 — pedido do responsável. Desenho revisado antes do código pelo `seguranca`, pelo `arquiteto-dados` e pelo
+`juridico` (persona de apoio, sem OAB; o parecer do advogado, item 076, segue pendente: o risco de seguir sem ele é do
+responsável, decisão 58).*
+
+- **O quê:** todos os registros do módulo de ponto de **todas as contas** da produção são apagados, **sem cópia**:
+  marcações (NSR e cadeia), ajustes, abonos, justificativas e atestados, pedidos de hora extra, espelhos e PDFs,
+  fechamentos, AFDs, documentos, ciências, conversas, códigos, sessões, acessos e o cache de bairro e cidade. **Nada
+  muda nas escalas; nenhum técnico é removido**; ficam motivos de ajuste e configurações das empresas.
+- **Por quê é permitido:** todos eram teste. O responsável confirmou em 13/11 as quatro condições do `juridico`:
+  nenhum técnico real bateu ponto em dia de trabalho real pelo sistema; nada (espelho, AFD, fechamento) entrou em
+  folha ou serviu para pagar ou descontar; nenhum atestado real; nenhuma reclamação trabalhista ou fiscalização.
+  Registro de teste não é registro de jornada (CLT art. 74; Portaria 671), e a LGPD indica eliminar (arts. 15 e 16).
+- **Como:** função travada (migration 155) executada e removida pela 156, pelo Aplicar com aprovação do responsável,
+  logo depois de um backup disparado à mão e com ninguém batendo ponto. Um `truncate` só (há ciclos de chave), com os
+  gatilhos de TRUNCATE desligados e religados na mesma transação; o NSR de cada empresa recomeça em 1 (o sistema e a
+  conferência do backup só aceitam cadeia nova a partir do 1).
+- **Backup:** a âncora aceita a cadeia recomeçada só com o registro em `ponto_reinicios` **e** a autorização fora do
+  banco (`.github/workflows/reinicios-ponto-autorizados.txt`, janela 14/11 a 01/12 UTC, merge do responsável). A restauração
+  mensal pula a âncora anterior ao reinício.
+- **Cópias residuais (opção do responsável: vencer pela retenção):** artefatos do backup (30 dias) e cópias no Drive e
+  no OneDrive (30 diárias e 12 mensais, até cerca de 11/2027), cifradas e de acesso restrito; backup do Supabase (cerca
+  de 7 dias); `webhook_eventos` e `notificacoes` com mensagens do ponto (até 30 dias); exportações de conta no bucket
+  `exportacoes` até vencerem. **Restaurar backup anterior ao reinício exige repetir o reinício antes de reabrir.**
+- **Depois:** AFDs, espelhos e comprovantes gerados até 30/11 são de teste e não valem (a numeração recomeça);
+  todos dão nova ciência das regras do ponto no primeiro uso oficial. Ata em `docs/atas/2026-11-reinicio-do-ponto.md`.
+- **Teste só na homologação** (decisão 137): nenhum teste no ambiente de produção a partir de 13/11.

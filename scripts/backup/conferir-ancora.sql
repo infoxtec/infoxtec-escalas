@@ -52,6 +52,21 @@ begin
   for a in select * from ancora where ultimo > 0 loop
     execute pg_catalog.format('select exists (select 1 from %I.ponto_marcacoes where empresa_id = $1 and nsr = $2 and hash = $3)', v_esq)
        into v_ha using a.empresa_id, a.ultimo, a.ultimo_hash;
+    -- âncora anterior ao reinício autorizado do módulo de ponto (decisão 138): a marcação dela foi apagada; vale se o
+    -- banco restaurado tem o registro do reinício, feito depois dela, com aquela empresa e NSR igual ou maior (a
+    -- autorização fora do banco é conferida no backup diário, ancora-anterior.sh)
+    if not v_ha and pg_catalog.to_regclass(v_esq || '.ponto_reinicios') is not null then
+      execute pg_catalog.format('select exists (select 1 from %1$I.ponto_reinicios r
+          cross join lateral pg_catalog.jsonb_to_recordset(r.empresas) e(empresa_id uuid, ultimo_nsr bigint, ultimo_hash text)
+          where r.feito_em > $3::timestamptz and e.empresa_id = $1 and e.ultimo_nsr >= $2
+            and coalesce((select pg_catalog.min(m.nsr) from %1$I.ponto_marcacoes m where m.empresa_id = $1), 1) = 1
+            and not exists (select 1 from %1$I.ponto_marcacoes m where m.empresa_id = $1 and m.momento <= r.feito_em))', v_esq)
+         into v_ha using a.empresa_id, a.ultimo, a.gerada_em;
+      if v_ha then
+        raise notice 'âncora de % anterior ao reinício do módulo de ponto: empresa %, NSR % (não conferida)', a.gerada_em, a.empresa_id, a.ultimo;
+        continue;
+      end if;
+    end if;
     if not v_ha then
       raise exception 'âncora de % não confere: empresa %, NSR %', a.gerada_em, a.empresa_id, a.ultimo;
     end if;
