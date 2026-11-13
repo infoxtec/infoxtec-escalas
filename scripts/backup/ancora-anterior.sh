@@ -53,6 +53,10 @@ declare
   v_falt bigint; v_aceitas bigint := 0; v_fora bigint; v_qtd bigint;
 begin
   if v_tem then
+    if (select c.relkind from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+         where n.nspname = v_esq and c.relname = 'ponto_reinicios') is distinct from 'r' then
+      raise exception 'âncora: %.ponto_reinicios não é uma tabela comum', v_esq;
+    end if;
     -- tipos das colunas usadas (ninguém troca a tabela por uma com "=" que sempre concorda)
     if (select pg_catalog.count(*) from pg_catalog.pg_attribute a
          where a.attrelid = pg_catalog.to_regclass(v_esq || '.ponto_reinicios') and not a.attisdropped
