@@ -254,6 +254,27 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 153 (13/11, versão 20261125120000): portão do webhook e ordem do ponto (decisão 137, incidente de 12/11)
+
+- `interno.fn_webhook_portao(conta, evento, payload)`, chamado logo depois do `fn_webhook_conta`: compara o dono da
+  instância (`sender`, só dígitos, sufixo de aparelho aceito) com `evolution_numero` (config, conta 1) ou
+  `conta_canais.numero_esperado`; diferente ou mensagem sem dono → `recusado: instancia em numero errado` (payload só com
+  instância e 4 últimos dígitos do dono) e `{ignorado}`; evento sem dono fora de `messages.*` → `ignorado: sem dono`. Na
+  homologação, sem número esperado, recusa tudo; com ele, mensagem e status fora de `telefones_homologacao`, grupo e
+  status → `descartado: fora da lista`; outros eventos → `ignorado: evento fora do teste`.
+- `interno.fn_webhook_alertar(assunto, texto, janela)`: e-mail pelo `fn_alerta_email` com trava por assunto e teto
+  pela `alertas_email` (1 por hora no número errado, 1 por dia no fora da lista); falha no alerta não muda a resposta.
+- `conta_canais.numero_esperado` (check `^\d{12,13}$`, índice único pela forma canônica; gatilho
+  `tg_conta_canais_numero` recusa o número da conta 1); `fn_validar_config`: `evolution_numero` vazio ou 12–13 dígitos e
+  diferente do de qualquer conta.
+- `ponto_conversas.ultima_msg_em` + gatilho `tg_10_msg_ts` (maior carimbo de `trilha.msg_ts`, que o
+  `fn_webhook_evolution` põe na transação; nunca diminui, nunca no futuro). `fn_ponto_wh` ignora mensagem com carimbo
+  anterior nos ramos do ponto (`ponto: mensagem antiga`) e, para técnico sem `opt_in`, devolve
+  `ponto: sem autorizacao WhatsApp` sem responder nem registrar. `fn_ponto_wh_ajuste` sobe a infraestrutura.
+- Homologação: `retencao_webhook_dias` 7 (só desce). Regressão T93 (T92 fixa o ambiente em produção).
+- **Volta:** recriar `fn_webhook_evolution`, `fn_ponto_wh`, `fn_ponto_wh_ajuste` e `fn_validar_config` com a definição da
+  152; apagar os gatilhos `tg_10_msg_ts` e `tg_conta_canais_numero`. Colunas e índice podem ficar.
+
 ### Migration 152 (12/11, versão 20261124120000): webhook com reenvio seguro (B4, decisão 136)
 
 - `interno.fn_erro_infra(sqlstate)` (imutável): a lista única de erro de infraestrutura (08, 53, 40001, 40P01, 55P03,

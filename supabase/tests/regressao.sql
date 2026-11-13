@@ -5464,6 +5464,8 @@ declare
 begin
   perform set_config('request.jwt.claims', '', true);
   perform set_config('trilha.conta', '', true);
+  -- o reenvio vale nos dois ambientes; aqui como produção sem número esperado (o portão da 153 tem o T93)
+  update config set valor = 'producao' where chave = 'ambiente';
   delete from qa where k in ('t92_falhar', 'w62:5571966669292', 'w62:5571966669293');
   -- o aviso de perda só vai a técnico ativo da conta
   insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, conta_id)
@@ -5565,7 +5567,151 @@ begin
 end $$;
 drop trigger qa_t92 on interno.webhook_eventos;
 drop trigger qa_t92_ponto on interno.ponto_conversas;
-select 'REGRESSÃO OK: T1 a T92' as resultado,
+
+-- T93 portão do webhook e ordem do ponto (migration 153, decisão 137, incidente de 12/11): instância no número
+-- errado recusada sem conteúdo e com alerta limitado; homologação só com os números de teste; mensagem fora de ordem
+-- ignorada nos ramos do ponto (não nas escalas); ponto em silêncio para técnico sem autorização do WhatsApp
+create or replace function pg_temp.t93(p_id text, p_tel text, p_dono text, p_msg jsonb, p_quando timestamptz,
+                                       p_de_mim boolean default false) returns jsonb language sql as $$
+  select interno.fn_webhook_evolution(repeat('a', 64), jsonb_build_object('event', 'messages.upsert', 'instance', 'qa-operadora',
+    'sender', p_dono,
+    'data', jsonb_build_object('key', jsonb_build_object('id', p_id, 'remoteJid', p_tel || '@s.whatsapp.net', 'fromMe', p_de_mim),
+      'message', p_msg, 'messageTimestamp', extract(epoch from p_quando)::bigint))) $$;
+do $$
+declare
+  v_dono text := '5571999930001@s.whatsapp.net';
+  v_t0 timestamptz := now() - interval '1 minute';
+  v_r jsonb; v_ok boolean; v_n int; v_tec uuid; v_x uuid := gen_random_uuid(); v_y uuid := gen_random_uuid();
+  v_alertas int;
+begin
+  perform set_config('request.jwt.claims', '', true);
+  perform set_config('trilha.conta', '', true);
+  update config set valor = 'producao' where chave = 'ambiente';
+  update config set valor = '5571999930001' where chave = 'evolution_numero';
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, conta_id)
+  values ('QA T93', '5571966669393', true, true, pg_temp.cpf('930000001'),
+          (select id from empresas where conta_id = '00000000-0000-0000-0000-000000000001' order by id limit 1), false,
+          '00000000-0000-0000-0000-000000000001') returning id into v_tec;
+  delete from qa where k like 'w62:557196666939%';
+
+  -- a) número dono certo (inclusive com sufixo de aparelho) processa; errado é recusado sem conteúdo
+  v_r := pg_temp.t93('QA-T93-A1', '5571966669393', v_dono, '{"conversation":"oi"}', now());
+  perform pg_temp.ok(coalesce(v_r->>'ignorado', '') <> 'instancia em numero errado', '[T93] dono certo processa: ' || v_r::text);
+  v_r := pg_temp.t93('QA-T93-A2', '5571966669393', '5571999930001:12@s.whatsapp.net', '{"conversation":"oi"}', now());
+  perform pg_temp.ok(coalesce(v_r->>'ignorado', '') <> 'instancia em numero errado', '[T93] dono com sufixo de aparelho');
+  select count(*) into v_alertas from alertas_email where assunto like 'Trilha: WhatsApp no número errado%';
+  v_r := pg_temp.t93('QA-T93-A3', '5571966669393', '5571999930002@s.whatsapp.net', '{"conversation":"segredo"}', now());
+  perform pg_temp.ok(v_r->>'ignorado' = 'instancia em numero errado'
+                     and (select resultado = 'recusado: instancia em numero errado' and payload->'data' is null
+                                 and payload->>'dono_final' = '0002' from webhook_eventos order by id desc limit 1)
+                     and not exists (select 1 from webhook_eventos where payload::text like '%segredo%'),
+                     '[T93] número errado recusado sem conteúdo: ' || v_r::text);
+  perform pg_temp.t93('QA-T93-A4', '5571966669393', '5571999930002@s.whatsapp.net', '{"conversation":"x"}', now());
+  perform pg_temp.ok((select count(*) from alertas_email where assunto like 'Trilha: WhatsApp no número errado%') = v_alertas + 1,
+                     '[T93] um alerta por hora');
+  update alertas_email set criado_em = now() - interval '61 minutes' where assunto like 'Trilha: WhatsApp no número errado%';
+  perform pg_temp.t93('QA-T93-A5', '5571966669393', '5571999930002@s.whatsapp.net', '{"conversation":"x"}', now());
+  perform pg_temp.ok((select count(*) from alertas_email where assunto like 'Trilha: WhatsApp no número errado%'
+                        and criado_em > now() - interval '1 minute') = 1, '[T93] alerta volta depois de uma hora');
+  v_r := pg_temp.t93('QA-T93-A6', '5571966669393', null, '{"conversation":"x"}', now());
+  perform pg_temp.ok(v_r->>'ignorado' = 'instancia em numero errado', '[T93] mensagem sem dono recusada');
+  v_r := fn_webhook_evolution(repeat('a', 64), '{"event":"connection.update","instance":"qa-operadora","data":{"state":"connecting"}}');
+  perform pg_temp.ok(v_r->>'ignorado' = 'sem dono', '[T93] pareamento sem dono só com a marca');
+  -- produção sem número cadastrado: como antes
+  update config set valor = '' where chave = 'evolution_numero';
+  v_r := pg_temp.t93('QA-T93-A7', '5571966669393', '5571999930002@s.whatsapp.net', '{"conversation":"oi"}', now());
+  perform pg_temp.ok(coalesce(v_r->>'ignorado', '') <> 'instancia em numero errado', '[T93] produção sem número segue');
+
+  -- b) homologação: sem número esperado recusa tudo; com ele, só os números de teste têm conteúdo
+  update config set valor = 'homologacao' where chave = 'ambiente';
+  v_r := pg_temp.t93('QA-T93-B1', '5571966669393', v_dono, '{"conversation":"oi"}', now());
+  perform pg_temp.ok(v_r->>'ignorado' = 'instancia em numero errado', '[T93] homologação sem número recusa');
+  update config set valor = '5571999930001' where chave = 'evolution_numero';
+  update config set valor = '5571966669393' where chave = 'telefones_homologacao';
+  v_r := pg_temp.t93('QA-T93-B2', '5571966669393', v_dono, '{"conversation":"oi"}', now());
+  perform pg_temp.ok(coalesce(v_r->>'ignorado', '') not in ('fora da lista', 'instancia em numero errado'), '[T93] número de teste processa: ' || v_r::text);
+  v_r := pg_temp.t93('QA-T93-B3', '5571966660000', v_dono, '{"conversation":"dado real"}', now());
+  perform pg_temp.ok(v_r->>'ignorado' = 'fora da lista'
+                     and (select payload->'data' is null and resultado = 'descartado: fora da lista' from webhook_eventos order by id desc limit 1),
+                     '[T93] fora da lista sem conteúdo: ' || v_r::text);
+  v_r := pg_temp.t93('QA-T93-B4', '5571966660000', v_dono, '{"conversation":"escala real"}', now(), true);
+  perform pg_temp.ok(v_r->>'ignorado' = 'fora da lista', '[T93] o que o número enviou a terceiros também');
+  v_r := fn_webhook_evolution(repeat('a', 64), jsonb_build_object('event', 'messages.upsert', 'instance', 'qa-operadora', 'sender', v_dono,
+           'data', jsonb_build_object('key', jsonb_build_object('id', 'QA-T93-B5', 'remoteJid', '1203630@g.us', 'participant', '5571966669393@s.whatsapp.net'),
+                                      'message', jsonb_build_object('conversation', 'grupo'))));
+  perform pg_temp.ok(v_r->>'ignorado' = 'fora da lista', '[T93] grupo descartado');
+  v_r := fn_webhook_evolution(repeat('a', 64), jsonb_build_object('event', 'messages.update', 'instance', 'qa-operadora', 'sender', v_dono,
+           'data', jsonb_build_object('keyId', 'X', 'remoteJid', '5571966660000@s.whatsapp.net', 'status', 'READ', 'fromMe', true)));
+  perform pg_temp.ok(v_r->>'ignorado' = 'fora da lista', '[T93] status de terceiro descartado');
+  v_r := fn_webhook_evolution(repeat('a', 64), jsonb_build_object('event', 'messages.update', 'instance', 'qa-operadora', 'sender', v_dono,
+           'data', jsonb_build_object('keyId', 'X', 'status', 'READ', 'fromMe', true)));
+  perform pg_temp.ok(coalesce(v_r->>'ignorado', '') <> 'fora da lista', '[T93] status sem número segue');
+  v_r := fn_webhook_evolution(repeat('a', 64), jsonb_build_object('event', 'contacts.update', 'instance', 'qa-operadora', 'sender', v_dono,
+           'data', jsonb_build_object('remoteJid', '5571966660000@s.whatsapp.net', 'pushName', 'Fulano')));
+  perform pg_temp.ok(v_r->>'ignorado' = 'contacts.update'
+                     and (select payload->'data' is null from webhook_eventos order by id desc limit 1), '[T93] outro evento só com a marca');
+
+  -- c) número esperado: formato, unicidade por conta e diferente da conta 1
+  v_ok := false;
+  begin update config set valor = '71999' where chave = 'evolution_numero'; exception when others then v_ok := sqlerrm like 'Valor inválido%'; end;
+  perform pg_temp.ok(v_ok, '[T93] evolution_numero inválido recusado');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  insert into contas (id, nome) values (v_x, 'QA T93 X'), (v_y, 'QA T93 Y');
+  perform app_plataforma_salvar_canal(v_x, 'qa-t93-x', 'chave-qa-93x1234', true);
+  perform app_plataforma_salvar_canal(v_y, 'qa-t93-y', 'chave-qa-93y1234', true);
+  perform set_config('request.jwt.claims', '', true);
+  perform set_config('trilha.conta', '', true);
+  update conta_canais set numero_esperado = '5571988880001' where conta_id = v_x;
+  v_ok := false;
+  begin update conta_canais set numero_esperado = '557188880001' where conta_id = v_y; exception when unique_violation then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T93] o mesmo número (com e sem o 9) em duas contas recusado');
+  v_ok := false;
+  begin update conta_canais set numero_esperado = '5571999930001' where conta_id = v_y; exception when others then v_ok := sqlerrm like '%conta principal%'; end;
+  perform pg_temp.ok(v_ok, '[T93] número da conta 1 recusado numa conta');
+  v_ok := false;
+  begin update config set valor = '5571988880001' where chave = 'evolution_numero'; exception when others then v_ok := sqlerrm like 'Valor inválido%'; end;
+  perform pg_temp.ok(v_ok, '[T93] número de uma conta recusado na conta 1');
+
+  -- d) B4.1: botão do ponto, depois o "ponto" atrasado (carimbo anterior), depois a localização: registra
+  update config set valor = 'producao' where chave = 'ambiente';
+  delete from qa where k like 'w62:557196666939%';
+  v_r := pg_temp.t93('QA-T93-D1', '5571966669393', v_dono,
+           jsonb_build_object('buttonsResponseMessage', jsonb_build_object('selectedButtonId', 'ponto:entrada')), v_t0 + interval '7 seconds');
+  perform pg_temp.ok(v_r->>'acao' = 'ponto_pediu_localizacao', '[T93] botão pede localização: ' || v_r::text);
+  v_r := pg_temp.t93('QA-T93-D2', '5571966669393', v_dono, '{"conversation":"ponto"}', v_t0);
+  perform pg_temp.ok(v_r->>'ignorado' = 'ponto: mensagem antiga'
+                     and (select etapa = 'aguardando_local' from ponto_conversas where tecnico_id = v_tec),
+                     '[T93] "ponto" atrasado ignorado: ' || v_r::text);
+  v_r := pg_temp.t93('QA-T93-D3', '5571966669393', v_dono, '{"conversation":"sim"}', v_t0 + interval '1 second');
+  perform pg_temp.ok(coalesce(v_r->>'ignorado', '') <> 'ponto: mensagem antiga', '[T93] resposta de escala atrasada segue para as escalas: ' || v_r::text);
+  v_r := pg_temp.t93('QA-T93-D4', '5571966669393', v_dono,
+           jsonb_build_object('liveLocationMessage', jsonb_build_object('degreesLatitude', -12.9301, 'degreesLongitude', -38.4501, 'accuracyInMeters', 10)),
+           v_t0 + interval '18 seconds');
+  perform pg_temp.ok(v_r->>'acao' in ('ponto_registrado', 'ponto_erro'), '[T93] localização depois do atraso vale: ' || v_r::text);
+  -- gatilho: sem carimbo o valor fica; carimbo menor não diminui
+  perform set_config('trilha.msg_ts', '', true);
+  update ponto_conversas set expira_em = expira_em where tecnico_id = v_tec;
+  perform set_config('trilha.msg_ts', (v_t0 - interval '1 hour')::text, true);
+  update ponto_conversas set expira_em = expira_em where tecnico_id = v_tec;
+  perform set_config('trilha.msg_ts', '', true);
+  perform pg_temp.ok((select ultima_msg_em >= v_t0 + interval '7 seconds' from ponto_conversas where tecnico_id = v_tec),
+                     '[T93] carimbo da conversa só sobe');
+
+  -- e) sem autorização do WhatsApp: silêncio total no ponto
+  update tecnicos set opt_in = false where id = v_tec;
+  delete from qa where k like 'w62:557196666939%';
+  v_r := pg_temp.t93('QA-T93-E1', '5571966669393', v_dono, '{"conversation":"ponto"}', now());
+  perform pg_temp.ok(v_r->>'ignorado' = 'ponto: sem autorizacao WhatsApp'
+                     and not exists (select 1 from qa where k like 'w62:557196666939%'), '[T93] sem autorização, silêncio: ' || v_r::text);
+  update tecnicos set opt_in = true where id = v_tec;
+  v_r := pg_temp.t93('QA-T93-E2', '5571966669393', v_dono, '{"conversation":"ponto"}', now() + interval '30 seconds');
+  perform pg_temp.ok(v_r->>'acao' = 'ponto_menu', '[T93] com autorização, menu: ' || v_r::text);
+
+  -- f) pedido de ajuste sobe a infraestrutura
+  perform pg_temp.ok((select prosrc ~ 'if fn_erro_infra\(sqlstate\) then raise; end if;' from pg_proc where proname = 'fn_ponto_wh_ajuste'),
+                     '[T93] ajuste sobe a infraestrutura');
+end $$;
+select 'REGRESSÃO OK: T1 a T93' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

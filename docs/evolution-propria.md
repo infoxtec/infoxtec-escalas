@@ -275,6 +275,18 @@ saída dele não é fixo. Ou seja, a restrição é por caminho, não por servid
 | Atualizar a Evolution | trocar `EVOLUTION_IMAGEM` no `.env` por outra versão fixa, `docker compose pull && docker compose up -d` |
 | Atualizações do Ubuntu | `sudo apt update && sudo apt upgrade -y`, uma vez por mês |
 
+**Pareamento de instância (decisão 137, depois do incidente de 12/11):**
+1. Antes de ler o QR, conferir **qual celular** vai ler: cada instância tem número próprio. O celular do número
+   oficial só lê o QR da `infoxtec`.
+2. Logo depois de conectar, no servidor: `curl -s "$EVO/instance/fetchInstances" -H "apikey: $AUTHENTICATION_API_KEY"`
+   e conferir o final do `ownerJid` de cada instância (as duas nunca com o mesmo final).
+3. Cadastrar o número no banco do ambiente (`evolution_numero` na conta 1; `conta_canais.numero_esperado` nas
+   outras). Na homologação, sem esse cadastro, o webhook recusa tudo.
+4. Registrar a data do pareamento no plano. Uma vez por mês, o responsável confere em **WhatsApp → Aparelhos
+   conectados** do celular oficial que só há os aparelhos esperados.
+5. Desconectar instância: `instance/logout` **e** `instance/delete` (só o logout deixa a sessão salva e ela pode
+   voltar). Token novo ao parear de novo.
+
 **Reenvio do webhook (decisão 136, desde 12/11):** o Trilha responde 503 quando o banco falha, e a Evolution reenvia.
 O compose fixa `WEBHOOK_RETRY_MAX_ATTEMPTS=5` e `WEBHOOK_RETRY_MAX_DELAY_SECONDS=120` (padrão da v2: 10 e 300). Para
 conferir no servidor: `docker exec $(docker ps --filter ancestor=evoapicloud/evolution-api -q | head -1) env | grep

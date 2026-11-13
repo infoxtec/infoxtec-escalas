@@ -1285,6 +1285,9 @@ público; `fn_evo_post` falha fechada: o caminho precisa terminar na instância 
 `trilha-homologacao`, a produção nunca por ela, e na homologação mensagem sem destinatário é recusada; o
 `webhook-evolution` confere a mesma regra ao baixar mídia. Ligação automática desligada (`ligacao_ativa = false`,
 sem Twilio; a ligação também passa pela trava); número separado, então um engano não sai pelo número oficial.
+**Revisto em 13/11 (decisão 137):** o "número separado" não se manteve. O QR da instância foi lido pelo celular do
+número oficial, e a homologação recebeu dados da produção desde ao menos 13/10 (incidente de 12/11). A separação agora
+é conferida pelo banco a cada evento (migration 153).
 **Travas dos scripts:** a regressão recusa banco com tarefa ativa no pg_cron (na homologação, pausar o agendador
 antes: o T7 trava as marcações até o fim); a demonstração aceita pg_cron só com `ambiente = homologacao`, o
 `webhook_url` e a instância da homologação. **LGPD:** quem testa é da equipe e concordou; o telefone fica em
@@ -2084,3 +2087,32 @@ pelo `arquiteto-dados`; migration 152 e Edge `webhook-evolution`.*
 - **Pendências (P2):** `fn_ponto_wh_ajuste` ainda engole a infraestrutura no `when others` em volta de
   `fn_ponto_justificativa_criar` (fecha a conversa e avisa o funcionário, sem reenvio; `arquiteto-dados`); item de saúde no painel separando "reprocessar" de erro de regra; log do `fn_evo_post` com o
   telefone inteiro na homologação.
+
+## 137. Portão do webhook pelo número dono da instância, homologação só com os números de teste
+
+*13/11/2026 — incidente de 12/11 (`docs/incidentes/2026-11-12-homologacao-no-numero-da-producao.md`) e B4.1. Desenho
+revisado antes do código pelo `seguranca` e pelo `arquiteto-dados`; migration 153.*
+
+- **Causa:** a instância `trilha-homologacao` foi pareada lendo o QR com o celular do número oficial. O
+  `fn_webhook_conta` confere o nome da instância e o token, não o número conectado. Com duas instâncias no mesmo
+  número, as duas recebem e respondem tudo.
+- **Portão (os dois ambientes):** todo evento da Evolution v2 traz `sender`, o número dono da instância. O banco
+  compara com o número esperado: `evolution_numero` na config (conta 1) e `conta_canais.numero_esperado` (outras
+  contas; formato e unicidade por número canônico no próprio dado; nunca o da conta 1). Diferente, ou mensagem sem
+  dono: grava só a marca (instância e 4 últimos dígitos do dono, que é o número da empresa), alerta por e-mail no
+  máximo 1 vez por hora e responde 200. Na **homologação, sem número cadastrado, nada entra**; na produção, sem número
+  cadastrado, segue como antes até o responsável cadastrar (conferência antes, para não recusar o número certo).
+- **Homologação só com os números de teste:** mensagem e status de número fora de `telefones_homologacao`, grupo,
+  status e o que o próprio número enviou a terceiros ficam só com a marca, e alerta 1 vez por dia. Outros eventos
+  (contatos, conversas, presença) também. Retenção do log da homologação: 7 dias.
+- **Sem md5 de telefone no log:** o espaço de números é pequeno e o md5 se reverte; continua dado pessoal.
+- **B4.1:** a conversa do ponto guarda o carimbo da última mensagem do técnico que consumiu (`ponto_conversas.
+  ultima_msg_em`, por gatilho, a partir do carimbo que o webhook põe na transação; nunca `now()`, nunca no futuro).
+  Mensagem com carimbo anterior é ignorada nos ramos do ponto ("ponto", botão, número do menu, cancelar, localização,
+  ajuste, documento); o que segue para as escalas nunca é descartado por isso.
+- **Ponto sem autorização do WhatsApp (pedido do responsável, 13/11):** a tela promete "o sistema não envia nenhuma
+  mensagem para este técnico", mas o ponto pelo WhatsApp respondia e registrava. Agora: silêncio total, nada é
+  registrado; o app do ponto continua valendo.
+- **`fn_ponto_wh_ajuste`** sobe a falha de infraestrutura para o reenvio (pendência da 152).
+- **Pendências (P2):** vigia comparar o `ownerJid` de cada instância com o esperado; alerta na produção de mensagem
+  `fromMe` que o sistema não enviou; cadastro do número esperado no painel da plataforma (`p_numero`).
