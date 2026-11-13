@@ -191,7 +191,8 @@ begin
   end;
   -- carimbo da mensagem para a ordem da conversa do ponto (gatilho em ponto_conversas, B4.1); nunca no futuro
   if v_evento = 'messages.upsert' then
-    perform set_config('trilha.msg_ts', coalesce(least(v_ts, now() + interval '1 minute')::text, ''), true);
+    -- sem carimbo, nada (least ignora nulo e daria now() + 1 min)
+    perform set_config('trilha.msg_ts', coalesce(case when v_ts is not null then least(v_ts, now() + interval '1 minute') end::text, ''), true);
   end if;
   -- número do remetente para o aviso de perda: a mesma busca do ponto (o endereço pode chegar como LID)
   if not coalesce((p_payload->'data'->'key'->>'fromMe')::boolean, false)
@@ -340,8 +341,8 @@ begin
   end if;
   -- só quem está cadastrado para o ponto (CPF e empresa) conversa com o ponto
   if v_tec.id is null or v_tec.cpf is null or v_tec.empresa_id is null then return null; end if;
-  -- sem a autorização do WhatsApp ("o sistema não envia nenhuma mensagem para este técnico"): silêncio total,
-  -- nada é registrado; o app do ponto continua valendo (migration 153)
+  -- sem a autorização do WhatsApp ("o sistema não envia nenhuma mensagem para este técnico"): não responde nem
+  -- marca; o log do webhook guarda a mensagem pela retenção; o app do ponto continua valendo (migration 153)
   if not coalesce(v_tec.opt_in, false) then return jsonb_build_object('ignorado', 'ponto: sem autorizacao WhatsApp'); end if;
 
   -- trava a conversa: duas localizações simultâneas não geram duas marcações
@@ -351,7 +352,8 @@ begin
   -- o que segue para as escalas não é descartado aqui
   select pc.ultima_msg_em into v_ult from ponto_conversas pc where pc.tecnico_id = v_tec.id;
   begin
-    v_tsm := least(to_timestamp((p_data->>'messageTimestamp')::bigint), now() + interval '1 minute');
+    v_tsm := to_timestamp((p_data->>'messageTimestamp')::bigint);
+    if v_tsm is not null then v_tsm := least(v_tsm, now() + interval '1 minute'); end if;   -- least ignora nulo
   exception when others then v_tsm := null;
   end;
   v_antiga := coalesce(v_tsm < v_ult, false);

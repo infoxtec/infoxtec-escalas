@@ -2111,8 +2111,15 @@ revisado antes do código pelo `seguranca` e pelo `arquiteto-dados`; migration 1
   Mensagem com carimbo anterior é ignorada nos ramos do ponto ("ponto", botão, número do menu, cancelar, localização,
   ajuste, documento); o que segue para as escalas nunca é descartado por isso.
 - **Ponto sem autorização do WhatsApp (pedido do responsável, 13/11):** a tela promete "o sistema não envia nenhuma
-  mensagem para este técnico", mas o ponto pelo WhatsApp respondia e registrava. Agora: silêncio total, nada é
-  registrado; o app do ponto continua valendo.
+  mensagem para este técnico", mas o ponto pelo WhatsApp respondia e registrava. Agora: silêncio total, sem resposta
+  e sem marcação (o log do webhook guarda a mensagem pela retenção); o app do ponto continua valendo.
 - **`fn_ponto_wh_ajuste`** sobe a falha de infraestrutura para o reenvio (pendência da 152).
+- **Teste só na homologação (responsável, 13/11):** nenhum teste no ambiente de produção, nem com o celular de quem é
+  técnico lá; a homologação ganha número próprio de WhatsApp.
+- **Número oficial na produção:** antes do Aplicar da 153 para a produção, o responsável escolhe o caminho para gravar
+  `evolution_numero` (migration 154 com o número da empresa, recomendada pelo `seguranca`, ou o `p_numero` no
+  cadastro do canal) e confere o `sender` dos eventos recentes. Sem isso, a trava da produção fica desligada.
 - **Pendências (P2):** vigia comparar o `ownerJid` de cada instância com o esperado; alerta na produção de mensagem
-  `fromMe` que o sistema não enviou; cadastro do número esperado no painel da plataforma (`p_numero`).
+  `fromMe` que o sistema não enviou; cadastro do número esperado no painel da plataforma (`p_numero`); conferir
+  `opt_in` também em `fn_wh_mensagem` (técnico sem cadastro de ponto ainda recebe resposta das escalas; o PO decide);
+  na homologação, status sem número reconhecível (só LID) ainda entra (id e status).

@@ -275,7 +275,7 @@ saída dele não é fixo. Ou seja, a restrição é por caminho, não por servid
 | Atualizar a Evolution | trocar `EVOLUTION_IMAGEM` no `.env` por outra versão fixa, `docker compose pull && docker compose up -d` |
 | Atualizações do Ubuntu | `sudo apt update && sudo apt upgrade -y`, uma vez por mês |
 
-**Pareamento de instância (decisão 137, depois do incidente de 12/11):**
+**Pareamento de instância (decisão 137, depois do incidente de 12/11).** Teste só na homologação, com número próprio.
 1. Antes de ler o QR, conferir **qual celular** vai ler: cada instância tem número próprio. O celular do número
    oficial só lê o QR da `infoxtec`.
 2. Logo depois de conectar, no servidor: `curl -s "$EVO/instance/fetchInstances" -H "apikey: $AUTHENTICATION_API_KEY"`

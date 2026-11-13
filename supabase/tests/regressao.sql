@@ -5697,6 +5697,16 @@ begin
   perform pg_temp.ok((select ultima_msg_em >= v_t0 + interval '7 seconds' from ponto_conversas where tecnico_id = v_tec),
                      '[T93] carimbo da conversa só sobe');
 
+  -- mensagem sem carimbo não mexe na ordem da conversa (least ignora nulo)
+  delete from ponto_conversas where tecnico_id = v_tec;   -- o gatilho não deixa o carimbo descer
+  v_r := fn_webhook_evolution(repeat('a', 64), jsonb_build_object('event', 'messages.upsert', 'instance', 'qa-operadora', 'sender', v_dono,
+           'data', jsonb_build_object('key', jsonb_build_object('id', 'QA-T93-D5', 'remoteJid', '5571966669393@s.whatsapp.net', 'fromMe', false),
+                                      'message', jsonb_build_object('conversation', 'ponto'))));
+  perform pg_temp.ok(v_r->>'acao' = 'ponto_menu' and (select ultima_msg_em is null from ponto_conversas where tecnico_id = v_tec),
+                     '[T93] sem carimbo não grava ordem: ' || v_r::text);
+  v_r := pg_temp.t93('QA-T93-D6', '5571966669393', v_dono, '{"conversation":"cancelar"}', now());
+  perform pg_temp.ok(v_r->>'acao' = 'ponto_cancelado', '[T93] mensagem seguinte vale: ' || v_r::text);
+
   -- e) sem autorização do WhatsApp: silêncio total no ponto
   update tecnicos set opt_in = false where id = v_tec;
   delete from qa where k like 'w62:557196666939%';
