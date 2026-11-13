@@ -2122,4 +2122,5 @@ revisado antes do código pelo `seguranca` e pelo `arquiteto-dados`; migration 1
 - **Pendências (P2):** vigia comparar o `ownerJid` de cada instância com o esperado; alerta na produção de mensagem
   `fromMe` que o sistema não enviou; cadastro do número esperado no painel da plataforma (`p_numero`); conferir
   `opt_in` também em `fn_wh_mensagem` (técnico sem cadastro de ponto ainda recebe resposta das escalas; o PO decide);
-  na homologação, status sem número reconhecível (só LID) ainda entra (id e status).
+  na homologação, status sem número reconhecível (só LID) ainda entra (id e status); a saúde do painel contar só o
+  que foi processado e avisar recusa por número errado nas últimas 24 h (`arquiteto-dados`).

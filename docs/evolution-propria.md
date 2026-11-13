@@ -281,7 +281,10 @@ saída dele não é fixo. Ou seja, a restrição é por caminho, não por servid
 2. Logo depois de conectar, no servidor: `curl -s "$EVO/instance/fetchInstances" -H "apikey: $AUTHENTICATION_API_KEY"`
    e conferir o final do `ownerJid` de cada instância (as duas nunca com o mesmo final).
 3. Cadastrar o número no banco do ambiente (`evolution_numero` na conta 1; `conta_canais.numero_esperado` nas
-   outras). Na homologação, sem esse cadastro, o webhook recusa tudo.
+   outras). Na homologação, sem esse cadastro, o webhook recusa tudo: é o passo seguinte ao merge da 153. Na
+   produção, um número errado recusa todas as mensagens com 200 (a Evolution não reenvia): depois de cadastrar,
+   conferir que não aparece `recusado: instancia em numero errado` nos minutos seguintes; a volta imediata é deixar
+   o valor vazio.
 4. Registrar a data do pareamento no plano. Uma vez por mês, o responsável confere em **WhatsApp → Aparelhos
    conectados** do celular oficial que só há os aparelhos esperados.
 5. Desconectar instância: `instance/logout` **e** `instance/delete` (só o logout deixa a sessão salva e ela pode

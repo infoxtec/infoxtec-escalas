@@ -4277,6 +4277,8 @@ declare
   v_b uuid := (select v::uuid from qa where k = 'conta_b');
   v_t1 uuid; v_tb uuid; v_ok boolean; v_tok text; v_r jsonb; v_c jsonb;
 begin
+  -- entrada pela instância do cliente como produção sem número esperado (o portão da 153 tem o T93)
+  update config set valor = 'producao' where chave = 'ambiente';
   insert into config (chave, valor) values ('evolution_url', 'https://evo.teste'), ('evolution_instancia', 'qa-operadora'),
     ('webhook_url', 'https://exemplo.invalid/webhook')
     on conflict (chave) do update set valor = excluded.valor;
@@ -4325,7 +4327,7 @@ begin
            'data', jsonb_build_object('key', jsonb_build_object('remoteJid', '5571966660078@s.whatsapp.net', 'fromMe', false,
                                        'id', 'QA-T78'), 'message', jsonb_build_object('conversation', 'oi'))));
   perform pg_temp.ok((select conta_id = v_b from webhook_eventos order by id desc limit 1)
-                     and coalesce(v_r->>'ignorado', '') <> 'numero nao cadastrado', '[T78] entrada na conta da instância: ' || coalesce(v_r::text, '-'));
+                     and coalesce(v_r->>'ignorado', '') not in ('numero nao cadastrado', 'instancia em numero errado'), '[T78] entrada na conta da instância: ' || coalesce(v_r::text, '-'));
   perform set_config('trilha.conta', '', true);
   v_c := fn_evo_canal_tecnico(v_tb);
   perform pg_temp.ok(v_c->>'inst' = 'cliente-b' and v_c->>'chave' = 'chave-qa-123456'
@@ -4334,6 +4336,7 @@ begin
                      and (select prosrc ~ 'set_config\(''trilha.conta'', v_conta::text, true\)' from pg_proc where proname = 'fn_dispatcher_whatsapp'),
                      '[T78] motor e ponto dizem a conta');
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  update config set valor = 'homologacao' where chave = 'ambiente';   -- os testes seguintes seguem como antes
 end $$;
 
 -- T79 multiempresa F5c: fila justa, avisos com a conta e vigia por canal (migration 139) ------------------------------
@@ -5599,6 +5602,8 @@ begin
   perform pg_temp.ok(coalesce(v_r->>'ignorado', '') <> 'instancia em numero errado', '[T93] dono certo processa: ' || v_r::text);
   v_r := pg_temp.t93('QA-T93-A2', '5571966669393', '5571999930001:12@s.whatsapp.net', '{"conversation":"oi"}', now());
   perform pg_temp.ok(coalesce(v_r->>'ignorado', '') <> 'instancia em numero errado', '[T93] dono com sufixo de aparelho');
+  v_r := pg_temp.t93('QA-T93-A2b', '5571966669393', '557199930001@s.whatsapp.net', '{"conversation":"oi"}', now());
+  perform pg_temp.ok(coalesce(v_r->>'ignorado', '') <> 'instancia em numero errado', '[T93] dono sem o 9 (forma canônica)');
   select count(*) into v_alertas from alertas_email where assunto like 'Trilha: WhatsApp no número errado%';
   v_r := pg_temp.t93('QA-T93-A3', '5571966669393', '5571999930002@s.whatsapp.net', '{"conversation":"segredo"}', now());
   perform pg_temp.ok(v_r->>'ignorado' = 'instancia em numero errado'
@@ -5687,7 +5692,7 @@ begin
   v_r := pg_temp.t93('QA-T93-D4', '5571966669393', v_dono,
            jsonb_build_object('liveLocationMessage', jsonb_build_object('degreesLatitude', -12.9301, 'degreesLongitude', -38.4501, 'accuracyInMeters', 10)),
            v_t0 + interval '18 seconds');
-  perform pg_temp.ok(v_r->>'acao' in ('ponto_registrado', 'ponto_erro'), '[T93] localização depois do atraso vale: ' || v_r::text);
+  perform pg_temp.ok(v_r->>'acao' = 'ponto_registrado', '[T93] localização depois do atraso registra: ' || v_r::text);
   -- gatilho: sem carimbo o valor fica; carimbo menor não diminui
   perform set_config('trilha.msg_ts', '', true);
   update ponto_conversas set expira_em = expira_em where tecnico_id = v_tec;

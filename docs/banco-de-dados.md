@@ -271,7 +271,10 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `fn_webhook_evolution` põe na transação; nunca diminui, nunca no futuro). `fn_ponto_wh` ignora mensagem com carimbo
   anterior nos ramos do ponto (`ponto: mensagem antiga`) e, para técnico sem `opt_in`, devolve
   `ponto: sem autorizacao WhatsApp` sem responder nem registrar. `fn_ponto_wh_ajuste` sobe a infraestrutura.
-- Homologação: `retencao_webhook_dias` 7 (só desce). Regressão T93 (T92 fixa o ambiente em produção).
+- Aceito na revisão: o fechamento da conversa de ajuste por escala ou ocorrência nova roda antes da checagem de mensagem
+  antiga (depende do estado, não da mensagem).
+- Homologação: `retencao_webhook_dias` 7 (só desce). Regressão T93 (T78 e T92 fixam o ambiente em produção).
+- **Volta rápida na produção:** `evolution_numero` vazio desliga o portão.
 - **Volta:** recriar `fn_webhook_evolution`, `fn_ponto_wh`, `fn_ponto_wh_ajuste` e `fn_validar_config` com a definição da
   152; apagar os gatilhos `tg_10_msg_ts` e `tg_conta_canais_numero`. Colunas e índice podem ficar.
 
