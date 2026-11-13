@@ -271,3 +271,5 @@ O painel é publicado pela Vercel com Root Directory `web` e as duas variáveis 
 - [x] Verificação em duas etapas obrigatória para administrador (migration 149, painel 3.70.0; produção em 10/11)
 - [x] Sábado de 4h e régua de avisos: +1h lembrete, +2h uma ligação, +3h último e aviso ao gestor, nada depois das 18h (migration 150, painel 3.71.0; produção em 10/11)
 - [x] Recuperação das duas etapas entre empresas: admin com os dois códigos, quem está em mais de uma empresa só pelo e-mail (migration 151, painel 3.72.0; produção em 12/11; procedimento em `docs/procedimentos/recuperar-duas-etapas.md`)
+- [x] Webhook do WhatsApp com reenvio seguro e travas do incidente de 12/11: falha de banco pede reenvio sem duplicar, instância no número errado recusada, homologação só com números de teste, ordem da conversa do ponto, silêncio para quem não autorizou o WhatsApp (migrations 152 a 154; produção em 13/11)
+- [x] Reinício do módulo de ponto antes do uso oficial em 01/12/2026: registros de teste apagados de todas as contas, técnicos e escalas intactos, NSR recomeçando em 1 (migrations 155 e 156; produção em 13/11; ata em `docs/atas/2026-11-reinicio-do-ponto.md`)

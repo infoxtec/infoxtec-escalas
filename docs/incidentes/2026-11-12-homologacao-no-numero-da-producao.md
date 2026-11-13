@@ -20,4 +20,4 @@ Sem telefone nem nome de titular neste arquivo. Decisão 137; controles na migra
 | Limpeza | 857 linhas apagadas da homologação (828 em 12/11, 29 em 13/11), conferidas com zero restantes. Os backups automáticos da homologação ainda as contêm até expirarem: **não restaurar backup da homologação anterior a 13/11 sem repetir a limpeza** |
 | Correções | Migration 153 (decisão 137): portão do webhook pelo número dono da instância, homologação só com os números de teste e retenção de 7 dias; caminho registrado na tabela 1 de `docs/caminhos-de-producao.md` (linha 16); checklist de pareamento em `docs/evolution-propria.md`; decisão 94 corrigida. Antes de parear de novo: número próprio para a homologação e token novo |
 | Pendências | Vigia comparar o `ownerJid` de cada instância com o esperado; alerta na produção de mensagem `fromMe` que o sistema não enviou (P2) |
-| Revisão | Rever este registro na produção da 153 e no fim do reinício do módulo de ponto |
+| Revisão | 13/11: travas (153) e número oficial (154) na produção; registros de teste apagados pelo reinício do módulo de ponto (decisão 138). Falta: número próprio para a homologação e token novo ao parear |

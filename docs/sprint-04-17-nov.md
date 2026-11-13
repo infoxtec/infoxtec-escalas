@@ -80,10 +80,10 @@ observa), e não viu o deploy automático da Vercel nem o token da produção in
 | B1 CSP em observação e B2 MFA para administrador | Na produção (painel 3.71.0, 10/11); a 149 entrou antes pela integração do Supabase (incidente de 09/11) | — |
 | Pedido 09/11: sábado 4h e régua de avisos | Na produção (migration 150, painel 3.71.0, 10/11), testado pelo responsável | — |
 | B3 2FA entre contas | Na produção em 12/11 (migration 151, Edge `recuperar-duas-etapas`, painel 3.72.0); procedimento com telas em `docs/procedimentos/recuperar-duas-etapas.md` | Teste com login real do responsável |
-| B4 Webhook 5xx em falha de infraestrutura | Código pronto (migration 152, Edge `webhook-evolution`, decisão 136); homologação no merge | Teste na homologação; compose da Evolution no servidor (responsável) |
+| B4 Webhook 5xx em falha de infraestrutura | Na produção em 13/11 (migration 152, Edge `webhook-evolution`, decisão 136) | Compose da Evolution no servidor (responsável) |
 | Incidente 12/11: homologação no número oficial | Contido em 13/11 (instância apagada, 857 linhas limpas da homologação); registro em `docs/incidentes/`; sem comunicação à ANPD | Travas na migration 153 |
-| B4.1 ordem do ponto e travas do incidente | Código pronto (migration 153, decisão 137); homologação no merge | Número próprio para a homologação; produção junto com o B4 |
-| Reinício do módulo de ponto (pedido de 13/11) | Parte 1 pronta (154 número oficial, 155 função travada, conferência do backup); decisão 138 e ata | Parte 2 (156) e produção com o B4 |
+| B4.1 ordem do ponto e travas do incidente | Na produção em 13/11 (153 e 154, número oficial; decisão 137) | Número próprio para a homologação |
+| Reinício do módulo de ponto (pedido de 13/11) | Feito na produção em 13/11 às 11:10 UTC (155 e 156; decisão 138); ata em `docs/atas/` | Assinatura da ata |
 | B5–B6 | A fazer | — |
 
 Nenhum item ganha `[x]` no plano até a produção ser conferida pelo responsável.
