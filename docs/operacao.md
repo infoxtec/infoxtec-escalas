@@ -356,6 +356,15 @@ recalcula a partir das marcações. A restauração mensal confere a âncora do 
 ainda guardada** contra o banco restaurado, recalculando a cadeia com uma **cópia de referência da
 fórmula do hash** (`scripts/backup/conferir-ancora.sql`), não com a `fn_ponto_hash` que veio no
 backup — quem trocasse a função na produção é acusado.
+**Reinício do módulo de ponto** (decisão 138, migration 155). A única exceção à âncora: a cadeia recomeçada pelo
+reinício antes do uso oficial (01/12/2026). O backup diário aceita a âncora anterior que sumiu só se a produção tiver
+o registro em `interno.ponto_reinicios` feito depois dela, com o mesmo NSR e hash da empresa, a cadeia atual
+recomeçando no NSR 1 e nenhuma marcação de antes do reinício, **e** se os registros de reinício não passarem do
+autorizado em `.github/workflows/reinicios-ponto-autorizados.txt` (janela por linha; mudar exige o merge do
+responsável). Aceitar avisa com `::warning::`. Por isso o reinício é feito logo depois de um backup disparado à mão,
+com ninguém batendo ponto. A restauração mensal pula (com aviso) a âncora anterior ao reinício que o banco restaurado
+registra. **Restaurar um backup anterior ao reinício traz de volta os registros de teste:** antes de reabrir, repetir
+o reinício (decisão 138).
 Os três scripts rodam com `search_path = pg_catalog, pg_temp` e nomes qualificados, e recusam
 conferir se `ponto_marcacoes` não for a tabela da migration 54 com os tipos exatos das colunas do
 hash (`scripts/backup/tipos-ponto.sql`): função, tipo ou view plantados no `public` não enganam a

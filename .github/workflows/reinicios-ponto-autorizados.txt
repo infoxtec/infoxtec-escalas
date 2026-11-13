@@ -1,0 +1,7 @@
+# Reinícios do módulo de ponto autorizados pelo responsável (decisão 138). Uma linha por reinício: início e fim da
+# janela em que ele pode ter sido feito (AAAA-MM-DD AAAA-MM-DD, UTC). A conferência da âncora do backup
+# (scripts/backup/ancora-anterior.sh) só aceita uma cadeia recomeçada se houver, na produção, um registro em
+# interno.ponto_reinicios dentro de uma destas janelas, e nunca mais registros do que linhas aqui.
+# Este arquivo fica em .github/workflows para que só o responsável faça o merge da mudança (CLAUDE.md, Convenções).
+# O GitHub Actions só lê arquivos .yml e .yaml desta pasta: este não é um workflow.
+2026-11-14 2026-11-30

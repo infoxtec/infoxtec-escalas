@@ -254,6 +254,23 @@ Cinco índices pedidos pelo linter do Supabase (`unindexed_foreign_keys`): `docu
   `ponto_registrar_ciencia`, `ponto_bater` (chama `fn_ponto_registrar` com o funcionário da sessão) e
   `ponto_minhas_marcacoes`. Contingência no painel: `app_ponto_gerar_codigo` (admin, gestor; 15 min).
 
+### Migration 155 (13/11, versão 20261127120000): reinício do módulo de ponto (decisão 138)
+
+- `interno.ponto_reinicios` (plataforma, RLS, sem privilégio; imutável por gatilho de linha e de truncate): feito_em,
+  motivo (20–500), feito_por, `empresas` (por empresa: último NSR e último hash antes do reinício, sem horário nem
+  pessoa) e `contagens` por tabela. Guardado enquanto existir o módulo de ponto.
+- `interno.fn_ponto_reiniciar_modulo(frase, motivo)`, `security invoker`, sem execute para ninguém (só o dono): frase
+  exata, recusa a partir de 01/12/2026 ou com marcação nessa data ou depois; trava as tabelas do ponto (e `tecnicos`,
+  `escalas` em share), grava o registro, desliga só os gatilhos de TRUNCATE das 24 tabelas do ponto, um `truncate ...
+  restart identity restrict`, religa e confere (tudo vazio, técnicos e escalas iguais, nenhum gatilho desligado).
+  Ficam `ponto_motivos`, `tecnicos`, `escalas` e as configurações das empresas. A próxima marcação de cada empresa
+  recebe o NSR 1 (hash anterior zerado). Executada e removida pela 156. Regressão T94.
+
+### Migration 154 (13/11, versão 20261126120000): número oficial da produção
+
+- `evolution_numero` = número oficial, só com `ambiente = producao` e instância `infoxtec` (o CI e a homologação não
+  mudam). Volta: valor vazio.
+
 ### Migration 153 (13/11, versão 20261125120000): portão do webhook e ordem do ponto (decisão 137, incidente de 12/11)
 
 - `interno.fn_webhook_portao(conta, evento, payload)`, chamado logo depois do `fn_webhook_conta`: compara o dono da
