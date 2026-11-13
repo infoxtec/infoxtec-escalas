@@ -2144,7 +2144,7 @@ responsável, decisão 58).*
   gatilhos de TRUNCATE desligados e religados na mesma transação; o NSR de cada empresa recomeça em 1 (o sistema e a
   conferência do backup só aceitam cadeia nova a partir do 1).
 - **Backup:** a âncora aceita a cadeia recomeçada só com o registro em `ponto_reinicios` **e** a autorização fora do
-  banco (`.github/workflows/reinicios-ponto-autorizados.txt`, janela 14 a 30/11, merge do responsável). A restauração
+  banco (`.github/workflows/reinicios-ponto-autorizados.txt`, janela 14/11 a 01/12 UTC, merge do responsável). A restauração
   mensal pula a âncora anterior ao reinício.
 - **Cópias residuais (opção do responsável: vencer pela retenção):** artefatos do backup (30 dias) e cópias no Drive e
   no OneDrive (30 diárias e 12 mensais, até cerca de 11/2027), cifradas e de acesso restrito; backup do Supabase (cerca

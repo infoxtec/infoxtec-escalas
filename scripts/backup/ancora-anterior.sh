@@ -5,8 +5,8 @@
 #
 # Única exceção (decisão 138, migration 155): o reinício do módulo de ponto antes do uso oficial. A linha da âncora
 # que sumiu só é aceita se TUDO valer:
-#   - interno.ponto_reinicios tem um registro feito depois da âncora, com aquela empresa e exatamente o mesmo
-#     NSR e hash (o backup é disparado à mão logo antes do reinício, com o ponto parado);
+#   - interno.ponto_reinicios tem um registro feito depois da âncora, com aquela empresa e NSR maior, ou igual com o
+#     mesmo hash (o backup é disparado à mão logo antes; uma marcação no meio não trava os backups para sempre);
 #   - a cadeia atual da empresa recomeçou de fato: menor NSR 1 (ou nenhuma marcação) e nenhuma marcação de antes
 #     do reinício;
 #   - os registros de reinício não passam do autorizado fora do banco, em .github/workflows/reinicios-ponto-autorizados.txt
@@ -85,7 +85,8 @@ begin
     pg_catalog.current_setting('ancora.valores'),
     case when v_tem then pg_catalog.format($r$exists (select 1 from %1$I.ponto_reinicios r
          cross join lateral pg_catalog.jsonb_to_recordset(r.empresas) e(empresa_id uuid, ultimo_nsr bigint, ultimo_hash text)
-         where r.feito_em > x.gerada and e.empresa_id = x.empresa_id and e.ultimo_nsr = x.nsr and e.ultimo_hash = x.hash
+         where r.feito_em > x.gerada and e.empresa_id = x.empresa_id
+           and (e.ultimo_nsr > x.nsr or (e.ultimo_nsr = x.nsr and e.ultimo_hash = x.hash))
            and coalesce((select pg_catalog.min(m.nsr) from %1$I.ponto_marcacoes m where m.empresa_id = x.empresa_id), 1) = 1
            and not exists (select 1 from %1$I.ponto_marcacoes m where m.empresa_id = x.empresa_id and m.momento <= r.feito_em))$r$, v_esq)
          else 'false' end,

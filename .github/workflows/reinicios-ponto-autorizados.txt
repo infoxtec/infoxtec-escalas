@@ -4,4 +4,4 @@
 # interno.ponto_reinicios dentro de uma destas janelas, e nunca mais registros do que linhas aqui.
 # Este arquivo fica em .github/workflows para que só o responsável faça o merge da mudança (CLAUDE.md, Convenções).
 # O GitHub Actions só lê arquivos .yml e .yaml desta pasta: este não é um workflow.
-2026-11-14 2026-11-30
+2026-11-14 2026-12-01

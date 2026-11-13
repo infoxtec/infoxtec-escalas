@@ -361,7 +361,8 @@ reinício antes do uso oficial (01/12/2026). O backup diário aceita a âncora a
 o registro em `interno.ponto_reinicios` feito depois dela, com o mesmo NSR e hash da empresa, a cadeia atual
 recomeçando no NSR 1 e nenhuma marcação de antes do reinício, **e** se os registros de reinício não passarem do
 autorizado em `.github/workflows/reinicios-ponto-autorizados.txt` (janela por linha; mudar exige o merge do
-responsável). Aceitar avisa com `::warning::`. Por isso o reinício é feito logo depois de um backup disparado à mão,
+responsável). O NSR do registro tem de ser maior que o da âncora, ou igual com o mesmo hash. A migration do reinício
+pode falhar por espera de trava ou impasse (lock_timeout de 5 s): nada muda, e basta disparar o Aplicar de novo. Aceitar avisa com `::warning::`. Por isso o reinício é feito logo depois de um backup disparado à mão,
 com ninguém batendo ponto. A restauração mensal pula (com aviso) a âncora anterior ao reinício que o banco restaurado
 registra. **Restaurar um backup anterior ao reinício traz de volta os registros de teste:** antes de reabrir, repetir
 o reinício (decisão 138).
