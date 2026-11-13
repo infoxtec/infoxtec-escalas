@@ -1,0 +1,8 @@
+# Donos de revisão (decisão 138). O GitHub pede a revisão do dono em todo PR que mexe nestes caminhos.
+# A regra "Require review from Code Owners" NÃO está ligada: o Claude e o responsável usam a mesma conta no GitHub
+# (infoxtec), e o autor não pode aprovar o próprio PR. Ligar a regra só faz sentido quando o Claude agir com outra
+# identidade (aplicativo ou conta de máquina sem administrador). Até lá vale a regra combinada do CLAUDE.md:
+# PR que mexe em .github/workflows tem merge do responsável.
+
+/.github/workflows/  @infoxtec
+/.github/CODEOWNERS  @infoxtec
