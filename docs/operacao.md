@@ -366,6 +366,20 @@ pode falhar por espera de trava ou impasse (lock_timeout de 5 s): nada muda, e b
 com ninguém batendo ponto. A restauração mensal pula (com aviso) a âncora anterior ao reinício que o banco restaurado
 registra. **Restaurar um backup anterior ao reinício traz de volta os registros de teste:** antes de reabrir, repetir
 o reinício (decisão 138).
+**Conferência logo depois do Aplicar do reinício (produção, SQL Editor, só leitura):** a 156 só avisa quando a porta não
+abre (instância ou ambiente diferentes, ou depois de 01/12) e o Aplicar sai verde mesmo assim.
+```sql
+-- PRODUÇÃO (zpckrxydqqmmcrphrkxz) — SOMENTE LEITURA, logo depois do Aplicar 152–156
+begin transaction read only;
+select (select count(*) from interno.ponto_reinicios) as reinicios,
+       (select max(feito_em) from interno.ponto_reinicios) as feito_em,
+       (select count(*) from interno.ponto_marcacoes) as marcacoes,
+       to_regprocedure('interno.fn_ponto_reiniciar_modulo(text,text)') as funcao,
+       (select valor from interno.config where chave = 'evolution_numero') as numero;
+rollback;
+```
+Esperado: `reinicios = 1` com `feito_em` de hoje, `marcacoes = 0`, `funcao` nula e `numero = 557141019605`. Com
+`reinicios = 0` a porta não abriu: refazer pede migration nova, antes de 01/12 e dentro da janela autorizada.
 Os três scripts rodam com `search_path = pg_catalog, pg_temp` e nomes qualificados, e recusam
 conferir se `ponto_marcacoes` não for a tabela da migration 54 com os tipos exatos das colunas do
 hash (`scripts/backup/tipos-ponto.sql`): função, tipo ou view plantados no `public` não enganam a

@@ -5756,14 +5756,6 @@ begin
   begin truncate interno.ponto_marcacoes cascade; exception when others then v_ok := sqlerrm like '%Portaria%'; end;
   perform pg_temp.ok(v_ok, '[T94] truncate de marcações recusado');
   v_ok := false;
-  begin delete from interno.ponto_marcacoes where nsr = (select min(nsr) from interno.ponto_marcacoes); raise exception 'apagou';
-  exception when others then v_ok := sqlerrm like '%Portaria%' or sqlerrm = 'apagou' and not exists (select 1 from interno.ponto_marcacoes); end;
-  perform pg_temp.ok(v_ok, '[T94] delete de marcação recusado');
-  v_ok := false;
-  begin update interno.ponto_marcacoes set tipo = tipo where nsr = (select min(nsr) from interno.ponto_marcacoes); raise exception 'alterou';
-  exception when others then v_ok := sqlerrm like '%Portaria%' or sqlerrm = 'alterou' and not exists (select 1 from interno.ponto_marcacoes); end;
-  perform pg_temp.ok(v_ok, '[T94] update de marcação recusado');
-  v_ok := false;
   begin update interno.ponto_reinicios set motivo = motivo || '.'; raise exception 'alterou';
   exception when others then v_ok := sqlerrm like '%Portaria%' or sqlerrm = 'alterou' and not exists (select 1 from interno.ponto_reinicios); end;
   perform pg_temp.ok(v_ok, '[T94] update do registro de reinício recusado');
@@ -5780,6 +5772,17 @@ begin
                         where m.empresa_id = v_emp and m.nsr = 1), '[T94] empresa nova começa no NSR 1: ' || c::text);
   c := fn_ponto_registrar(v_t, 'saida', 'app', -12.930101, -38.450101, 10, '{"qa":"T94-2"}');
   perform pg_temp.ok((c->>'nsr')::bigint = 2, '[T94] e segue para 2: ' || c::text);
+  -- as travas de linha valem sobre a marcação que este teste acabou de criar
+  v_ok := false;
+  begin delete from interno.ponto_marcacoes where empresa_id = v_emp and nsr = 1; exception when others then v_ok := sqlerrm like '%Portaria%'; end;
+  perform pg_temp.ok(v_ok, '[T94] delete de marcação recusado');
+  v_ok := false;
+  begin update interno.ponto_marcacoes set tipo = tipo where empresa_id = v_emp and nsr = 1; exception when others then v_ok := sqlerrm like '%Portaria%'; end;
+  perform pg_temp.ok(v_ok, '[T94] update de marcação recusado');
+  -- fora da produção (CI, homologação) a 156 não apagou nada
+  if interno.fn_config('evolution_instancia') is distinct from 'infoxtec' then
+    perform pg_temp.ok(not exists (select 1 from ponto_reinicios), '[T94] fora da produção nenhum reinício');
+  end if;
 end $$;
 select 'REGRESSÃO OK: T1 a T94' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
