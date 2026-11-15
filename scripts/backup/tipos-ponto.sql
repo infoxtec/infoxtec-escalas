@@ -36,4 +36,24 @@ begin
              (('empresa_id', 'uuid'), ('ultimo', 'bigint'), ('ultimo_hash', 'text'))) <> 3 then
     raise exception 'âncora: colunas de ponto_nsr fora do esperado';
   end if;
+  -- registros do REP (tipos 2 e 5, migration 157, decisão 139): mesma cadeia das marcações. Antes da 157 a tabela não
+  -- existe e os scripts seguem só com as marcações (ancora.rep = false)
+  perform pg_catalog.set_config('ancora.rep', (pg_catalog.to_regclass(v_esq || '.ponto_rep_registros') is not null)::text, false);
+  if pg_catalog.to_regclass(v_esq || '.ponto_rep_registros') is not null then
+    if (select c.relkind from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+         where n.nspname = v_esq and c.relname = 'ponto_rep_registros') is distinct from 'r' then
+      raise exception 'âncora: %.ponto_rep_registros não é uma tabela comum', v_esq;
+    end if;
+    select pg_catalog.string_agg(e.col || ' ' || e.tipo, ', ') into v_falta
+      from (values ('conta_id','uuid'), ('empresa_id','uuid'), ('nsr','bigint'), ('tipo','smallint'),
+                   ('momento','timestamp with time zone'), ('operacao','text'), ('tecnico_id','uuid'), ('dados','jsonb'),
+                   ('hash_anterior','text'), ('hash','text')) e(col, tipo)
+     where not exists (select 1 from pg_catalog.pg_attribute a
+                        where a.attrelid = pg_catalog.to_regclass(v_esq || '.ponto_rep_registros') and a.attnum > 0
+                          and not a.attisdropped and a.attname = e.col
+                          and pg_catalog.format_type(a.atttypid, a.atttypmod) = e.tipo);
+    if v_falta is not null then
+      raise exception 'âncora: colunas de ponto_rep_registros fora do esperado: %', v_falta;
+    end if;
+  end if;
 end $$;

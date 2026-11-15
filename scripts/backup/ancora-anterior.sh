@@ -50,7 +50,7 @@ declare
   v_esq text := pg_catalog.current_setting('ancora.esq');
   v_jan text := pg_catalog.current_setting('ancora.janelas');
   v_tem boolean := pg_catalog.to_regclass(v_esq || '.ponto_reinicios') is not null;
-  v_falt bigint; v_aceitas bigint := 0; v_fora bigint; v_qtd bigint;
+  v_falt bigint; v_aceitas bigint := 0; v_fora bigint; v_qtd bigint; v_reg text;
 begin
   if v_tem then
     if (select c.relkind from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace
@@ -76,21 +76,26 @@ begin
     end if;
   end if;
 
+  -- marcações e, depois da migration 157, os registros do REP (tipos 2 e 5) no mesmo NSR (decisão 139)
+  v_reg := case when pg_catalog.current_setting('ancora.rep') = 'true'
+                then pg_catalog.format('(select empresa_id, nsr, hash, momento from %1$I.ponto_marcacoes
+                                         union all select empresa_id, nsr, hash, momento from %1$I.ponto_rep_registros)', v_esq)
+                else pg_catalog.format('(select empresa_id, nsr, hash, momento from %I.ponto_marcacoes)', v_esq) end;
   execute pg_catalog.format($q$
     select pg_catalog.count(*) filter (where not a.reiniciada), pg_catalog.count(*) filter (where a.reiniciada)
       from (select x.*, %2$s as reiniciada
               from (values %1$s) x(empresa_id, nsr, hash, gerada)
-             where x.nsr > 0 and not exists (select 1 from %3$I.ponto_marcacoes m
+             where x.nsr > 0 and not exists (select 1 from %3$s m
                      where m.empresa_id = x.empresa_id and m.nsr = x.nsr and m.hash = x.hash)) a$q$,
     pg_catalog.current_setting('ancora.valores'),
     case when v_tem then pg_catalog.format($r$exists (select 1 from %1$I.ponto_reinicios r
          cross join lateral pg_catalog.jsonb_to_recordset(r.empresas) e(empresa_id uuid, ultimo_nsr bigint, ultimo_hash text)
          where r.feito_em > x.gerada and e.empresa_id = x.empresa_id
            and (e.ultimo_nsr > x.nsr or (e.ultimo_nsr = x.nsr and e.ultimo_hash = x.hash))
-           and coalesce((select pg_catalog.min(m.nsr) from %1$I.ponto_marcacoes m where m.empresa_id = x.empresa_id), 1) = 1
-           and not exists (select 1 from %1$I.ponto_marcacoes m where m.empresa_id = x.empresa_id and m.momento <= r.feito_em))$r$, v_esq)
+           and coalesce((select pg_catalog.min(m.nsr) from %2$s m where m.empresa_id = x.empresa_id), 1) = 1
+           and not exists (select 1 from %2$s m where m.empresa_id = x.empresa_id and m.momento <= r.feito_em))$r$, v_esq, v_reg)
          else 'false' end,
-    v_esq) into v_falt, v_aceitas;
+    v_reg) into v_falt, v_aceitas;
   perform pg_catalog.set_config('ancora.faltando', v_falt::text, true);
   perform pg_catalog.set_config('ancora.reiniciadas', v_aceitas::text, true);
 end $$;

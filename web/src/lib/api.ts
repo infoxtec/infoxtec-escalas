@@ -1,6 +1,6 @@
 import { fetchComConta, supabase } from './supabase'
 import type {
-  Acesso, ConsultaCadastro, ContaPlataforma, Exportacao, Feriado, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre, ValidacaoCarga, ModeloCarga, CargaHoraria, CargaAtribuicao, CargaFuncionario, TimeEquipe, AlvoCarga, ProgramacaoLimite, AceiteProgramacao, AceiteProgramacaoAssinado, CargaExcedida, ValidacaoFolha, FechamentoFolha, PreviaFolha, PontoHeAutorizacao, EspelhoPdf, ComprovanteRegistro } from './types'
+  Acesso, ConsultaCadastro, ContaPlataforma, Exportacao, Feriado, EscalaPainel, Resumo, LinhaTempo, Tecnico, Local, UsuarioPainel, ResultadoLote, Papel, Pendencias, Jornada, Habilidade, TecnicoHabilidade, TipoAtividade, Aptidao, PainelLocal, Ligacao, ItemBacklog, Documento, TipoDocumento, TecnicoDocumentos, EstadoMotor, ChecklistSaude, IndicadoresResposta, EscalaEdicao, Empresa, PontoComprovante, PontoEu, PontoMarcacao, PontoTipo, PontoHoje, PontoAcompanhamento, PontoGeo, PontoEspelho, PontoAjuste, PontoJustificativa, PontoAbono, PontoMeuPedido, PontoDocumento, PontoVerificacao, PontoMetricas, PainelGerencial, DossieLocal, PontoAfd, PontoAej, PontoEspelhoEmitido, ConferenciaEspelho, EspelhoCompleto, FolhaCofre, ValidacaoCarga, ModeloCarga, CargaHoraria, CargaAtribuicao, CargaFuncionario, TimeEquipe, AlvoCarga, ProgramacaoLimite, AceiteProgramacao, AceiteProgramacaoAssinado, CargaExcedida, ValidacaoFolha, FechamentoFolha, PreviaFolha, PontoHeAutorizacao, EspelhoPdf, ComprovanteRegistro } from './types'
 
 function traduzir(msg: string): string {
   if (/JWT expired|invalid JWT|not authenticated/i.test(msg)) return 'Sessão expirada. Entre novamente.'
@@ -178,7 +178,11 @@ export const api = {
   pontoHeAutorizacoes: (de: string, ate: string) => rpc<PontoHeAutorizacao[]>('app_ponto_he_autorizacoes', { p_de: de, p_ate: ate }),
   pontoHeDecidir: (id: string, aprovar: boolean) =>
     rpc<{ situacao: 'aprovada' | 'reprovada' | 'ja_decidida'; numero: number }>('app_ponto_he_decidir', { p_id: id, p_aprovar: aprovar }),
-  pontoAfd: (empresa: string, de: string, ate: string) => rpc<PontoAfd>('app_ponto_afd', { p_empresa: empresa, p_de: de, p_ate: ate }),
+  // de nulo = AFD completo, desde o primeiro registro (decisão 139)
+  pontoAfd: (empresa: string, de: string | null, ate: string) => rpc<PontoAfd>('app_ponto_afd', { p_empresa: empresa, p_de: de, p_ate: ate }),
+  pontoAej: (empresa: string, de: string, ate: string) => rpc<PontoAej>('app_ponto_aej', { p_empresa: empresa, p_de: de, p_ate: ate }),
+  pontoResponsavel: (empresa: string) => rpc<{ cpf: string; atualizado_por: string; atualizado_em: string } | null>('app_ponto_responsavel', { p_empresa: empresa }),
+  pontoDefinirResponsavel: (empresa: string, cpf: string) => rpc<null>('app_ponto_definir_responsavel', { p_empresa: empresa, p_cpf: cpf }),
   pontoEmitirEspelhos: (competencia: string, tecnico: string | null = null) =>
     rpc<{ emitidos: number; sem_mudanca: number; ja_assinados: number; sem_dados: number; com_pendencia: number; a_confirmar: number }>('app_ponto_emitir_espelhos', { p_competencia: competencia, p_tecnico: tecnico }),
   // Validação e fechamento da folha (decisão 96): o fechamento vai um funcionário por chamada

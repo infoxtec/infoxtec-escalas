@@ -2153,3 +2153,38 @@ responsável, decisão 58).*
 - **Depois:** AFDs, espelhos e comprovantes gerados até 30/11 são de teste e não valem (a numeração recomeça);
   todos dão nova ciência das regras do ponto no primeiro uso oficial. Ata em `docs/atas/2026-11-reinicio-do-ponto.md`.
 - **Teste só na homologação** (decisão 137): nenhum teste no ambiente de produção a partir de 13/11.
+
+## 139. AFD oficial (tipos 2 e 5 no mesmo NSR) e AEJ, pelo leiaute de 2021
+
+*15/11/2026 — pedido do responsável ("siga pela opção 3 com o texto de 2021"). Desenho revisado antes do código pelo
+`seguranca`, pelo `arquiteto-dados` e pelo `juridico` (persona de apoio, sem OAB). Migration 157, painel 3.74.0.*
+
+- **Leiaute:** Anexos V (AFD) e VI (AEJ) da Portaria 671 na redação original. Foram revogados pela 1.486/2022 e o
+  vigente está no gov.br, que a sessão não alcançava. **Conferência obrigatória contra o gov.br e pela contadora antes
+  de valer:** a flag `afd_leiaute_conferido` segue `false` e os dois arquivos saem com `_CONFERENCIA` no nome.
+- **AFD:** passa a ter o tipo 2 (identificação da empresa) e o tipo 5 (empregado I/A/E) no **mesmo NSR** das marcações,
+  numa tabela própria e imutável (`ponto_rep_registros`) que entra na **mesma cadeia de hash** (uma trava só, de
+  `ponto_nsr`, sempre na ordem empresa → `ponto_nsr`). O trailer conta os tipos 2 a 7. Opção de AFD completo, desde o
+  primeiro registro (Art. 81 §2º). Tipo 6 (eventos de disponibilidade do REP-P) fica fora: não registramos quedas
+  (pendência para o enquadramento).
+- **Quando nascem:** na **primeira marcação** de cada empresa (tipo 2 + um "I" por funcionário ativo com CPF), não na
+  migration: a produção recomeçou o NSR em 1 (decisão 138) e o uso oficial começa em 01/12. Depois, gatilhos em
+  `tecnicos` e `empresas` (só nas colunas que entram no AFD, só quando mudam, só em empresa que já tem cadeia) derivam
+  I/A/E do último registro; desativar, sair da empresa ou ter `desligado_em` gravado gera "E" (data futura não agenda
+  nada). A porta da marcação inclui o funcionário antes do NSR dele se faltar: **nenhuma marcação sai sem o "I"**.
+- **CPF do responsável** (tipos 2 e 5): um por empresa, em `ponto_rep_responsaveis`, só o admin lê e grava (LGPD art.
+  7º, II). Vazio sai com zeros e a geração avisa. Com mais de um admin, o certo será o CPF de quem mudou (pendência).
+- **AEJ** (`app_ponto_aej`, até 31 dias, só admin): vínculos, horário contratual da escala (um par entrada/saída: a
+  escala não marca a hora do intervalo), marcações originais (desconsiderada sai `D` com fonte `O` e motivo, nunca some)
+  e incluídas pelo gestor (`I` com motivo, do catálogo quando houver), ausências **só de mês fechado** (`1` DSR e folga
+  por domingo trabalhado, `2` só falta confirmada no fechamento, `4` folga de feriado; mês aberto sai parcial, com aviso),
+  o PTRP e o trailer. Fora: tipo 06 (um vínculo por funcionário) e banco de horas (o Trilha não tem).
+- **Assinatura CAdES fora do painel** (Assinador do ITI/Serpro sobre o arquivo baixado; o painel mostra o SHA-256):
+  nenhum código do painel toca o certificado enquanto a CSP não valer de fato (B1 da decisão 133). Pelo Art. 86 §1º o
+  AFD é assinado pelo desenvolvedor: o e-CNPJ da Infoxtec serve **enquanto o empregador for a própria Infoxtec**;
+  cliente de fora pede outra solução (CTO e seguranca).
+- **Backup:** âncora, conferência da restauração e âncora anterior percorrem marcações e registros do REP juntos, com
+  cópia da fórmula `fn_ponto_rep_hash` e o md5 dela; funcionam também sem a tabela (antes da 157).
+- **Pendências (antes do uso por cliente externo ou da conferência):** o hash do comprovante (cadeia do banco) difere
+  do hash do tipo 7 no AFD — o `juridico` recomenda um só (entrega seguinte); Atestado Técnico (Art. 89 §4º, item
+  079); comprovante em PDF com PAdES (Arts. 80 e 88 §1º); número do INPI (item 078).
