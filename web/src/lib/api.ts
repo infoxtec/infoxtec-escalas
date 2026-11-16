@@ -31,6 +31,8 @@ export const ponto = {
     rpc<{ token?: string; nome?: string; empresa?: string; erro?: string }>('ponto_entrar', { p_cpf: cpf, p_codigo: codigo }),
   sair: (token: string) => rpc<void>('ponto_sair', { p_token: token }),
   eu: (token: string, versaoAviso: string) => rpc<PontoEu>('ponto_eu', { p_token: token, p_versao_aviso: versaoAviso }),
+  // hora do servidor para o relógio do app (Anexo IX, item 3; migration 158)
+  hora: (token: string) => rpc<{ agora_ms: number; fuso: string }>('ponto_hora', { p_token: token }),
   registrarCiencia: (token: string, versaoAviso: string) => rpc<void>('ponto_registrar_ciencia', { p_token: token, p_versao_aviso: versaoAviso }),
   bater: (token: string, tipo: PontoTipo, lat: number, lng: number, precisao: number, appVersao: string) =>
     rpc<PontoComprovante>('ponto_bater', { p_token: token, p_tipo: tipo, p_lat: lat, p_lng: lng, p_precisao: precisao, p_app_versao: appVersao }),

@@ -2197,3 +2197,19 @@ responsável, decisão 58).*
 - **Pendências (antes do uso por cliente externo ou da conferência):** o hash do comprovante (cadeia do banco) difere
   do hash do tipo 7 no AFD — o `juridico` recomenda um só (entrega seguinte); Atestado Técnico (Art. 89 §4º, item
   079); comprovante em PDF com PAdES (Arts. 80 e 88 §1º); número do INPI (item 078).
+
+## 140. Relógio do app; afastado continua bloqueado; aviso ao gestor na marcação sem localização
+
+*16/11/2026 — respostas do responsável sobre o Atestado Técnico (decisão 139, `docs/legislacao/conformidade-rep-p.md`).*
+
+- **Relógio no app do ponto** (Anexo IX, item 3): a tela da marcação mostra horas, minutos e segundos da **hora do
+  servidor**, a mesma que grava a marcação (`ponto_hora`, migration 158, painel 3.75.0). O app desconta metade do tempo
+  de ida e volta e acerta a cada 5 minutos. WhatsApp e URA continuam pendentes (matriz, quadro 2, item 3).
+- **Afastado por atestado continua sem marcar** (decisão 60 mantida). O `juridico` apontou que o bloqueio pode
+  contrariar os Arts. 74 e 98 da Portaria 671 (risco alto: apreensão, prova da jornada); o responsável aceita o risco
+  (decisão 58).
+- **Marcação sem localização:** o funcionário é informado de que o gestor será avisado imediatamente, e o gestor é
+  avisado por e-mail e por WhatsApp. (Implementação na próxima entrega.)
+- **Sem filial:** o NSR por empresa atende ao "por estabelecimento" do Anexo IX.
+- **INPI:** pedido previsto para janeiro de 2027. Até o certificado não há Atestado Técnico (Art. 89 §4º): o uso
+  oficial como REP-P depende dele.

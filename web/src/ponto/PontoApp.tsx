@@ -110,6 +110,54 @@ function posicao(): Promise<GeolocationPosition> {
   })
 }
 
+// Relógio do coletor (Portaria 671, Anexo IX, item 3): horas, minutos e segundos da hora do SERVIDOR, que é a que grava
+// a marcação. O app pergunta a hora ao servidor, desconta metade do tempo de ida e volta e mantém a diferença para o
+// relógio do aparelho; acerta de novo a cada 5 minutos e quando a tela volta a aparecer (no máximo uma vez por minuto).
+function Relogio({ token, onSair }: { token: string; onSair: () => void }) {
+  const [dif, setDif] = useState<number | null>(null)
+  const [fuso, setFuso] = useState('America/Bahia')
+  const [agora, setAgora] = useState(Date.now())
+  useEffect(() => {
+    let vivo = true
+    let ultimo = 0
+    const acertar = async () => {
+      // no máximo um acerto por minuto (trocar de aba ou destravar o celular não vira uma chamada a cada vez)
+      if (Date.now() - ultimo < 60 * 1000) return
+      ultimo = Date.now()
+      try {
+        const t0 = Date.now()
+        const r = await ponto.hora(token)
+        const t1 = Date.now()
+        if (vivo) { setDif(r.agora_ms - (t0 + t1) / 2); setFuso(r.fuso) }
+      } catch (e) {
+        // sessão vencida volta para a entrada; sem conexão, o relógio some até acertar de novo (sem conexão não há marcação)
+        if (/Sessão encerrada/.test(erroMsg(e))) onSair()
+      }
+    }
+    void acertar()
+    const acerto = setInterval(() => void acertar(), 5 * 60 * 1000)
+    const visivel = () => { if (document.visibilityState === 'visible') void acertar() }
+    document.addEventListener('visibilitychange', visivel)
+    const tique = setInterval(() => setAgora(Date.now()), 250)
+    return () => { vivo = false; clearInterval(acerto); clearInterval(tique); document.removeEventListener('visibilitychange', visivel) }
+  }, [token, onSair])
+  if (dif === null) return null
+  const d = new Date(agora + dif)
+  // fuso que o navegador não conhece não derruba a tela da marcação: vale o de Salvador
+  const fmt = (o: Intl.DateTimeFormatOptions) => {
+    try { return new Intl.DateTimeFormat('pt-BR', { ...o, timeZone: fuso }).format(d) }
+    catch { return new Intl.DateTimeFormat('pt-BR', { ...o, timeZone: 'America/Bahia' }).format(d) }
+  }
+  const hora = fmt({ hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' })
+  const data = fmt({ weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })
+  return (
+    <div className="rounded-xl border bg-card px-4 py-3 text-center" aria-live="off">
+      <p className="font-mono text-4xl font-semibold tabular-nums tracking-wider" aria-label={`Hora oficial ${hora}`}>{hora}</p>
+      <p className="text-xs text-muted-foreground">{data} · hora oficial do registro</p>
+    </div>
+  )
+}
+
 function Painel({ token, onSair }: { token: string; onSair: () => void }) {
   const [eu, setEu] = useState<PontoEu | null>(null)
   const [historico, setHistorico] = useState<PontoMarcacao[]>([])
@@ -182,6 +230,8 @@ function Painel({ token, onSair }: { token: string; onSair: () => void }) {
           Hora do almoço? Bom apetite! Lembre de marcar a <strong>saída para o almoço</strong>.
         </div>
       )}
+
+      <Relogio token={token} onSair={onSair} />
 
       <div className="grid grid-cols-2 gap-3">
         {TIPOS.map(t => (

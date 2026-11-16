@@ -14,7 +14,7 @@ Legenda: **Atende** · **Falta** (bloqueia a assinatura) · **Conferir** (precis
 
 | # | Exigência | Artigo | Situação | Evidência ou o que falta |
 |---|---|---|---|---|
-| 1 | Registrar fielmente; vedado restringir a marcação, marcação automática, exigir autorização prévia para hora extra e permitir alterar o registrado; vedados "parametrizações e bloqueios na marcação" (apreensão pelo auditor) | 74 e 98 | **Falta** | Atende: sem marcação automática; hora extra não exige autorização para marcar (decisão 100); ajuste não altera a original (migration 65); marcações imutáveis (migration 54). **Falta: dois bloqueios** — a recusa durante afastamento médico (decisão 60, migration 69) e a recusa no WhatsApp sem localização. Proposta do `juridico`: aceitar, sinalizar ("marcação durante afastamento" / "sem localização"), avisar o gestor. Muda a decisão 60: **decisão do responsável** |
+| 1 | Registrar fielmente; vedado restringir a marcação, marcação automática, exigir autorização prévia para hora extra e permitir alterar o registrado; vedados "parametrizações e bloqueios na marcação" (apreensão pelo auditor) | 74 e 98 | **Falta** | Atende: sem marcação automática; hora extra não exige autorização para marcar (decisão 100); ajuste não altera a original (migration 65); marcações imutáveis (migration 54). **Falta: dois bloqueios** — a recusa durante afastamento médico (decisão 60, migration 69) e a recusa no WhatsApp sem localização. **Decisão do responsável (16/11, decisão 140):** o afastado **continua bloqueado** (risco dos Arts. 74 e 98 apontado pelo `juridico` e aceito pelo responsável); sem localização, o funcionário é informado de que o gestor será avisado e o gestor é avisado por e-mail e WhatsApp |
 | 1a | Registro fiel da hora: no WhatsApp a hora é a da chegada ao servidor | 74 | **Conferir** | Medir o atraso da fila e sinalizar ao gestor quando passar de um limite (cautela) |
 | 1b | REP-P usado exclusivamente para o registro de jornada | 78 | **Conferir** | O Trilha também faz escalas: o registro no INPI e o identificador devem apontar o módulo de ponto como programa separado |
 | 2 | REP-P em servidor ou nuvem, com certificado de registro no INPI | 78 e 91 | **Falta** | Registro do programa no INPI (e-Software) não feito (item 078) |
@@ -39,7 +39,7 @@ Legenda: **Atende** · **Falta** (bloqueia a assinatura) · **Conferir** (precis
 |---|---|---|---|
 | 1 | Identificar a organização e o trabalhador | **Atende** | Empresa (CNPJ) e funcionário (CPF) em toda marcação |
 | 2 | Relógio sincronizado com a Hora Legal Brasileira (Observatório Nacional), desvio máximo de 30 s | **Conferir** | A hora é a do servidor do banco (`clock_timestamp()`, Supabase/AWS, sincronizado por NTP), não a do aparelho. Falta a **evidência**: medição periódica do desvio contra o NTP.br/ON, com registro e alerta acima de 30 s |
-| 3 | Todo coletor exibe relógio não analógico com horas, minutos e segundos no momento da marcação | **Falta** | O app do ponto **não mostra relógio** (bloqueante). WhatsApp e URA: o comprovante depois **não atende** na leitura literal (`juridico`). Mitigação: antes de gravar, mostrar ou falar a hora do servidor com segundos e pedir confirmação (WhatsApp risco médio; URA médio a alto); alternativa conservadora: o WhatsApp manda o link da tela do app |
+| 3 | Todo coletor exibe relógio não analógico com horas, minutos e segundos no momento da marcação | **Falta** | App: **relógio com a hora do servidor** na tela da marcação (migration 158, painel 3.75.0) — atende. WhatsApp e URA: o comprovante depois **não atende** na leitura literal (`juridico`). Mitigação: antes de gravar, mostrar ou falar a hora do servidor com segundos e pedir confirmação (WhatsApp risco médio; URA médio a alto); alternativa conservadora: o WhatsApp manda o link da tela do app |
 | 4 e 5 | Coletor on-line; off-line só excepcionalmente, com envio posterior seguro | **Atende** | Só on-line: sem conexão não há marcação (não existe modo off-line) |
 | 6 | Armazenamento (ARP) com redundância, alta disponibilidade e confiabilidade | **Conferir** | Supabase (banco gerenciado, backup diário próprio e cópias cifradas fora, decisão 51); dizer o plano e o SLA do fornecedor |
 | 6.1 | Inclusão e alteração do empregador, com data, hora e responsável | **Atende** | Tipo 2 (migration 157); depende do CPF do responsável cadastrado |
@@ -47,7 +47,7 @@ Legenda: **Atende** · **Falta** (bloqueia a assinatura) · **Conferir** (precis
 | 6.3 | Inclusão, alteração e exclusão de empregado, com responsável | **Atende** | Tipo 5 I/A/E (migration 157) |
 | 6.4 | Eventos sensíveis do REP | **Falta** | Não registramos indisponibilidade nem retorno (tipo 6 do AFD). Proposta: gravar a partir do monitoramento (vigia e checklist de saúde) |
 | 6.5 e 10 | Marcação com NSR, CPF, data, hora e fuso da marcação e da gravação, coletor e SHA-256 | **Atende** | `ponto_marcacoes` (momento com fuso, empresa com fuso, canal, hash encadeado) |
-| OBS | NSR próprio por **estabelecimento**, começando em 1 | **Conferir** | Hoje por empresa (CNPJ, `ponto_nsr`); atende se cada estabelecimento for uma empresa cadastrada (a Infoxtec tem filial?) |
+| OBS | NSR próprio por **estabelecimento**, começando em 1 | **Atende** | Por empresa (CNPJ, `ponto_nsr`); a Infoxtec não tem filial (responsável, 16/11). Cliente com filial: cadastrar cada estabelecimento como empresa |
 | 7 | Nada apagado ou alterado no prazo legal | **Atende** | Gatilhos de imutabilidade em linha e truncate; âncora diária fora do banco; o reinício de 13/11 foi antes do uso oficial (ata) |
 | 8 | Identificação inequívoca, hora confiável, gravação e comprovante | **Conferir** | Identificação por código de uso único, telefone conferido ou PIN da URA; comprovante depende das linhas 3 e 4 do quadro 1 |
 | 11 e 12 | AFD a partir da ARP, por intervalo de datas | **Atende** | `app_ponto_afd(empresa, de, ate)` e AFD completo |
@@ -55,7 +55,9 @@ Legenda: **Atende** · **Falta** (bloqueia a assinatura) · **Conferir** (precis
 
 ## 3. O que falta para assinar, em ordem
 
-1. **Certificado do INPI** (e-Software): processo em andamento não basta (Arts. 78, 79 VII e 91). Responsável.
+1. **Certificado do INPI** (e-Software): processo em andamento não basta (Arts. 78, 79 VII e 91). Responsável: pedido
+   previsto para **janeiro de 2027** — até o certificado, não há Atestado e o ponto não pode ser usado oficialmente
+   como REP-P (Art. 89 §4º).
 2. **Retirar os dois bloqueios** (afastamento e WhatsApp sem localização): aceitar e sinalizar (Arts. 74 e 98). Muda
    a decisão 60: responsável.
 3. **Relógio com segundos no app**; WhatsApp e URA mostram ou falam a hora do servidor antes de gravar.
