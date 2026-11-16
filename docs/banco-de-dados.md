@@ -1082,6 +1082,11 @@ Regressão: T43.
 - `ponto_verificar_espelho(p_codigo)`: conferência pública do QR (anon, sem sessão — exceção no CI), devolve
   só registro, empresa, CNPJ, mês, emissão, integridade e assinatura; nenhum nome, CPF ou horário. Teste T35.
 
+### Migration 158 (16/11): relógio do app do ponto (decisão 140)
+
+- `ponto_hora(p_token)` (anon, sessão do funcionário): devolve `agora_ms` (hora do servidor, `clock_timestamp()`) e o
+  fuso da empresa, para o relógio da tela da marcação (Anexo IX, item 3). Sem dado pessoal. Teste T96.
+
 ### Migration 157 (15/11): AFD oficial (tipos 2 e 5 no mesmo NSR) e AEJ (decisão 139)
 
 - Tabela `interno.ponto_rep_registros` (conta, empresa, NSR, tipo 2 ou 5, momento, operação I/A/E, técnico, `dados`

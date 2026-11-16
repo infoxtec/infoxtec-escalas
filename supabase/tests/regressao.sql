@@ -5972,7 +5972,25 @@ begin
   perform pg_temp.ok(v_ok, '[T95] gestor viu o CPF do responsável');
   perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
 end $$;
-select 'REGRESSÃO OK: T1 a T95' as resultado,
+-- T96 relógio do app do ponto (migration 158, Anexo IX item 3): hora do servidor e fuso da empresa, só com sessão válida
+do $$
+declare v_tec uuid := (select v::uuid from qa where k = 'tec1'); c jsonb; v_tok text; r jsonb; v_ok boolean := false;
+begin
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  perform set_config('request.headers', '{"x-conta":"00000000-0000-0000-0000-000000000001"}', true);
+  update tecnicos set ativo = true where id = v_tec;
+  c := app_ponto_gerar_codigo(v_tec);
+  v_tok := ponto_entrar((select cpf from tecnicos where id = v_tec), c->>'codigo')->>'token';
+  r := ponto_hora(v_tok);
+  perform pg_temp.ok(abs((r->>'agora_ms')::bigint - floor(extract(epoch from clock_timestamp()) * 1000)::bigint) < 2000
+                     and r->>'fuso' = (select coalesce(e.fuso, 'America/Bahia') from tecnicos t join empresas e on e.id = t.empresa_id where t.id = v_tec),
+                     '[T96] hora do servidor: ' || coalesce(r::text, 'nula'));
+  begin perform ponto_hora('token-falso'); exception when others then v_ok := sqlerrm like '%Sessão encerrada%'; end;
+  perform pg_temp.ok(v_ok, '[T96] hora com token falso');
+  perform pg_temp.ok(has_function_privilege('anon', 'public.ponto_hora(text)', 'execute')
+                     and not has_function_privilege('service_role', 'public.ponto_hora(text)', 'execute'), '[T96] permissões');
+end $$;
+select 'REGRESSÃO OK: T1 a T96' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;
