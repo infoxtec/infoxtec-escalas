@@ -1086,6 +1086,8 @@ Regressão: T43.
 
 - `ponto_hora(p_token)` (anon, sessão do funcionário): devolve `agora_ms` (hora do servidor, `clock_timestamp()`) e o
   fuso da empresa, para o relógio da tela da marcação (Anexo IX, item 3). Sem dado pessoal. Teste T96.
+  Valida a sessão por `fn_ponto_sessao`: `ponto_sessoes.ultimo_uso` passa a incluir o acerto do relógio (a cada 5 min
+  com a tela aberta), não só as ações do funcionário.
 
 ### Migration 157 (15/11): AFD oficial (tipos 2 e 5 no mesmo NSR) e AEJ (decisão 139)
 
