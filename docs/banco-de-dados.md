@@ -1092,14 +1092,16 @@ Regressão: T43.
   recusa NSR que exista nos registros do REP; `fn_ponto_nsr_avanca` aceita as duas tabelas.
 - `fn_ponto_rep_hash` (sql imutável, lista fixa de campos com prefixo `REP`): nunca recriar (o backup guarda o md5).
 - `fn_ponto_nsr_travar` (empresa `for key share` → `ponto_nsr for update`); `fn_ponto_rep_gravar`;
-  `fn_ponto_rep_empresa` (tipo 2 quando a identificação muda); `fn_ponto_rep_sincronizar` (deriva I/A/E do último
-  registro e do cadastro; `p_garantir` na marcação); `fn_ponto_rep_iniciar` (carga inicial na primeira marcação).
-- Gatilhos `trg_ponto_rep_tecnico_ins`/`_upd` (nome, CPF, ativo, empresa, desligamento, só quando mudam e só em empresa
-  com `ponto_nsr`) e `trg_ponto_rep_empresa_upd` (CNPJ, razão, endereço, cidade, UF, CEP, CEI/CAEPF/CNO).
+  `fn_ponto_rep_empresa` (tipo 2 quando a identificação muda); `fn_ponto_rep_sincronizar` (A e E do cadastro; o "I"
+  só com `p_garantir`, na marcação); `fn_ponto_rep_iniciar` (tipo 2 na primeira marcação da empresa);
+  `fn_ponto_rep_desligamentos` (E de quem tem `desligado_em` antes de hoje, chamada por `fn_limpeza_logs` todo dia).
+- Gatilho `trg_ponto_rep_tecnico_upd` (nome, CPF, ativo, empresa, desligamento, só quando mudam e só em empresa com
+  `ponto_nsr`; sem gatilho de inclusão) e `trg_ponto_rep_empresa_upd` (CNPJ, razão, endereço, cidade, UF, CEP, CEI/CAEPF/CNO).
 - `fn_ponto_registrar`: trava na ordem, carga inicial e o "I" do funcionário antes do NSR da marcação.
 - `app_ponto_verificar`: percorre marcações e registros do REP por NSR; devolve `conferidas` (todos) e `marcacoes`.
 - Tabela `interno.ponto_rep_responsaveis` (empresa, CPF válido, quem e quando) e `app_ponto_responsavel` /
-  `app_ponto_definir_responsavel` (só admin).
+  `app_ponto_definir_responsavel` (só admin). Retenção: enquanto a pessoa for a responsável (a troca sobrescreve); a cópia nos tipos 2 e
+  5 fica 5 anos, como as marcações.
 - `fn_afd_gerar`/`app_ponto_afd`: tipos 1, 2 (331 posições), 5 (118), 7 e 9 (contagens dos tipos 2 a 7) em ordem de
   NSR; `p_de` nulo = desde o primeiro registro; devolve também `registros` e `de`.
 - `fn_aej_gerar`/`app_ponto_aej(p_empresa, p_de, p_ate)` (só admin, até 31 dias): AEJ do Anexo VI (01, 02, 03, 04, 05,

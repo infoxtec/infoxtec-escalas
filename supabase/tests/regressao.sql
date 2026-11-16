@@ -5827,12 +5827,15 @@ begin
   -- antes da primeira marcação, nada (o NSR recomeçado e o uso oficial ficam limpos)
   perform pg_temp.ok(not exists (select 1 from ponto_rep_registros where empresa_id = v_emp), '[T95] registro do REP antes da primeira marcação');
   c := fn_ponto_registrar(v_a, 'entrada', 'app', -12.930101, -38.450101, 10, '{}');
+  -- tipo 2 e o "I" de quem bateu; quem só está cadastrado não entra (cadastro errado não vira registro imutável)
   select string_agg(tipo::text || coalesce(operacao, ''), ',' order by nsr) into v_tipos from ponto_rep_registros where empresa_id = v_emp;
-  perform pg_temp.ok((c->>'nsr')::int = 4 and v_tipos = '2,5I,5I', '[T95] carga inicial: ' || coalesce(v_tipos, '') || ' / NSR ' || (c->>'nsr'));
+  perform pg_temp.ok((c->>'nsr')::int = 3 and v_tipos = '2,5I', '[T95] início da cadeia: ' || coalesce(v_tipos, '') || ' / NSR ' || (c->>'nsr'));
+  c := fn_ponto_registrar(v_b, 'entrada', 'ura', null, null, null, '{}');
+  perform pg_temp.ok((c->>'nsr')::int = 5, '[T95] I da segunda funcionária antes da marcação dela: ' || (c->>'nsr'));
   perform pg_temp.ok((select dados ->> 'cpf_responsavel' = pg_temp.cpf('959595950') and dados ->> 'cnpj' = '95729595000127'
                         and dados ->> 'local' = 'Rua T95, 1, Salvador/BA' from ponto_rep_registros where empresa_id = v_emp and nsr = 1),
                      '[T95] dados do tipo 2');
-  -- salvar sem mudar não grava nada; nome muda: A; desativar: E; reativar: I; ganhar CPF: I
+  -- salvar sem mudar não grava nada; nome muda: A; desativar: E; reativar e ganhar CPF: nada (o I vem na marcação)
   select ultimo into v_ult from ponto_nsr where empresa_id = v_emp;
   update tecnicos set nome = nome, cpf = cpf, ativo = ativo, telefone_e164 = '5579900009592' where id = v_b;
   perform pg_temp.ok((select ultimo from ponto_nsr where empresa_id = v_emp) = v_ult, '[T95] salvar sem mudança gerou registro');
@@ -5841,15 +5844,27 @@ begin
   update tecnicos set ativo = true where id = v_b;
   update tecnicos set cpf = pg_temp.cpf('959595954') where id = v_d;
   select string_agg(operacao, ',' order by nsr) into v_tipos from ponto_rep_registros where empresa_id = v_emp and nsr > v_ult;
-  perform pg_temp.ok(v_tipos = 'A,E,I,I', '[T95] eventos do cadastro: ' || coalesce(v_tipos, ''));
+  perform pg_temp.ok(v_tipos = 'A,E', '[T95] eventos do cadastro: ' || coalesce(v_tipos, ''));
   perform pg_temp.ok((select dados ->> 'nome' = 'QA T95 Bia Souza' from ponto_rep_registros where empresa_id = v_emp and nsr = v_ult + 1),
                      '[T95] alteração sem o nome novo');
   -- troca de empresa: E na origem e, como a outra ainda não começou, nada nela
+  c := fn_ponto_registrar(v_b, 'saida', 'ura', null, null, null, '{}');   -- volta a ser incluída (I) e marca
   update tecnicos set empresa_id = v_emp2 where id = v_b;
   perform pg_temp.ok((select operacao from ponto_rep_registros where empresa_id = v_emp and tecnico_id = v_b order by nsr desc limit 1) = 'E'
                      and not exists (select 1 from ponto_rep_registros where empresa_id = v_emp2), '[T95] troca de empresa');
   -- empresa que nunca bateu ponto não ganha cadeia pelo cadastro (a demonstração continua apagável)
   perform pg_temp.ok(not exists (select 1 from ponto_nsr where empresa_id = v_emp2), '[T95] cadastro criou a cadeia da empresa');
+  -- desligamento: a gravação não gera nada (no último dia ainda bate); a rotina diária gera o E do dia seguinte
+  update tecnicos set desligado_em = current_date - 1 where id = v_a;
+  perform pg_temp.ok((select operacao from ponto_rep_registros where empresa_id = v_emp and tecnico_id = v_a order by nsr desc limit 1) = 'E',
+                     '[T95] desligamento passado sem E');
+  update tecnicos set desligado_em = null where id = v_a;
+  c := fn_ponto_registrar(v_a, 'entrada', 'app', -12.930101, -38.450101, 10, '{}');   -- volta: I
+  update tecnicos set desligado_em = (now() at time zone 'America/Bahia')::date where id = v_a;
+  perform pg_temp.ok((select operacao from ponto_rep_registros where empresa_id = v_emp and tecnico_id = v_a order by nsr desc limit 1) = 'I',
+                     '[T95] desligamento de hoje gerou E antes do fim do dia');
+  perform pg_temp.ok(fn_ponto_rep_desligamentos() = 0, '[T95] rotina diária deu E a quem sai hoje');
+  update tecnicos set desligado_em = null where id = v_a;
   -- empresa: razão muda -> tipo 2; nome fantasia não entra no AFD
   select ultimo into v_ult from ponto_nsr where empresa_id = v_emp;
   update empresas set nome_fantasia = 'QA T95 novo' where id = v_emp;
@@ -5858,7 +5873,7 @@ begin
   perform pg_temp.ok((select tipo = 2 and dados ->> 'razao' = 'QA T95 Serviços Ltda' from ponto_rep_registros where empresa_id = v_emp
                        and nsr = v_ult + 1), '[T95] razão social não gerou tipo 2');
   -- marcação de quem não está incluído: o "I" vem antes, na mesma transação
-  update tecnicos set empresa_id = v_emp where id = v_b;   -- volta: I
+  update tecnicos set empresa_id = v_emp where id = v_b;   -- volta: nada até marcar
   c := fn_ponto_registrar(v_b, 'entrada', 'ura', null, null, null, '{}');
   perform pg_temp.ok((select operacao from ponto_rep_registros where empresa_id = v_emp and tecnico_id = v_b order by nsr desc limit 1) = 'I',
                      '[T95] marcação sem inclusão');
@@ -5888,7 +5903,7 @@ begin
   -- a cadeia mista confere; um campo de tipo 5 trocado em memória não confere
   r := app_ponto_verificar(v_emp);
   perform pg_temp.ok((r->>'integra')::boolean and (r->>'conferidas')::bigint = (select ultimo from ponto_nsr where empresa_id = v_emp)
-                     and (r->>'marcacoes')::int = 3, '[T95] verificação: ' || r::text);
+                     and (r->>'marcacoes')::int = 6, '[T95] verificação: ' || r::text);
   perform pg_temp.ok((select fn_ponto_rep_hash(q.z) <> (q.z).hash from (select jsonb_populate_record(p, '{"dados":{"cpf":"0","nome":"x"}}') z
                         from ponto_rep_registros p where p.empresa_id = v_emp and p.tipo = 5 limit 1) q),
                      '[T95] hash do registro do REP não cobre os dados');
@@ -5908,14 +5923,22 @@ begin
   end loop;
   perform pg_temp.ok(substr(l[v_n], 10, 9)::int = (select count(*) from ponto_rep_registros where empresa_id = v_emp and tipo = 2)
                      and substr(l[v_n], 37, 9)::int = (select count(*) from ponto_rep_registros where empresa_id = v_emp and tipo = 5)
-                     and substr(l[v_n], 55, 9)::int = 3 and length(l[v_n]) = 64, '[T95] trailer: ' || l[v_n]);
+                     and substr(l[v_n], 55, 9)::int = 6 and length(l[v_n]) = 64, '[T95] trailer: ' || l[v_n]);
   perform pg_temp.ok((r->>'de')::date = (now() at time zone 'America/Bahia')::date, '[T95] AFD completo sem a data inicial');
   -- AEJ: desconsiderar uma original e incluir uma saída; "D" com fonte O e motivo, "I" com motivo; trailer confere
   insert into ponto_ajustes (empresa_id, tecnico_id, marcacao_id, acao, motivo, autor)
   values (v_emp, v_a, v_marc, 'desconsiderar', 'Saída em dobro', 'qa-admin@teste.local');
   insert into ponto_ajustes (empresa_id, tecnico_id, acao, momento, tipo, motivo, autor)
   values (v_emp, v_a, 'incluir', now() - interval '1 minute', 'saida', 'Saída esquecida', 'qa-admin@teste.local');
+  -- inclusão ligada a uma justificativa de saúde: o AEJ leva "Atestado", nunca o nome do motivo (LGPD art. 11)
+  insert into ponto_justificativas (empresa_id, tecnico_id, motivo, data, canal, status)
+  values (v_emp, v_a, 'comparecimento', current_date, 'painel', 'aprovada') returning id into v_marc;
+  insert into ponto_ajustes (empresa_id, tecnico_id, acao, momento, tipo, motivo, autor, justificativa_id)
+  values (v_emp, v_a, 'incluir', now() - interval '2 minutes', 'entrada', 'Consulta com comprovante', 'qa-admin@teste.local', v_marc);
   r := app_ponto_aej(v_emp, (now() at time zone 'America/Bahia')::date, (now() at time zone 'America/Bahia')::date);
+  perform pg_temp.ok(position('Atestado' in r->>'conteudo') > 0
+                     and position((select nome from ponto_motivos where codigo = 'comparecimento') in r->>'conteudo') = 0,
+                     '[T95] motivo de saúde pelo nome no AEJ');
   l := string_to_array(left(r->>'conteudo', -2), E'\r\n');
   v_n := array_length(l, 1);
   perform pg_temp.ok(left(l[1], 3) = '01|' and l[2] = '02|1|3|' || repeat('0', 17) and left(l[v_n], 3) = '99|', '[T95] AEJ início/fim');
@@ -5934,7 +5957,7 @@ begin
   -- gestor não gera AEJ nem vê o CPF do responsável
   perform set_config('request.jwt.claims', '{"email":"qa-gestor-afd@teste.local","role":"authenticated","aal":"aal2"}', true);
   v_ok := false;
-  begin perform app_ponto_aej(v_emp, current_date, current_date); exception when others then v_ok := true; end;
+  begin perform app_ponto_aej(v_emp, current_date, current_date); exception when others then v_ok := sqlerrm ~* 'permiss|acesso|papel'; end;
   perform pg_temp.ok(v_ok, '[T95] gestor gerou AEJ');
   v_ok := false;
   begin perform app_ponto_responsavel(v_emp); exception when others then v_ok := true; end;

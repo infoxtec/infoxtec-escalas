@@ -2167,22 +2167,28 @@ responsável, decisão 58).*
   `ponto_nsr`, sempre na ordem empresa → `ponto_nsr`). O trailer conta os tipos 2 a 7. Opção de AFD completo, desde o
   primeiro registro (Art. 81 §2º). Tipo 6 (eventos de disponibilidade do REP-P) fica fora: não registramos quedas
   (pendência para o enquadramento).
-- **Quando nascem:** na **primeira marcação** de cada empresa (tipo 2 + um "I" por funcionário ativo com CPF), não na
-  migration: a produção recomeçou o NSR em 1 (decisão 138) e o uso oficial começa em 01/12. Depois, gatilhos em
-  `tecnicos` e `empresas` (só nas colunas que entram no AFD, só quando mudam, só em empresa que já tem cadeia) derivam
-  I/A/E do último registro; desativar, sair da empresa ou ter `desligado_em` gravado gera "E" (data futura não agenda
-  nada). A porta da marcação inclui o funcionário antes do NSR dele se faltar: **nenhuma marcação sai sem o "I"**.
+- **Quando nascem:** o tipo 2 na **primeira marcação** de cada empresa, não na migration (a produção recomeçou o NSR em
+  1, decisão 138, e o uso oficial começa em 01/12). O "I" de cada funcionário nasce **na primeira marcação dele**, antes
+  do NSR da marcação: um cadastro errado (CPF de terceiro) não vira registro imutável e o técnico que nunca bateu continua
+  excluível (minimização, `seguranca`; o `juridico` pode rever o momento da inclusão). **Nenhuma marcação sai sem o "I".**
+  Depois, gatilhos em `tecnicos` (nome e CPF geram "A"; desativar ou sair da empresa gera "E") e em `empresas` (tipo 2
+  quando muda a identificação), só nas colunas do AFD, só quando mudam e só em empresa que já tem cadeia. O desligamento
+  gera "E" na rotina diária (`fn_limpeza_logs`, 06:17 UTC) do dia seguinte a `desligado_em`: no último dia o funcionário
+  ainda bate o ponto.
 - **CPF do responsável** (tipos 2 e 5): um por empresa, em `ponto_rep_responsaveis`, só o admin lê e grava (LGPD art.
   7º, II). Vazio sai com zeros e a geração avisa. Com mais de um admin, o certo será o CPF de quem mudou (pendência).
+  **Retenção:** a tabela guarda o CPF enquanto a pessoa for a responsável (a troca sobrescreve, sem histórico); a cópia
+  congelada nos tipos 2 e 5 fica o prazo das marcações (5 anos, Portaria 671). Quem tem o CPF cadastrado é avisado antes.
 - **AEJ** (`app_ponto_aej`, até 31 dias, só admin): vínculos, horário contratual da escala (um par entrada/saída: a
   escala não marca a hora do intervalo), marcações originais (desconsiderada sai `D` com fonte `O` e motivo, nunca some)
-  e incluídas pelo gestor (`I` com motivo, do catálogo quando houver), ausências **só de mês fechado** (`1` DSR e folga
+  e incluídas pelo gestor (`I` com motivo, do catálogo quando houver; motivo de saúde sai só "Atestado", LGPD art. 11;
+  o texto livre do gestor sai como escrito, risco conhecido), ausências **só de mês fechado** (`1` DSR e folga
   por domingo trabalhado, `2` só falta confirmada no fechamento, `4` folga de feriado; mês aberto sai parcial, com aviso),
   o PTRP e o trailer. Fora: tipo 06 (um vínculo por funcionário) e banco de horas (o Trilha não tem).
 - **Assinatura CAdES fora do painel** (Assinador do ITI/Serpro sobre o arquivo baixado; o painel mostra o SHA-256):
   nenhum código do painel toca o certificado enquanto a CSP não valer de fato (B1 da decisão 133). Pelo Art. 86 §1º o
-  AFD é assinado pelo desenvolvedor: o e-CNPJ da Infoxtec serve **enquanto o empregador for a própria Infoxtec**;
-  cliente de fora pede outra solução (CTO e seguranca).
+  AFD e o comprovante são assinados pelo **desenvolvedor**: o e-CNPJ da Infoxtec serve também para clientes de fora
+  (correção do `juridico`, 15/11); o AEJ pode ser do desenvolvedor ou do empregador (§2º).
 - **Backup:** âncora, conferência da restauração e âncora anterior percorrem marcações e registros do REP juntos, com
   cópia da fórmula `fn_ponto_rep_hash` e o md5 dela; funcionam também sem a tabela (antes da 157).
 - **Pendências (antes do uso por cliente externo ou da conferência):** o hash do comprovante (cadeia do banco) difere

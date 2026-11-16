@@ -6,10 +6,11 @@
 --
 -- Desenho revisado por seguranca, arquiteto-dados e juridico (15/11):
 -- * ponto_rep_registros: tipos 2 e 5, imutável, na MESMA cadeia (NSR e hash) das marcações, pela trava de ponto_nsr;
--- * nascem na primeira marcação da empresa (tipo 2 + um tipo 5 "I" por funcionário elegível), não aqui: a produção
---   recomeçou o NSR em 1 (decisão 138) e o uso oficial começa em 01/12/2026;
--- * depois, gatilhos em tecnicos e empresas (só nas colunas que importam) e a porta da marcação garantem que nenhuma
---   marcação sai sem o "I" do funcionário;
+-- * o tipo 2 nasce na primeira marcação da empresa, não aqui: a produção recomeçou o NSR em 1 (decisão 138) e o uso
+--   oficial começa em 01/12/2026; o "I" de cada funcionário nasce na primeira marcação dele (cadastro errado não deixa
+--   CPF de terceiro em registro imutável — minimização, seguranca);
+-- * depois, gatilhos em tecnicos (alteração e exclusão) e empresas (só nas colunas que importam), a rotina diária
+--   (desligamento) e a porta da marcação mantêm o AFD coerente: nenhuma marcação sai sem o "I" do funcionário;
 -- * ordem das travas, sempre: empresas (key share) -> ponto_nsr (for update).
 set lock_timeout = '5s';
 
@@ -221,8 +222,8 @@ begin
 end $function$;
 
 -- tipo 5 do funcionário na empresa, derivado do último registrado e do cadastro de agora (quem chama tem a trava):
--- elegível e não incluído -> I; incluído com CPF ou nome diferente -> A; incluído e não mais elegível -> E.
--- p_garantir (porta da marcação): inclui quem ainda não está incluído, mesmo fora da regra de elegibilidade.
+-- incluído com CPF ou nome diferente -> A; incluído e não mais elegível (inativo, outra empresa, desligado antes de
+-- hoje) -> E. O "I" só com p_garantir, na porta da marcação: inclui quem ainda não está incluído.
 create or replace function interno.fn_ponto_rep_sincronizar(p_empresa uuid, p_tecnico uuid, p_garantir boolean)
 returns text language plpgsql set search_path = interno, public, extensions, pg_temp as $function$
 declare
@@ -242,7 +243,7 @@ begin
   v_inc := v_ult.operacao is not null and v_ult.operacao <> 'E';
   v_eleg := v_t.empresa_id is not distinct from p_empresa and coalesce(v_t.ativo, false) and v_t.cpf is not null
             and (v_t.desligado_em is null or v_t.desligado_em >= (now() at time zone v_t.fuso)::date);
-  if not v_inc and (v_eleg or (p_garantir and v_t.cpf is not null)) then
+  if not v_inc and p_garantir and v_t.cpf is not null then
     v_op := 'I';
   elsif v_inc and v_eleg and (v_ult.dados ->> 'cpf' is distinct from v_t.cpf or v_ult.dados ->> 'nome' is distinct from left(v_t.nome, 150)) then
     v_op := 'A';
@@ -257,22 +258,65 @@ begin
   return v_op;
 end $function$;
 
--- carga inicial (quem chama tem a trava): tipo 2 e um tipo 5 "I" por funcionário elegível, lidos depois da trava
+-- início da cadeia da empresa (quem chama tem a trava): o tipo 2, lido depois da trava, se ainda não houver
 create or replace function interno.fn_ponto_rep_iniciar(p_empresa uuid)
-returns int language plpgsql set search_path = interno, public, extensions, pg_temp as $function$
-declare t record; v_n int := 0;
+returns boolean language plpgsql set search_path = interno, public, extensions, pg_temp as $function$
 begin
-  if not fn_ponto_rep_empresa(p_empresa, true) then return 0; end if;
-  for t in select id from tecnicos where empresa_id = p_empresa and ativo and cpf is not null order by nome, id loop
-    if fn_ponto_rep_sincronizar(p_empresa, t.id, false) is not null then v_n := v_n + 1; end if;
+  if exists (select 1 from ponto_rep_registros where empresa_id = p_empresa and tipo = 2) then return false; end if;
+  return fn_ponto_rep_empresa(p_empresa, true);
+end $function$;
+
+-- desligamento (rotina diária, dentro de fn_limpeza_logs): quem está incluído e tem desligado_em antes de hoje ganha o
+-- "E" (o gatilho não gera na gravação: no último dia o funcionário ainda bate o ponto)
+create or replace function interno.fn_ponto_rep_desligamentos()
+returns int language plpgsql set search_path = interno, public, extensions, pg_temp as $function$
+declare r record; v_n int := 0;
+begin
+  for r in select distinct on (x.empresa_id, x.tecnico_id) x.empresa_id, x.tecnico_id, x.operacao
+             from ponto_rep_registros x
+             join tecnicos t on t.id = x.tecnico_id
+             join empresas e on e.id = x.empresa_id
+            where x.tipo = 5 and t.desligado_em < (now() at time zone coalesce(e.fuso, 'America/Bahia'))::date
+            order by x.empresa_id, x.tecnico_id, x.nsr desc loop
+    if r.operacao <> 'E' then
+      perform fn_ponto_nsr_travar(r.empresa_id);
+      if fn_ponto_rep_sincronizar(r.empresa_id, r.tecnico_id, false) = 'E' then v_n := v_n + 1; end if;
+    end if;
   end loop;
   return v_n;
+end $function$;
+
+CREATE OR REPLACE FUNCTION interno.fn_limpeza_logs()
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'interno', 'public', 'extensions', 'pg_temp'
+AS $function$
+declare v_webhook int; v_alertas int; v_cron int; v_payload int; v_deslig int;
+begin
+  delete from webhook_eventos
+   where recebido_em < now() - make_interval(days => coalesce(fn_config_int('retencao_webhook_dias'), 30));
+  get diagnostics v_webhook = row_count;
+  delete from alertas_enviados where data_ref < current_date - 90;
+  get diagnostics v_alertas = row_count;
+  delete from cron.job_run_details
+   where end_time < now() - make_interval(days => coalesce(fn_config_int('retencao_cron_dias'), 7));
+  get diagnostics v_cron = row_count;
+  -- o conteudo enviado so serve para conferencia recente; a notificacao (status, datas) fica
+  update notificacoes set payload_envio = null
+   where payload_envio is not null
+     and created_at < now() - make_interval(days => coalesce(fn_config_int('retencao_payload_dias'), 90));
+  get diagnostics v_payload = row_count;
+  -- tipo 5 "E" de quem foi desligado (decisão 139)
+  v_deslig := fn_ponto_rep_desligamentos();
+  return jsonb_build_object('webhook_eventos', v_webhook, 'alertas_enviados', v_alertas,
+                            'cron', v_cron, 'payload_notificacoes', v_payload, 'rep_desligamentos', v_deslig);
 end $function$;
 
 -- gatilhos do cadastro: só as colunas que entram no AFD, só quando mudam (o "when" barra o resto sem custo)
 create or replace function interno.fn_ponto_rep_tg_tecnico()
 returns trigger language plpgsql set search_path = interno, public, extensions, pg_temp as $function$
-declare e uuid;
+declare e uuid; v_lt text := current_setting('lock_timeout');
 begin
   perform set_config('lock_timeout', '3s', true);
   -- troca de empresa: as duas cadeias, em ordem de id (nunca um impasse entre duas trocas cruzadas). Só empresa que já
@@ -284,6 +328,7 @@ begin
     perform fn_ponto_nsr_travar(e);
     perform fn_ponto_rep_sincronizar(e, new.id, false);
   end loop;
+  perform set_config('lock_timeout', v_lt, true);
   return null;
 exception when lock_not_available then
   raise exception 'O ponto da empresa está em uso agora: tente salvar de novo em instantes.';
@@ -291,6 +336,7 @@ end $function$;
 
 create or replace function interno.fn_ponto_rep_tg_empresa()
 returns trigger language plpgsql set search_path = interno, public, extensions, pg_temp as $function$
+declare v_lt text := current_setting('lock_timeout');
 begin
   -- só empresa que já tem cadeia; com a trava (a carga inicial concorrente lê a empresa depois dela; fn_ponto_rep_empresa
   -- não faz nada antes do primeiro tipo 2)
@@ -298,15 +344,13 @@ begin
   perform set_config('lock_timeout', '3s', true);
   perform fn_ponto_nsr_travar(new.id);
   perform fn_ponto_rep_empresa(new.id, false);
+  perform set_config('lock_timeout', v_lt, true);
   return null;
 exception when lock_not_available then
   raise exception 'O ponto da empresa está em uso agora: tente salvar de novo em instantes.';
 end $function$;
 
-drop trigger if exists trg_ponto_rep_tecnico_ins on interno.tecnicos;
-create trigger trg_ponto_rep_tecnico_ins after insert on interno.tecnicos
-  for each row when (new.empresa_id is not null and new.cpf is not null)
-  execute function interno.fn_ponto_rep_tg_tecnico();
+-- sem gatilho de inclusão: o "I" nasce na primeira marcação do funcionário
 drop trigger if exists trg_ponto_rep_tecnico_upd on interno.tecnicos;
 create trigger trg_ponto_rep_tecnico_upd after update of nome, cpf, ativo, empresa_id, desligado_em on interno.tecnicos
   for each row when (old.nome is distinct from new.nome or old.cpf is distinct from new.cpf or old.ativo is distinct from new.ativo
@@ -391,7 +435,7 @@ begin
 
   -- NSR: empresa (key share) e a linha de ponto_nsr ficam travadas até o fim da transação; rollback não deixa lacuna.
   perform fn_ponto_nsr_travar(v_emp.id);
-  -- registros do REP antes da marcação (decisão 139): carga inicial na primeira vez e o "I" deste funcionário
+  -- registros do REP antes da marcação (decisão 139): o tipo 2 na primeira vez e o "I" deste funcionário
   perform fn_ponto_rep_iniciar(v_emp.id);
   perform fn_ponto_rep_sincronizar(v_emp.id, p_tecnico, true);
   select ultimo + 1, ultimo_hash into v_nsr, v_ant from ponto_nsr where empresa_id = v_emp.id;
@@ -689,7 +733,8 @@ begin
   v_tec := null; v_dia := null; v_seq := 0;
   for m in select x.* from (
              select k.tecnico_id, k.momento, k.tipo, 'O' as fonte, k.nsr,
-                    (select coalesce(mo.nome, a.motivo) from ponto_ajustes a
+                    (select case when mo.grupo = 'saude' or j.motivo = 'atestado' then 'Atestado' else coalesce(mo.nome, a.motivo) end
+                       from ponto_ajustes a
                        left join ponto_justificativas j on j.id = a.justificativa_id
                        left join ponto_motivos mo on mo.codigo = j.motivo
                       where a.marcacao_id = k.id and a.acao = 'desconsiderar' order by a.created_at limit 1) as desc_motivo,
@@ -697,12 +742,15 @@ begin
                from ponto_marcacoes k where k.empresa_id = p_empresa and k.momento >= v_ini and k.momento < v_fim
              union all
              select a.tecnico_id, a.momento, a.tipo, 'I', null,
-                    (select coalesce(mo.nome, d2.motivo) from ponto_ajustes d2
+                    (select case when mo.grupo = 'saude' or j.motivo = 'atestado' then 'Atestado' else coalesce(mo.nome, d2.motivo) end
+                       from ponto_ajustes d2
                        left join ponto_justificativas j on j.id = d2.justificativa_id
                        left join ponto_motivos mo on mo.codigo = j.motivo
                       where d2.ajuste_id = a.id and d2.acao = 'desconsiderar' order by d2.created_at limit 1),
-                    coalesce((select mo.nome from ponto_justificativas j
-                                join ponto_motivos mo on mo.codigo = j.motivo where j.id = a.justificativa_id), a.motivo)
+                    -- motivo de saúde nunca sai pelo nome (LGPD art. 11; mesmo rótulo da fn_ponto_abono_rotulo)
+                    coalesce((select case when mo.grupo = 'saude' or j.motivo = 'atestado' then 'Atestado' else mo.nome end
+                                from ponto_justificativas j left join ponto_motivos mo on mo.codigo = j.motivo
+                               where j.id = a.justificativa_id), a.motivo)
                from ponto_ajustes a where a.empresa_id = p_empresa and a.acao = 'incluir'
                 and a.momento >= v_ini and a.momento < v_fim) x
            where v_vinc ? x.tecnico_id::text
