@@ -2191,6 +2191,9 @@ responsável, decisão 58).*
   (correção do `juridico`, 15/11); o AEJ pode ser do desenvolvedor ou do empregador (§2º).
 - **Backup:** âncora, conferência da restauração e âncora anterior percorrem marcações e registros do REP juntos, com
   cópia da fórmula `fn_ponto_rep_hash` e o md5 dela; funcionam também sem a tabela (antes da 157).
+- **Limpeza diária:** a `fn_limpeza_logs` da homologação tinha perdido as limpezas do ponto da migration 55 (códigos de
+  login 24 h, sessões 90 dias, acessos 30 dias; achado do `arquiteto-dados`). A 157 as devolve e acrescenta o "E" do
+  desligamento num bloco próprio (falha nele não desfaz a limpeza). Conferir na produção depois do Aplicar.
 - **Pendências (antes do uso por cliente externo ou da conferência):** o hash do comprovante (cadeia do banco) difere
   do hash do tipo 7 no AFD — o `juridico` recomenda um só (entrega seguinte); Atestado Técnico (Art. 89 §4º, item
   079); comprovante em PDF com PAdES (Arts. 80 e 88 §1º); número do INPI (item 078).

@@ -1095,6 +1095,8 @@ Regressão: T43.
   `fn_ponto_rep_empresa` (tipo 2 quando a identificação muda); `fn_ponto_rep_sincronizar` (A e E do cadastro; o "I"
   só com `p_garantir`, na marcação); `fn_ponto_rep_iniciar` (tipo 2 na primeira marcação da empresa);
   `fn_ponto_rep_desligamentos` (E de quem tem `desligado_em` antes de hoje, chamada por `fn_limpeza_logs` todo dia).
+- `fn_limpeza_logs`: volta a apagar códigos do ponto (24 h), sessões (90 dias) e acessos (30 dias), que a definição da
+  homologação tinha perdido (migration 55), e chama `fn_ponto_rep_desligamentos` num bloco próprio.
 - Gatilho `trg_ponto_rep_tecnico_upd` (nome, CPF, ativo, empresa, desligamento, só quando mudam e só em empresa com
   `ponto_nsr`; sem gatilho de inclusão) e `trg_ponto_rep_empresa_upd` (CNPJ, razão, endereço, cidade, UF, CEP, CEI/CAEPF/CNO).
 - `fn_ponto_registrar`: trava na ordem, carga inicial e o "I" do funcionário antes do NSR da marcação.

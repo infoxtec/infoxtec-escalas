@@ -9,7 +9,7 @@
 -- * o tipo 2 nasce na primeira marcação da empresa, não aqui: a produção recomeçou o NSR em 1 (decisão 138) e o uso
 --   oficial começa em 01/12/2026; o "I" de cada funcionário nasce na primeira marcação dele (cadastro errado não deixa
 --   CPF de terceiro em registro imutável — minimização, seguranca);
--- * depois, gatilhos em tecnicos (alteração e exclusão) e empresas (só nas colunas que importam), a rotina diária
+-- * depois, gatilhos em tecnicos (alteração e desativação) e empresas (só nas colunas que importam), a rotina diária
 --   (desligamento) e a porta da marcação mantêm o AFD coerente: nenhuma marcação sai sem o "I" do funcionário;
 -- * ordem das travas, sempre: empresas (key share) -> ponto_nsr (for update).
 set lock_timeout = '5s';
@@ -41,6 +41,7 @@ create table if not exists interno.ponto_rep_registros (
 comment on table interno.ponto_rep_registros is
   'Registros do REP-P no AFD além das marcações: tipo 2 (empresa) e tipo 5 (empregado I/A/E), no mesmo NSR e na mesma cadeia de hash das marcações (decisão 139). Só inclusão; guarda de 5 anos junto com as marcações.';
 create index if not exists ponto_rep_registros_tecnico on interno.ponto_rep_registros (empresa_id, tecnico_id, nsr desc) where tipo = 5;
+create index if not exists ponto_rep_registros_conta_tecnico on interno.ponto_rep_registros (conta_id, tecnico_id) where tecnico_id is not null;
 alter table interno.ponto_rep_registros enable row level security;
 revoke all on interno.ponto_rep_registros from public, anon, authenticated, service_role;
 drop trigger if exists tg_00_conta on interno.ponto_rep_registros;
@@ -286,13 +287,15 @@ begin
   return v_n;
 end $function$;
 
+-- A definição da homologação perdeu as três limpezas do ponto da migration 55 (códigos 24 h, sessões 90 dias, acessos
+-- 30 dias; arquiteto-dados, 16/11): voltam aqui, junto com o "E" do desligamento.
 CREATE OR REPLACE FUNCTION interno.fn_limpeza_logs()
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'interno', 'public', 'extensions', 'pg_temp'
 AS $function$
-declare v_webhook int; v_alertas int; v_cron int; v_payload int; v_deslig int;
+declare v_webhook int; v_alertas int; v_cron int; v_payload int; v_codigos int; v_sessoes int; v_acessos int; v_deslig int;
 begin
   delete from webhook_eventos
    where recebido_em < now() - make_interval(days => coalesce(fn_config_int('retencao_webhook_dias'), 30));
@@ -307,18 +310,33 @@ begin
    where payload_envio is not null
      and created_at < now() - make_interval(days => coalesce(fn_config_int('retencao_payload_dias'), 90));
   get diagnostics v_payload = row_count;
-  -- tipo 5 "E" de quem foi desligado (decisão 139)
-  v_deslig := fn_ponto_rep_desligamentos();
+  -- guarda do ponto (LGPD, migration 55): códigos 24 h, sessões encerradas ou vencidas 90 dias, acessos 30 dias
+  delete from ponto_codigos where created_at < now() - interval '24 hours';
+  get diagnostics v_codigos = row_count;
+  delete from ponto_sessoes where coalesce(encerrada_em, expira_em) < now() - interval '90 days';
+  get diagnostics v_sessoes = row_count;
+  delete from ponto_acessos where momento < now() - interval '30 days';
+  get diagnostics v_acessos = row_count;
+  -- tipo 5 "E" de quem foi desligado (decisão 139): num bloco próprio, com espera curta; uma falha aqui não desfaz a
+  -- limpeza (fica para o dia seguinte, com aviso)
+  begin
+    perform set_config('lock_timeout', '3s', true);
+    v_deslig := fn_ponto_rep_desligamentos();
+  exception when others then
+    v_deslig := -1;
+    raise warning 'fn_limpeza_logs: desligamentos do AFD ficaram para amanhã (%)', sqlstate;
+  end;
   return jsonb_build_object('webhook_eventos', v_webhook, 'alertas_enviados', v_alertas,
-                            'cron', v_cron, 'payload_notificacoes', v_payload, 'rep_desligamentos', v_deslig);
+                            'cron', v_cron, 'payload_notificacoes', v_payload,
+                            'ponto_codigos', v_codigos, 'ponto_sessoes', v_sessoes, 'ponto_acessos', v_acessos,
+                            'rep_desligamentos', v_deslig);
 end $function$;
 
 -- gatilhos do cadastro: só as colunas que entram no AFD, só quando mudam (o "when" barra o resto sem custo)
 create or replace function interno.fn_ponto_rep_tg_tecnico()
-returns trigger language plpgsql set search_path = interno, public, extensions, pg_temp as $function$
-declare e uuid; v_lt text := current_setting('lock_timeout');
+returns trigger language plpgsql set search_path = interno, public, extensions, pg_temp set lock_timeout = '3s' as $function$
+declare e uuid;
 begin
-  perform set_config('lock_timeout', '3s', true);
   -- troca de empresa: as duas cadeias, em ordem de id (nunca um impasse entre duas trocas cruzadas). Só empresa que já
   -- tem cadeia (ponto_nsr): o gatilho não cria a cadeia de quem nunca bateu ponto (a demonstração continua apagável); a
   -- corrida com a primeira marcação fica coberta pela porta, que inclui o funcionário antes do NSR dele
@@ -328,23 +346,19 @@ begin
     perform fn_ponto_nsr_travar(e);
     perform fn_ponto_rep_sincronizar(e, new.id, false);
   end loop;
-  perform set_config('lock_timeout', v_lt, true);
   return null;
 exception when lock_not_available then
   raise exception 'O ponto da empresa está em uso agora: tente salvar de novo em instantes.';
 end $function$;
 
 create or replace function interno.fn_ponto_rep_tg_empresa()
-returns trigger language plpgsql set search_path = interno, public, extensions, pg_temp as $function$
-declare v_lt text := current_setting('lock_timeout');
+returns trigger language plpgsql set search_path = interno, public, extensions, pg_temp set lock_timeout = '3s' as $function$
 begin
   -- só empresa que já tem cadeia; com a trava (a carga inicial concorrente lê a empresa depois dela; fn_ponto_rep_empresa
   -- não faz nada antes do primeiro tipo 2)
   if not exists (select 1 from ponto_nsr where empresa_id = new.id) then return null; end if;
-  perform set_config('lock_timeout', '3s', true);
   perform fn_ponto_nsr_travar(new.id);
   perform fn_ponto_rep_empresa(new.id, false);
-  perform set_config('lock_timeout', v_lt, true);
   return null;
 exception when lock_not_available then
   raise exception 'O ponto da empresa está em uso agora: tente salvar de novo em instantes.';
@@ -722,7 +736,7 @@ begin
                or exists (select 1 from ponto_ajustes a where a.empresa_id = p_empresa and a.tecnico_id = x.id
                            and a.acao = 'incluir' and a.momento >= v_ini and a.momento < v_fim)
                or exists (select 1 from ponto_folha_fechamentos f where f.empresa_id = p_empresa and f.tecnico_id = x.id
-                           and f.competencia <= p_ate and (f.competencia + interval '1 month')::date > p_de))
+                           and f.competencia between date_trunc('month', p_de)::date and p_ate))
             order by x.nome, x.id loop
     v_n[3] := v_n[3] + 1;
     v_vinc := v_vinc || jsonb_build_object(t.id::text, v_n[3]);
@@ -792,9 +806,10 @@ begin
 
   -- 07 ausências: só de mês fechado (falta é decisão humana, confirmada no fechamento — decisão 106)
   for d in select f.tecnico_id, dia, f.ocorrencias_confirmadas as oc
-             from ponto_folha_fechamentos f join ponto_espelhos e on e.id = f.espelho_id
+             from ponto_folha_fechamentos f join ponto_espelhos e on e.id = f.espelho_id and e.substituido_em is null
              cross join lateral jsonb_array_elements(e.conteudo -> 'dias') dia
             where f.empresa_id = p_empresa and v_vinc ? f.tecnico_id::text
+              and f.competencia between date_trunc('month', p_de)::date and p_ate
               and (dia ->> 'data')::date between p_de and p_ate
             order by f.tecnico_id, (dia ->> 'data')::date loop
     v_tp := case

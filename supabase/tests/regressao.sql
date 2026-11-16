@@ -1812,17 +1812,18 @@ begin
   perform pg_temp.ok(right(r->>'conteudo', 2) = E'\r\n', '[T34] última linha sem CR LF');
   l := string_to_array(left(r->>'conteudo', -2), E'\r\n');
   v_n := array_length(l, 1);
-  perform pg_temp.ok((r->>'marcacoes')::int >= 1 and v_n = (r->>'marcacoes')::int + 2, '[T34] linhas: ' || v_n || ' para ' || (r->>'marcacoes'));
+  -- desde a 157 o arquivo tem também os tipos 2 e 5 (decisão 139; leiaute deles conferido no T95)
+  perform pg_temp.ok((r->>'marcacoes')::int >= 1 and v_n = (r->>'registros')::int + 2, '[T34] linhas: ' || v_n || ' para ' || (r->>'registros'));
   perform pg_temp.ok(length(l[1]) = 302 and left(l[1], 10) = '0000000001'
                      and right(l[1], 4) = fn_afd_crc16(convert_to(left(l[1], 298), 'LATIN1')), '[T34] cabeçalho fora do leiaute (tamanho ' || length(l[1]) || ')');
   for i in 2 .. v_n - 1 loop
-    perform pg_temp.ok(length(l[i]) = 137 and substr(l[i], 10, 1) = '7', '[T34] marcação fora do leiaute: NSR ' || left(l[i], 9) || ', tamanho ' || length(l[i]));
+    perform pg_temp.ok(substr(l[i], 10, 1) in ('2', '5') or length(l[i]) = 137 and substr(l[i], 10, 1) = '7', '[T34] marcação fora do leiaute: NSR ' || left(l[i], 9) || ', tamanho ' || length(l[i]));
     if i > 2 then
       perform pg_temp.ok(left(l[i], 9) > left(l[i - 1], 9), '[T34] NSR fora de ordem');
     end if;
   end loop;
   -- o hash do 2º registro é o SHA-256 dos campos 1 a 7 dele mais o hash do 1º (quando são consecutivos)
-  if v_n > 3 and left(l[3], 9)::bigint = left(l[2], 9)::bigint + 1 then
+  if v_n > 3 and left(l[3], 9)::bigint = left(l[2], 9)::bigint + 1 and substr(l[2], 10, 1) = '7' and substr(l[3], 10, 1) = '7' then
     perform pg_temp.ok(right(l[3], 64) = encode(sha256(convert_to(left(l[3], 73) || right(l[2], 64), 'LATIN1')), 'hex'), '[T34] hash não encadeado');
   end if;
   perform pg_temp.ok(length(l[v_n]) = 64 and left(l[v_n], 9) = '999999999' and right(l[v_n], 1) = '9'
@@ -5855,7 +5856,7 @@ begin
   -- empresa que nunca bateu ponto não ganha cadeia pelo cadastro (a demonstração continua apagável)
   perform pg_temp.ok(not exists (select 1 from ponto_nsr where empresa_id = v_emp2), '[T95] cadastro criou a cadeia da empresa');
   -- desligamento: a gravação não gera nada (no último dia ainda bate); a rotina diária gera o E do dia seguinte
-  update tecnicos set desligado_em = current_date - 1 where id = v_a;
+  update tecnicos set desligado_em = (now() at time zone 'America/Bahia')::date - 1 where id = v_a;
   perform pg_temp.ok((select operacao from ponto_rep_registros where empresa_id = v_emp and tecnico_id = v_a order by nsr desc limit 1) = 'E',
                      '[T95] desligamento passado sem E');
   update tecnicos set desligado_em = null where id = v_a;
@@ -5865,6 +5866,13 @@ begin
                      '[T95] desligamento de hoje gerou E antes do fim do dia');
   perform pg_temp.ok(fn_ponto_rep_desligamentos() = 0, '[T95] rotina diária deu E a quem sai hoje');
   update tecnicos set desligado_em = null where id = v_a;
+  -- a rotina diária mantém as limpezas do ponto da migration 55 (código de login de 2 dias some) e informa os desligamentos
+  insert into ponto_codigos (tecnico_id, codigo_hash, origem, expira_em, created_at)
+  values (v_a, md5('t95'), 'gestor', now() - interval '2 days', now() - interval '2 days');
+  r := fn_limpeza_logs();
+  perform pg_temp.ok(not exists (select 1 from ponto_codigos where tecnico_id = v_a and codigo_hash = md5('t95'))
+                     and r ?& array['ponto_codigos', 'ponto_sessoes', 'ponto_acessos', 'rep_desligamentos'],
+                     '[T95] limpeza diária: ' || r::text);
   -- empresa: razão muda -> tipo 2; nome fantasia não entra no AFD
   select ultimo into v_ult from ponto_nsr where empresa_id = v_emp;
   update empresas set nome_fantasia = 'QA T95 novo' where id = v_emp;
