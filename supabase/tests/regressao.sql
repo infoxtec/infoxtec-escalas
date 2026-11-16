@@ -350,7 +350,12 @@ begin
   perform ponto_registrar_ciencia(t1, 'qa');
   perform pg_temp.ok((ponto_eu(t1, 'qa')->>'ciente')::boolean, '[T3] ciência não registrada');
   c := ponto_bater(t1, 'entrada', -12.900100, -38.400100, 10, 'qa');
-  perform pg_temp.ok((c->>'nsr')::int = 1 and (c->>'dentro_area')::boolean, '[T3] marcação pelo app: ' || c::text);
+  -- primeira marcação da empresa: antes dela, o tipo 2 (NSR 1) e o tipo 5 "I" de cada funcionário (decisão 139)
+  perform pg_temp.ok((c->>'nsr')::int = 1 + (select count(*) from ponto_rep_registros r
+                                                 where r.empresa_id = (select empresa_id from tecnicos where id = v_tec))
+                     and (select tipo from ponto_rep_registros r where r.nsr = 1
+                           and r.empresa_id = (select empresa_id from tecnicos where id = v_tec)) = 2
+                     and (c->>'dentro_area')::boolean, '[T3] marcação pelo app: ' || c::text);
   perform pg_temp.ok((select count(*) from ponto_minhas_marcacoes(t1, 7)) = 1, '[T3] histórico do funcionário');
   -- sessão única: novo login derruba o anterior
   c := app_ponto_gerar_codigo(v_tec);
@@ -388,7 +393,7 @@ end $$;
 do $$
 declare
   v_emp uuid := (select v::uuid from qa where k = 'emp');
-  t0 timestamptz := clock_timestamp(); i int; j int; v_tec uuid; r jsonb; v_seg numeric;
+  t0 timestamptz := clock_timestamp(); i int; j int; v_tec uuid; r jsonb; v_seg numeric; v_rep int;
   tipos text[] := array['entrada','saida_almoco','volta_almoco','saida'];
 begin
   for i in 1..400 loop
@@ -401,11 +406,16 @@ begin
   end loop;
   v_seg := extract(epoch from clock_timestamp() - t0);
   perform pg_temp.ok((select count(*) from ponto_marcacoes where empresa_id = v_emp) = 2001, '[T5] total de marcações');
-  perform pg_temp.ok((select max(nsr) = count(*) and min(nsr) = 1 from ponto_marcacoes where empresa_id = v_emp),
+  -- NSR único de marcações e registros do REP (decisão 139): sem lacuna e sem repetição entre os dois
+  perform pg_temp.ok((select max(nsr) = count(*) and min(nsr) = 1 and count(distinct nsr) = count(*)
+                        from (select nsr from ponto_marcacoes where empresa_id = v_emp
+                              union all select nsr from ponto_rep_registros where empresa_id = v_emp) x),
                      '[T5] NSR com lacuna');
-  perform pg_temp.ok((select ultimo from ponto_nsr where empresa_id = v_emp) = 2001, '[T5] ponto_nsr divergente');
+  v_rep := (select count(*) from ponto_rep_registros where empresa_id = v_emp);
+  perform pg_temp.ok((select ultimo from ponto_nsr where empresa_id = v_emp) = 2001 + v_rep, '[T5] ponto_nsr divergente');
   r := app_ponto_verificar(v_emp);
-  perform pg_temp.ok((r->>'integra')::boolean and (r->>'conferidas')::int = 2001, '[T5] cadeia: ' || r::text);
+  perform pg_temp.ok((r->>'integra')::boolean and (r->>'marcacoes')::int = 2001 and (r->>'conferidas')::int = 2001 + v_rep,
+                     '[T5] cadeia: ' || r::text);
   perform pg_temp.ok(v_seg < 120, '[T5] 2.000 marcações levaram ' || round(v_seg, 1) || ' s');
   raise notice 'T5 carga: 2.000 marcações em % s (% por segundo)', round(v_seg, 2), round(2000 / greatest(v_seg, 0.001));
   insert into qa values ('t5_seg', round(v_seg, 2)::text);
@@ -1802,17 +1812,18 @@ begin
   perform pg_temp.ok(right(r->>'conteudo', 2) = E'\r\n', '[T34] última linha sem CR LF');
   l := string_to_array(left(r->>'conteudo', -2), E'\r\n');
   v_n := array_length(l, 1);
-  perform pg_temp.ok((r->>'marcacoes')::int >= 1 and v_n = (r->>'marcacoes')::int + 2, '[T34] linhas: ' || v_n || ' para ' || (r->>'marcacoes'));
+  -- desde a 157 o arquivo tem também os tipos 2 e 5 (decisão 139; leiaute deles conferido no T95)
+  perform pg_temp.ok((r->>'marcacoes')::int >= 1 and v_n = (r->>'registros')::int + 2, '[T34] linhas: ' || v_n || ' para ' || (r->>'registros'));
   perform pg_temp.ok(length(l[1]) = 302 and left(l[1], 10) = '0000000001'
                      and right(l[1], 4) = fn_afd_crc16(convert_to(left(l[1], 298), 'LATIN1')), '[T34] cabeçalho fora do leiaute (tamanho ' || length(l[1]) || ')');
   for i in 2 .. v_n - 1 loop
-    perform pg_temp.ok(length(l[i]) = 137 and substr(l[i], 10, 1) = '7', '[T34] marcação fora do leiaute: NSR ' || left(l[i], 9) || ', tamanho ' || length(l[i]));
+    perform pg_temp.ok(substr(l[i], 10, 1) in ('2', '5') or length(l[i]) = 137 and substr(l[i], 10, 1) = '7', '[T34] marcação fora do leiaute: NSR ' || left(l[i], 9) || ', tamanho ' || length(l[i]));
     if i > 2 then
       perform pg_temp.ok(left(l[i], 9) > left(l[i - 1], 9), '[T34] NSR fora de ordem');
     end if;
   end loop;
   -- o hash do 2º registro é o SHA-256 dos campos 1 a 7 dele mais o hash do 1º (quando são consecutivos)
-  if v_n > 3 and left(l[3], 9)::bigint = left(l[2], 9)::bigint + 1 then
+  if v_n > 3 and left(l[3], 9)::bigint = left(l[2], 9)::bigint + 1 and substr(l[2], 10, 1) = '7' and substr(l[3], 10, 1) = '7' then
     perform pg_temp.ok(right(l[3], 64) = encode(sha256(convert_to(left(l[3], 73) || right(l[2], 64), 'LATIN1')), 'hex'), '[T34] hash não encadeado');
   end if;
   perform pg_temp.ok(length(l[v_n]) = 64 and left(l[v_n], 9) = '999999999' and right(l[v_n], 1) = '9'
@@ -5736,7 +5747,7 @@ declare
   v_trunc text[] := array['ponto_abonos', 'ponto_afd_geracoes', 'ponto_ajustes', 'ponto_documento_registros',
     'ponto_documento_sequencia', 'ponto_documento_verificacoes', 'ponto_espelho_acessos', 'ponto_espelho_pdfs',
     'ponto_espelhos', 'ponto_folha_fechamentos', 'ponto_justificativas', 'ponto_marcacoes', 'ponto_nsr',
-    'ponto_reinicios'];
+    'ponto_reinicios', 'ponto_rep_registros', 'ponto_aej_geracoes'];
   v text; v_ok boolean; v_t uuid; v_emp uuid; c jsonb;
 begin
   perform set_config('request.jwt.claims', '', true);
@@ -5762,29 +5773,206 @@ begin
   v_ok := false;
   begin truncate interno.ponto_reinicios; exception when others then v_ok := sqlerrm like '%Portaria%'; end;
   perform pg_temp.ok(v_ok, '[T94] truncate do registro de reinício recusado');
-  -- empresa nova: a cadeia começa no NSR 1 com hash anterior zerado e segue para o 2
+  -- empresa nova: a cadeia começa no NSR 1 (o tipo 2, decisão 139) com hash anterior zerado; o tipo 5 do funcionário no
+  -- 2 e as marcações em 3 e 4
   insert into empresas (cnpj, razao_social, nome_fantasia, fuso, empregadora, ativo, conta_id)
   values ('94729494000193', 'QA T94 Ltda', 'QA T94', 'America/Bahia', true, true, '00000000-0000-0000-0000-000000000001') returning id into v_emp;
   insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, perfil_teste, conta_id)
   values ('QA T94', '5579900009494', true, true, pg_temp.cpf('949494940'), v_emp, true, '00000000-0000-0000-0000-000000000001') returning id into v_t;
   c := fn_ponto_registrar(v_t, 'entrada', 'app', -12.930101, -38.450101, 10, '{"qa":"T94-1"}');
-  perform pg_temp.ok((c->>'nsr')::bigint = 1 and (select hash_anterior = repeat('0', 64) from ponto_marcacoes m
-                        where m.empresa_id = v_emp and m.nsr = 1), '[T94] empresa nova começa no NSR 1: ' || c::text);
+  perform pg_temp.ok((c->>'nsr')::bigint = 3 and (select hash_anterior = repeat('0', 64) and tipo = 2 from ponto_rep_registros r
+                        where r.empresa_id = v_emp and r.nsr = 1)
+                     and (select operacao = 'I' and tecnico_id = v_t from ponto_rep_registros r where r.empresa_id = v_emp and r.nsr = 2),
+                     '[T94] empresa nova começa no NSR 1: ' || c::text);
   c := fn_ponto_registrar(v_t, 'saida', 'app', -12.930101, -38.450101, 10, '{"qa":"T94-2"}');
-  perform pg_temp.ok((c->>'nsr')::bigint = 2, '[T94] e segue para 2: ' || c::text);
+  perform pg_temp.ok((c->>'nsr')::bigint = 4, '[T94] e segue para 4: ' || c::text);
   -- as travas de linha valem sobre a marcação que este teste acabou de criar
   v_ok := false;
-  begin delete from interno.ponto_marcacoes where empresa_id = v_emp and nsr = 1; exception when others then v_ok := sqlerrm like '%Portaria%'; end;
+  begin delete from interno.ponto_marcacoes where empresa_id = v_emp and nsr = 3; exception when others then v_ok := sqlerrm like '%Portaria%'; end;
   perform pg_temp.ok(v_ok, '[T94] delete de marcação recusado');
   v_ok := false;
-  begin update interno.ponto_marcacoes set tipo = tipo where empresa_id = v_emp and nsr = 1; exception when others then v_ok := sqlerrm like '%Portaria%'; end;
+  begin update interno.ponto_marcacoes set tipo = tipo where empresa_id = v_emp and nsr = 3; exception when others then v_ok := sqlerrm like '%Portaria%'; end;
   perform pg_temp.ok(v_ok, '[T94] update de marcação recusado');
   -- fora da produção (CI, homologação) a 156 não apagou nada
   if interno.fn_config('evolution_instancia') is distinct from 'infoxtec' then
     perform pg_temp.ok(not exists (select 1 from ponto_reinicios), '[T94] fora da produção nenhum reinício');
   end if;
 end $$;
-select 'REGRESSÃO OK: T1 a T94' as resultado,
+-- T95 AFD oficial e AEJ (migration 157, decisão 139): tipos 2 e 5 no mesmo NSR das marcações, derivados do cadastro e
+-- idempotentes; portas e travas; verificação da cadeia mista; AFD com os tipos em ordem e o trailer certo; AEJ com
+-- marcação desconsiderada ("D" com motivo) e incluída ("I"), contagens do trailer e período de até 31 dias
+do $$
+declare
+  c1 constant uuid := '00000000-0000-0000-0000-000000000001';
+  v_emp uuid; v_emp2 uuid; v_a uuid; v_b uuid; v_c uuid; v_d uuid; c jsonb; r jsonb; l text[]; v_ok boolean; v_n int;
+  v_ult bigint; v_cont jsonb; v_marc uuid; x text; v_tipos text; i int;
+begin
+  perform set_config('request.headers', '{"x-conta":"00000000-0000-0000-0000-000000000001"}', true);
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+  insert into empresas (cnpj, razao_social, nome_fantasia, endereco, cidade, uf, fuso, empregadora, ativo, conta_id)
+  values ('95729595000127', 'QA T95 Ltda', 'QA T95', 'Rua T95, 1', 'Salvador', 'BA', 'America/Bahia', true, true, c1) returning id into v_emp;
+  insert into empresas (cnpj, razao_social, fuso, empregadora, ativo, conta_id)
+  values ('95729595000208', 'QA T95 Filial', 'America/Bahia', true, true, c1) returning id into v_emp2;
+  perform app_ponto_definir_responsavel(v_emp, pg_temp.cpf('959595950'));
+  v_ok := false;
+  begin perform app_ponto_definir_responsavel(v_emp, '12345678900'); exception when others then v_ok := sqlerrm like '%CPF inválido%'; end;
+  perform pg_temp.ok(v_ok, '[T95] CPF do responsável inválido aceito');
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, conta_id) values
+    ('QA T95 Ana', '5579900009501', true, true, pg_temp.cpf('959595951'), v_emp, c1) returning id into v_a;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, conta_id) values
+    ('QA T95 Bia', '5579900009502', true, true, pg_temp.cpf('959595952'), v_emp, c1) returning id into v_b;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, cpf, empresa_id, conta_id) values
+    ('QA T95 Caio', '5579900009503', false, true, pg_temp.cpf('959595953'), v_emp, c1) returning id into v_c;
+  insert into tecnicos (nome, telefone_e164, ativo, opt_in, empresa_id, perfil_teste, conta_id) values
+    ('QA T95 Davi', '5579900009504', true, true, v_emp, true, c1) returning id into v_d;
+  -- antes da primeira marcação, nada (o NSR recomeçado e o uso oficial ficam limpos)
+  perform pg_temp.ok(not exists (select 1 from ponto_rep_registros where empresa_id = v_emp), '[T95] registro do REP antes da primeira marcação');
+  c := fn_ponto_registrar(v_a, 'entrada', 'app', -12.930101, -38.450101, 10, '{}');
+  -- tipo 2 e o "I" de quem bateu; quem só está cadastrado não entra (cadastro errado não vira registro imutável)
+  select string_agg(tipo::text || coalesce(operacao, ''), ',' order by nsr) into v_tipos from ponto_rep_registros where empresa_id = v_emp;
+  perform pg_temp.ok((c->>'nsr')::int = 3 and v_tipos = '2,5I', '[T95] início da cadeia: ' || coalesce(v_tipos, '') || ' / NSR ' || (c->>'nsr'));
+  c := fn_ponto_registrar(v_b, 'entrada', 'ura', null, null, null, '{}');
+  perform pg_temp.ok((c->>'nsr')::int = 5, '[T95] I da segunda funcionária antes da marcação dela: ' || (c->>'nsr'));
+  perform pg_temp.ok((select dados ->> 'cpf_responsavel' = pg_temp.cpf('959595950') and dados ->> 'cnpj' = '95729595000127'
+                        and dados ->> 'local' = 'Rua T95, 1, Salvador/BA' from ponto_rep_registros where empresa_id = v_emp and nsr = 1),
+                     '[T95] dados do tipo 2');
+  -- salvar sem mudar não grava nada; nome muda: A; desativar: E; reativar e ganhar CPF: nada (o I vem na marcação)
+  select ultimo into v_ult from ponto_nsr where empresa_id = v_emp;
+  update tecnicos set nome = nome, cpf = cpf, ativo = ativo, telefone_e164 = '5579900009592' where id = v_b;
+  perform pg_temp.ok((select ultimo from ponto_nsr where empresa_id = v_emp) = v_ult, '[T95] salvar sem mudança gerou registro');
+  update tecnicos set nome = 'QA T95 Bia Souza' where id = v_b;
+  update tecnicos set ativo = false where id = v_b;
+  update tecnicos set ativo = true where id = v_b;
+  update tecnicos set cpf = pg_temp.cpf('959595954') where id = v_d;
+  select string_agg(operacao, ',' order by nsr) into v_tipos from ponto_rep_registros where empresa_id = v_emp and nsr > v_ult;
+  perform pg_temp.ok(v_tipos = 'A,E', '[T95] eventos do cadastro: ' || coalesce(v_tipos, ''));
+  perform pg_temp.ok((select dados ->> 'nome' = 'QA T95 Bia Souza' from ponto_rep_registros where empresa_id = v_emp and nsr = v_ult + 1),
+                     '[T95] alteração sem o nome novo');
+  -- troca de empresa: E na origem e, como a outra ainda não começou, nada nela
+  c := fn_ponto_registrar(v_b, 'saida', 'ura', null, null, null, '{}');   -- volta a ser incluída (I) e marca
+  update tecnicos set empresa_id = v_emp2 where id = v_b;
+  perform pg_temp.ok((select operacao from ponto_rep_registros where empresa_id = v_emp and tecnico_id = v_b order by nsr desc limit 1) = 'E'
+                     and not exists (select 1 from ponto_rep_registros where empresa_id = v_emp2), '[T95] troca de empresa');
+  -- empresa que nunca bateu ponto não ganha cadeia pelo cadastro (a demonstração continua apagável)
+  perform pg_temp.ok(not exists (select 1 from ponto_nsr where empresa_id = v_emp2), '[T95] cadastro criou a cadeia da empresa');
+  -- desligamento: a gravação não gera nada (no último dia ainda bate); a rotina diária gera o E do dia seguinte
+  update tecnicos set desligado_em = (now() at time zone 'America/Bahia')::date - 1 where id = v_a;
+  perform pg_temp.ok((select operacao from ponto_rep_registros where empresa_id = v_emp and tecnico_id = v_a order by nsr desc limit 1) = 'E',
+                     '[T95] desligamento passado sem E');
+  update tecnicos set desligado_em = null where id = v_a;
+  c := fn_ponto_registrar(v_a, 'entrada', 'app', -12.930101, -38.450101, 10, '{}');   -- volta: I
+  update tecnicos set desligado_em = (now() at time zone 'America/Bahia')::date where id = v_a;
+  perform pg_temp.ok((select operacao from ponto_rep_registros where empresa_id = v_emp and tecnico_id = v_a order by nsr desc limit 1) = 'I',
+                     '[T95] desligamento de hoje gerou E antes do fim do dia');
+  perform pg_temp.ok(fn_ponto_rep_desligamentos() = 0, '[T95] rotina diária deu E a quem sai hoje');
+  update tecnicos set desligado_em = null where id = v_a;
+  -- a rotina diária mantém as limpezas do ponto da migration 55 (código de login de 2 dias some) e informa os desligamentos
+  insert into ponto_codigos (tecnico_id, codigo_hash, origem, expira_em, created_at)
+  values (v_a, md5('t95'), 'gestor', now() - interval '2 days', now() - interval '2 days');
+  r := fn_limpeza_logs();
+  perform pg_temp.ok(not exists (select 1 from ponto_codigos where tecnico_id = v_a and codigo_hash = md5('t95'))
+                     and r ?& array['ponto_codigos', 'ponto_sessoes', 'ponto_acessos', 'rep_desligamentos'],
+                     '[T95] limpeza diária: ' || r::text);
+  -- empresa: razão muda -> tipo 2; nome fantasia não entra no AFD
+  select ultimo into v_ult from ponto_nsr where empresa_id = v_emp;
+  update empresas set nome_fantasia = 'QA T95 novo' where id = v_emp;
+  perform pg_temp.ok((select ultimo from ponto_nsr where empresa_id = v_emp) = v_ult, '[T95] nome fantasia gerou tipo 2');
+  update empresas set razao_social = 'QA T95 Serviços Ltda' where id = v_emp;
+  perform pg_temp.ok((select tipo = 2 and dados ->> 'razao' = 'QA T95 Serviços Ltda' from ponto_rep_registros where empresa_id = v_emp
+                       and nsr = v_ult + 1), '[T95] razão social não gerou tipo 2');
+  -- marcação de quem não está incluído: o "I" vem antes, na mesma transação
+  update tecnicos set empresa_id = v_emp where id = v_b;   -- volta: nada até marcar
+  c := fn_ponto_registrar(v_b, 'entrada', 'ura', null, null, null, '{}');
+  perform pg_temp.ok((select operacao from ponto_rep_registros where empresa_id = v_emp and tecnico_id = v_b order by nsr desc limit 1) = 'I',
+                     '[T95] marcação sem inclusão');
+  c := fn_ponto_registrar(v_a, 'saida', 'app', -12.930101, -38.450101, 10, '{}');
+  v_marc := (c->>'marcacao_id')::uuid;
+  -- portas: inserção por fora, NSR repetido entre as tabelas, alteração e truncate recusados; ponto_nsr forjado recusado
+  v_ok := false;
+  begin
+    insert into ponto_rep_registros (conta_id, empresa_id, nsr, tipo, momento, dados, hash_anterior, hash)
+    values (c1, v_emp, (select ultimo + 1 from ponto_nsr where empresa_id = v_emp), 2, now(), '{}', 'x', 'y');
+  exception when others then v_ok := sqlerrm like '%porta única%'; end;
+  perform pg_temp.ok(v_ok, '[T95] registro do REP fora da porta');
+  v_ok := false;
+  begin update ponto_rep_registros set dados = dados where empresa_id = v_emp and nsr = 1; exception when others then v_ok := sqlerrm like '%Portaria%'; end;
+  perform pg_temp.ok(v_ok, '[T95] update de registro do REP');
+  v_ok := false;
+  begin delete from ponto_rep_registros where empresa_id = v_emp and nsr = 1; exception when others then v_ok := sqlerrm like '%Portaria%'; end;
+  perform pg_temp.ok(v_ok, '[T95] delete de registro do REP');
+  v_ok := false;
+  begin truncate ponto_rep_registros; exception when others then v_ok := sqlerrm like '%Portaria%'; end;
+  perform pg_temp.ok(v_ok, '[T95] truncate de registros do REP');
+  v_ok := false;
+  begin update ponto_nsr set ultimo = ultimo + 1, ultimo_hash = (select hash from ponto_rep_registros where empresa_id = v_emp and nsr = 1)
+         where empresa_id = v_emp;
+  exception when others then v_ok := sqlerrm like '%Controle de NSR%'; end;
+  perform pg_temp.ok(v_ok, '[T95] ponto_nsr forjado com hash de registro antigo');
+  -- a cadeia mista confere; um campo de tipo 5 trocado em memória não confere
+  r := app_ponto_verificar(v_emp);
+  perform pg_temp.ok((r->>'integra')::boolean and (r->>'conferidas')::bigint = (select ultimo from ponto_nsr where empresa_id = v_emp)
+                     and (r->>'marcacoes')::int = 6, '[T95] verificação: ' || r::text);
+  perform pg_temp.ok((select fn_ponto_rep_hash(q.z) <> (q.z).hash from (select jsonb_populate_record(p, '{"dados":{"cpf":"0","nome":"x"}}') z
+                        from ponto_rep_registros p where p.empresa_id = v_emp and p.tipo = 5 limit 1) q),
+                     '[T95] hash do registro do REP não cobre os dados');
+  -- AFD completo: tipos em ordem de NSR, tamanhos, CRC e trailer
+  r := app_ponto_afd(v_emp, null, (now() at time zone 'America/Bahia')::date);
+  l := string_to_array(left(r->>'conteudo', -2), E'\r\n');
+  v_n := array_length(l, 1);
+  perform pg_temp.ok(v_n = (select ultimo from ponto_nsr where empresa_id = v_emp) + 2, '[T95] AFD com ' || v_n || ' linhas');
+  for i in 2 .. v_n - 1 loop
+    x := substr(l[i], 10, 1);
+    perform pg_temp.ok(left(l[i], 9)::int = i - 1, '[T95] AFD fora da ordem de NSR na linha ' || i);
+    perform pg_temp.ok(case x when '2' then length(l[i]) = 331 and right(l[i], 4) = fn_afd_crc16(convert_to(left(l[i], 327), 'LATIN1'))
+                              when '5' then length(l[i]) = 118 and right(l[i], 4) = fn_afd_crc16(convert_to(left(l[i], 114), 'LATIN1'))
+                                        and substr(l[i], 104, 11) = pg_temp.cpf('959595950')
+                              when '7' then length(l[i]) = 137 else false end,
+                       '[T95] linha ' || i || ' tipo ' || x || ' fora do leiaute (tamanho ' || length(l[i]) || ')');
+  end loop;
+  perform pg_temp.ok(substr(l[v_n], 10, 9)::int = (select count(*) from ponto_rep_registros where empresa_id = v_emp and tipo = 2)
+                     and substr(l[v_n], 37, 9)::int = (select count(*) from ponto_rep_registros where empresa_id = v_emp and tipo = 5)
+                     and substr(l[v_n], 55, 9)::int = 6 and length(l[v_n]) = 64, '[T95] trailer: ' || l[v_n]);
+  perform pg_temp.ok((r->>'de')::date = (now() at time zone 'America/Bahia')::date, '[T95] AFD completo sem a data inicial');
+  -- AEJ: desconsiderar uma original e incluir uma saída; "D" com fonte O e motivo, "I" com motivo; trailer confere
+  insert into ponto_ajustes (empresa_id, tecnico_id, marcacao_id, acao, motivo, autor)
+  values (v_emp, v_a, v_marc, 'desconsiderar', 'Saída em dobro', 'qa-admin@teste.local');
+  insert into ponto_ajustes (empresa_id, tecnico_id, acao, momento, tipo, motivo, autor)
+  values (v_emp, v_a, 'incluir', now() - interval '1 minute', 'saida', 'Saída esquecida', 'qa-admin@teste.local');
+  -- inclusão ligada a uma justificativa de saúde: o AEJ leva "Atestado", nunca o nome do motivo (LGPD art. 11)
+  insert into ponto_justificativas (empresa_id, tecnico_id, motivo, data, canal, status)
+  values (v_emp, v_a, 'comparecimento', current_date, 'painel', 'aprovada') returning id into v_marc;
+  insert into ponto_ajustes (empresa_id, tecnico_id, acao, momento, tipo, motivo, autor, justificativa_id)
+  values (v_emp, v_a, 'incluir', now() - interval '2 minutes', 'entrada', 'Consulta com comprovante', 'qa-admin@teste.local', v_marc);
+  r := app_ponto_aej(v_emp, (now() at time zone 'America/Bahia')::date, (now() at time zone 'America/Bahia')::date);
+  perform pg_temp.ok(position('Atestado' in r->>'conteudo') > 0
+                     and position((select nome from ponto_motivos where codigo = 'comparecimento') in r->>'conteudo') = 0,
+                     '[T95] motivo de saúde pelo nome no AEJ');
+  l := string_to_array(left(r->>'conteudo', -2), E'\r\n');
+  v_n := array_length(l, 1);
+  perform pg_temp.ok(left(l[1], 3) = '01|' and l[2] = '02|1|3|' || repeat('0', 17) and left(l[v_n], 3) = '99|', '[T95] AEJ início/fim');
+  perform pg_temp.ok(l[v_n] = '99|1|1|' || (select count(*) from unnest(l) z where z like '03|%') || '|'
+                       || (select count(*) from unnest(l) z where z like '04|%') || '|'
+                       || (select count(*) from unnest(l) z where z like '05|%') || '|0|'
+                       || (select count(*) from unnest(l) z where z like '07|%') || '|1', '[T95] trailer do AEJ: ' || l[v_n]);
+  perform pg_temp.ok(exists (select 1 from unnest(l) z where z like '05|%|D|%|O||Saída em dobro'), '[T95] AEJ sem a desconsiderada');
+  perform pg_temp.ok(exists (select 1 from unnest(l) z where z like '05|%||S|%|I||Saída esquecida'), '[T95] AEJ sem a incluída');
+  perform pg_temp.ok((select count(*) from unnest(l) z where z like '03|%') = 2, '[T95] AEJ vínculos');
+  perform pg_temp.ok(r->>'nome' ~ '^AEJ_95729595000127_[0-9]{8}_[0-9]{8}_CONFERENCIA\.txt$', '[T95] nome do AEJ: ' || (r->>'nome'));
+  perform pg_temp.ok(exists (select 1 from ponto_aej_geracoes where empresa_id = v_emp and sha256 = r->>'sha256'), '[T95] geração do AEJ não registrada');
+  v_ok := false;
+  begin perform app_ponto_aej(v_emp, current_date - 40, current_date - 1); exception when others then v_ok := sqlerrm like '%31 dias%'; end;
+  perform pg_temp.ok(v_ok, '[T95] AEJ de mais de 31 dias aceito');
+  -- gestor não gera AEJ nem vê o CPF do responsável
+  perform set_config('request.jwt.claims', '{"email":"qa-gestor-afd@teste.local","role":"authenticated","aal":"aal2"}', true);
+  v_ok := false;
+  begin perform app_ponto_aej(v_emp, current_date, current_date); exception when others then v_ok := sqlerrm ~* 'permiss|acesso|papel'; end;
+  perform pg_temp.ok(v_ok, '[T95] gestor gerou AEJ');
+  v_ok := false;
+  begin perform app_ponto_responsavel(v_emp); exception when others then v_ok := true; end;
+  perform pg_temp.ok(v_ok, '[T95] gestor viu o CPF do responsável');
+  perform set_config('request.jwt.claims', '{"email":"qa-admin@teste.local","role":"authenticated","aal":"aal2"}', true);
+end $$;
+select 'REGRESSÃO OK: T1 a T95' as resultado,
        (select v from qa where k = 't5_seg') as t5_2000_marcacoes_seg,
        (select v from qa where k = 't6_seg') as t6_300_mensagens_seg;
 rollback;

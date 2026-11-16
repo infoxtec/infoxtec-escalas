@@ -477,7 +477,12 @@ export interface DossieLocal {
 }
 
 /** AFD do REP-P, versão de conferência (migration 87, backlog 085): texto ISO 8859-1 com CR LF. */
-export interface PontoAfd { nome: string; conteudo: string; marcacoes: number; sha256: string; conferencia: boolean; aviso: string }
+export interface PontoAfd { nome: string; conteudo: string; marcacoes: number; registros: number; de: string; sha256: string; conferencia: boolean; aviso: string }
+/** Arquivo Eletrônico de Jornada (Art. 83, decisão 139). */
+export interface PontoAej {
+  nome: string; conteudo: string; sha256: string; conferencia: boolean; aviso: string
+  contagens: { vinculos: number; horarios: number; marcacoes: number; ausencias: number }
+}
 
 /** Espelho mensal congelado (migration 88, decisão 82). */
 /** Folha assinada no cofre de RH (decisão 86). */

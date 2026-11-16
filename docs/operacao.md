@@ -356,6 +356,11 @@ recalcula a partir das marcações. A restauração mensal confere a âncora do 
 ainda guardada** contra o banco restaurado, recalculando a cadeia com uma **cópia de referência da
 fórmula do hash** (`scripts/backup/conferir-ancora.sql`), não com a `fn_ponto_hash` que veio no
 backup — quem trocasse a função na produção é acusado.
+**Registros do REP no mesmo NSR** (decisão 139, migration 157). Desde a 157 a cadeia de cada empresa tem as marcações e
+os registros de empresa e de empregado (`interno.ponto_rep_registros`, tipos 2 e 5 do AFD) no mesmo NSR: os três
+scripts percorrem as duas tabelas juntas (contagem, maior NSR, NSR sem repetição, hash do último) e a restauração
+recalcula os tipos 2 e 5 com a cópia de `fn_ponto_rep_hash` (md5 fixado). Antes da 157 a tabela não existe e os
+scripts seguem só com as marcações (`tipos-ponto.sql` liga `ancora.rep`).
 **Reinício do módulo de ponto** (decisão 138, migration 155). A única exceção à âncora: a cadeia recomeçada pelo
 reinício antes do uso oficial (01/12/2026). O backup diário aceita a âncora anterior que sumiu só se a produção tiver
 o registro em `interno.ponto_reinicios` feito depois dela, com o mesmo NSR e hash da empresa, a cadeia atual

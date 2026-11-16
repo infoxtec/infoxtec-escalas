@@ -1082,6 +1082,36 @@ Regressão: T43.
 - `ponto_verificar_espelho(p_codigo)`: conferência pública do QR (anon, sem sessão — exceção no CI), devolve
   só registro, empresa, CNPJ, mês, emissão, integridade e assinatura; nenhum nome, CPF ou horário. Teste T35.
 
+### Migration 157 (15/11): AFD oficial (tipos 2 e 5 no mesmo NSR) e AEJ (decisão 139)
+
+- Tabela `interno.ponto_rep_registros` (conta, empresa, NSR, tipo 2 ou 5, momento, operação I/A/E, técnico, `dados`
+  congelados só com textos, hash anterior, hash): imutável (linha e truncate), RLS sem políticas, sem privilégio para os
+  papéis da API, `tg_00_conta` pela empresa, chaves compostas por conta, `unique (empresa_id, nsr)`, `hash unique`.
+  Entra na **mesma cadeia** das marcações: porta única com gatilho (`fn_ponto_rep_conferir_insercao`: NSR seguinte,
+  hash anterior, `fn_ponto_rep_hash` conferido, hora de agora, NSR inexistente nas marcações); `fn_ponto_conferir_insercao`
+  recusa NSR que exista nos registros do REP; `fn_ponto_nsr_avanca` aceita as duas tabelas.
+- `fn_ponto_rep_hash` (sql imutável, lista fixa de campos com prefixo `REP`): nunca recriar (o backup guarda o md5).
+- `fn_ponto_nsr_travar` (empresa `for key share` → `ponto_nsr for update`); `fn_ponto_rep_gravar`;
+  `fn_ponto_rep_empresa` (tipo 2 quando a identificação muda); `fn_ponto_rep_sincronizar` (A e E do cadastro; o "I"
+  só com `p_garantir`, na marcação); `fn_ponto_rep_iniciar` (tipo 2 na primeira marcação da empresa);
+  `fn_ponto_rep_desligamentos` (E de quem tem `desligado_em` antes de hoje, chamada por `fn_limpeza_logs` todo dia).
+- `fn_limpeza_logs`: volta a apagar códigos do ponto (24 h), sessões (90 dias) e acessos (30 dias), que a definição da
+  homologação tinha perdido (migration 55), e chama `fn_ponto_rep_desligamentos` num bloco próprio.
+- Gatilho `trg_ponto_rep_tecnico_upd` (nome, CPF, ativo, empresa, desligamento, só quando mudam e só em empresa com
+  `ponto_nsr`; sem gatilho de inclusão) e `trg_ponto_rep_empresa_upd` (CNPJ, razão, endereço, cidade, UF, CEP, CEI/CAEPF/CNO).
+- `fn_ponto_registrar`: trava na ordem, carga inicial e o "I" do funcionário antes do NSR da marcação.
+- `app_ponto_verificar`: percorre marcações e registros do REP por NSR; devolve `conferidas` (todos) e `marcacoes`.
+- Tabela `interno.ponto_rep_responsaveis` (empresa, CPF válido, quem e quando) e `app_ponto_responsavel` /
+  `app_ponto_definir_responsavel` (só admin). Retenção: enquanto a pessoa for a responsável (a troca sobrescreve); a cópia nos tipos 2 e
+  5 fica 5 anos, como as marcações.
+- `fn_afd_gerar`/`app_ponto_afd`: tipos 1, 2 (331 posições), 5 (118), 7 e 9 (contagens dos tipos 2 a 7) em ordem de
+  NSR; `p_de` nulo = desde o primeiro registro; devolve também `registros` e `de`.
+- `fn_aej_gerar`/`app_ponto_aej(p_empresa, p_de, p_ate)` (só admin, até 31 dias): AEJ do Anexo VI (01, 02, 03, 04, 05,
+  07, 08, 99); `fn_aej_a` (campo sem `|`). Tabela `interno.ponto_aej_geracoes` (quem, empresa, período, contagens,
+  sha256): só inclusão.
+- Índice `ponto_marcacoes (empresa_id, momento)`. Config `rep_p_desenvolvedor_razao` e `rep_p_desenvolvedor_email`.
+  As três tabelas novas entram na exportação da conta. Teste T95 (e T3, T5 e T94 ajustados ao NSR único).
+
 ### Migration 87 (13/10): AFD do REP-P, versão de conferência (backlog 085, decisão 81)
 
 - `app_ponto_afd(p_empresa, p_de, p_ate)` (só admin): texto do AFD no leiaute do Anexo V da Portaria 671 —
